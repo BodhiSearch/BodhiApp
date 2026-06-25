@@ -2,14 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ExploreApiSearch } from '../index';
 
-import {
-  DEFAULT_ORDER,
-  DEFAULT_SORT,
-  facetsToSearch,
-  PAGE_SIZE,
-  searchToFacets,
-  searchToParams,
-} from './explore-api-search';
+import { facetsToSearch, PAGE_SIZE, searchToFacets, searchToParams } from './explore-api-search';
 import type { ModelFacetsState } from './ExploreApiSidebar';
 
 describe('explore-api-search mappers', () => {
@@ -85,16 +78,14 @@ describe('explore-api-search mappers', () => {
   });
 
   describe('searchToParams', () => {
-    it('applies defaults (sort/order/page/page_size) and omits an empty q', () => {
+    it('omits sort/order when none is set (API natural order) and omits an empty q', () => {
       expect(searchToParams({})).toEqual({
-        sort: DEFAULT_SORT,
-        order: DEFAULT_ORDER,
         page: 1,
         page_size: PAGE_SIZE,
       });
     });
 
-    it('passes through non-default sort/order/page/q and the facet slice', () => {
+    it('passes through URL sort/order/page/q and the facet slice', () => {
       const params = searchToParams({
         q: 'gpt',
         sort: 'price',
@@ -111,6 +102,15 @@ describe('explore-api-search mappers', () => {
         page_size: PAGE_SIZE,
         capability: ['tool_call'],
         provider: ['openai'],
+      });
+    });
+
+    it('lets the effective sort override the URL slice (localStorage applied to the request only)', () => {
+      expect(searchToParams({}, { sort: 'name', order: 'asc' })).toMatchObject({
+        sort: 'name',
+        order: 'asc',
+        page: 1,
+        page_size: PAGE_SIZE,
       });
     });
   });

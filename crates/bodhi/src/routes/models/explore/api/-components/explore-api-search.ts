@@ -4,8 +4,9 @@ import type { ExploreApiSearch } from '../index';
 
 import { modelFacetsToQuery, type ModelFacetsState } from './ExploreApiSidebar';
 
-// Defaults the URL never carries (stripped before navigate). Mirrors the screen's prior useState defaults.
-export const DEFAULT_SORT = 'updated' as const;
+// Defaults the URL never carries (stripped before navigate). There is no implicit default SORT:
+// when neither the URL nor a stored preference sets one, sort/order are omitted and the API returns
+// its natural order. DEFAULT_ORDER is the fallback direction once a sort key is chosen.
 export const DEFAULT_ORDER = 'desc' as const;
 export const PAGE_SIZE = 30;
 
@@ -38,11 +39,20 @@ export function facetsToSearch(f: ModelFacetsState): Partial<ExploreApiSearch> {
   return modelFacetsToQuery(f) as Partial<ExploreApiSearch>;
 }
 
-/** URL search → the catalog API params object (what `useCatalogModels` consumes). Applies defaults. */
-export function searchToParams(s: ExploreApiSearch): ListCatalogModelsQuery {
+/**
+ * URL search → the catalog API params object (what `useCatalogModels` consumes). `sort`/`order` are
+ * resolved by the screen (URL > localStorage > none) and passed in via `effective`; when absent they
+ * are omitted entirely so the API uses its natural order.
+ */
+export function searchToParams(
+  s: ExploreApiSearch,
+  effective?: { sort?: string; order?: string }
+): ListCatalogModelsQuery {
+  const sort = effective?.sort ?? s.sort;
+  const order = effective?.order ?? s.order;
   return {
-    sort: s.sort ?? DEFAULT_SORT,
-    order: s.order ?? DEFAULT_ORDER,
+    ...(sort ? { sort: sort as ListCatalogModelsQuery['sort'] } : {}),
+    ...(order ? { order: order as ListCatalogModelsQuery['order'] } : {}),
     page: s.page ?? 1,
     page_size: PAGE_SIZE,
     ...(s.q ? { q: s.q } : {}),

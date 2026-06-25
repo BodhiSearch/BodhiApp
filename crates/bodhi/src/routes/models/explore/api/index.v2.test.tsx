@@ -25,6 +25,7 @@ setupMswV2();
 let Wrapper: ReturnType<typeof createWrapper>;
 
 beforeEach(() => {
+  localStorage.clear();
   Wrapper = createWrapper();
   server.use(
     ...mockAppInfoReady(),
@@ -209,8 +210,8 @@ describe('ExploreApiScreen (URL sync — back/forward + deep link)', () => {
     const user = userEvent.setup();
     await user.click(screen.getByTestId('cat-model-sort-price'));
     await waitFor(() => expect(router.state.location.search).toMatchObject({ sort: 'price' }));
-    // price's natural order is asc → asc !== default desc, so order is written.
-    expect(router.state.location.search).toMatchObject({ sort: 'price', order: 'asc' });
+    // price's natural order is asc → order matches natural, so it stays out of the URL.
+    expect((router.state.location.search as { order?: string }).order).toBeUndefined();
     expect((router.state.location.search as { page?: number }).page).toBeUndefined();
   });
 
@@ -397,7 +398,35 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'price_out')).toBe(true));
   });
 
-  it('search auto-applies sort=relevance and reverts to updated when cleared', async () => {
+  it('first load with no URL sort and no saved pref requests natural order (no sort param)', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+    await waitFor(() => expect(seen.length).toBeGreaterThan(0));
+    expect(seen[0].searchParams.has('sort')).toBe(false);
+  });
+
+  it('clicking a sort persists the preference to localStorage and writes the URL', async () => {
+    server.use(...mockCatalogModels());
+    const router = await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-sort-name'));
+    await waitFor(() => expect(localStorage.getItem('bodhi.explore.api.sort')).toContain('"sort":"name"'));
+    expect(router.state.location.search).toMatchObject({ sort: 'name' });
+  });
+
+  it('a saved preference drives the request on a clean-URL load without writing the URL', async () => {
+    localStorage.setItem('bodhi.explore.api.sort', JSON.stringify({ sort: 'name', order: 'asc' }));
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    const router = await renderScreen();
+
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'name')).toBe(true));
+    expect(router.state.location.search).toEqual({});
+  });
+
+  it('search auto-applies sort=relevance and reverts to no sort (natural order) when cleared', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
@@ -416,7 +445,7 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     await waitFor(() => {
       const last = seen[seen.length - 1];
       expect(last.searchParams.has('q')).toBe(false);
-      expect(last.searchParams.get('sort')).toBe('updated');
+      expect(last.searchParams.has('sort')).toBe(false);
     });
   });
 

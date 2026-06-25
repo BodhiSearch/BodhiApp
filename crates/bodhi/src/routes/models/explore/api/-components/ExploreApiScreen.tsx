@@ -34,17 +34,11 @@ import {
   isFree,
   statusLabel,
 } from '@/routes/models/explore/-shared/catalog-format';
+import { persistSortPreference, resolveSortPreference } from '@/routes/models/explore/-shared/useSortPreference';
 
 import type { ExploreApiSearch } from '../index';
 
-import {
-  DEFAULT_ORDER,
-  DEFAULT_SORT,
-  facetsToSearch,
-  PAGE_SIZE,
-  searchToFacets,
-  searchToParams,
-} from './explore-api-search';
+import { facetsToSearch, PAGE_SIZE, searchToFacets, searchToParams } from './explore-api-search';
 import { ExploreApiRail, ExploreApiRailHeader } from './ExploreApiRail';
 import { ExploreApiSidebar, hasActiveModelFacets, type ModelFacetsState } from './ExploreApiSidebar';
 import '@/components/shell/list.css';
@@ -71,6 +65,12 @@ const NATURAL_ORDER: Record<ModelSort, SortOrder> = {
   family: 'asc',
 };
 
+// Persisted sort preference (URL > localStorage > none). `relevance` is search-driven and excluded
+// from the persisted set so a stored pref never overrides the search→relevance behavior.
+const SORT_STORAGE_KEY = 'bodhi.explore.api.sort';
+const PERSISTED_SORTS = ['updated', 'context', 'providers', 'price', 'price_out', 'name', 'family'] as const;
+const VALID_ORDERS = ['asc', 'desc'] as const;
+
 function ColSort({
   col,
   label,
@@ -81,8 +81,8 @@ function ColSort({
 }: {
   col: ModelSort;
   label: string;
-  sort: ModelSort;
-  order: SortOrder;
+  sort: ModelSort | undefined;
+  order: SortOrder | undefined;
   align: ColumnAlign;
   onSort: (c: ModelSort) => void;
 }) {
@@ -290,14 +290,22 @@ function ModelRow({
 export function ExploreApiScreen() {
   useListKeyNav();
 
-  // The URL search is the single source of truth: sort/order/page/q/facets are DERIVED from it each
-  // render, and user actions write back via navigate(). No useState mirrors the URL, and the only
-  // effect below writes LOCAL state (searchInput) — never the URL — so there is no read→write loop.
+  // The URL search is the single source of truth; the only effect below writes LOCAL searchInput
+  // (URL→input), never the URL, so there is no read→write loop.
   const search = routeApi.useSearch();
   const navigate = routeApi.useNavigate();
 
-  const sort = search.sort ?? DEFAULT_SORT;
-  const order = search.order ?? DEFAULT_ORDER;
+  // Effective sort precedence: URL > localStorage (request-only, never written to URL) > none.
+  const resolvedSort = resolveSortPreference<ModelSort, SortOrder>({
+    urlSort: search.sort,
+    urlOrder: search.order,
+    storageKey: SORT_STORAGE_KEY,
+    validSorts: PERSISTED_SORTS,
+    validOrders: VALID_ORDERS,
+    naturalOrder: (s) => NATURAL_ORDER[s],
+  });
+  const sort = resolvedSort.sort;
+  const order = resolvedSort.order;
   const page = search.page ?? 1;
   const committedSearch = search.q ?? '';
   const facets = useMemo(() => searchToFacets(search), [search]);
@@ -325,7 +333,7 @@ export function ExploreApiScreen() {
     [hiddenColumns]
   );
 
-  const params = useMemo(() => searchToParams(search), [search]);
+  const params = useMemo(() => searchToParams(search, { sort, order }), [search, sort, order]);
   const { data, isLoading, error } = useCatalogModels(params);
 
   // keepPreviousData (in the hook) avoids a flash on page change; `params` is stable per distinct URL
@@ -344,13 +352,13 @@ export function ExploreApiScreen() {
     [withViewTransition, openRail]
   );
 
-  // The non-facet slice (q/sort/order) carried across a facet change, with defaults stripped so they
-  // never serialize. `page` is intentionally omitted → facet changes reset to page 1.
+  // The non-facet slice (q/sort/order) carried across a facet change; `page` is omitted so facet
+  // changes reset to page 1.
   const nonFacetSlice = useCallback((prev: ExploreApiSearch): ExploreApiSearch => {
     const base: ExploreApiSearch = {};
     if (prev.q) base.q = prev.q;
-    if (prev.sort && prev.sort !== DEFAULT_SORT) base.sort = prev.sort;
-    if (prev.order && prev.order !== DEFAULT_ORDER) base.order = prev.order;
+    if (prev.sort) base.sort = prev.sort;
+    if (prev.order) base.order = prev.order;
     return base;
   }, []);
 
@@ -360,9 +368,9 @@ export function ExploreApiScreen() {
       navigate({
         search: (prev: ExploreApiSearch) => {
           const out: ExploreApiSearch = { ...prev };
-          delete out.page; // reset paging
-          delete out.order; // both relevance and updated use their natural (desc) order
-          // Search-as-you-type ranks by best text match; clearing reverts to recency (default sort).
+          delete out.page;
+          delete out.order;
+          // Searching ranks by text match; clearing drops the sort → natural order (or stored pref).
           if (next) {
             out.q = next;
             out.sort = 'relevance';
@@ -391,23 +399,23 @@ export function ExploreApiScreen() {
   );
   const onSort = useCallback(
     (next: ModelSort) => {
+      // Clicking the active column toggles direction; a new column adopts its natural default.
+      const nextOrder: SortOrder = sort === next ? (order === 'asc' ? 'desc' : 'asc') : NATURAL_ORDER[next];
+      // Persist the explicit pick so it applies on a later clean-URL visit (relevance excluded).
+      if (next !== 'relevance') persistSortPreference(SORT_STORAGE_KEY, next, nextOrder);
       navigate({
         search: (prev: ExploreApiSearch) => {
-          const prevSort = prev.sort ?? DEFAULT_SORT;
-          const prevOrder = prev.order ?? DEFAULT_ORDER;
-          // Clicking the active column toggles direction; a new column adopts its natural default.
-          const nextOrder = prevSort === next ? (prevOrder === 'asc' ? 'desc' : 'asc') : NATURAL_ORDER[next];
           const out: ExploreApiSearch = { ...prev };
-          delete out.page; // reset paging
-          if (next === DEFAULT_SORT) delete out.sort;
-          else out.sort = next;
-          if (nextOrder === DEFAULT_ORDER) delete out.order;
+          delete out.page;
+          out.sort = next;
+          // Omit order when it matches the sort's natural direction; the resolver refills it on read.
+          if (nextOrder === NATURAL_ORDER[next]) delete out.order;
           else out.order = nextOrder;
           return out;
         },
       });
     },
-    [navigate]
+    [navigate, sort, order]
   );
   const onFacetsChange = useCallback(
     (next: ModelFacetsState) =>
