@@ -19,13 +19,14 @@ import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 import { exploreBreadcrumb } from '@/routes/models/explore/-shared/breadcrumbs';
 import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';
+import { ResetButton } from '@/routes/models/explore/-shared/ResetButton';
 
 import type { LocalDiscoverySearch } from '../index';
 
 import { DEFAULT_SORT, facetsToSearch, searchToFacets, searchToParams } from './local-discovery-search';
 import { fmtDate, LocalDiscoveryRail, LocalDiscoveryRailHeader } from './LocalDiscoveryRail';
 import { compact, LocalRepoCell } from './LocalDiscoveryRow';
-import { LocalDiscoverySidebar, type DiscoveryFacets } from './LocalDiscoverySidebar';
+import { hasActiveFacets, LocalDiscoverySidebar, type DiscoveryFacets } from './LocalDiscoverySidebar';
 import '@/components/downloads-panel/downloads-panel.css';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
@@ -206,6 +207,17 @@ export function LocalDiscoveryScreen() {
     [navigate]
   );
 
+  // The toolbar reset waterfalls: clear active facets first, else the search query, else inert.
+  const resetMode: 'filters' | 'query' | 'none' = hasActiveFacets(facets)
+    ? 'filters'
+    : committedSearch !== ''
+      ? 'query'
+      : 'none';
+  const onReset = useCallback(() => {
+    if (resetMode === 'filters') onClearAllFacets();
+    else if (resetMode === 'query') commitSearch('');
+  }, [resetMode, onClearAllFacets, commitSearch]);
+
   const onSearchChange = useCallback(
     (value: string) => {
       setSearchInput(value);
@@ -284,16 +296,8 @@ export function LocalDiscoveryScreen() {
   }, []);
 
   const sidebar = useMemo(
-    () => (
-      <LocalDiscoverySidebar
-        facets={facets}
-        sort={sort}
-        onFacetsChange={onFacetsChange}
-        onBrowse={onBrowse}
-        onClearAll={onClearAllFacets}
-      />
-    ),
-    [facets, sort, onFacetsChange, onBrowse, onClearAllFacets]
+    () => <LocalDiscoverySidebar facets={facets} sort={sort} onFacetsChange={onFacetsChange} onBrowse={onBrowse} />,
+    [facets, sort, onFacetsChange, onBrowse]
   );
 
   const railHeader = useMemo(() => {
@@ -386,6 +390,7 @@ export function LocalDiscoveryScreen() {
               </span>
             )}
           </button>
+          <ResetButton mode={resetMode} onReset={onReset} testId="ld-clear-all" />
         </div>
       </div>
 

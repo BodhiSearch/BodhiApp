@@ -329,7 +329,8 @@ describe('LocalDiscoveryScreen (Phase 2b/2c — Tag / Language / License / Publi
     await act(async () => {
       await userEvent.click(screen.getByTestId('ld-license-mit'));
     });
-    await waitFor(() => expect(screen.getByTestId('ld-clear-all')).toBeInTheDocument());
+    // The toolbar reset is always present; with facets active it's in 'filters' mode.
+    await waitFor(() => expect(screen.getByTestId('ld-clear-all')).toHaveAttribute('data-test-state', 'filters'));
 
     await act(async () => {
       await userEvent.click(screen.getByTestId('ld-clear-all'));
@@ -339,7 +340,8 @@ describe('LocalDiscoveryScreen (Phase 2b/2c — Tag / Language / License / Publi
       expect(last.searchParams.getAll('specialisation')).toEqual([]);
       expect(last.searchParams.getAll('license')).toEqual([]);
     });
-    expect(screen.queryByTestId('ld-clear-all')).not.toBeInTheDocument();
+    // Reset stays in the toolbar but is now inert (nothing to reset).
+    expect(screen.getByTestId('ld-clear-all')).toBeDisabled();
   });
 });
 
@@ -626,5 +628,34 @@ describe('LocalDiscoveryScreen — URL state', () => {
     });
     // The cursor is component state, never URL state.
     expect(router.state.location.search).not.toHaveProperty('cursor');
+  });
+
+  it('toolbar reset waterfalls facets → query → disabled', async () => {
+    server.use(...mockDiscoverModels());
+    const router = await renderScreen(['/models/explore/local/?specialisation=%5B%22coding%22%5D&q=qwen']);
+
+    const reset = screen.getByTestId('ld-clear-all');
+    await waitFor(() => expect(reset).toHaveAttribute('data-test-state', 'filters'));
+    await act(async () => {
+      await userEvent.click(reset);
+    });
+    await waitFor(() => expect(router.state.location.search).not.toHaveProperty('specialisation'));
+    await waitFor(() => expect(reset).toHaveAttribute('data-test-state', 'query'));
+    await act(async () => {
+      await userEvent.click(reset);
+    });
+    await waitFor(() => expect(router.state.location.search).not.toHaveProperty('q'));
+    expect(reset).toBeDisabled();
+  });
+
+  it('arrow-down selects the first row (drives ?select)', async () => {
+    server.use(...mockDiscoverModels());
+    const router = await renderScreen();
+    await waitFor(() => expect(screen.getAllByTestId(/^ld-row-/).length).toBeGreaterThan(0));
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    });
+    await waitFor(() => expect(router.state.location.search).toHaveProperty('select'));
   });
 });

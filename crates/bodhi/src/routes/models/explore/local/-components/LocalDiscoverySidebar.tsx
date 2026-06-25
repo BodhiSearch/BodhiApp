@@ -77,19 +77,14 @@ interface SidebarProps {
   sort: SortKey;
   onFacetsChange: (next: DiscoveryFacets) => void;
   onBrowse: (sort: SortKey) => void;
-  onClearAll: () => void;
 }
 
-export function LocalDiscoverySidebar({ facets, sort, onFacetsChange, onBrowse, onClearAll }: SidebarProps) {
+// Clear-all lives in the toolbar (shared 3-state ResetButton); the sidebar keeps only per-group
+// "Clear" links.
+export function LocalDiscoverySidebar({ facets, sort, onFacetsChange, onBrowse }: SidebarProps) {
   const spec = new Set(facets.specialisation ?? []);
   return (
     <div className="m-facets" data-testid="ld-facets">
-      {hasActiveFacets(facets) && (
-        <button type="button" className="ld-clear-all" onClick={onClearAll} data-testid="ld-clear-all">
-          <ShellIcon name="x" size={11} /> Clear all filters
-        </button>
-      )}
-
       <FacetGroup icon="compass" title="Browse">
         <div className="m-facet-pills">
           {BROWSE.map((b) => (

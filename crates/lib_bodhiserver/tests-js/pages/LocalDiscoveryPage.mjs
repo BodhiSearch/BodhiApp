@@ -6,7 +6,8 @@ import { expect } from '@playwright/test';
  *
  * The discovery view is a search-driven catalog of downloadable GGUF repos served by the external
  * Reference API (the app calls it directly with the user's id_token). It is a Models nav sub-page
- * (no feature flag). Phase 1 covers the search-only list (rows, sort, "Showing N", Load more).
+ * (no feature flag). The list is a semantic table (shared CatalogTable) with URL-synced
+ * sort/facets/search/select, a toolbar 3-state reset, and the count + Load-more in a footer.
  */
 export class LocalDiscoveryPage extends BasePage {
   selectors = {
@@ -52,7 +53,10 @@ export class LocalDiscoveryPage extends BasePage {
     await this.navigate('/ui/models/explore/local/');
     await this.waitForSPAReady();
     await this.expectVisible(this.selectors.content);
-    await expect(this.page.locator(this.selectors.content)).toHaveAttribute('data-pagestatus', 'ready');
+    await expect(this.page.locator(this.selectors.content)).toHaveAttribute(
+      'data-pagestatus',
+      'ready'
+    );
   }
 
   /** Current ?-search params on the Local Models URL. */
@@ -108,7 +112,10 @@ export class LocalDiscoveryPage extends BasePage {
   }
 
   async expectSortState(column, state) {
-    await expect(this.page.locator(this.sortSelector(column))).toHaveAttribute('data-test-state', state);
+    await expect(this.page.locator(this.sortSelector(column))).toHaveAttribute(
+      'data-test-state',
+      state
+    );
   }
 
   async loadMore() {
@@ -142,9 +149,14 @@ export class LocalDiscoveryPage extends BasePage {
     await this.waitForListSettled();
   }
 
+  /**
+   * Reset to the clean catalog (no facets, no query). The toolbar reset button waterfalls one bucket
+   * per click and disables itself the instant the last bucket clears, which races a click started a
+   * frame earlier; navigating to the bare URL is the deterministic page-object reset. The reset
+   * button's own click behavior is asserted directly in the dedicated reset-waterfall test step.
+   */
   async clearAllFilters() {
-    await this.page.locator(this.selectors.clearAll).click();
-    await this.waitForSPAReady();
+    await this.navigateToDiscovery();
     await this.waitForListSettled();
   }
 
