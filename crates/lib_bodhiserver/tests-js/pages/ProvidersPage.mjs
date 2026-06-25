@@ -158,6 +158,22 @@ export class ProvidersPage extends BasePage {
     return new URL(this.page.url()).searchParams;
   }
 
+  /**
+   * A single URL search param, decoded. TanStack Router's default serializer JSON-encodes values, so
+   * string scalars arrive quoted in the URL (is_lab="true", q="nano"). Unwrap the JSON so assertions
+   * compare against the plain value; non-JSON values (already-bare) pass through.
+   */
+  urlParam(key) {
+    const raw = this.searchParams().get(key);
+    if (raw == null) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return typeof parsed === 'string' ? parsed : String(parsed);
+    } catch {
+      return raw;
+    }
+  }
+
   async waitForListSettled() {
     await this.page
       .locator(`${this.selectors.anyRow}, ${this.selectors.empty}`)

@@ -41,9 +41,10 @@ test.describe('Explore · API Models', () => {
     await test.step('Numbered pager navigates to page 2', async () => {
       expect(await modelsPage.hasPagination()).toBe(true);
       await modelsPage.gotoPage(2);
-      // 31 models, 30/page → page 2 has the single remaining row.
-      expect(await modelsPage.getRowCount()).toBe(1);
+      // 31 models, 30/page → page 2 has the single remaining row (wait for keepPreviousData to settle).
+      await expect(modelsPage.page.locator(modelsPage.selectors.anyRow)).toHaveCount(1);
       await modelsPage.gotoPage(1);
+      await expect(modelsPage.page.locator(modelsPage.selectors.anyRow)).toHaveCount(30);
     });
 
     await test.step('Family + Updated are their own sortable columns; capabilities render as a subheading', async () => {

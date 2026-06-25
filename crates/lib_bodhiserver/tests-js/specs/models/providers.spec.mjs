@@ -46,8 +46,10 @@ test.describe('Explore · API Providers', () => {
       expect(await providersPage.hasPagination()).toBe(true);
       await providersPage.nextPage();
       expect(providersPage.searchParams().get('page')).toBe('2');
-      expect(await providersPage.getRowCount()).toBe(1);
+      // 31 providers, 30/page → page 2 has the single remaining row (wait for keepPreviousData to settle).
+      await expect(providersPage.page.locator(providersPage.selectors.anyRow)).toHaveCount(1);
       await providersPage.gotoPage(1);
+      await expect(providersPage.page.locator(providersPage.selectors.anyRow)).toHaveCount(30);
     });
 
     await test.step('Opening a provider shows the rail with connection meta + models', async () => {
@@ -65,7 +67,7 @@ test.describe('Explore · API Providers', () => {
 
     await test.step('Search narrows the list and writes ?q to the URL', async () => {
       await providersPage.searchFor('Provider 7');
-      expect(providersPage.searchParams().get('q')).toBe('Provider 7');
+      expect(providersPage.urlParam('q')).toBe('Provider 7');
       await expect(providersPage.page.locator(providersPage.selectors.row('prov-7'))).toBeVisible();
       await expect(providersPage.page.locator(providersPage.selectors.cap('reasoning'))).toContainText('1');
 
@@ -76,7 +78,7 @@ test.describe('Explore · API Providers', () => {
 
     await test.step('Sort by the MODELS column writes ?sort and marks the header active', async () => {
       await providersPage.sortBy('model_count');
-      expect(providersPage.searchParams().get('sort')).toBe('model_count');
+      expect(providersPage.urlParam('sort')).toBe('model_count');
       await expect(providersPage.page.locator(providersPage.selectors.sort('model_count'))).toHaveAttribute(
         'data-test-state',
         'active'
@@ -85,7 +87,7 @@ test.describe('Explore · API Providers', () => {
 
     await test.step('Sort by the FORMAT column (api_format); rank + cheapest sorts are gone', async () => {
       await providersPage.sortBy('api_format');
-      expect(providersPage.searchParams().get('sort')).toBe('api_format');
+      expect(providersPage.urlParam('sort')).toBe('api_format');
       await expect(providersPage.page.locator(providersPage.selectors.sort('rank'))).toHaveCount(0);
       await expect(providersPage.page.locator(providersPage.selectors.sort('pricing'))).toHaveCount(0);
     });
@@ -93,25 +95,25 @@ test.describe('Explore · API Providers', () => {
     await test.step('Back/Forward revert and re-apply the sort + URL', async () => {
       // Currently sort=api_format; Back returns to sort=model_count from the prior step.
       await providersPage.goBack();
-      expect(providersPage.searchParams().get('sort')).toBe('model_count');
+      expect(providersPage.urlParam('sort')).toBe('model_count');
       await providersPage.goForward();
-      expect(providersPage.searchParams().get('sort')).toBe('api_format');
+      expect(providersPage.urlParam('sort')).toBe('api_format');
     });
 
     await test.step('Labs-only toggle filters to labs and writes ?is_lab=true', async () => {
       await expect(providersPage.page.locator(providersPage.selectors.labs)).toHaveAttribute('aria-pressed', 'false');
       await providersPage.clickLabs();
-      expect(providersPage.searchParams().get('is_lab')).toBe('true');
+      expect(providersPage.urlParam('is_lab')).toBe('true');
       await expect(providersPage.page.locator(providersPage.selectors.labs)).toHaveAttribute('aria-pressed', 'true');
       // Every 4th stub provider is a lab → 8 of 31 (prov-0,4,…,28).
-      expect(await providersPage.getRowCount()).toBe(8);
+      await expect(providersPage.page.locator(providersPage.selectors.anyRow)).toHaveCount(8);
       await providersPage.clickLabs();
       expect(providersPage.searchParams().has('is_lab')).toBe(false);
     });
 
     await test.step('Free/Paid pricing toggle is single-select and writes ?pricing', async () => {
       await providersPage.clickPricing('free');
-      expect(providersPage.searchParams().get('pricing')).toBe('free');
+      expect(providersPage.urlParam('pricing')).toBe('free');
       await providersPage.clickPricing('free');
       expect(providersPage.searchParams().has('pricing')).toBe(false);
     });
@@ -133,7 +135,7 @@ test.describe('Explore · API Providers', () => {
         'aria-pressed',
         'false'
       );
-      expect(providersPage.searchParams().get('q')).toBe('Provider');
+      expect(providersPage.urlParam('q')).toBe('Provider');
       await expect(reset).toHaveAttribute('data-test-state', 'query');
 
       await providersPage.clickReset();
