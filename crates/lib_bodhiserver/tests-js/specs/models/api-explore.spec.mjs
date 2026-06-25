@@ -104,7 +104,9 @@ test.describe('Explore · API Models', () => {
       await modelsPage.page.waitForURL(/\/models\/api\/new\//);
       await expect(modelsPage.page).toHaveURL(/api_format=openai/);
       await expect(modelsPage.page).toHaveURL(/base_url=https%3A%2F%2Fopenrouter\.ai%2Fapi%2Fv1/);
-      await expect(modelsPage.page.locator('[data-testid="base-url-input"]')).toHaveValue('https://openrouter.ai/api/v1');
+      await expect(modelsPage.page.locator('[data-testid="base-url-input"]')).toHaveValue(
+        'https://openrouter.ai/api/v1'
+      );
     });
 
     await test.step('The Configure-in-Bodhi CTA is removed (the per-provider Add is the configure path)', async () => {
