@@ -96,7 +96,7 @@ function ColSort({
       data-testid={`cat-model-sort-${col}`}
       data-test-state={active ? 'active' : 'idle'}
     >
-      {label}
+      <span className="cat-colsort-label">{label}</span>
       <ShellIcon name={icon} size={10} />
     </button>
   );

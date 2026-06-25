@@ -311,13 +311,24 @@
   white-space: nowrap;
   color: hsl(var(--muted-foreground));
 }
-/* Column header: single line, ellipsis if it overflows. Center-ellipsis via the rtl trick keeps the
-   start + end of a label visible; falls back to a clean end-ellipsis where rtl isn't honored. */
-.cat-colhead,
-.cat-colsort {
+/* Column header: single line, ellipsis if it overflows. */
+.cat-colhead {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Sortable header: only the LABEL truncates; the sort-direction icon must stay visible (else a narrow
+   column like OUTPUT $ / PROVIDERS clips the active arrow). The icon is a non-shrinking flex sibling. */
+.cat-colsort {
+  white-space: nowrap;
+}
+.cat-colsort-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.cat-colsort > svg {
+  flex: 0 0 auto;
 }
 /* Header alignment mirrors the cell content: numeric columns right, text columns left. */
 .cat-colhead--right {
