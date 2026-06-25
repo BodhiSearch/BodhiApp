@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { AliasResponse, ApiAliasResponse } from '@bodhiapp/ts-client';
-import { useNavigate } from '@tanstack/react-router';
+import { getRouteApi, useNavigate } from '@tanstack/react-router';
 
 import { DownloadsPanel, DownloadsPanelHeader, isActive } from '@/components/downloads-panel/DownloadsPanel';
 import {
@@ -27,9 +27,13 @@ import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 import { extractErrorMessage } from '@/lib/errorUtils';
 import { isApiAlias, isModelRouterAlias, isUserAlias } from '@/lib/utils';
+import { resolveSortPreference } from '@/routes/models/explore/-shared/useSortPreference';
+
+import type { ModelsSearch } from '../index';
 
 import { getAliasId, getAliasTitle, getAliasTypeMeta } from './aliasFormatters';
 import { ModelDetailRail, ModelRailHeader } from './ModelDetailRail';
+import { facetsToSearch, hasActiveFilter, PAGE_SIZE, searchToFilter, searchToListArgs } from './models-search';
 import { ModelSidebarFacets } from './ModelSidebarFacets';
 import '@/components/downloads-panel/downloads-panel.css';
 import '@/components/shell/api-keys.css';
@@ -38,7 +42,17 @@ import './models.css';
 
 const MODELS_BREADCRUMB = [{ label: 'Bodhi' }, { label: 'Models' }, { label: 'My Models', current: true }];
 
-const PAGE_SIZE = 30;
+const routeApi = getRouteApi('/models/');
+
+type ModelSort = NonNullable<ModelsSearch['sort']>;
+type SortOrder = NonNullable<ModelsSearch['order']>;
+
+// Natural direction per sort key; selecting a new column applies its default, clicking the active
+// column toggles it.
+const NATURAL_ORDER: Record<ModelSort, SortOrder> = { name: 'asc', provider: 'asc', base_url: 'asc' };
+const SORT_STORAGE_KEY = 'bodhi.models.sort';
+const PERSISTED_SORTS = ['name', 'provider', 'base_url'] as const;
+const VALID_ORDERS = ['asc', 'desc'] as const;
 
 /** Secondary line under a row's title — repo/file, API base+model-count, or the fallback chain. */
 function rowSubtitle(alias: AliasResponse): string {
@@ -128,26 +142,67 @@ export function ModelsScreenV2() {
   const navigate = useNavigate();
   const { openRail } = useShell();
 
-  const [filter, setFilter] = useState<ModelsFilter>({});
-  // `searchInput` is the live text box; it's committed to `filter.search` (the backend param) on
-  // Enter, or when cleared to empty.
-  const [searchInput, setSearchInput] = useState('');
-  const [page, setPage] = useState(1);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Right-rail content: 'model' = selected-alias detail, 'downloads' = Downloads panel.
-  const [railMode, setRailMode] = useState<'model' | 'downloads' | null>(null);
+  // The URL search is the single source of truth; the only effect below writes LOCAL searchInput
+  // (URL→input), never the URL, so there is no read→write loop.
+  const search = routeApi.useSearch();
+  const urlNavigate = routeApi.useNavigate();
+
+  // Effective sort precedence: URL > localStorage (request-only, never written to URL) > none.
+  const resolvedSort = resolveSortPreference<ModelSort, SortOrder>({
+    urlSort: search.sort,
+    urlOrder: search.order,
+    storageKey: SORT_STORAGE_KEY,
+    validSorts: PERSISTED_SORTS,
+    validOrders: VALID_ORDERS,
+    naturalOrder: (s) => NATURAL_ORDER[s],
+  });
+  const sort = resolvedSort.sort;
+  const order = resolvedSort.order;
+  const page = search.page ?? 1;
+  const committedSearch = search.q ?? '';
+  const filter = useMemo(() => searchToFilter(search), [search]);
+
+  // The open detail rail is the URL's `select` (the alias id). Deriving it (not mirroring in state)
+  // makes Back/Forward restoration automatic.
+  const selectedId = search.select ?? null;
+  // `searchInput` is the live text box (committed to ?q on Enter / clear).
+  const [searchInput, setSearchInput] = useState(committedSearch);
+  // `downloadsOpen` is the only ephemeral rail state; the model-detail rail is driven by ?select.
+  // Opening Downloads takes over the rail; closing it falls back to the selected-model rail (if any).
+  const [downloadsOpen, setDownloadsOpen] = useState(false);
+  useEffect(() => {
+    setSearchInput(committedSearch);
+  }, [committedSearch]);
 
   const withViewTransition = useViewTransition();
+  // Selection lives in the URL via replace (no history entries) — Back/Forward skips past selections.
   const select = useCallback(
-    (id: string | null) =>
+    (id: string | null) => {
+      if ((id ?? undefined) === search.select) return; // dedup
       withViewTransition(() => {
-        setSelectedId(id);
-        setRailMode(id ? 'model' : null);
-      }),
-    [withViewTransition]
+        setDownloadsOpen(false); // a row selection takes the rail back from Downloads
+        urlNavigate({
+          search: (prev: ModelsSearch) => {
+            const out: ModelsSearch = { ...prev };
+            if (id) out.select = id;
+            else delete out.select;
+            return out;
+          },
+          replace: true,
+        });
+      });
+    },
+    [urlNavigate, withViewTransition, search.select]
   );
 
-  const { data, isLoading, error } = useListModels(page, PAGE_SIZE, 'alias', 'asc', filter);
+  const listArgs = useMemo(() => searchToListArgs(search, { sort, order }), [search, sort, order]);
+  const { data, isLoading, error } = useListModels(
+    listArgs.page,
+    listArgs.pageSize,
+    listArgs.sort,
+    listArgs.sortOrder,
+    listArgs.filter
+  );
 
   // Rows come pre-filtered from the server (facets + search). Dedup by id — be resilient to the
   // backend returning the same alias twice (Batch-2 gotcha) which would dup React keys.
@@ -162,22 +217,42 @@ export function ModelsScreenV2() {
   }, [data?.data]);
 
   // Highlight matches the committed server query (lowercased), not the in-progress text box.
-  const q = (filter.search ?? '').trim().toLowerCase();
+  const q = committedSearch.trim().toLowerCase();
 
   const selected = useMemo(() => rows.find((a) => getAliasId(a) === selectedId) ?? null, [rows, selectedId]);
 
-  const onFilterChange = useCallback((next: ModelsFilter) => {
-    setFilter(next);
-    setPage(1);
+  // Replace the whole facet slice (a shallow merge can't delete a removed facet); keep q/sort/order
+  // and the open rail; drop page so a facet change resets to page 1.
+  const nonFacetSlice = useCallback((prev: ModelsSearch): ModelsSearch => {
+    const base: ModelsSearch = {};
+    if (prev.q) base.q = prev.q;
+    if (prev.sort) base.sort = prev.sort;
+    if (prev.order) base.order = prev.order;
+    if (prev.select) base.select = prev.select;
+    return base;
   }, []);
 
-  // Commit the search box to the backend filter (Enter to run; clearing to empty resets it).
+  const onFilterChange = useCallback(
+    (next: ModelsFilter) =>
+      urlNavigate({ search: (prev: ModelsSearch) => ({ ...nonFacetSlice(prev), ...facetsToSearch(next) }) }),
+    [urlNavigate, nonFacetSlice]
+  );
+
+  // Commit the search box to ?q (Enter to run; clearing to empty resets it). Drops page → resets to 1.
   const commitSearch = useCallback(
     (value: string) => {
-      const trimmed = value.trim();
-      onFilterChange({ ...filter, search: trimmed || undefined });
+      const next = value.trim();
+      urlNavigate({
+        search: (prev: ModelsSearch) => {
+          const out: ModelsSearch = { ...prev };
+          delete out.page;
+          if (next) out.q = next;
+          else delete out.q;
+          return out;
+        },
+      });
     },
-    [filter, onFilterChange]
+    [urlNavigate]
   );
 
   const onSearchKeyDown = useCallback(
@@ -196,6 +271,12 @@ export function ModelsScreenV2() {
     [commitSearch]
   );
 
+  const onPage = useCallback(
+    (p: number) =>
+      urlNavigate({ search: (prev: ModelsSearch) => (p === 1 ? { ...prev, page: undefined } : { ...prev, page: p }) }),
+    [urlNavigate]
+  );
+
   const onEdit = useCallback(
     (alias: AliasResponse) => {
       if (isApiAlias(alias)) navigate({ to: '/models/api/edit/', search: { id: alias.id } });
@@ -208,7 +289,7 @@ export function ModelsScreenV2() {
   // ── Downloads panel ──────────────────────────────────────────────
   const { showSuccess, showError } = useToastMessages();
   const { data: downloadsData, isLoading: downloadsLoading } = useListDownloads(1, 100, {
-    enablePolling: railMode === 'downloads',
+    enablePolling: downloadsOpen,
   });
   const downloads = useMemo(() => downloadsData?.data ?? [], [downloadsData?.data]);
   const activeCount = useMemo(() => downloads.filter(isActive).length, [downloads]);
@@ -223,18 +304,18 @@ export function ModelsScreenV2() {
   });
   const downloadsBusy = archivePending || retryPending;
 
-  // Toggle: clicking while the Downloads panel is shown closes the rail; otherwise it shows
-  // Downloads (swapping out the model-detail rail if that was open). Nulling the rail content
-  // closes the column; `openRail` un-collapses it if the user had manually collapsed the rail.
+  // Toggle: clicking while the Downloads panel is shown closes it (falling back to the selected-model
+  // rail, if any); otherwise it opens Downloads (taking over the rail from the model detail).
+  // `openRail` un-collapses the column if the user had manually collapsed the rail.
   const toggleDownloads = useCallback(() => {
-    setRailMode((mode) => {
-      if (mode === 'downloads') return null;
+    setDownloadsOpen((open) => {
+      if (open) return false;
       refreshDownloads();
       openRail();
-      return 'downloads';
+      return true;
     });
   }, [openRail, refreshDownloads]);
-  const closeRail = useCallback(() => setRailMode(null), []);
+  const closeDownloads = useCallback(() => setDownloadsOpen(false), []);
   const onArchiveDownload = useCallback((id: string) => archiveDownload({ id }), [archiveDownload]);
   const onRetryDownload = useCallback((id: string) => retryDownload({ id }), [retryDownload]);
 
@@ -249,13 +330,13 @@ export function ModelsScreenV2() {
   );
 
   const railHeader = useMemo(() => {
-    if (railMode === 'downloads') return <DownloadsPanelHeader onClose={closeRail} />;
-    if (railMode === 'model' && selected) return <ModelRailHeader alias={selected} onClose={() => select(null)} />;
+    if (downloadsOpen) return <DownloadsPanelHeader onClose={closeDownloads} />;
+    if (selected) return <ModelRailHeader alias={selected} onClose={() => select(null)} />;
     return null;
-  }, [railMode, selected, select, closeRail]);
+  }, [downloadsOpen, selected, select, closeDownloads]);
 
   const rail = useMemo(() => {
-    if (railMode === 'downloads')
+    if (downloadsOpen)
       return (
         <DownloadsPanel
           items={downloads}
@@ -266,10 +347,10 @@ export function ModelsScreenV2() {
           onJumpToList={jumpToList}
         />
       );
-    if (railMode === 'model' && selected) return <ModelDetailRail alias={selected} onEdit={() => onEdit(selected)} />;
+    if (selected) return <ModelDetailRail alias={selected} onEdit={() => onEdit(selected)} />;
     return null;
   }, [
-    railMode,
+    downloadsOpen,
     downloads,
     downloadsLoading,
     onArchiveDownload,
@@ -288,7 +369,6 @@ export function ModelsScreenV2() {
   }
 
   const total = data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div
@@ -309,7 +389,7 @@ export function ModelsScreenV2() {
           </div>
           <button
             type="button"
-            className={`l-iconbtn ld-dl-iconbtn${railMode === 'downloads' ? ' on' : ''}`}
+            className={`l-iconbtn ld-dl-iconbtn${downloadsOpen ? ' on' : ''}`}
             onClick={toggleDownloads}
             data-testid="models-downloads-button"
             title="Open Downloads"
@@ -339,7 +419,7 @@ export function ModelsScreenV2() {
             </div>
             <div className="empty-title">No models match</div>
             <div className="empty-sub">
-              {q || hasActiveFacet(filter)
+              {q || hasActiveFilter(filter)
                 ? 'Try a different search term or clear the filters.'
                 : 'No models configured yet.'}
             </div>
@@ -359,18 +439,7 @@ export function ModelsScreenV2() {
         )}
       </div>
 
-      {totalPages > 1 && <ShellPagination minimal total={total} page={page} onPage={setPage} pageSize={PAGE_SIZE} />}
+      {total > PAGE_SIZE && <ShellPagination minimal total={total} page={page} onPage={onPage} pageSize={PAGE_SIZE} />}
     </div>
-  );
-}
-
-function hasActiveFacet(filter: ModelsFilter): boolean {
-  return Boolean(
-    filter.types?.length ||
-      filter.apiFormats?.length ||
-      filter.capabilities?.length ||
-      filter.sizeMin != null ||
-      filter.sizeMax != null ||
-      filter.search
   );
 }

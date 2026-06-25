@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
 import { MultiTenantGuard } from '@/routes/models/explore/-shared/MultiTenantGuard';
+import { arrayParam } from '@/routes/models/explore/-shared/search-params';
 
 import { ExploreApiScreen } from './-components/ExploreApiScreen';
 
@@ -13,21 +14,6 @@ const CAPABILITY = ['reasoning', 'tool_call', 'structured_output', 'attachment',
 const MODALITY = ['text', 'audio', 'image', 'video', 'pdf'] as const;
 const STATUS = ['stable', 'alpha', 'beta', 'deprecated'] as const;
 const SORT = ['relevance', 'updated', 'context', 'providers', 'price', 'price_out', 'name', 'family'] as const;
-
-// Repeatable params arrive as an array (two+ values) OR a bare string (a single value, e.g. a
-// hand-typed/cross-route `?provider=anthropic`). Coerce a lone value into a one-element array, drop
-// members that aren't in the allowed set, and omit the key entirely when nothing survives.
-function arrayParam<T extends readonly [string, ...string[]]>(values: T) {
-  const allowed = new Set<string>(values);
-  return z.preprocess(
-    (v) => {
-      if (v == null) return undefined;
-      const arr = (Array.isArray(v) ? v : [v]).filter((x): x is string => typeof x === 'string' && allowed.has(x));
-      return arr.length ? arr : undefined;
-    },
-    z.array(z.enum(values)).optional()
-  );
-}
 
 function stringArrayParam() {
   return z.preprocess((v) => {

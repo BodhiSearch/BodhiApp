@@ -1,48 +1,37 @@
-import { Route as ModelsRoute } from '@/routes/models/index';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
-import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
-import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
-import { mockModels, mockModelsWithCapture } from '@/test-utils/msw-v2/handlers/models';
-import { mockModelPullDownloads, mockModelPullDownloadsAllSections } from '@/test-utils/msw-v2/handlers/modelfiles';
+import { modelsSearchSchema } from '@/routes/models/index';
+import { ModelsScreenV2 } from '@/routes/models/-components/ModelsScreenV2';
 import {
   createMockApiAlias,
   createMockModelAlias,
   createMockOpenAIModel,
   createMockUserAlias,
 } from '@/test-fixtures/models';
+import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
+import { mockModelPullDownloads, mockModelPullDownloadsAllSections } from '@/test-utils/msw-v2/handlers/modelfiles';
+import { mockModels, mockModelsWithCapture } from '@/test-utils/msw-v2/handlers/models';
+import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2, type components } from '@/test-utils/msw-v2/setup';
+import { makeRouteRouter, RouteHarness } from '@/test-utils/router-harness';
 import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Edit-nav uses the plain useNavigate() (a route NOT mounted in the single-route harness); mock it so
+// we can assert the target. routeApi.useNavigate() binds to the real harness router, not this mock.
 const mockNavigate = vi.fn();
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual('@tanstack/react-router');
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-    useLocation: () => ({ pathname: '/models' }),
-  };
+  return { ...actual, useNavigate: () => mockNavigate };
 });
+// View transitions run synchronously in tests.
+vi.mock('@/hooks/useViewTransition', () => ({ useViewTransition: () => (cb: () => void) => cb() }));
 
 setupMswV2();
 
-const ModelsPage = ModelsRoute.options.component as React.ComponentType;
-
-function SlotsConsumer() {
-  const { sidebar, rail, railHeader, breadcrumb, headerActions } = useShellSlots();
-  const crumbs = Array.isArray(breadcrumb) ? breadcrumb.map((b) => b.label).join(' / ') : '';
-  return (
-    <>
-      <div data-testid="harness-header-actions">{headerActions}</div>
-      <div data-testid="harness-sidebar">{sidebar}</div>
-      <div data-testid="harness-rail-header">{railHeader}</div>
-      <div data-testid="harness-rail">{rail}</div>
-      <div data-testid="harness-breadcrumb">{crumbs}</div>
-    </>
-  );
-}
+let Wrapper: ReturnType<typeof createWrapper>;
 
 function makeRouterAlias(): components['schemas']['ModelRouterResponse'] {
   return {
@@ -73,125 +62,86 @@ const MIXED_ROWS: components['schemas']['AliasResponse'][] = [
 ];
 
 beforeEach(() => {
+  localStorage.clear();
+  Wrapper = createWrapper();
+  mockNavigate.mockReset();
   server.use(
     ...mockAppInfoReady(),
     ...mockUserLoggedIn({ username: 'admin@example.com', role: 'resource_admin' }),
-    // Default: empty downloads (stub survives polling). Tests override as needed.
     ...mockModelPullDownloads({ data: [], total: 0 }, { stub: true })
   );
-  mockNavigate.mockReset();
 });
 
-afterEach(() => {
-  localStorage.clear();
-  vi.clearAllMocks();
-});
+afterEach(() => vi.clearAllMocks());
 
-async function renderReady() {
+function SlotsConsumer() {
+  const { sidebar, rail, railHeader, breadcrumb } = useShellSlots();
+  const crumbs = Array.isArray(breadcrumb) ? breadcrumb.map((b) => b.label).join(' / ') : '';
+  return (
+    <>
+      <div data-testid="harness-sidebar">{sidebar}</div>
+      <div data-testid="harness-rail-header">{railHeader}</div>
+      <div data-testid="harness-rail">{rail}</div>
+      <div data-testid="harness-breadcrumb">{crumbs}</div>
+    </>
+  );
+}
+
+function ScreenWithSlots() {
+  return (
+    <>
+      <SlotsConsumer />
+      <ModelsScreenV2 />
+    </>
+  );
+}
+
+async function renderScreen(initialEntries?: string[]) {
+  const router = makeRouteRouter({
+    path: '/models/',
+    validateSearch: modelsSearchSchema as never,
+    Screen: ScreenWithSlots,
+    initialEntries,
+  });
   await act(async () => {
     render(
       <ShellSlotsProvider>
-        <SlotsConsumer />
-        <ModelsPage />
+        <RouteHarness router={router} />
       </ShellSlotsProvider>,
-      { wrapper: createWrapper() }
+      { wrapper: Wrapper }
     );
   });
-  await waitFor(() => {
-    expect(screen.getByTestId('models-content')).toHaveAttribute('data-pagestatus', 'ready');
-  });
+  await waitFor(() => expect(screen.getByTestId('models-content')).toHaveAttribute('data-pagestatus', 'ready'));
+  return router;
 }
 
-describe('ModelsScreen V2', () => {
+describe('ModelsScreen V2 — list + rail', () => {
   it('renders the four row types with their badges and the breadcrumb', async () => {
     server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
-    await renderReady();
+    await renderScreen();
 
     expect(screen.getByTestId('harness-breadcrumb')).toHaveTextContent('Bodhi / Models / My Models');
     expect(within(screen.getByTestId('model-type-org/local-gguf:Q4')).getByText('Local File')).toBeInTheDocument();
     expect(within(screen.getByTestId('model-type-my-coder')).getByText('Model Alias')).toBeInTheDocument();
-    // API rows show the provider (api_format) as the badge, not a generic "API Model".
     expect(within(screen.getByTestId('model-type-openai-main')).getByText('OPENAI')).toBeInTheDocument();
     expect(within(screen.getByTestId('model-type-router-1')).getByText('Router')).toBeInTheDocument();
   });
 
-  it('has no TYPE filter tabs in the top toolbar (facets live only in the sidebar)', async () => {
-    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
-    await renderReady();
-    // The always-visible search is present; the old top-bar TYPE quick-tabs are gone.
-    expect(screen.getByTestId('models-search')).toBeInTheDocument();
-    expect(screen.queryByTestId('models-type-all')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('models-type-api_model')).not.toBeInTheDocument();
-  });
-
-  it('submits search to the backend `search` param on Enter', async () => {
-    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
-    server.use(...handlers);
-    await renderReady();
-
-    const input = within(screen.getByTestId('models-search')).getByRole('textbox');
-    await userEvent.type(input, 'llama');
-    // No request fired yet for the typed text — search is submit-on-Enter, not per-keystroke.
-    expect(capture.last?.get('search')).toBeNull();
-    await userEvent.type(input, '{Enter}');
-    await waitFor(() => expect(capture.last?.get('search')).toBe('llama'));
-  });
-
-  it('clearing the search box resets the backend `search` param', async () => {
-    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
-    server.use(...handlers);
-    await renderReady();
-
-    const input = within(screen.getByTestId('models-search')).getByRole('textbox');
-    await userEvent.type(input, 'llama{Enter}');
-    await waitFor(() => expect(capture.last?.get('search')).toBe('llama'));
-    await userEvent.clear(input);
-    await waitFor(() => expect(capture.last?.get('search')).toBeNull());
-  });
-
   it('publishes the faceted sidebar (type / capability / size / api-format incl. Liberty)', async () => {
     server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
-    await renderReady();
+    await renderScreen();
 
     const sidebar = screen.getByTestId('harness-sidebar');
     expect(within(sidebar).getByTestId('models-facet-type-local_file')).toBeInTheDocument();
     expect(within(sidebar).getByTestId('models-facet-capability-vision')).toBeInTheDocument();
     expect(within(sidebar).getByTestId('models-facet-size')).toBeInTheDocument();
-    // API-FORMAT incl. the newly-added Liberty bucket.
     expect(within(sidebar).getByTestId('models-facet-format-openai')).toBeInTheDocument();
     expect(within(sidebar).getByTestId('models-facet-format-liberty')).toBeInTheDocument();
   });
 
-  it('sends the TYPE facet as a server-side `type` query param', async () => {
-    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
-    server.use(...handlers);
-    await renderReady();
-
-    await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('models-facet-type-api_model'));
-    await waitFor(() => expect(capture.last?.get('type')).toBe('api_model'));
-  });
-
-  it('sends the API-FORMAT Liberty facet as `api_format=liberty`', async () => {
-    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
-    server.use(...handlers);
-    await renderReady();
-
-    await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('models-facet-format-liberty'));
-    await waitFor(() => expect(capture.last?.get('api_format')).toBe('liberty'));
-  });
-
-  it('sends the CAPABILITY facet as `capability=vision`', async () => {
-    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
-    server.use(...handlers);
-    await renderReady();
-
-    await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('models-facet-capability-vision'));
-    await waitFor(() => expect(capture.last?.get('capability')).toBe('vision'));
-  });
-
-  it('opens the Local File rail on row click and shows repo/filename/snapshot/size', async () => {
+  it('opens the Local File rail on row click and shows repo/filename/size', async () => {
     server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
-    await renderReady();
+    await renderScreen();
 
     await userEvent.click(screen.getByTestId('model-row-org/local-gguf:Q4'));
     const rail = await screen.findByTestId('model-detail-org/local-gguf:Q4');
@@ -207,7 +157,7 @@ describe('ModelsScreen V2', () => {
       models: [createMockOpenAIModel('gpt-4o'), createMockOpenAIModel('gpt-4o-mini')],
     });
     server.use(...mockModels({ data: [api], total: 1 }, { stub: true }));
-    await renderReady();
+    await renderScreen();
 
     await userEvent.click(screen.getByTestId('model-row-openai-main'));
     const rail = await screen.findByTestId('model-detail-openai-main');
@@ -217,7 +167,7 @@ describe('ModelsScreen V2', () => {
 
   it('opens the Fallback rail with the routing chain (disabled step marked)', async () => {
     server.use(...mockModels({ data: [makeRouterAlias()], total: 1 }, { stub: true }));
-    await renderReady();
+    await renderScreen();
 
     await userEvent.click(screen.getByTestId('model-row-router-1'));
     const rail = await screen.findByTestId('model-detail-router-1');
@@ -229,7 +179,7 @@ describe('ModelsScreen V2', () => {
   it('Edit CTA on the API rail navigates to the API edit route', async () => {
     const api = createMockApiAlias({ id: 'openai-main', name: 'openai-main' });
     server.use(...mockModels({ data: [api], total: 1 }, { stub: true }));
-    await renderReady();
+    await renderScreen();
 
     await userEvent.click(screen.getByTestId('model-row-openai-main'));
     await userEvent.click(await screen.findByTestId('model-detail-edit'));
@@ -238,7 +188,7 @@ describe('ModelsScreen V2', () => {
 
   it('shows an empty state when no models match', async () => {
     server.use(...mockModels({ data: [], total: 0 }, { stub: true }));
-    await renderReady();
+    await renderScreen();
     expect(screen.getByTestId('no-models')).toBeInTheDocument();
   });
 
@@ -247,7 +197,7 @@ describe('ModelsScreen V2', () => {
       ...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }),
       ...mockModelPullDownloadsAllSections()
     );
-    await renderReady();
+    await renderScreen();
 
     await act(async () => {
       await userEvent.click(screen.getByTestId('models-downloads-button'));
@@ -256,7 +206,72 @@ describe('ModelsScreen V2', () => {
     await waitFor(() => expect(screen.getByTestId('ld-downloads-panel')).toBeInTheDocument());
     expect(screen.getByTestId('ld-dl-group-downloading')).toBeInTheDocument();
     expect(screen.getByTestId('ld-dl-group-failed')).toBeInTheDocument();
-    // Active badge counts downloading + queued (2).
     expect(screen.getByTestId('models-downloads-badge')).toHaveTextContent('2');
+  });
+});
+
+describe('ModelsScreen V2 — URL state', () => {
+  it('submits search to ?q on Enter and to the backend `search` param', async () => {
+    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
+    server.use(...handlers);
+    const router = await renderScreen();
+
+    const input = within(screen.getByTestId('models-search')).getByRole('textbox');
+    await userEvent.type(input, 'llama');
+    expect(capture.last?.get('search')).toBeNull(); // submit-on-Enter, not per-keystroke
+    await userEvent.type(input, '{Enter}');
+    await waitFor(() => expect(capture.last?.get('search')).toBe('llama'));
+    expect(router.state.location.search).toMatchObject({ q: 'llama' });
+  });
+
+  it('clearing the search box resets ?q and the backend `search` param', async () => {
+    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
+    server.use(...handlers);
+    const router = await renderScreen(['/models/?q=llama']);
+    await waitFor(() => expect(capture.last?.get('search')).toBe('llama'));
+
+    const input = within(screen.getByTestId('models-search')).getByRole('textbox');
+    await userEvent.clear(input);
+    await waitFor(() => expect(capture.last?.get('search')).toBeNull());
+    expect(router.state.location.search).not.toHaveProperty('q');
+  });
+
+  it('writes the TYPE facet to the URL and the `type` query param; Back reverts', async () => {
+    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
+    server.use(...handlers);
+    const router = await renderScreen();
+
+    await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('models-facet-type-api_model'));
+    await waitFor(() => expect(capture.last?.get('type')).toBe('api_model'));
+    expect(router.state.location.search).toMatchObject({ type: ['api_model'] });
+
+    await act(async () => router.history.back());
+    await waitFor(() => expect(router.state.location.search).not.toHaveProperty('type'));
+  });
+
+  it('sends the CAPABILITY and Liberty api_format facets as query params', async () => {
+    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
+    server.use(...handlers);
+    await renderScreen();
+
+    await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('models-facet-capability-vision'));
+    await waitFor(() => expect(capture.last?.get('capability')).toBe('vision'));
+    await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('models-facet-format-liberty'));
+    await waitFor(() => expect(capture.last?.get('api_format')).toBe('liberty'));
+  });
+
+  it('row selection writes ?select with replace (no extra history entry) and reload restores the rail', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+
+    // Deep-link restore: ?select on mount opens the rail.
+    const router = await renderScreen(['/models/?select=openai-main']);
+    expect(await screen.findByTestId('model-detail-openai-main')).toBeInTheDocument();
+    expect(router.state.location.search).toMatchObject({ select: 'openai-main' });
+
+    // Selecting a different row replaces (does not push) — one Back leaves the page entirely.
+    const lengthBefore = router.history.length;
+    await userEvent.click(screen.getByTestId('model-row-router-1'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: 'router-1' }));
+    expect(router.history.length).toBe(lengthBefore);
   });
 });
