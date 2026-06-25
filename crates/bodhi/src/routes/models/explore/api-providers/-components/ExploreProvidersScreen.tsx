@@ -69,39 +69,47 @@ function ProviderRow({
 }) {
   const free = isFree(provider.pricing_summary.min_in_per_m, provider.pricing_summary.min_out_per_m);
   return (
-    <div
-      className={`l-listrow cat-row cat-prov-grid${active ? ' active' : ''}`}
+    <tr
+      className={`l-listrow cat-row${active ? ' active' : ''}`}
       onClick={onSelect}
       role="option"
       aria-selected={active}
       data-testid={`cat-prov-row-${provider.slug}`}
     >
-      <LinkRow onActivate={onSelect} label={`Open ${provider.name}`} />
-      <div className="cat-num">#{idx}</div>
-      <div className={`cat-logo cat-tint-${tintIndex(provider.slug)}`} aria-hidden="true">
-        {monogram(provider.name)}
-      </div>
-      <div className="cat-body">
-        <div className="cat-name">
-          {provider.name}
-          <span className="cat-shape">{provider.provider_shape}</span>
+      <td className="cat-num-td">
+        <LinkRow onActivate={onSelect} label={`Open ${provider.name}`} />
+        <span className="cat-num">#{idx}</span>
+      </td>
+      <td>
+        <div className={`cat-logo cat-tint-${tintIndex(provider.slug)}`} aria-hidden="true">
+          {monogram(provider.name)}
         </div>
-        <div className="cat-caps" style={{ marginTop: 6 }}>
-          {provider.capabilities_summary.map((c) => (
-            <span className={`cap-chip cap-${CAP_TONE[c]}`} key={c}>
-              {CAP_LABELS[c]}
-            </span>
-          ))}
+      </td>
+      <td>
+        <div className="cat-body">
+          <div className="cat-name">
+            {provider.name}
+            <span className="cat-shape">{provider.provider_shape}</span>
+          </div>
+          <div className="cat-caps" style={{ marginTop: 6 }}>
+            {provider.capabilities_summary.map((c) => (
+              <span className={`cap-chip cap-${CAP_TONE[c]}`} key={c}>
+                {CAP_LABELS[c]}
+              </span>
+            ))}
+          </div>
+          <div className="cat-sub">
+            {free ? 'Free tier available' : `from ${fmtPrice(provider.pricing_summary.min_in_per_m)}/M in`}
+          </div>
         </div>
-        <div className="cat-sub">
-          {free ? 'Free tier available' : `from ${fmtPrice(provider.pricing_summary.min_in_per_m)}/M in`}
+      </td>
+      <td className="cat-td--right">
+        <div className="cat-score">
+          <div className="cat-score-num">{provider.model_count}</div>
+          <div className="cat-score-lbl">MODELS</div>
         </div>
-      </div>
-      <div className="cat-score">
-        <div className="cat-score-num">{provider.model_count}</div>
-        <div className="cat-score-lbl">MODELS</div>
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 }
 
@@ -337,13 +345,6 @@ export function ExploreProvidersScreen() {
         </span>
       </div>
 
-      <div className="cat-listhead cat-prov-grid">
-        <div>#</div>
-        <div />
-        <div>PROVIDER</div>
-        <div style={{ textAlign: 'right' }}>MODELS</div>
-      </div>
-
       <div className="l-scroll" data-testid="cat-prov-list">
         {isLoading && rows.length === 0 ? (
           <div style={{ padding: 16 }} data-testid="cat-prov-skeleton-container">
@@ -360,17 +361,35 @@ export function ExploreProvidersScreen() {
             <div className="empty-sub">The catalog returned no providers.</div>
           </div>
         ) : (
-          <div className="l-listview">
-            {rows.map((p, i) => (
-              <ProviderRow
-                key={p.slug}
-                provider={p}
-                idx={(page - 1) * PAGE_SIZE + i + 1}
-                active={p.slug === selectedSlug}
-                onSelect={() => select(p.slug)}
-              />
-            ))}
-          </div>
+          <table className="cat-table">
+            <colgroup>
+              <col style={{ width: '44px' }} />
+              <col style={{ width: '38px' }} />
+              <col />
+              <col style={{ width: '88px' }} />
+            </colgroup>
+            <thead className="cat-listhead" data-testid="cat-listhead">
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col" aria-hidden="true" />
+                <th scope="col">PROVIDER</th>
+                <th scope="col" className="cat-th--right">
+                  MODELS
+                </th>
+              </tr>
+            </thead>
+            <tbody className="l-listview">
+              {rows.map((p, i) => (
+                <ProviderRow
+                  key={p.slug}
+                  provider={p}
+                  idx={(page - 1) * PAGE_SIZE + i + 1}
+                  active={p.slug === selectedSlug}
+                  onSelect={() => select(p.slug)}
+                />
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 

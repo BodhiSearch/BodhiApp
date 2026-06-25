@@ -77,6 +77,16 @@
   color: hsl(var(--primary));
   background: hsl(var(--muted));
 }
+.cat-sort-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+/* Always-visible toolbar reset: tinted when it will act (active filters or a query to clear),
+   muted+inert when there's nothing to reset. */
+.cat-toolbar-icon-btn[data-test-state='filters'],
+.cat-toolbar-icon-btn[data-test-state='query'] {
+  color: hsl(var(--primary));
+}
 
 /* Facet count badge. */
 .cat-facet-count {
@@ -246,50 +256,85 @@
   color: hsl(var(--muted-foreground));
 }
 
-/* List header row. Lives INSIDE .l-scroll so it shares the row's horizontal scroll (keeping header
-   and body columns aligned when the grid overflows a narrow list, e.g. with the detail rail open),
-   and sticks to the top during vertical scroll. */
+/* Catalog list table (Models + Providers). One semantic <table> per screen: a shared <colgroup>
+   makes header <th> and body <td> widths come from ONE source, so they can never drift on column
+   collapse. table-layout:fixed makes those widths authoritative (per-cell ellipsis "just works").
+   The table fills .l-scroll (width:100%) so there is NO horizontal scroll at normal widths; it only
+   grows past the container — triggering .l-scroll's overflow-x:auto scrollbar — when min-content
+   columns genuinely don't fit (e.g. the detail rail is open on a narrow viewport). */
+.cat-table {
+  width: 100%;
+  /* Fit the container by default: table-layout:fixed lets the width-less MODEL <col> absorb slack at
+     wide widths and ellipsize as space tightens — so NO horizontal scroll normally. Only when the
+     container is narrower than this floor (the fixed columns + a readable MODEL minimum), e.g. the
+     detail rail is open on a small viewport, does the table outgrow .l-scroll and its overflow-x:auto
+     scrollbar appear. */
+  min-width: 760px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* Sticky header (now a <thead>). Lives INSIDE .l-scroll so it shares the rows' horizontal scroll and
+   sticks to the top during vertical scroll. */
 .cat-listhead {
-  display: grid;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 16px;
-  border-bottom: 1px solid hsl(var(--border));
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: hsl(var(--muted-foreground));
   position: sticky;
   top: 0;
   z-index: 5;
   background: hsl(var(--background));
 }
-
-/* Provider row grid: # · logo · body · model-count. */
-.cat-prov-grid {
-  grid-template-columns: 36px 30px 1fr auto;
+.cat-listhead th {
+  padding: 6px 10px;
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted-foreground));
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.cat-th--right {
+  text-align: right;
+}
+/* Row edges keep the screen's 16px gutter; interior columns use the tighter 10px so narrow numeric
+   columns aren't crammed by double 16px padding. */
+.cat-listhead th:first-child,
+.cat-screen .l-listrow > td:first-child {
+  padding-left: 16px;
+}
+.cat-listhead th:last-child,
+.cat-screen .l-listrow > td:last-child {
+  padding-right: 16px;
 }
 
-/* Model row grid: column tracks are computed inline from the visible-column model (see
-   ExploreApiScreen COLUMNS), so the picker can show/hide columns without a fixed template here.
-   When the list overflows horizontally (e.g. the detail rail is open), every row + the header must
-   share ONE width so columns align and each row's background/border spans the full scrolled width:
-   - .l-listview sizes to its widest row (max-content); each row then fills it at width:100% — without
-     this, per-row min-width:max-content gives rows DIFFERENT widths (ragged right edge, backgrounds
-     clipped mid-row).
-   - the sticky header sizes to max-content too; the shared grid template keeps it column-aligned with
-     the rows.
-   .l-scroll (overflow-x:auto) provides one horizontal scrollbar shared by the header and the rows. */
-.cat-listhead.cat-model-grid {
-  min-width: max-content;
+/* Body rows. Override the shared flex primitives (.l-listrow/.l-listview) back to table semantics;
+   the inherited position:relative on .l-listrow stays the offset parent for the stretched .l-rowlink. */
+.cat-screen tr.l-listrow {
+  display: table-row;
 }
-/* The model list's row container sizes to its widest row; scoped to this list (the providers list
-   uses cat-prov-grid and isn't affected). */
-[data-testid='cat-model-list'] .l-listview {
-  min-width: max-content;
+.cat-screen tbody.l-listview {
+  display: table-row-group;
 }
-.cat-row.cat-model-grid {
-  min-width: 100%;
+.cat-screen .l-listrow > td {
+  padding: 12px 10px;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cat-td--right {
+  text-align: right;
+}
+/* Lift cell content above the stretched .l-rowlink WITHOUT making any <td> an offset parent (which
+   would clip the link to one cell instead of the whole row). EXCLUDE .l-rowlink itself — it must keep
+   its list.css `position:absolute; inset:0 0 0 3px` so the empty <a> fills the whole row, which is what
+   keyboard / link-hint tools (Vimium) detect as a single row-level link target. */
+.cat-screen .l-listrow > td > *:not(.l-rowlink) {
+  position: relative;
+  z-index: 1;
+}
+.cat-num-td {
+  white-space: nowrap;
 }
 .cat-model-name {
   font-size: 14px;
@@ -380,12 +425,6 @@
   background: hsl(var(--muted));
   color: hsl(var(--muted-foreground));
 }
-.cat-row {
-  display: grid;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-}
 .cat-num {
   font-size: 12px;
   color: hsl(var(--muted-foreground));
@@ -422,7 +461,6 @@
 }
 .cat-score {
   text-align: right;
-  min-width: 64px;
 }
 .cat-score-num {
   font-size: 16px;

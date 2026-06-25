@@ -539,35 +539,48 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     });
   });
 
-  it('clear-all lives in the toolbar (not the sidebar), resets facets only, and keeps search/sort', async () => {
+  it('reset lives in the toolbar (not the sidebar) and is always visible with three states', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
 
     const user = userEvent.setup();
-    // Establish a committed search + a non-default sort first, then a facet (so clear-all has a facet
-    // to clear without touching q/sort).
+
+    // State 3 (none): with no query and no facets the reset is visible but inert (disabled).
+    const reset = await screen.findByTestId('cat-model-clear-all');
+    // It renders in the central toolbar, not inside the facet sidebar (no sidebar layout shift).
+    expect(screen.getByTestId('cat-model-facets').contains(reset)).toBe(false);
+    expect(reset).toHaveAttribute('data-test-state', 'none');
+    expect(reset).toBeDisabled();
+    expect(reset).toHaveAttribute('aria-label', 'Nothing to reset');
+
+    // Establish a committed search, then a facet (so the precedence — filters before query — can be seen).
     const input = screen.getByTestId('cat-model-search').querySelector('input')!;
     await user.click(input);
     await user.type(input, 'claude{Enter}');
     await waitFor(() => expect(seen[seen.length - 1].searchParams.get('q')).toBe('claude'));
     await user.click(screen.getByTestId('cat-model-cap-reasoning'));
 
-    const clearAll = await screen.findByTestId('cat-model-clear-all');
-    // It renders in the central toolbar, not inside the facet sidebar (no sidebar layout shift).
-    expect(screen.getByTestId('cat-model-facets').contains(clearAll)).toBe(false);
-    // Icon-only with an accessible label.
-    expect(clearAll).toHaveAttribute('aria-label', 'Clear all filters');
-
-    await user.click(clearAll);
+    // State 1 (filters): a facet is active → reset clears facets only, keeping search + its sort.
+    await waitFor(() => expect(reset).toHaveAttribute('data-test-state', 'filters'));
+    expect(reset).toHaveAttribute('aria-label', 'Clear all filters');
+    await user.click(reset);
     await waitFor(() => {
       const last = seen[seen.length - 1];
       expect(last.searchParams.getAll('capability')).toHaveLength(0);
-      // Facets-only reset: the committed search + its relevance sort survive.
       expect(last.searchParams.get('q')).toBe('claude');
       expect(last.searchParams.get('sort')).toBe('relevance');
     });
-    expect(screen.queryByTestId('cat-model-clear-all')).not.toBeInTheDocument();
+
+    // State 2 (query): no facets left but the query remains → next click clears the query.
+    await waitFor(() => expect(reset).toHaveAttribute('data-test-state', 'query'));
+    expect(reset).toHaveAttribute('aria-label', 'Clear search');
+    await user.click(reset);
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.get('q')).toBeNull());
+
+    // Back to inert once nothing is active.
+    await waitFor(() => expect(reset).toHaveAttribute('data-test-state', 'none'));
+    expect(reset).toBeDisabled();
   });
 });
 

@@ -108,10 +108,12 @@ function modelKey(m: ModelLite): string {
 
 type ColumnAlign = 'left' | 'right';
 
-// Column model: headers, row cells, and the grid-template all derive from this so the column picker
+// Column model: headers, row cells, and the <colgroup> all derive from this so the column picker
 // (show/hide) and any sortable header stay in sync. `#` + MODEL are mandatory; the rest are toggleable.
-// `width` is a CSS grid track. `sort` (when set) makes the header a sortable ColSort. `align` keeps the
-// header label justified the same way as the cell content (text columns left, numeric columns right).
+// `width` is a <col> width (px); an empty string means "no explicit width" — that column absorbs the
+// table's slack under table-layout:fixed (only MODEL does this). `sort` (when set) makes the header a
+// sortable ColSort. `align` keeps the header label justified like the cell content (text left, numeric
+// right).
 interface Column {
   key: string;
   label: string;
@@ -123,11 +125,11 @@ interface Column {
 }
 
 const COLUMNS: Column[] = [
-  { key: 'num', label: '#', width: '36px', cell: () => null },
+  { key: 'num', label: '#', width: '44px', cell: () => null },
   {
     key: 'model',
     label: 'MODEL',
-    width: 'minmax(160px, 1.6fr)',
+    width: '',
     sort: 'name',
     cell: (m) => (
       <div className="cat-body">
@@ -150,7 +152,7 @@ const COLUMNS: Column[] = [
   {
     key: 'family',
     label: 'FAMILY',
-    width: 'minmax(80px, 0.8fr)',
+    width: '120px',
     sort: 'family',
     optional: true,
     cell: (m) => <div className="cat-cell-text">{m.family ?? '—'}</div>,
@@ -158,7 +160,7 @@ const COLUMNS: Column[] = [
   {
     key: 'context',
     label: 'CONTEXT',
-    width: '70px',
+    width: '90px',
     align: 'right',
     sort: 'context',
     optional: true,
@@ -167,7 +169,7 @@ const COLUMNS: Column[] = [
   {
     key: 'price',
     label: 'INPUT $',
-    width: '64px',
+    width: '82px',
     align: 'right',
     sort: 'price',
     optional: true,
@@ -181,7 +183,7 @@ const COLUMNS: Column[] = [
   {
     key: 'price_out',
     label: 'OUTPUT $',
-    width: '64px',
+    width: '94px',
     align: 'right',
     sort: 'price_out',
     optional: true,
@@ -193,7 +195,7 @@ const COLUMNS: Column[] = [
   {
     key: 'updated',
     label: 'UPDATED',
-    width: '84px',
+    width: '90px',
     align: 'right',
     sort: 'updated',
     optional: true,
@@ -202,7 +204,7 @@ const COLUMNS: Column[] = [
   {
     key: 'providers',
     label: 'PROVIDERS',
-    width: '70px',
+    width: '106px',
     align: 'right',
     sort: 'providers',
     optional: true,
@@ -253,36 +255,35 @@ function ModelRow({
   idx,
   active,
   columns,
-  gridTemplate,
   onSelect,
 }: {
   model: ModelLite;
   idx: number;
   active: boolean;
   columns: Column[];
-  gridTemplate: string;
   onSelect: () => void;
 }) {
   return (
-    <div
-      className={`l-listrow cat-row cat-model-grid${active ? ' active' : ''}`}
-      style={{ gridTemplateColumns: gridTemplate }}
+    <tr
+      className={`l-listrow cat-row${active ? ' active' : ''}`}
       onClick={onSelect}
       role="option"
       aria-selected={active}
       data-testid={`cat-model-row-${model.slug}-${model.model_id}`}
     >
-      <LinkRow onActivate={onSelect} label={`Open ${model.name}`} />
       {columns.map((col) =>
         col.key === 'num' ? (
-          <div className="cat-num" key="num">
-            #{idx}
-          </div>
+          <td className="cat-num-td" key="num">
+            <LinkRow onActivate={onSelect} label={`Open ${model.name}`} />
+            <span className="cat-num">#{idx}</span>
+          </td>
         ) : (
-          <div key={col.key}>{col.cell(model)}</div>
+          <td key={col.key} className={col.align === 'right' ? 'cat-td--right' : undefined}>
+            {col.cell(model)}
+          </td>
         )
       )}
-    </div>
+    </tr>
   );
 }
 
@@ -323,7 +324,6 @@ export function ExploreApiScreen() {
     () => COLUMNS.filter((c) => !c.optional || !hiddenColumns.has(c.key)),
     [hiddenColumns]
   );
-  const gridTemplate = useMemo(() => visibleColumns.map((c) => c.width).join(' '), [visibleColumns]);
 
   const params = useMemo(() => searchToParams(search), [search]);
   const { data, isLoading, error } = useCatalogModels(params);
@@ -419,6 +419,15 @@ export function ExploreApiScreen() {
     () => navigate({ search: (prev: ExploreApiSearch) => nonFacetSlice(prev) }),
     [navigate, nonFacetSlice]
   );
+  // The toolbar reset is always visible with three states (in precedence order): clear active filters
+  // first, else clear the search query, else nothing to reset (inert noop).
+  const hasFilters = hasActiveModelFacets(facets);
+  const hasQuery = committedSearch !== '';
+  const resetMode: 'filters' | 'query' | 'none' = hasFilters ? 'filters' : hasQuery ? 'query' : 'none';
+  const onReset = useCallback(() => {
+    if (resetMode === 'filters') onClearAllFacets();
+    else if (resetMode === 'query') commitSearch('');
+  }, [resetMode, onClearAllFacets, commitSearch]);
   const onPage = useCallback(
     (p: number) =>
       navigate({ search: (prev: ExploreApiSearch) => (p === 1 ? { ...prev, page: undefined } : { ...prev, page: p }) }),
@@ -472,18 +481,30 @@ export function ExploreApiScreen() {
               kbd="⌘K"
             />
           </div>
-          {hasActiveModelFacets(facets) && (
-            <button
-              type="button"
-              className="cat-sort-btn cat-toolbar-icon-btn"
-              onClick={onClearAllFacets}
-              data-testid="cat-model-clear-all"
-              aria-label="Clear all filters"
-              title="Clear all filters"
-            >
-              <ShellIcon name="rotate-ccw" size={13} />
-            </button>
-          )}
+          <button
+            type="button"
+            className="cat-sort-btn cat-toolbar-icon-btn"
+            onClick={onReset}
+            disabled={resetMode === 'none'}
+            data-testid="cat-model-clear-all"
+            data-test-state={resetMode}
+            aria-label={
+              resetMode === 'filters'
+                ? 'Clear all filters'
+                : resetMode === 'query'
+                  ? 'Clear search'
+                  : 'Nothing to reset'
+            }
+            title={
+              resetMode === 'filters'
+                ? 'Clear all filters'
+                : resetMode === 'query'
+                  ? 'Clear search'
+                  : 'Nothing to reset'
+            }
+          >
+            <ShellIcon name="rotate-ccw" size={13} />
+          </button>
           <div className="cat-sortbar">
             <ColumnPicker hidden={hiddenColumns} onToggle={toggleColumn} />
           </div>
@@ -491,25 +512,6 @@ export function ExploreApiScreen() {
       </div>
 
       <div className="l-scroll" data-testid="cat-model-list">
-        <div className="cat-listhead cat-model-grid" style={{ gridTemplateColumns: gridTemplate }}>
-          {visibleColumns.map((col) =>
-            col.sort ? (
-              <ColSort
-                key={col.key}
-                col={col.sort}
-                label={col.label}
-                sort={sort}
-                order={order}
-                align={col.align ?? 'left'}
-                onSort={onSort}
-              />
-            ) : (
-              <div className={`cat-colhead${col.align === 'right' ? ' cat-colhead--right' : ''}`} key={col.key}>
-                {col.label}
-              </div>
-            )
-          )}
-        </div>
         {isLoading && rows.length === 0 ? (
           <div style={{ padding: 16 }} data-testid="cat-model-skeleton-container">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -525,19 +527,51 @@ export function ExploreApiScreen() {
             <div className="empty-sub">Try a different search or filters.</div>
           </div>
         ) : (
-          <div className="l-listview">
-            {rows.map((m, i) => (
-              <ModelRow
-                key={modelKey(m)}
-                model={m}
-                idx={(page - 1) * PAGE_SIZE + i + 1}
-                active={modelKey(m) === selectedKey}
-                columns={visibleColumns}
-                gridTemplate={gridTemplate}
-                onSelect={() => select(modelKey(m))}
-              />
-            ))}
-          </div>
+          <table className="cat-table">
+            <colgroup>
+              {visibleColumns.map((col) => (
+                <col key={col.key} style={col.width ? { width: col.width } : undefined} />
+              ))}
+            </colgroup>
+            <thead className="cat-listhead" data-testid="cat-listhead">
+              <tr>
+                {visibleColumns.map((col) =>
+                  col.sort ? (
+                    <th key={col.key} scope="col" className={col.align === 'right' ? 'cat-th--right' : undefined}>
+                      <ColSort
+                        col={col.sort}
+                        label={col.label}
+                        sort={sort}
+                        order={order}
+                        align={col.align ?? 'left'}
+                        onSort={onSort}
+                      />
+                    </th>
+                  ) : (
+                    <th
+                      key={col.key}
+                      scope="col"
+                      className={`cat-colhead${col.align === 'right' ? ' cat-colhead--right' : ''}`}
+                    >
+                      {col.label}
+                    </th>
+                  )
+                )}
+              </tr>
+            </thead>
+            <tbody className="l-listview">
+              {rows.map((m, i) => (
+                <ModelRow
+                  key={modelKey(m)}
+                  model={m}
+                  idx={(page - 1) * PAGE_SIZE + i + 1}
+                  active={modelKey(m) === selectedKey}
+                  columns={visibleColumns}
+                  onSelect={() => select(modelKey(m))}
+                />
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
