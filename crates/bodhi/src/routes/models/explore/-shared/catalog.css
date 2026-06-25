@@ -105,11 +105,20 @@
 }
 
 /* A labelled axis row inside the Pricing facet group (Input / Output dual sliders). */
-.cat-range-row {
-  display: grid;
-  grid-template-columns: 48px 1fr;
+.cat-range-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cat-range-head {
+  display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 17px;
+}
+.cat-range-head--value-only {
+  justify-content: flex-end;
 }
 .cat-range-axis {
   font-size: 11px;
@@ -123,12 +132,22 @@
   gap: 10px;
   padding: 4px 2px;
 }
+.cat-range-stack .cat-range {
+  padding: 0 2px;
+}
 .cat-range-val {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   color: hsl(var(--muted-foreground));
   min-width: 40px;
   text-align: right;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 120ms ease;
+}
+.cat-range-val.visible {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* Multi-select autocomplete facet (provider, family). */
@@ -299,6 +318,15 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+.cat-toolbar-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  flex-shrink: 0;
 }
 .cat-num-cell {
   font-size: 13px;

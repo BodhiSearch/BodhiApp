@@ -46,7 +46,7 @@ import {
   searchToParams,
 } from './explore-api-search';
 import { ExploreApiRail, ExploreApiRailHeader } from './ExploreApiRail';
-import { ExploreApiSidebar, type ModelFacetsState } from './ExploreApiSidebar';
+import { ExploreApiSidebar, hasActiveModelFacets, type ModelFacetsState } from './ExploreApiSidebar';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
 import '@/routes/models/explore/-shared/catalog.css';
@@ -219,8 +219,14 @@ function ColumnPicker({ hidden, onToggle }: { hidden: Set<string>; onToggle: (ke
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className="cat-sort-btn cat-colpicker-trigger" data-testid="cat-model-columns">
-          <ShellIcon name="columns-3" size={13} /> Columns
+        <button
+          type="button"
+          className="cat-sort-btn cat-toolbar-icon-btn"
+          data-testid="cat-model-columns"
+          aria-label="Columns"
+          title="Columns"
+        >
+          <ShellIcon name="columns-3" size={13} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -420,15 +426,8 @@ export function ExploreApiScreen() {
   );
 
   const sidebar = useMemo(
-    () => (
-      <ExploreApiSidebar
-        facets={facets}
-        facetCounts={data?.facets}
-        onFacetsChange={onFacetsChange}
-        onClearAll={onClearAllFacets}
-      />
-    ),
-    [facets, data?.facets, onFacetsChange, onClearAllFacets]
+    () => <ExploreApiSidebar facets={facets} facetCounts={data?.facets} onFacetsChange={onFacetsChange} />,
+    [facets, data?.facets, onFacetsChange]
   );
 
   const selectedModel = useMemo(() => rows.find((m) => modelKey(m) === selectedKey) ?? null, [rows, selectedKey]);
@@ -473,6 +472,18 @@ export function ExploreApiScreen() {
               kbd="⌘K"
             />
           </div>
+          {hasActiveModelFacets(facets) && (
+            <button
+              type="button"
+              className="cat-sort-btn cat-toolbar-icon-btn"
+              onClick={onClearAllFacets}
+              data-testid="cat-model-clear-all"
+              aria-label="Clear all filters"
+              title="Clear all filters"
+            >
+              <ShellIcon name="rotate-ccw" size={13} />
+            </button>
+          )}
           <div className="cat-sortbar">
             <ColumnPicker hidden={hiddenColumns} onToggle={toggleColumn} />
           </div>

@@ -83,10 +83,9 @@ interface SidebarProps {
   facets: ModelFacetsState;
   facetCounts: ModelFacets | undefined;
   onFacetsChange: (next: ModelFacetsState) => void;
-  onClearAll: () => void;
 }
 
-export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange, onClearAll }: SidebarProps) {
+export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange }: SidebarProps) {
   const capCounts = facetCounts?.capability ?? {};
   const modCounts = facetCounts?.modality ?? {};
   const statusCounts = facetCounts?.status ?? {};
@@ -95,12 +94,6 @@ export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange, onClear
 
   return (
     <div className="m-facets" data-testid="cat-model-facets">
-      {hasActiveModelFacets(facets) && (
-        <button type="button" className="ld-clear-all" onClick={onClearAll} data-testid="cat-model-clear-all">
-          <ShellIcon name="x" size={11} /> Clear all filters
-        </button>
-      )}
-
       <FacetGroup icon="sparkles" title="Capability">
         <Pills>
           {(Object.keys(CAP_LABELS) as Capability[]).map((c) => (
@@ -156,49 +149,45 @@ export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange, onClear
             }
           />
         </Pills>
-        <div className="cat-range-row">
-          <span className="cat-range-axis">Input</span>
-          <DualRangeControl
-            min={facets.pricing_in_min ?? 0}
-            max={facets.pricing_in_max ?? PRICE_IN_MAX}
-            ceiling={PRICE_IN_MAX}
-            step={0.25}
-            format={(v) => `$${v}`}
-            maxLabel="Any"
-            disabled={facets.pricing === 'free'}
-            testId="cat-model-pricing-in"
-            onCommit={(lo, hi) =>
-              onFacetsChange({
-                ...facets,
-                pricing_in_min: lo <= 0 ? undefined : lo,
-                pricing_in_max: hi >= PRICE_IN_MAX ? undefined : hi,
-              })
-            }
-          />
-        </div>
-        <div className="cat-range-row">
-          <span className="cat-range-axis">Output</span>
-          <DualRangeControl
-            min={facets.pricing_out_min ?? 0}
-            max={facets.pricing_out_max ?? PRICE_OUT_MAX}
-            ceiling={PRICE_OUT_MAX}
-            step={0.5}
-            format={(v) => `$${v}`}
-            maxLabel="Any"
-            disabled={facets.pricing === 'free'}
-            testId="cat-model-pricing-out"
-            onCommit={(lo, hi) =>
-              onFacetsChange({
-                ...facets,
-                pricing_out_min: lo <= 0 ? undefined : lo,
-                pricing_out_max: hi >= PRICE_OUT_MAX ? undefined : hi,
-              })
-            }
-          />
-        </div>
+        <DualRangeControl
+          axis="Input"
+          min={facets.pricing_in_min ?? 0}
+          max={facets.pricing_in_max ?? PRICE_IN_MAX}
+          ceiling={PRICE_IN_MAX}
+          step={0.25}
+          format={(v) => `$${v}`}
+          maxLabel="Any"
+          disabled={facets.pricing === 'free'}
+          testId="cat-model-pricing-in"
+          onCommit={(lo, hi) =>
+            onFacetsChange({
+              ...facets,
+              pricing_in_min: lo <= 0 ? undefined : lo,
+              pricing_in_max: hi >= PRICE_IN_MAX ? undefined : hi,
+            })
+          }
+        />
+        <DualRangeControl
+          axis="Output"
+          min={facets.pricing_out_min ?? 0}
+          max={facets.pricing_out_max ?? PRICE_OUT_MAX}
+          ceiling={PRICE_OUT_MAX}
+          step={0.5}
+          format={(v) => `$${v}`}
+          maxLabel="Any"
+          disabled={facets.pricing === 'free'}
+          testId="cat-model-pricing-out"
+          onCommit={(lo, hi) =>
+            onFacetsChange({
+              ...facets,
+              pricing_out_min: lo <= 0 ? undefined : lo,
+              pricing_out_max: hi >= PRICE_OUT_MAX ? undefined : hi,
+            })
+          }
+        />
       </FacetGroup>
 
-      <FacetGroup icon="ruler" title="Context" note="min, K tokens">
+      <FacetGroup icon="ruler" title="Context" note="min tokens">
         <RangeControl
           value={facets.context_min ?? 0}
           max={CONTEXT_MAX}
@@ -323,30 +312,53 @@ function RangeControl({
   onCommit: (v: number) => void;
 }) {
   const [local, setLocal] = useState(display ?? value);
+  const [dragging, setDragging] = useState(false);
+  const [hovering, setHovering] = useState(false);
   useEffect(() => {
     setLocal(display ?? value);
   }, [display, value]);
 
+  const isDefault = local <= 0;
+  const showVal = !isDefault || dragging || hovering;
+
   return (
-    <div className="cat-range" data-testid={testId}>
+    <div
+      className="cat-range-stack"
+      data-testid={testId}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
+      <div className="cat-range-head cat-range-head--value-only">
+        <span
+          className={`cat-range-val${showVal ? ' visible' : ''}`}
+          data-testid={`${testId}-val`}
+          aria-hidden={!showVal}
+        >
+          {format(local)}
+        </span>
+      </div>
       <Slider
         value={[local]}
         min={0}
         max={max}
         step={step}
-        onValueChange={(vals) => setLocal(vals[0])}
-        onValueCommit={(vals) => onCommit(vals[0])}
+        onValueChange={(vals) => {
+          setDragging(true);
+          setLocal(vals[0]);
+        }}
+        onValueCommit={(vals) => {
+          setDragging(false);
+          onCommit(vals[0]);
+        }}
         data-testid={`${testId}-slider`}
       />
-      <span className="cat-range-val" data-testid={`${testId}-val`}>
-        {format(local)}
-      </span>
     </div>
   );
 }
 
 /** A debounced two-thumb range slider: emits onCommit(lo, hi) on release. */
 function DualRangeControl({
+  axis,
   min,
   max,
   ceiling,
@@ -357,6 +369,7 @@ function DualRangeControl({
   testId,
   onCommit,
 }: {
+  axis: string;
   min: number;
   max: number;
   ceiling: number;
@@ -368,25 +381,49 @@ function DualRangeControl({
   onCommit: (lo: number, hi: number) => void;
 }) {
   const [local, setLocal] = useState<[number, number]>([min, max]);
+  const [dragging, setDragging] = useState(false);
+  const [hovering, setHovering] = useState(false);
   useEffect(() => {
     setLocal([min, max]);
   }, [min, max]);
 
+  const isDefault = local[0] <= 0 && local[1] >= ceiling;
+  const showVal = !isDefault || dragging || hovering;
+  const valText = `${format(local[0])} – ${local[1] >= ceiling ? maxLabel : format(local[1])}`;
+
   return (
-    <div className="cat-range" data-testid={testId}>
+    <div
+      className="cat-range-stack"
+      data-testid={testId}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
+      <div className="cat-range-head">
+        <span className="cat-range-axis">{axis}</span>
+        <span
+          className={`cat-range-val${showVal ? ' visible' : ''}`}
+          data-testid={`${testId}-val`}
+          aria-hidden={!showVal}
+        >
+          {valText}
+        </span>
+      </div>
       <Slider
         value={local}
         min={0}
         max={ceiling}
         step={step}
         disabled={disabled}
-        onValueChange={(vals) => setLocal([vals[0], vals[1]])}
-        onValueCommit={(vals) => onCommit(vals[0], vals[1])}
+        onValueChange={(vals) => {
+          setDragging(true);
+          setLocal([vals[0], vals[1]]);
+        }}
+        onValueCommit={(vals) => {
+          setDragging(false);
+          onCommit(vals[0], vals[1]);
+        }}
         data-testid={`${testId}-slider`}
       />
-      <span className="cat-range-val" data-testid={`${testId}-val`}>
-        {format(local[0])} – {local[1] >= ceiling ? maxLabel : format(local[1])}
-      </span>
     </div>
   );
 }

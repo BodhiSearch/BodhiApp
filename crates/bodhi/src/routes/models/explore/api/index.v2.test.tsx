@@ -540,19 +540,33 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     });
   });
 
-  it('clear-all resets every facet param', async () => {
+  it('clear-all lives in the toolbar (not the sidebar), resets facets only, and keeps search/sort', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
 
     const user = userEvent.setup();
+    // Establish a committed search + a non-default sort first, then a facet (so clear-all has a facet
+    // to clear without touching q/sort).
+    const input = screen.getByTestId('cat-model-search').querySelector('input')!;
+    await user.click(input);
+    await user.type(input, 'claude{Enter}');
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.get('q')).toBe('claude'));
     await user.click(screen.getByTestId('cat-model-cap-reasoning'));
-    await waitFor(() => expect(screen.getByTestId('cat-model-clear-all')).toBeInTheDocument());
 
-    await user.click(screen.getByTestId('cat-model-clear-all'));
+    const clearAll = await screen.findByTestId('cat-model-clear-all');
+    // It renders in the central toolbar, not inside the facet sidebar (no sidebar layout shift).
+    expect(screen.getByTestId('cat-model-facets').contains(clearAll)).toBe(false);
+    // Icon-only with an accessible label.
+    expect(clearAll).toHaveAttribute('aria-label', 'Clear all filters');
+
+    await user.click(clearAll);
     await waitFor(() => {
       const last = seen[seen.length - 1];
-      return last.searchParams.getAll('capability').length === 0;
+      expect(last.searchParams.getAll('capability')).toHaveLength(0);
+      // Facets-only reset: the committed search + its relevance sort survive.
+      expect(last.searchParams.get('q')).toBe('claude');
+      expect(last.searchParams.get('sort')).toBe('relevance');
     });
     expect(screen.queryByTestId('cat-model-clear-all')).not.toBeInTheDocument();
   });
@@ -580,13 +594,18 @@ describe('ExploreApiScreen (A4 — columns + four-param pricing)', () => {
     await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'family')).toBe(true));
   });
 
-  it('column picker hides and restores an optional column', async () => {
+  it('column picker is icon-only with an accessible label, and hides/restores an optional column', async () => {
     server.use(...mockCatalogModels());
     await renderScreen();
     const user = userEvent.setup();
 
+    // Icon-only trigger: no visible "Columns" text, but an accessible name for screen readers.
+    const columnsBtn = screen.getByTestId('cat-model-columns');
+    expect(columnsBtn).toHaveAccessibleName('Columns');
+    expect(columnsBtn).not.toHaveTextContent('Columns');
+
     expect(screen.getByTestId('cat-model-sort-family')).toBeInTheDocument();
-    await user.click(screen.getByTestId('cat-model-columns'));
+    await user.click(columnsBtn);
     await user.click(await screen.findByTestId('cat-model-col-family'));
     await waitFor(() => expect(screen.queryByTestId('cat-model-sort-family')).not.toBeInTheDocument());
 
@@ -610,6 +629,27 @@ describe('ExploreApiScreen (A4 — columns + four-param pricing)', () => {
     outMin.focus();
     await user.keyboard('{ArrowRight}');
     await waitFor(() => expect(seen.some((u) => u.searchParams.has('pricing_out_min'))).toBe(true));
+  });
+
+  it('range value labels are hidden at the default state and revealed while adjusting (no layout shift)', async () => {
+    server.use(...mockCatalogModels());
+    await renderScreen();
+    const user = userEvent.setup();
+
+    // At rest (default "Any"), the pricing + context value labels are present but visually hidden
+    // (aria-hidden, no `visible` class) so they reserve space without shifting the sidebar.
+    const inVal = screen.getByTestId('cat-model-pricing-in-val');
+    const ctxVal = screen.getByTestId('cat-model-context-val');
+    expect(inVal).toHaveAttribute('aria-hidden', 'true');
+    expect(inVal).not.toHaveClass('visible');
+    expect(ctxVal).toHaveAttribute('aria-hidden', 'true');
+
+    // Adjusting a thumb reveals that axis's value.
+    const inMin = within(screen.getByTestId('cat-model-pricing-in-slider')).getAllByRole('slider')[0];
+    inMin.focus();
+    await user.keyboard('{ArrowRight}');
+    await waitFor(() => expect(screen.getByTestId('cat-model-pricing-in-val')).toHaveClass('visible'));
+    await waitFor(() => expect(screen.getByTestId('cat-model-pricing-in-val')).toHaveAttribute('aria-hidden', 'false'));
   });
 
   it('Free disables the price sliders and clears any range bounds', async () => {
