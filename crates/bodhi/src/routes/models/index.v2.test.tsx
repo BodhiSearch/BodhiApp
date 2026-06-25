@@ -275,3 +275,61 @@ describe('ModelsScreen V2 — URL state', () => {
     expect(router.history.length).toBe(lengthBefore);
   });
 });
+
+describe('ModelsScreen V2 — table layout + columns', () => {
+  it('renders a semantic table with the universal columns (Name / Provider / Base-URL)', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    await renderScreen();
+
+    const head = screen.getByTestId('cat-listhead');
+    expect(head).toHaveTextContent('NAME');
+    expect(head).toHaveTextContent('PROVIDER / REPO');
+    expect(head).toHaveTextContent('BASE URL / FILE');
+    // Rows are table rows carrying their alias id testid.
+    expect(screen.getByTestId('model-row-openai-main').tagName).toBe('TR');
+  });
+
+  it('shows the count in a "Models (N)" heading and drops the per-row "exposed" subtitle', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    await renderScreen();
+    expect(screen.getByTestId('models-heading')).toHaveTextContent(`Models (${MIXED_ROWS.length})`);
+    expect(screen.queryByText(/exposed/)).not.toBeInTheDocument();
+  });
+
+  it('removes the "no key" connection text from rows entirely', async () => {
+    const api = createMockApiAlias({ id: 'openai-main', name: 'openai-main', has_api_key: false });
+    server.use(...mockModels({ data: [api], total: 1 }, { stub: true }));
+    await renderScreen();
+    // The list row must not carry the connection status; "no key" only ever appears in the rail.
+    const row = screen.getByTestId('model-row-openai-main');
+    expect(within(row).queryByText('no key')).not.toBeInTheDocument();
+    expect(within(row).queryByText('connected')).not.toBeInTheDocument();
+  });
+
+  it('derives Provider/Repo and Base-URL/Filename per alias type', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    await renderScreen();
+
+    // API → provider (api_format) + base_url.
+    const apiRow = screen.getByTestId('model-row-openai-main');
+    expect(apiRow).toHaveTextContent('OPENAI');
+    expect(apiRow).toHaveTextContent('https://api.openai.com/v1');
+    // Local/user alias → repo + filename.
+    const localRow = screen.getByTestId('model-row-org/local-gguf:Q4');
+    expect(localRow).toHaveTextContent('org/local-gguf');
+    expect(localRow).toHaveTextContent('local.gguf');
+    // Router → first target's alias + model.
+    const routerRow = screen.getByTestId('model-row-router-1');
+    expect(routerRow).toHaveTextContent('openai-main');
+    expect(routerRow).toHaveTextContent('gpt-4o');
+  });
+
+  it('hides the Provider column via the column picker', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    await renderScreen();
+
+    await userEvent.click(screen.getByTestId('cat-mymodel-columns'));
+    await userEvent.click(await screen.findByTestId('cat-mymodel-col-provider'));
+    await waitFor(() => expect(screen.getByTestId('cat-listhead')).not.toHaveTextContent('PROVIDER / REPO'));
+  });
+});

@@ -393,3 +393,29 @@
     display: none;
   }
 }
+
+/* ── My Models table (V2): count heading + the NAME cell composite ── */
+.m-listheading {
+  padding: 4px 16px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+.m-cell-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+/* Compact inline icon tile inside the table NAME cell (the list-row 30px tile is too big here). */
+.m-cell-name .m-row-icon {
+  width: 24px;
+  height: 24px;
+}
+.m-cell-title {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

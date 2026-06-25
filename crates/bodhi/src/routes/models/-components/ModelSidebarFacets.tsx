@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 
 import { ShellIcon } from '@/components/shell';
 import { ApiFormatFacet, CapabilityFacet, ModelsFilter, ModelTypeFacet } from '@/hooks/models';
+import { DualRangeControl } from '@/routes/models/explore/-shared/RangeControls';
 
 /** Bytes per GB used by the SIZE dual-slider (binary GiB, matching the GGUF-size convention). */
 export const GB = 1024 * 1024 * 1024;
@@ -102,8 +103,6 @@ export function ModelSidebarFacets({ filter, onChange }: ModelSidebarFacetsProps
     [filter, onChange]
   );
 
-  const sizeActive = filter.sizeMin != null || filter.sizeMax != null;
-
   return (
     <div className="m-facets" data-testid="models-facets">
       <FacetGroup icon="shapes" title="Type">
@@ -125,34 +124,17 @@ export function ModelSidebarFacets({ filter, onChange }: ModelSidebarFacetsProps
       </FacetGroup>
 
       <FacetGroup icon="ruler" title="Size" hint="local files">
-        <div className="m-size">
-          <div className="m-size-labels">
-            <span>{minGb === 0 ? '0 GB' : `${minGb} GB`}</span>
-            <span>{maxGb >= SIZE_MAX_GB ? '16+ GB' : `${maxGb} GB`}</span>
-          </div>
-          <div className={`m-size-slider${sizeActive ? ' active' : ''}`} data-testid="models-facet-size">
-            <input
-              type="range"
-              min={0}
-              max={SIZE_MAX_GB}
-              step={1}
-              value={minGb}
-              aria-label="Minimum model size (GB)"
-              data-testid="models-facet-size-min"
-              onChange={(e) => onSizeChange(Number(e.target.value), maxGb)}
-            />
-            <input
-              type="range"
-              min={0}
-              max={SIZE_MAX_GB}
-              step={1}
-              value={maxGb}
-              aria-label="Maximum model size (GB)"
-              data-testid="models-facet-size-max"
-              onChange={(e) => onSizeChange(minGb, Number(e.target.value))}
-            />
-          </div>
-        </div>
+        <DualRangeControl
+          axis="GB"
+          min={minGb}
+          max={maxGb}
+          ceiling={SIZE_MAX_GB}
+          step={1}
+          format={(v) => `${v} GB`}
+          maxLabel="16+ GB"
+          testId="models-facet-size"
+          onCommit={(lo, hi) => onSizeChange(lo, hi)}
+        />
       </FacetGroup>
 
       <FacetGroup icon="plug" title="API Format" hint="API only">
