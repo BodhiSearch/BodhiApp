@@ -79,13 +79,12 @@ async function renderScreen(initialEntries?: string[]) {
 }
 
 describe('ExploreApiScreen (A1 — list)', () => {
-  it('renders model rows with "Showing X of TOTAL", context/pricing/caps/providers', async () => {
+  it('renders model rows with context/pricing/caps/providers', async () => {
     server.use(...mockCatalogModels());
     await renderScreen();
 
     const list = screen.getByTestId('cat-model-list');
     expect(within(list).getAllByRole('option').length).toBe(3);
-    expect(screen.getByTestId('cat-model-resultbar')).toHaveTextContent('Showing 3 of 3');
 
     const claude = screen.getByTestId('cat-model-row-anthropic-claude-sonnet-4.5');
     expect(claude).toHaveTextContent('Claude Sonnet 4.5');
@@ -130,7 +129,7 @@ describe('ExploreApiScreen (A1 — list)', () => {
     const router = await renderScreen();
 
     // Page 1: 30 of 31 rows, pager visible (no Load More).
-    expect(screen.getByTestId('cat-model-resultbar')).toHaveTextContent('Showing 30 of 31');
+    expect(within(screen.getByTestId('cat-model-list')).getAllByRole('option').length).toBe(30);
     expect(screen.getByTestId('pagination')).toBeInTheDocument();
     expect(screen.queryByTestId('cat-model-load-more')).not.toBeInTheDocument();
 

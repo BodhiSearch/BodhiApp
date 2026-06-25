@@ -490,12 +490,6 @@ export function ExploreApiScreen() {
         </div>
       </div>
 
-      <div className="cat-resultbar" data-testid="cat-model-resultbar">
-        <span className="cat-count">
-          Showing {rows.length} of {total}
-        </span>
-      </div>
-
       <div className="l-scroll" data-testid="cat-model-list">
         <div className="cat-listhead cat-model-grid" style={{ gridTemplateColumns: gridTemplate }}>
           {visibleColumns.map((col) =>

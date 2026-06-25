@@ -30,12 +30,11 @@ test.describe('Explore · API Models', () => {
       await modelsPage.stubCatalog();
       await modelsPage.navigateToModels();
       await modelsPage.waitForListSettled();
-      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toBeVisible();
+      await expect(modelsPage.page.locator(modelsPage.selectors.list)).toBeVisible();
     });
 
-    await test.step('List renders model rows with "Showing X of TOTAL"', async () => {
+    await test.step('List renders the first page of model rows', async () => {
       expect(await modelsPage.getRowCount()).toBe(30);
-      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Showing 30 of 31');
       await expect(modelsPage.page.locator(modelsPage.selectors.row('anthropic', 'model-0'))).toContainText('Model 0');
     });
 
@@ -43,7 +42,6 @@ test.describe('Explore · API Models', () => {
       expect(await modelsPage.hasPagination()).toBe(true);
       await modelsPage.gotoPage(2);
       // 31 models, 30/page → page 2 has the single remaining row.
-      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Showing 1 of 31');
       expect(await modelsPage.getRowCount()).toBe(1);
       await modelsPage.gotoPage(1);
     });
@@ -164,9 +162,9 @@ test.describe('Explore · API Models', () => {
       await modelsPage.navigateToModels();
       await modelsPage.waitForListSettled();
       await modelsPage.searchFor('Model 7');
-      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Showing 1 of 1');
+      expect(await modelsPage.getRowCount()).toBe(1);
       await modelsPage.clearSearch();
-      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Showing 30 of 31');
+      expect(await modelsPage.getRowCount()).toBe(30);
     });
 
     await test.step('Free pins pricing=free and pares the list to free models', async () => {

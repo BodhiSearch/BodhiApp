@@ -10,7 +10,6 @@ import { expect } from '@playwright/test';
 export class ApiExplorePage extends BasePage {
   selectors = {
     content: '[data-testid="explore-api-content"]',
-    resultbar: '[data-testid="cat-model-resultbar"]',
     list: '[data-testid="cat-model-list"]',
     anyRow: '[data-testid^="cat-model-row-"]',
     row: (slug, modelId) => `[data-testid="cat-model-row-${slug}-${modelId}"]`,
