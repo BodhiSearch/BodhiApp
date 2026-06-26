@@ -24,7 +24,8 @@ export class McpExplorePage extends BasePage {
     railDescription: '[data-testid="cat-mcp-detail-description"]',
     railConnection: '[data-testid="cat-mcp-detail-connection"]',
     railStatus: '[data-testid="cat-mcp-detail-status"]',
-    railAdd: '[data-testid="cat-mcp-detail-add"]',
+    // V2: an unregistered catalog server offers admin a "register this server" deep-link (prefilled).
+    railRegister: '[data-testid="cat-mcp-detail-register"]',
     detailClose: '[data-testid="cat-mcp-detail-close"]',
     install: id => `[data-testid="cat-mcp-install-${id}"]`,
     installedFacet: v => `[data-testid="cat-mcp-installed-${v}"]`,

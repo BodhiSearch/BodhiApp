@@ -111,8 +111,8 @@ test.describe('Explore · MCP Servers', () => {
 
       await mcpPage.openServer('srv-0');
       await expect(mcpPage.page.locator(mcpPage.selectors.railStatus)).toContainText('Not installed');
-      // The uninstalled rail offers the deep-link to add an instance.
-      await expect(mcpPage.page.locator(mcpPage.selectors.railAdd)).toBeVisible();
+      // V2: an unregistered catalog server (no DB match) offers admin a "register this server" CTA.
+      await expect(mcpPage.page.locator(mcpPage.selectors.railRegister)).toBeVisible();
     });
   });
 });

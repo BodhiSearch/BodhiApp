@@ -8,16 +8,13 @@
  * playbook in docs/claude-plans/202606/screen-v2/).
  *
  * Toggle from the browser console, e.g.:
- *   localStorage.setItem('bodhi.ui-v2.mcp-discover', 'true')
+ *   localStorage.setItem('bodhi.ui-v2.chat', 'true')
  *
- * (The API-Keys screens — Batch 1 — and the Settings screens — App Settings, Manage Users,
- * Batch 2 — have shipped V2-only; their flags were retired, so they're no longer listed. The
- * My Models list — Batch 3-1 — and the New/Edit API Model form — Batch 3-2 — and the New/Edit Model
- * Router form — Batch 3-3 — also shipped V2-only: the list replaced the legacy table at the same
- * route, the forms' V2 chrome/rail is additive over the same routes, so none have a flag.)
+ * (API-Keys — Batch 1 — Settings — Batch 2 — Models — Batch 3 — and MCP — Batch 4 — all shipped
+ * V2-only at the same routes, so their flags were retired. Only Chat remains.)
  */
 
-export type UiV2Screen = 'chat' | 'mcp-discover' | 'new-mcp' | 'mcp-playground';
+export type UiV2Screen = 'chat';
 
 export const UI_V2_FLAG_PREFIX = 'bodhi.ui-v2.';
 

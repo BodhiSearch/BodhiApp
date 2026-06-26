@@ -5,11 +5,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { ExploreMcpScreen } from '@/routes/mcps/explore/-components/ExploreMcpScreen';
 import { exploreMcpSearchSchema } from '@/routes/mcps/explore/index';
-import { createMockMcp } from '@/test-fixtures/mcps';
+import { createMockMcp, createMockMcpServerResponse } from '@/test-fixtures/mcps';
 import { createMcpServerSummary, createMcpServersListResponse } from '@/test-fixtures/mcp-catalog';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockMcpServerDetail, mockMcpServers } from '@/test-utils/msw-v2/handlers/mcp-catalog';
-import { mockListMcps } from '@/test-utils/msw-v2/handlers/mcps';
+import { mockListAuthConfigs, mockListMcps, mockListMcpServers } from '@/test-utils/msw-v2/handlers/mcps';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { makeRouteRouter, RouteHarness } from '@/test-utils/router-harness';
@@ -288,11 +288,55 @@ describe('ExploreMcpScreen (Phase 4 — instance join → status)', () => {
     expect(seen.every((u) => !u.searchParams.has('installed'))).toBe(true);
   });
 
-  it('rail shows Not installed + an Add-to-My-MCPs CTA for an uninstalled server', async () => {
-    server.use(...mockMcpServers(), ...mockMcpServerDetail(), mockListMcps([]));
+  it('rail: unregistered catalog server → admin gets "Add this server" (register prefill)', async () => {
+    server.use(...mockMcpServers(), ...mockMcpServerDetail(), mockListMcps([]), mockListMcpServers([]));
     await renderScreen(['/mcps/explore/?select=notion']);
     const rail = screen.getByTestId('harness-rail');
     expect(within(rail).getByTestId('cat-mcp-detail-status')).toHaveTextContent('Not installed');
-    expect(within(rail).getByTestId('cat-mcp-detail-add')).toBeInTheDocument();
+    expect(within(rail).getByTestId('cat-mcp-detail-register')).toBeInTheDocument();
+    // No connect/configure for an unregistered server.
+    expect(within(rail).queryByTestId('cat-mcp-detail-mechanisms')).not.toBeInTheDocument();
+    expect(within(rail).queryByTestId('cat-mcp-configure-server')).not.toBeInTheDocument();
+  });
+
+  it('rail: registered catalog server → Connect with + admin Configure server', async () => {
+    const notionServer = createMockMcpServerResponse({
+      id: 'reg-notion',
+      name: 'Notion',
+      url: 'https://mcp.notion.com/mcp',
+    });
+    server.use(
+      ...mockMcpServers(),
+      ...mockMcpServerDetail(),
+      mockListMcps([]),
+      mockListMcpServers([notionServer]),
+      mockListAuthConfigs({ auth_configs: [] })
+    );
+    await renderScreen(['/mcps/explore/?select=notion']);
+    const rail = screen.getByTestId('harness-rail');
+    await waitFor(() => expect(within(rail).getByTestId('cat-mcp-detail-mechanisms')).toBeInTheDocument());
+    // Connect-with always offers Public; deep-link uses the REGISTERED server id.
+    expect(within(rail).getByTestId('cat-mcp-connect-public')).toHaveAttribute(
+      'href',
+      '/mcps/new/?server=reg-notion&auth=public'
+    );
+    expect(within(rail).getByTestId('cat-mcp-configure-server')).toHaveAttribute(
+      'href',
+      '/mcps/servers/view/?id=reg-notion'
+    );
+  });
+
+  it('rail: non-admin on an unregistered server sees an ask-an-admin note, no register CTA', async () => {
+    server.use(
+      ...mockUserLoggedIn({ username: 'u@example.com', role: 'resource_user', id_token: 'test-id-token' }),
+      ...mockMcpServers(),
+      ...mockMcpServerDetail(),
+      mockListMcps([]),
+      mockListMcpServers([])
+    );
+    await renderScreen(['/mcps/explore/?select=notion']);
+    const rail = screen.getByTestId('harness-rail');
+    expect(within(rail).getByTestId('cat-mcp-detail-not-configured')).toBeInTheDocument();
+    expect(within(rail).queryByTestId('cat-mcp-detail-register')).not.toBeInTheDocument();
   });
 });

@@ -1,18 +1,33 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import type { Mcp } from '@bodhiapp/ts-client';
 import { getRouteApi } from '@tanstack/react-router';
 
 import { ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useListMcps } from '@/hooks/mcps';
+import { useDeleteMcp, useListAuthConfigs, useListMcpServers, useListMcps } from '@/hooks/mcps';
 import { useMcpServerDetail, useMcpServers } from '@/hooks/reference';
+import { toast } from '@/hooks/use-toast';
+import { useGetUser } from '@/hooks/users';
 import { useViewTransition } from '@/hooks/useViewTransition';
+import { isAdminRole } from '@/lib/roles';
 import { exploreMcpBreadcrumb } from '@/routes/mcps/explore/-shared/breadcrumbs';
 import {
   type McpJoinedRow,
   INSTALL_LABEL,
   indexInstances,
+  indexRegisteredServers,
   joinInstances,
 } from '@/routes/mcps/explore/-shared/instance-join';
 import { monogram, tintIndex } from '@/routes/models/explore/-shared/catalog-format';
@@ -137,18 +152,24 @@ export function ExploreMcpScreen() {
   );
   const { data, isLoading, error } = useMcpServers(params);
 
-  // Join the user's own instances (no per-user state in the catalog API) → derive install status.
+  // Join the user's own instances (no per-user state in the catalog API) → derive install status, and
+  // resolve each catalog endpoint to a REGISTERED server so the rail can offer connect/configure.
   const { data: instancesData } = useListMcps();
+  const { data: serversData } = useListMcpServers();
   const byUrl = useMemo(() => indexInstances(instancesData?.mcps), [instancesData?.mcps]);
+  const registeredByUrl = useMemo(() => indexRegisteredServers(serversData?.mcp_servers), [serversData?.mcp_servers]);
+
+  const { data: userInfo } = useGetUser();
+  const isAdmin = userInfo?.auth_status === 'logged_in' && userInfo.role ? isAdminRole(userInfo.role) : false;
 
   // verified + installed are client-side cuts on the current page (the API has neither param).
   const rows = useMemo(() => {
-    let items = joinInstances(data?.items ?? [], byUrl);
+    let items = joinInstances(data?.items ?? [], byUrl, registeredByUrl);
     if (facets.verified) items = items.filter((s) => s.verified);
     if (facets.installed === 'installed') items = items.filter((s) => s.install !== 'none');
     else if (facets.installed === 'not_installed') items = items.filter((s) => s.install === 'none');
     return items;
-  }, [data?.items, byUrl, facets.verified, facets.installed]);
+  }, [data?.items, byUrl, registeredByUrl, facets.verified, facets.installed]);
   const total = data?.total ?? rows.length;
 
   const commitSearch = useCallback(
@@ -267,13 +288,56 @@ export function ExploreMcpScreen() {
   const selectedServer = useMemo(() => rows.find((s) => serverKey(s) === selectedKey) ?? null, [rows, selectedKey]);
   const { data: detail, isLoading: detailLoading } = useMcpServerDetail(selectedServer ? selectedServer.id : null);
 
+  // When the selected catalog row resolves to a registered server, the rail offers the same
+  // connect/configure/instance actions as My MCPs — keyed by the REGISTERED server id.
+  const registeredId = selectedServer?.registered?.id ?? null;
+  const selectedInstances = useMemo(() => {
+    if (!registeredId) return [];
+    return (instancesData?.mcps ?? []).filter((m) => m.mcp_server?.id === registeredId);
+  }, [registeredId, instancesData?.mcps]);
+  const { data: authConfigsData, isLoading: authConfigsLoading } = useListAuthConfigs(registeredId ?? '', {
+    enabled: !!registeredId,
+  });
+
+  const [deleteTarget, setDeleteTarget] = useState<Mcp | null>(null);
+  const deleteMutation = useDeleteMcp({
+    onSuccess: () => {
+      toast({ title: 'MCP instance deleted' });
+      setDeleteTarget(null);
+    },
+    onError: (message) => {
+      toast({ title: 'Failed to delete MCP instance', description: message, variant: 'destructive' });
+      setDeleteTarget(null);
+    },
+  });
+
   const railHeader = useMemo(
     () => (selectedServer ? <ExploreMcpRailHeader server={selectedServer} onClose={() => select(null)} /> : null),
     [selectedServer, select]
   );
   const rail = useMemo(
-    () => (selectedServer ? <ExploreMcpRail server={selectedServer} detail={detail} loading={detailLoading} /> : null),
-    [selectedServer, detail, detailLoading]
+    () =>
+      selectedServer ? (
+        <ExploreMcpRail
+          server={selectedServer}
+          detail={detail}
+          loading={detailLoading}
+          instances={selectedInstances}
+          authConfigs={authConfigsData?.auth_configs}
+          authConfigsLoading={authConfigsLoading}
+          isAdmin={isAdmin}
+          onDeleteInstance={setDeleteTarget}
+        />
+      ) : null,
+    [
+      selectedServer,
+      detail,
+      detailLoading,
+      selectedInstances,
+      authConfigsData?.auth_configs,
+      authConfigsLoading,
+      isAdmin,
+    ]
   );
 
   useShellChrome({
@@ -348,6 +412,26 @@ export function ExploreMcpScreen() {
       {total > PAGE_SIZE && (
         <ShellPagination total={total} page={page} onPage={onPage} pageSize={PAGE_SIZE} unit="servers" />
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent data-testid="cat-mcp-delete-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete MCP instance</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && deleteMutation.mutate({ id: deleteTarget.id })}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
