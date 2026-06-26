@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { buildAuthMechanisms } from '@/routes/mcps/-shared/auth-mechanisms';
 import '@/routes/mcps/-components/my-mcps.css';
+import '@/routes/mcps/-shared/auth-badges.css';
 
 /**
  * The connect/instance/configure sections shared by the My MCPs rail and the Explore rail. Both
@@ -85,6 +86,8 @@ export function McpInstancesSection({
   );
 }
 
+const KIND_ICON: Record<string, string> = { oauth: 'lock', key: 'key', public: 'unlock', http: 'shield' };
+
 export function McpConnectWithSection({
   prefix,
   serverId,
@@ -100,6 +103,7 @@ export function McpConnectWithSection({
   return (
     <div className="dp-section">
       <div className="dp-sec-lbl">Connect with</div>
+      <div className="mcp-mech-hint">Pick an auth mechanism to create a new instance.</div>
       {loading ? (
         <Skeleton className="h-12 w-full" data-testid={`${prefix}-detail-mechs-skeleton`} />
       ) : (
@@ -112,8 +116,11 @@ export function McpConnectWithSection({
               className="mcp-mech-row"
               data-testid={`${prefix}-connect-${m.id}`}
             >
+              <div className={`mcp-mech-icon auth-badge-${m.kind}`}>
+                <ShellIcon name={KIND_ICON[m.kind]} size={14} />
+              </div>
               <div className="mcp-mech-body">
-                <div className="mcp-mech-name">{m.label}</div>
+                <div className="mcp-mech-name">{m.title}</div>
                 {m.detail && <div className="mcp-mech-sub">{m.detail}</div>}
               </div>
               <ShellIcon name="chevron-right" size={15} />

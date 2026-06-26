@@ -1,6 +1,7 @@
 import type { Mcp, McpAuthConfigResponse, McpServerResponse } from '@bodhiapp/ts-client';
 
 import { ShellIcon } from '@/components/shell';
+import { AuthBadge, authKind } from '@/routes/mcps/-shared/auth-badges';
 import {
   McpConfigureServerFooter,
   McpConnectWithSection,
@@ -51,18 +52,12 @@ export function MyMcpsRail({
   onDeleteInstance,
 }: RailProps) {
   const serverDisabled = !server.enabled;
+  // Supported auth = the unique kinds the server has configured, plus Public (always available).
+  const supportedKinds = Array.from(new Set<string>(['public', ...(authConfigs ?? []).map((c) => authKind(c.type))]));
 
   return (
     <div className="dp-panel" data-testid={`my-mcps-detail-${server.id}`}>
       <div className="dp-body">
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Server</div>
-          <div className="dp-rows" data-testid="my-mcps-detail-server">
-            <Row k="Endpoint" v={server.url} />
-            <Row k="Status" v={server.enabled ? 'Enabled' : 'Disabled'} />
-          </div>
-        </div>
-
         {server.description && (
           <div className="dp-section">
             <div className="dp-sec-lbl">Description</div>
@@ -71,6 +66,24 @@ export function MyMcpsRail({
             </div>
           </div>
         )}
+
+        <div className="dp-section">
+          <div className="dp-sec-lbl">Server</div>
+          <div className="dp-rows" data-testid="my-mcps-detail-server">
+            <Row k="URL" v={server.url} />
+            <Row k="Status" v={server.enabled ? 'Enabled' : 'Disabled'} />
+            {!authConfigsLoading && (
+              <div className="dp-row dp-row-auth">
+                <span className="dp-row-k">Supported auth</span>
+                <span className="dp-row-auth-badges">
+                  {supportedKinds.map((k) => (
+                    <AuthBadge key={k} type={k} />
+                  ))}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
 
         <McpInstancesSection
           prefix="my-mcps"

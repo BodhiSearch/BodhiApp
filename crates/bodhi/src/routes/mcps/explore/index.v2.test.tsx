@@ -148,9 +148,9 @@ describe('ExploreMcpScreen (Phase 2 — selection + rail)', () => {
     await waitFor(() => expect(router.state.location.search).toMatchObject({ select: 'notion' }));
 
     const rail = screen.getByTestId('harness-rail');
-    await waitFor(() => expect(within(rail).getByTestId('cat-mcp-detail-connection')).toBeInTheDocument());
-    expect(within(rail).getByTestId('cat-mcp-detail-connection')).toHaveTextContent('mcp.notion.com');
-    expect(within(rail).getByTestId('cat-mcp-detail-connection')).toHaveTextContent('streamable-http');
+    await waitFor(() => expect(within(rail).getByTestId('cat-mcp-detail-server')).toBeInTheDocument());
+    expect(within(rail).getByTestId('cat-mcp-detail-server')).toHaveTextContent('mcp.notion.com');
+    expect(within(rail).getByTestId('cat-mcp-detail-server')).toHaveTextContent('Streamable HTTP');
     // details (long description) replaces the summary description once detail loads.
     await waitFor(() =>
       expect(within(rail).getByTestId('cat-mcp-detail-description')).toHaveTextContent('Search, read and write')
@@ -288,12 +288,30 @@ describe('ExploreMcpScreen (Phase 4 — instance join → status)', () => {
     expect(seen.every((u) => !u.searchParams.has('installed'))).toBe(true);
   });
 
-  it('rail: unregistered catalog server → admin gets "Add this server" (register prefill)', async () => {
-    server.use(...mockMcpServers(), ...mockMcpServerDetail(), mockListMcps([]), mockListMcpServers([]));
+  it('rail: unregistered catalog server → admin gets a "Connect Server" footer (register prefill)', async () => {
+    // Catalog server with the real oauth-dcr auth_type the Connect-Server link should forward.
+    const dcrResponse = createMcpServersListResponse({
+      items: [createMcpServerSummary({ auth_type: 'oauth-dcr' })],
+    });
+    server.use(
+      ...mockMcpServers({ response: dcrResponse }),
+      ...mockMcpServerDetail(),
+      mockListMcps([]),
+      mockListMcpServers([])
+    );
     await renderScreen(['/mcps/explore/?select=notion']);
     const rail = screen.getByTestId('harness-rail');
-    expect(within(rail).getByTestId('cat-mcp-detail-status')).toHaveTextContent('Not installed');
-    expect(within(rail).getByTestId('cat-mcp-detail-register')).toBeInTheDocument();
+    // No Status section in V2; admin sees a "Not configured" note + a Connect-Server footer that
+    // deep-links to the New-Server form with url/name + the catalog auth_type prefilled.
+    expect(within(rail).getByTestId('cat-mcp-detail-not-configured-admin')).toBeInTheDocument();
+    expect(within(rail).getByTestId('cat-mcp-connect-server')).toHaveAttribute(
+      'href',
+      expect.stringContaining('/mcps/servers/new/?url=')
+    );
+    expect(within(rail).getByTestId('cat-mcp-connect-server')).toHaveAttribute(
+      'href',
+      expect.stringContaining('auth=oauth-dcr')
+    );
     // No connect/configure for an unregistered server.
     expect(within(rail).queryByTestId('cat-mcp-detail-mechanisms')).not.toBeInTheDocument();
     expect(within(rail).queryByTestId('cat-mcp-configure-server')).not.toBeInTheDocument();

@@ -57,11 +57,11 @@ test.describe('Explore · MCP Servers', () => {
       await expect(mcpPage.page.locator(mcpPage.selectors.anyRow)).toHaveCount(50);
     });
 
-    await test.step('Opening a server shows the rail with description + connection, and writes ?select', async () => {
+    await test.step('Opening a server shows the rail with description + server spec, and writes ?select', async () => {
       await mcpPage.openServer('srv-0');
-      const conn = mcpPage.page.locator(mcpPage.selectors.railConnection);
-      await expect(conn).toContainText('streamable-http');
-      await expect(conn).toContainText('mcp.example.com');
+      const spec = mcpPage.page.locator(mcpPage.selectors.railServer);
+      await expect(spec).toContainText('Streamable HTTP');
+      await expect(spec).toContainText('mcp.example.com');
       await expect(mcpPage.page.locator(mcpPage.selectors.railDescription)).toBeVisible();
       expect(mcpPage.urlParam('select')).toBe('srv-0');
     });
@@ -69,7 +69,7 @@ test.describe('Explore · MCP Servers', () => {
     await test.step('Reload restores the rail from ?select; closing strips it', async () => {
       await mcpPage.page.reload();
       await mcpPage.waitForSPAReady();
-      await expect(mcpPage.page.locator(mcpPage.selectors.railConnection)).toBeVisible();
+      await expect(mcpPage.page.locator(mcpPage.selectors.railServer)).toBeVisible();
       expect(mcpPage.urlParam('select')).toBe('srv-0');
 
       await mcpPage.closeRail();
@@ -104,15 +104,20 @@ test.describe('Explore · MCP Servers', () => {
       await expect(mcpPage.page.locator('[data-testid="cat-listhead"]')).not.toContainText('AUTH');
     });
 
-    await test.step('Status column + rail reflect the instance join (none configured → Not installed)', async () => {
+    await test.step('Status column reflects the instance join (none configured → Not installed)', async () => {
       // No instances configured in the test DB → every catalog row joins to "Not installed".
       await expect(mcpPage.page.locator(mcpPage.selectors.install('srv-0'))).toContainText('Not installed');
       await expect(mcpPage.page.locator(mcpPage.selectors.installedFacet('not_installed'))).toBeVisible();
+    });
 
+    await test.step('Rail of an unregistered catalog server offers admin a Connect-Server footer', async () => {
       await mcpPage.openServer('srv-0');
-      await expect(mcpPage.page.locator(mcpPage.selectors.railStatus)).toContainText('Not installed');
-      // V2: an unregistered catalog server (no DB match) offers admin a "register this server" CTA.
-      await expect(mcpPage.page.locator(mcpPage.selectors.railRegister)).toBeVisible();
+      // V2 rail has no Status section; admin sees a "not configured" note + a Connect-Server footer
+      // deep-linking to the New-Server form with the catalog url/name (+ auth_type) prefilled.
+      await expect(mcpPage.page.locator(mcpPage.selectors.railNotConfiguredAdmin)).toBeVisible();
+      const connect = mcpPage.page.locator(mcpPage.selectors.railConnectServer);
+      await expect(connect).toBeVisible();
+      await expect(connect).toHaveAttribute('href', /\/mcps\/servers\/new\/\?url=/);
     });
   });
 });

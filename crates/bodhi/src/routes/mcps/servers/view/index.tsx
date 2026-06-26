@@ -1,12 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
-import { createFileRoute, Link, useSearch } from '@tanstack/react-router';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import type { McpAuthConfigParamInput, McpAuthConfigResponse } from '@bodhiapp/ts-client';
+import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
-import { useShellChrome } from '@/components/shell';
+import { ShellIcon, useShellChrome } from '@/components/shell';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,24 +16,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorPage } from '@/components/ui/ErrorPage';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import {
   useCreateAuthConfig,
   useDeleteAuthConfig,
   useListAuthConfigs,
   useGetMcpServer,
   useStandaloneDynamicRegister,
-  type McpAuthConfigResponse,
+  useUpdateMcpServer,
 } from '@/hooks/mcps';
 import { toast } from '@/hooks/use-toast';
-import { ROUTE_MCPS, ROUTE_MCP_SERVERS } from '@/lib/constants';
+import { ROUTE_MCPS } from '@/lib/constants';
 import { extractErrorMessage } from '@/lib/errorUtils';
-import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
+import { authConfigDetail } from '@/lib/mcpUtils';
+import { authKind } from '@/routes/mcps/-shared/auth-badges';
 import { AuthConfigForm } from '@/routes/mcps/servers/-components/AuthConfigForm';
+import '@/routes/mcps/servers/-components/server-config.css';
+import '@/routes/mcps/-shared/auth-badges.css';
 
 export const Route = createFileRoute('/mcps/servers/view/')({
   validateSearch: z.object({ id: z.string().optional() }),
@@ -47,9 +51,13 @@ const SERVER_VIEW_BREADCRUMB = [
   { label: 'Configure server', current: true },
 ];
 
+const KIND_ICON: Record<string, string> = { oauth: 'lock', key: 'key', public: 'unlock', http: 'shield' };
+const KIND_LABEL: Record<string, string> = { oauth: 'OAuth', key: 'API Key', public: 'Public', http: 'HTTP' };
+
 function ServerViewContent() {
   useShellChrome({ breadcrumb: useMemo(() => SERVER_VIEW_BREADCRUMB, []) });
   const search = useSearch({ from: '/mcps/servers/view/' });
+  const navigate = useNavigate();
   const serverId = search.id || '';
 
   const {
@@ -59,6 +67,40 @@ function ServerViewContent() {
   } = useGetMcpServer(serverId, { enabled: !!serverId });
   const { data: authConfigsData, isLoading: configsLoading } = useListAuthConfigs(serverId);
 
+  // ── Basic-information inline edit (per-section, URL locked) ──
+  const [editingBasic, setEditingBasic] = useState(false);
+  const [savedBasic, setSavedBasic] = useState(false);
+  const [draftName, setDraftName] = useState('');
+  const [draftDesc, setDraftDesc] = useState('');
+  const [draftEnabled, setDraftEnabled] = useState(true);
+  useEffect(() => {
+    if (server) {
+      setDraftName(server.name);
+      setDraftDesc(server.description ?? '');
+      setDraftEnabled(server.enabled);
+    }
+  }, [server]);
+
+  const updateServer = useUpdateMcpServer({
+    onSuccess: () => {
+      setEditingBasic(false);
+      setSavedBasic(true);
+      setTimeout(() => setSavedBasic(false), 2200);
+    },
+    onError: (message) => toast({ title: 'Failed to update server', description: message, variant: 'destructive' }),
+  });
+  const saveBasic = () => {
+    if (!server || !draftName.trim()) return;
+    updateServer.mutate({
+      id: serverId,
+      url: server.url,
+      name: draftName.trim(),
+      description: draftDesc.trim() || undefined,
+      enabled: draftEnabled,
+    });
+  };
+
+  // ── Auth mechanisms: inline add + delete ──
   const [deleteTarget, setDeleteTarget] = useState<McpAuthConfigResponse | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<'header' | 'oauth'>('header');
@@ -75,31 +117,26 @@ function ServerViewContent() {
   const [formRegistrationEndpoint, setFormRegistrationEndpoint] = useState('');
 
   const standaloneDcr = useStandaloneDynamicRegister({
-    onError: (message) => {
-      toast({ title: 'Dynamic registration failed', description: message, variant: 'destructive' });
-    },
+    onError: (message) => toast({ title: 'Dynamic registration failed', description: message, variant: 'destructive' }),
   });
-
   const deleteAuthConfig = useDeleteAuthConfig({
     onSuccess: () => {
-      toast({ title: 'Auth config deleted' });
+      toast({ title: 'Auth mechanism deleted' });
       setDeleteTarget(null);
     },
     onError: (message) => {
-      toast({ title: 'Failed to delete auth config', description: message, variant: 'destructive' });
+      toast({ title: 'Failed to delete auth mechanism', description: message, variant: 'destructive' });
       setDeleteTarget(null);
     },
   });
-
   const createAuthConfig = useCreateAuthConfig({
     onSuccess: () => {
-      toast({ title: 'Auth config created' });
+      toast({ title: 'Auth mechanism added' });
       setShowForm(false);
       resetForm();
     },
-    onError: (message) => {
-      toast({ title: 'Failed to create auth config', description: message, variant: 'destructive' });
-    },
+    onError: (message) =>
+      toast({ title: 'Failed to add auth mechanism', description: message, variant: 'destructive' }),
   });
 
   const authConfigs = authConfigsData?.auth_configs ?? [];
@@ -170,176 +207,258 @@ function ServerViewContent() {
     }
   };
 
-  const handleDeleteConfirm = () => {
-    if (!deleteTarget) return;
-    deleteAuthConfig.mutate({ configId: deleteTarget.id });
-  };
+  if (!serverId) return <ErrorPage message="No server ID provided" />;
+  if (serverError) return <ErrorPage message={extractErrorMessage(serverError, 'Failed to load MCP server')} />;
 
-  if (!serverId) {
-    return <ErrorPage message="No server ID provided" />;
-  }
-
-  if (serverError) {
-    const errorMessage = extractErrorMessage(serverError, 'Failed to load MCP server');
-    return <ErrorPage message={errorMessage} />;
-  }
-
-  if (serverLoading) {
+  if (serverLoading || !server) {
     return (
       <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="server-view-loading">
-        <Card>
-          <CardHeader>
+        <div className="sc-card">
+          <div className="sc-card-head">
             <Skeleton className="h-6 w-48" />
-          </CardHeader>
-          <CardContent className="space-y-4">
+          </div>
+          <div className="sc-card-body space-y-3">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="server-view-page">
-      <Card data-testid="server-info-section">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>{server?.name}</CardTitle>
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`${ROUTE_MCP_SERVERS}edit/`} search={{ id: serverId }}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <span className="text-sm text-muted-foreground">URL</span>
-            <p className="font-mono text-sm">{server?.url}</p>
-          </div>
-          {server?.description && (
-            <div>
-              <span className="text-sm text-muted-foreground">Description</span>
-              <p className="text-sm">{server.description}</p>
-            </div>
-          )}
-          <div>
-            <span className="text-sm text-muted-foreground">Status</span>
-            <div className="mt-1">
-              <Badge variant={server?.enabled ? 'default' : 'secondary'}>
-                {server?.enabled ? 'Enabled' : 'Disabled'}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="mt-6" data-testid="auth-configs-section">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Auth Configurations</h2>
-          {!showForm && (
-            <Button size="sm" onClick={() => setShowForm(true)} data-testid="add-auth-config-button">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Auth Config
-            </Button>
-          )}
+      <div className="sc-card">
+        <div className="sc-card-head">
+          <h1 className="sc-card-title">Configure server</h1>
+          <p className="sc-card-sub">
+            Manage <strong>{server.name}</strong> — edit basic details or its auth mechanisms independently.
+          </p>
         </div>
 
-        {showForm && (
-          <Card className="mb-4" data-testid="auth-config-form">
-            <CardContent className="pt-6">
-              <AuthConfigForm
-                serverUrl={server?.url || ''}
-                type={formType}
-                name={formName}
-                onTypeChange={setFormType}
-                onNameChange={setFormName}
-                entries={formEntries}
-                onEntriesChange={setFormEntries}
-                registrationType={formRegistrationType}
-                clientId={formClientId}
-                clientSecret={formClientSecret}
-                authEndpoint={formAuthEndpoint}
-                tokenEndpoint={formTokenEndpoint}
-                registrationEndpoint={formRegistrationEndpoint}
-                scopes={formScopes}
-                onRegistrationTypeChange={setFormRegistrationType}
-                onClientIdChange={setFormClientId}
-                onClientSecretChange={setFormClientSecret}
-                onAuthEndpointChange={setFormAuthEndpoint}
-                onTokenEndpointChange={setFormTokenEndpoint}
-                onRegistrationEndpointChange={setFormRegistrationEndpoint}
-                onScopesChange={setFormScopes}
-                onSubmit={handleCreateSubmit}
-                onCancel={() => {
-                  setShowForm(false);
-                  resetForm();
-                }}
-                isSubmitting={createAuthConfig.isPending || standaloneDcr.isPending}
-              />
-            </CardContent>
-          </Card>
-        )}
+        <div className="sc-card-body">
+          {/* ── Basic information ── */}
+          <div className="sc-section" data-testid="server-info-section">
+            <div className="sc-sec-head">
+              <span className="sc-sec-lbl">Basic information</span>
+              {!editingBasic && (
+                <button
+                  className="sc-edit-btn"
+                  onClick={() => {
+                    setDraftName(server.name);
+                    setDraftDesc(server.description ?? '');
+                    setDraftEnabled(server.enabled);
+                    setEditingBasic(true);
+                    setSavedBasic(false);
+                  }}
+                  data-testid="server-edit-button"
+                >
+                  <ShellIcon name="pencil" size={13} /> Edit
+                </button>
+              )}
+              {savedBasic && (
+                <span className="sc-saved" data-testid="server-saved">
+                  <ShellIcon name="check" size={13} /> Saved
+                </span>
+              )}
+            </div>
 
-        {configsLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
+            {!editingBasic ? (
+              <div className="sc-read">
+                <div className="sc-read-row">
+                  <span className="sc-read-k">Name</span>
+                  <span className="sc-read-v" data-testid="server-name-value">
+                    {server.name}
+                  </span>
+                </div>
+                <div className="sc-read-row">
+                  <span className="sc-read-k">URL</span>
+                  <span className="sc-read-v mono">{server.url}</span>
+                </div>
+                <div className="sc-read-row">
+                  <span className="sc-read-k">Description</span>
+                  <span className="sc-read-v muted">{server.description || '—'}</span>
+                </div>
+                <div className="sc-read-row">
+                  <span className="sc-read-k">Status</span>
+                  <span className={`sc-read-v sc-status ${server.enabled ? 'on' : 'off'}`} data-testid="server-status">
+                    <ShellIcon name={server.enabled ? 'circle-check' : 'circle-slash'} size={13} />
+                    {server.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3" data-testid="server-edit-form">
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-2">
+                    URL
+                    <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                      <ShellIcon name="lock" size={11} /> locked
+                    </span>
+                  </Label>
+                  <Input value={server.url} disabled data-testid="mcp-server-url-input" />
+                  <p className="text-xs text-muted-foreground">
+                    The base URL is the server identity and can&apos;t be changed after creation.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Name *</Label>
+                  <Input
+                    value={draftName}
+                    onChange={(e) => setDraftName(e.target.value)}
+                    data-testid="mcp-server-name-input"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Description</Label>
+                  <Textarea
+                    value={draftDesc}
+                    onChange={(e) => setDraftDesc(e.target.value)}
+                    data-testid="mcp-server-description-input"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={draftEnabled}
+                    onCheckedChange={setDraftEnabled}
+                    data-testid="mcp-server-enabled-switch"
+                  />
+                  <Label>Enabled</Label>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" size="sm" onClick={() => setEditingBasic(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={saveBasic}
+                    disabled={!draftName.trim() || updateServer.isPending}
+                    data-testid="mcp-server-save-button"
+                  >
+                    {updateServer.isPending ? 'Saving...' : 'Save changes'}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-        ) : authConfigs.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">No auth configurations yet.</CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {authConfigs.map((config) => {
-              const id = config.id;
-              return (
-                <Card key={id} data-testid={`auth-config-row-${id}`}>
-                  <CardContent className="py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium">{config.name}</span>
-                      <Badge variant={authConfigBadgeVariant(config)} data-testid={`auth-config-type-badge-${id}`}>
-                        {authConfigTypeBadge(config)}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">{authConfigDetail(config)}</span>
+
+          <div className="sc-divider" />
+
+          {/* ── Auth mechanisms ── */}
+          <div className="sc-section" data-testid="auth-configs-section">
+            <span className="sc-sec-lbl">Auth mechanisms</span>
+            <div className="sc-sec-desc">
+              Public is always available. Add OAuth or header/query keys for servers that require it. Mechanisms can be
+              deleted but not edited — delete and re-add to change one.
+            </div>
+
+            {configsLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
+              </div>
+            ) : (
+              <div className="sc-auth-list">
+                {/* Synthetic Public row — always present, built-in, not deletable. */}
+                <div className="sc-auth-row" data-testid="auth-config-row-public">
+                  <div className="sc-auth-ico auth-badge-public">
+                    <ShellIcon name="unlock" size={14} />
+                  </div>
+                  <div className="sc-auth-body">
+                    <div className="sc-auth-name">
+                      Public <span className="sc-builtin">Built-in</span>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      onClick={() => setDeleteTarget(config)}
-                      data-testid={`auth-config-delete-button-${id}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    <div className="sc-auth-detail">No authentication required</div>
+                  </div>
+                </div>
+
+                {authConfigs.map((config) => {
+                  const kind = authKind(config.type);
+                  return (
+                    <div className="sc-auth-row" key={config.id} data-testid={`auth-config-row-${config.id}`}>
+                      <div className={`sc-auth-ico auth-badge-${kind}`}>
+                        <ShellIcon name={KIND_ICON[kind]} size={14} />
+                      </div>
+                      <div className="sc-auth-body">
+                        <div className="sc-auth-name" data-testid={`auth-config-type-badge-${config.id}`}>
+                          {KIND_LABEL[kind]} <span className="sc-auth-cfgname">{config.name}</span>
+                        </div>
+                        <div className="sc-auth-detail">{authConfigDetail(config)}</div>
+                      </div>
+                      <button
+                        className="sc-del"
+                        title="Delete auth mechanism"
+                        onClick={() => setDeleteTarget(config)}
+                        data-testid={`auth-config-delete-button-${config.id}`}
+                      >
+                        <ShellIcon name="trash-2" size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {showForm ? (
+              <div className="sc-auth-row" style={{ display: 'block', marginTop: 8 }} data-testid="auth-config-form">
+                <AuthConfigForm
+                  serverUrl={server.url}
+                  type={formType}
+                  name={formName}
+                  onTypeChange={setFormType}
+                  onNameChange={setFormName}
+                  entries={formEntries}
+                  onEntriesChange={setFormEntries}
+                  registrationType={formRegistrationType}
+                  clientId={formClientId}
+                  clientSecret={formClientSecret}
+                  authEndpoint={formAuthEndpoint}
+                  tokenEndpoint={formTokenEndpoint}
+                  registrationEndpoint={formRegistrationEndpoint}
+                  scopes={formScopes}
+                  onRegistrationTypeChange={setFormRegistrationType}
+                  onClientIdChange={setFormClientId}
+                  onClientSecretChange={setFormClientSecret}
+                  onAuthEndpointChange={setFormAuthEndpoint}
+                  onTokenEndpointChange={setFormTokenEndpoint}
+                  onRegistrationEndpointChange={setFormRegistrationEndpoint}
+                  onScopesChange={setFormScopes}
+                  onSubmit={handleCreateSubmit}
+                  onCancel={() => {
+                    setShowForm(false);
+                    resetForm();
+                  }}
+                  isSubmitting={createAuthConfig.isPending || standaloneDcr.isPending}
+                />
+              </div>
+            ) : (
+              <button className="sc-add-mech" onClick={() => setShowForm(true)} data-testid="add-auth-config-button">
+                <ShellIcon name="plus" size={15} /> Add auth mechanism
+              </button>
+            )}
           </div>
-        )}
+        </div>
+
+        <div className="sc-foot">
+          <Button variant="outline" onClick={() => navigate({ to: ROUTE_MCPS })} data-testid="server-back-button">
+            <ShellIcon name="arrow-left" size={15} /> Back to My MCPs
+          </Button>
+        </div>
       </div>
 
-      <AlertDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
-        }}
-      >
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent data-testid="delete-auth-config-dialog">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Auth Config</AlertDialogTitle>
+            <AlertDialogTitle>Delete auth mechanism</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? All associated OAuth tokens will also be
-              deleted. MCPs using this config will no longer have authentication.
+              deleted, and existing instances using it will break.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteConfirm}
+              onClick={() => deleteTarget && deleteAuthConfig.mutate({ configId: deleteTarget.id })}
               disabled={deleteAuthConfig.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

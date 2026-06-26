@@ -88,25 +88,31 @@ describe('ServerViewPage - Server Info', () => {
       expect(screen.getByTestId('server-view-page')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Test Server')).toBeInTheDocument();
+    // Configure-server hub: Basic-information read rows.
+    expect(screen.getByTestId('server-name-value')).toHaveTextContent('Test Server');
     expect(screen.getByText('https://test.example.com/mcp')).toBeInTheDocument();
     expect(screen.getByText('A test server description')).toBeInTheDocument();
-    expect(screen.getByText('Enabled')).toBeInTheDocument();
+    expect(screen.getByTestId('server-status')).toHaveTextContent('Enabled');
   });
 
-  it('navigates to edit page', async () => {
+  it('Edit toggles the inline basic-information form (URL locked)', async () => {
     server.use(mockGetMcpServer(mockMcpServerResponse), mockListAuthConfigs({ auth_configs: [] }));
 
+    const user = userEvent.setup();
     await act(async () => {
       render(<ServerViewPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('server-view-page')).toBeInTheDocument();
+      expect(screen.getByTestId('server-edit-button')).toBeInTheDocument();
     });
 
-    const editLink = screen.getByRole('link', { name: /edit/i });
-    expect(editLink).toHaveAttribute('href', '/mcps/servers/edit/?id=server-uuid-1');
+    await user.click(screen.getByTestId('server-edit-button'));
+    expect(screen.getByTestId('server-edit-form')).toBeInTheDocument();
+    // URL is the server identity — locked (disabled) in the inline editor.
+    expect(screen.getByTestId('mcp-server-url-input')).toBeDisabled();
+    expect(screen.getByTestId('mcp-server-name-input')).toBeInTheDocument();
+    expect(screen.getByTestId('mcp-server-save-button')).toBeInTheDocument();
   });
 
   it('shows server disabled status', async () => {
@@ -123,7 +129,7 @@ describe('ServerViewPage - Server Info', () => {
       expect(screen.getByTestId('server-view-page')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Disabled')).toBeInTheDocument();
+    expect(screen.getByTestId('server-status')).toHaveTextContent('Disabled');
   });
 });
 
@@ -140,7 +146,8 @@ describe('ServerViewPage - Auth Configs', () => {
     });
 
     expect(screen.getByTestId(`auth-config-row-${mockAuthConfigHeader.id}`)).toBeInTheDocument();
-    expect(screen.getByTestId(`auth-config-type-badge-${mockAuthConfigHeader.id}`)).toHaveTextContent('Header');
+    // Header/query configs render under the "API Key" kind label in the V2 hub.
+    expect(screen.getByTestId(`auth-config-type-badge-${mockAuthConfigHeader.id}`)).toHaveTextContent('API Key');
     expect(screen.getByText('Keys: header:Authorization')).toBeInTheDocument();
   });
 
@@ -165,7 +172,7 @@ describe('ServerViewPage - Auth Configs', () => {
     expect(screen.getByTestId(`auth-config-type-badge-${mockAuthConfigOAuthDynamic.id}`)).toHaveTextContent('OAuth');
   });
 
-  it('shows empty state when no auth configs', async () => {
+  it('always shows the built-in Public mechanism even with no configs', async () => {
     server.use(mockGetMcpServer(mockMcpServerResponse), mockListAuthConfigs({ auth_configs: [] }));
 
     await act(async () => {
@@ -176,7 +183,10 @@ describe('ServerViewPage - Auth Configs', () => {
       expect(screen.getByTestId('auth-configs-section')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('No auth configurations yet.')).toBeInTheDocument();
+    // Public is always available (synthetic, no DB row) — rendered as a built-in, non-deletable row.
+    const publicRow = screen.getByTestId('auth-config-row-public');
+    expect(publicRow).toHaveTextContent('Public');
+    expect(publicRow).toHaveTextContent('Built-in');
   });
 
   it('shows delete confirmation dialog', async () => {
@@ -194,7 +204,7 @@ describe('ServerViewPage - Auth Configs', () => {
     await user.click(screen.getByTestId(`auth-config-delete-button-${mockAuthConfigHeader.id}`));
 
     expect(screen.getByTestId('delete-auth-config-dialog')).toBeInTheDocument();
-    expect(screen.getByText('Delete Auth Config')).toBeInTheDocument();
+    expect(screen.getByText('Delete auth mechanism')).toBeInTheDocument();
     expect(screen.getByText(/All associated OAuth tokens will also be deleted/)).toBeInTheDocument();
   });
 

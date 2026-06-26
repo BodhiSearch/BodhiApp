@@ -21,11 +21,34 @@ import { validateMcpServerForm } from '@/lib/mcpFormValidation';
 import { extractSecondLevelDomain } from '@/lib/urlUtils';
 import { AuthConfigForm } from '@/routes/mcps/servers/-components/AuthConfigForm';
 
-// Prefill params for the admin "Configure server" bridge from the catalog/My-MCPs rail.
+// Prefill params for the admin "Connect Server" bridge from the catalog rail: url + name + the
+// catalog's auth_type (e.g. oauth-dcr) so the auth section opens pre-selected and DCR auto-discovers.
 export const Route = createFileRoute('/mcps/servers/new/')({
-  validateSearch: z.object({ url: z.string().optional(), name: z.string().optional() }),
+  validateSearch: z.object({
+    url: z.string().optional(),
+    name: z.string().optional(),
+    auth: z.string().optional(),
+  }),
   component: NewMcpServerPage,
 });
+
+/** Map a catalog `auth_type` to the form's initial auth-config state. */
+function authPrefill(auth: string | undefined): {
+  show: boolean;
+  type: 'none' | 'header' | 'oauth';
+  regType: 'pre_registered' | 'dynamic_registration';
+} {
+  switch (auth) {
+    case 'oauth-dcr':
+      return { show: true, type: 'oauth', regType: 'dynamic_registration' };
+    case 'oauth-pre-registered':
+      return { show: true, type: 'oauth', regType: 'pre_registered' };
+    case 'key':
+      return { show: true, type: 'header', regType: 'pre_registered' };
+    default:
+      return { show: false, type: 'none', regType: 'pre_registered' };
+  }
+}
 
 const NEW_SERVER_BREADCRUMB = [
   { label: 'Bodhi' },
@@ -39,17 +62,18 @@ type OAuthRegistrationType = 'pre_registered' | 'dynamic_registration';
 function NewMcpServerContent() {
   useShellChrome({ breadcrumb: useMemo(() => NEW_SERVER_BREADCRUMB, []) });
   const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as { url?: string; name?: string };
+  const search = useSearch({ strict: false }) as { url?: string; name?: string; auth?: string };
+  const prefill = useMemo(() => authPrefill(search.auth), [search.auth]);
   const [url, setUrl] = useState(search.url ?? '');
   const [name, setName] = useState(search.name ?? '');
   const [description, setDescription] = useState('');
   const [enabled, setEnabled] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Auth config state
-  const [showAuthConfig, setShowAuthConfig] = useState(false);
-  const [authConfigType, setAuthConfigType] = useState<AuthConfigType>('none');
-  const [oauthRegistrationType, setOauthRegistrationType] = useState<OAuthRegistrationType>('pre_registered');
+  // Auth config state — seeded from the catalog auth_type prefill (oauth-dcr/oauth-pre-registered/key).
+  const [showAuthConfig, setShowAuthConfig] = useState(prefill.show);
+  const [authConfigType, setAuthConfigType] = useState<AuthConfigType>(prefill.type);
+  const [oauthRegistrationType, setOauthRegistrationType] = useState<OAuthRegistrationType>(prefill.regType);
   const [authName, setAuthName] = useState('');
   const [entries, setEntries] = useState<McpAuthConfigParamInput[]>([{ param_type: 'header', param_key: '' }]);
   const [clientId, setClientId] = useState('');

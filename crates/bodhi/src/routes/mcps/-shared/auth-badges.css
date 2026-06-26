@@ -1,0 +1,33 @@
+/* Auth-type badges — shared by the Explore list AUTH column + the rail "Supported auth" row. */
+
+.auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.auth-badge-oauth {
+  background: var(--c-indigo-bg);
+  color: var(--c-indigo-text);
+  border-color: var(--c-indigo-bd, transparent);
+}
+.auth-badge-key {
+  background: var(--c-saffron-bg);
+  color: var(--c-saffron-text);
+  border-color: var(--c-saffron-bd, transparent);
+}
+.auth-badge-public {
+  background: var(--c-leaf-bg);
+  color: var(--c-leaf-text);
+  border-color: var(--c-leaf-bd, transparent);
+}
+.auth-badge-http {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}

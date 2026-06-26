@@ -1,0 +1,236 @@
+/* Configure server hub — view/edit. Layered on the shell tokens; mirrors the hi-fi bf-*/ns-* layout
+   (one bordered card · per-section editing · auth-mechanism rows with icon tiles). */
+
+.sc-card {
+  border: 1px solid hsl(var(--border));
+  border-radius: 14px;
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
+}
+.sc-card-head {
+  padding: 20px 24px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.sc-card-title {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.sc-card-sub {
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+  margin-top: 4px;
+}
+.sc-card-body {
+  padding: 20px 24px;
+}
+
+.sc-section {
+  margin-bottom: 22px;
+}
+.sc-section:last-child {
+  margin-bottom: 0;
+}
+.sc-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.sc-sec-lbl {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+}
+.sc-sec-desc {
+  font-size: 12.5px;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.sc-divider {
+  height: 1px;
+  background: hsl(var(--border));
+  margin: 22px 0;
+}
+
+/* edit / saved affordances in the section head */
+.sc-edit-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  color: hsl(var(--foreground));
+}
+.sc-edit-btn:hover {
+  background: hsl(var(--muted));
+}
+.sc-saved {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-leaf-text, #16a34a);
+}
+
+/* read view: key/value rows */
+.sc-read-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.sc-read-row:last-child {
+  border-bottom: none;
+}
+.sc-read-k {
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+  flex: 0 0 auto;
+}
+.sc-read-v {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  min-width: 0;
+  word-break: break-all;
+}
+.sc-read-v.mono {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.sc-read-v.muted {
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+}
+.sc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+}
+.sc-status.on {
+  color: var(--c-leaf-text, #16a34a);
+}
+.sc-status.off {
+  color: hsl(var(--muted-foreground));
+}
+
+/* auth-mechanism rows */
+.sc-auth-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sc-auth-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--background));
+}
+.sc-auth-ico {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.sc-auth-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.sc-auth-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.sc-auth-cfgname {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+.sc-builtin {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+.sc-auth-detail {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  margin-top: 2px;
+}
+.sc-del {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.sc-del:hover {
+  color: var(--destructive);
+  border-color: var(--destructive);
+}
+
+/* inline "Add auth mechanism" trigger (dashed, full-width) */
+.sc-add-mech {
+  width: 100%;
+  margin-top: 8px;
+  padding: 11px;
+  border: 1px dashed hsl(var(--border));
+  border-radius: 10px;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+}
+.sc-add-mech:hover {
+  background: hsl(var(--muted));
+  border-color: hsl(var(--ring));
+}
+
+/* footer */
+.sc-foot {
+  padding: 16px 24px;
+  border-top: 1px solid hsl(var(--border));
+  display: flex;
+  justify-content: flex-end;
+}

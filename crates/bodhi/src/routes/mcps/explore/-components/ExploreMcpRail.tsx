@@ -5,15 +5,22 @@ import { Link } from '@tanstack/react-router';
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
+import { AuthBadge } from '@/routes/mcps/-shared/auth-badges';
 import {
   McpConfigureServerFooter,
   McpConnectWithSection,
   McpInstancesSection,
 } from '@/routes/mcps/-shared/McpRailSections';
-import { type McpJoinedRow, INSTALL_LABEL } from '@/routes/mcps/explore/-shared/instance-join';
+import { type McpJoinedRow } from '@/routes/mcps/explore/-shared/instance-join';
 import { monogram, tintIndex } from '@/routes/models/explore/-shared/catalog-format';
 
 import { McpServerLogo } from './McpServerLogo';
+
+const TRANSPORT_LABEL: Record<string, string> = {
+  'streamable-http': 'Streamable HTTP',
+  sse: 'SSE (deprecated)',
+  stdio: 'stdio',
+};
 
 export function ExploreMcpRailHeader({ server, onClose }: { server: McpJoinedRow; onClose: () => void }) {
   return (
@@ -72,29 +79,6 @@ export function ExploreMcpRail({
   return (
     <div className="dp-panel" data-testid={`cat-mcp-detail-${server.id}`}>
       <div className="dp-body">
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Status</div>
-          <div className="cat-servedby-links" data-testid="cat-mcp-detail-status">
-            <span className={`mcp-install mcp-install-${server.install}`}>{INSTALL_LABEL[server.install]}</span>
-            {/* Unregistered catalog server: admin can register it (url prefilled); non-admin sees a note. */}
-            {!registered &&
-              (isAdmin ? (
-                <Link
-                  to={`${ROUTE_MCP_SERVERS}new/`}
-                  search={{ url: server.endpoint_url ?? undefined, name: server.name }}
-                  className="cat-doc-link"
-                  data-testid="cat-mcp-detail-register"
-                >
-                  <ShellIcon name="circle-plus" size={13} /> Add this server
-                </Link>
-              ) : (
-                <span className="cat-sub" data-testid="cat-mcp-detail-not-configured">
-                  Not in this workspace — ask an admin
-                </span>
-              ))}
-          </div>
-        </div>
-
         {description && (
           <div className="dp-section">
             <div className="dp-sec-lbl">Description</div>
@@ -105,14 +89,20 @@ export function ExploreMcpRail({
         )}
 
         <div className="dp-section">
-          <div className="dp-sec-lbl">Connection</div>
+          <div className="dp-sec-lbl">Server</div>
           {loading && !detail ? (
             <Skeleton className="h-16 w-full" data-testid="cat-mcp-detail-skeleton" />
           ) : (
-            <div className="dp-rows" data-testid="cat-mcp-detail-connection">
-              <Row k="Endpoint" v={server.endpoint_url} />
-              <Row k="Transport" v={server.transport} />
-              <Row k="Auth" v={server.auth_type} />
+            <div className="dp-rows" data-testid="cat-mcp-detail-server">
+              <Row k="URL" v={server.endpoint_url} />
+              <Row k="Transport" v={TRANSPORT_LABEL[server.transport] ?? server.transport} />
+              <Row k="Publisher" v={detail?.publisher} />
+              <div className="dp-row dp-row-auth">
+                <span className="dp-row-k">Supported auth</span>
+                <span className="dp-row-auth-badges">
+                  <AuthBadge type={server.auth_type} />
+                </span>
+              </div>
               {server.external_link && (
                 <div className="cat-servedby-links">
                   <a
@@ -130,7 +120,7 @@ export function ExploreMcpRail({
           )}
         </div>
 
-        {registered && (
+        {registered ? (
           <>
             <McpInstancesSection
               prefix="cat-mcp"
@@ -147,9 +137,38 @@ export function ExploreMcpRail({
               />
             )}
           </>
+        ) : (
+          <div
+            className="connect-note"
+            data-testid={isAdmin ? 'cat-mcp-detail-not-configured-admin' : 'cat-mcp-detail-not-configured'}
+          >
+            <ShellIcon name={isAdmin ? 'settings-2' : 'info'} size={15} />
+            <div>
+              <div className="connect-note-title">{isAdmin ? 'Not configured yet' : 'Not in this workspace yet'}</div>
+              <div className="connect-note-sub">
+                {isAdmin
+                  ? 'Register this server to let users connect. The URL is pre-filled for you.'
+                  : "This server hasn't been added. Ask an admin to configure it."}
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
+      {/* Footer: admin registers an unregistered server (one click → New Server prefilled), or
+          configures a registered one. */}
+      {!registered && isAdmin && (
+        <div className="dp-foot">
+          <Link
+            to={`${ROUTE_MCP_SERVERS}new/`}
+            search={{ url: server.endpoint_url ?? undefined, name: server.name, auth: server.auth_type }}
+            className="dp-btn dp-btn-lotus"
+            data-testid="cat-mcp-connect-server"
+          >
+            <ShellIcon name="plus" size={15} /> Connect Server
+          </Link>
+        </div>
+      )}
       {registered && isAdmin && <McpConfigureServerFooter prefix="cat-mcp" serverId={registered.id} />}
     </div>
   );

@@ -22,10 +22,11 @@ export class McpExplorePage extends BasePage {
     // Detail rail.
     rail: id => `[data-testid="cat-mcp-detail-${id}"]`,
     railDescription: '[data-testid="cat-mcp-detail-description"]',
-    railConnection: '[data-testid="cat-mcp-detail-connection"]',
-    railStatus: '[data-testid="cat-mcp-detail-status"]',
-    // V2: an unregistered catalog server offers admin a "register this server" deep-link (prefilled).
-    railRegister: '[data-testid="cat-mcp-detail-register"]',
+    // V2 rail: "Server" spec section (URL/Transport/Publisher/Supported-auth); no Status section.
+    railServer: '[data-testid="cat-mcp-detail-server"]',
+    // Unregistered catalog server → admin "Connect Server" footer (deep-links to New Server prefilled).
+    railConnectServer: '[data-testid="cat-mcp-connect-server"]',
+    railNotConfiguredAdmin: '[data-testid="cat-mcp-detail-not-configured-admin"]',
     detailClose: '[data-testid="cat-mcp-detail-close"]',
     install: id => `[data-testid="cat-mcp-install-${id}"]`,
     installedFacet: v => `[data-testid="cat-mcp-installed-${v}"]`,
@@ -152,11 +153,11 @@ export class McpExplorePage extends BasePage {
     return new URL(this.page.url()).searchParams;
   }
 
-  /** Open the detail rail for a server row; waits for the connection grid to render. */
+  /** Open the detail rail for a server row; waits for the Server spec section to render. */
   async openServer(id) {
     await this.page.locator(this.selectors.row(id)).click();
     await this.waitForSPAReady();
-    await this.page.locator(this.selectors.railConnection).waitFor({ state: 'visible' });
+    await this.page.locator(this.selectors.railServer).waitFor({ state: 'visible' });
   }
 
   async closeRail() {
