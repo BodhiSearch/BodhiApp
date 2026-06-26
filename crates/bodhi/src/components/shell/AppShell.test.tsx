@@ -1,5 +1,6 @@
 import { AppShell, useShell } from '@/components/shell';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 import { render as rtlRender, screen, waitFor, type RenderOptions } from '@testing-library/react';
@@ -74,6 +75,29 @@ describe('AppShell', () => {
     await waitFor(() => expect(screen.queryByTestId('shell-sub-explore-local')).not.toBeInTheDocument());
     expect(screen.getByTestId('shell-sub-my-models')).toBeInTheDocument();
     expect(screen.getByTestId('shell-sub-new-api-model')).toBeInTheDocument();
+  });
+
+  it('shows the admin-only "New MCP Server" sub-page for admins', async () => {
+    server.use(...mockUserLoggedIn({ role: 'resource_admin' }, { stub: true }));
+    render(
+      <AppShell section="mcp" subPage="my-mcps">
+        <div>page content</div>
+      </AppShell>
+    );
+    await waitFor(() => expect(screen.getByTestId('shell-sub-new-mcp-server')).toBeInTheDocument());
+    expect(screen.getByTestId('shell-sub-new-mcp')).toBeInTheDocument();
+  });
+
+  it('hides the admin-only "New MCP Server" sub-page for non-admins', async () => {
+    server.use(...mockUserLoggedIn({ role: 'resource_user' }, { stub: true }));
+    render(
+      <AppShell section="mcp" subPage="my-mcps">
+        <div>page content</div>
+      </AppShell>
+    );
+    // The connection form stays; only the admin server-registration entry is hidden.
+    await waitFor(() => expect(screen.getByTestId('shell-sub-new-mcp')).toBeInTheDocument());
+    expect(screen.queryByTestId('shell-sub-new-mcp-server')).not.toBeInTheDocument();
   });
 
   it('does not render sub-pages from other sections', () => {

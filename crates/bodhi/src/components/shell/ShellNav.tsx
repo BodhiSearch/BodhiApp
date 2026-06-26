@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Link } from '@tanstack/react-router';
 
 import { useGetAppInfo } from '@/hooks/info';
+import { useGetUser } from '@/hooks/users';
+import { isAdminRole } from '@/lib/roles';
 
 import { SHELL_NAV } from './shell-nav-config';
 import { AnchoredPopover } from './ShellChrome';
@@ -22,13 +24,18 @@ export function ShellNav({ section = 'chat', subPage = null }: ShellNavProps) {
   const anchorRef = useRef<HTMLButtonElement>(null);
   const { data: appInfo } = useGetAppInfo();
   const isMultiTenant = appInfo?.deployment === 'multi_tenant';
+  const { data: userInfo } = useGetUser();
+  const isAdmin = userInfo?.auth_status === 'logged_in' && userInfo.role ? isAdminRole(userInfo.role) : false;
 
-  // Drop sub-pages flagged hideInMultiTenant (e.g. local-model catalog — no downloads there).
+  // Drop sub-pages the current context can't use: hideInMultiTenant (e.g. local-model catalog — no
+  // downloads there) and adminOnly (e.g. MCP server registration) for non-admins.
   const cur = useMemo(() => {
     const base = SHELL_NAV.find((n) => n.id === section) || SHELL_NAV[0];
-    if (!isMultiTenant) return base;
-    return { ...base, subPages: base.subPages.filter((sp) => !sp.hideInMultiTenant) };
-  }, [section, isMultiTenant]);
+    const subPages = base.subPages.filter(
+      (sp) => !(isMultiTenant && sp.hideInMultiTenant) && !(sp.adminOnly && !isAdmin)
+    );
+    return { ...base, subPages };
+  }, [section, isMultiTenant, isAdmin]);
 
   useEffect(() => {
     if (!open) return;

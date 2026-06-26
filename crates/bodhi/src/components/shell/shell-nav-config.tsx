@@ -17,6 +17,8 @@ export interface ShellNavSubPage {
   badge?: string;
   /** Hidden in multi-tenant deployments (e.g. local-model features that can't download there). */
   hideInMultiTenant?: boolean;
+  /** Shown only to admins (e.g. MCP server registration — an admin-only action). */
+  adminOnly?: boolean;
 }
 
 export interface ShellNavItem {
@@ -73,7 +75,8 @@ export const SHELL_NAV: ShellNavItem[] = [
     subPages: [
       { id: 'my-mcps', label: 'My MCPs', icon: 'globe-2', href: ROUTE_MCPS },
       { id: 'explore-mcp', label: 'Explore · MCP Servers', icon: 'compass', href: ROUTE_MCPS_EXPLORE },
-      { id: 'new-mcp', label: 'New Instance', icon: 'plus-circle', href: '/mcps/new/' },
+      { id: 'new-mcp-server', label: 'New MCP Server', icon: 'server', href: '/mcps/servers/new/', adminOnly: true },
+      { id: 'new-mcp', label: 'New MCP Connection', icon: 'plus-circle', href: '/mcps/new/' },
     ],
   },
   {

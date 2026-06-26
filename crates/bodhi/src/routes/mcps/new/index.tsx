@@ -59,12 +59,12 @@ import OAuthConnectPanel from './-components/OAuthConnectPanel';
 const NEW_INSTANCE_BREADCRUMB = [
   { label: 'Bodhi' },
   { label: 'MCP', href: ROUTE_MCPS },
-  { label: 'New MCP Instance', current: true },
+  { label: 'New MCP Connection', current: true },
 ];
 const EDIT_INSTANCE_BREADCRUMB = [
   { label: 'Bodhi' },
   { label: 'MCP', href: ROUTE_MCPS },
-  { label: 'Edit MCP Instance', current: true },
+  { label: 'Edit MCP Connection', current: true },
 ];
 
 const createMcpSchema = zod.object({
@@ -499,11 +499,11 @@ function NewMcpPageContent() {
     <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="new-mcp-page">
       <Card>
         <CardHeader>
-          <CardTitle>{editId ? 'Edit MCP' : 'New MCP'}</CardTitle>
+          <CardTitle>{editId ? 'Edit MCP Connection' : 'New MCP Connection'}</CardTitle>
           <CardDescription>
             {editId
-              ? 'Update your MCP instance configuration.'
-              : 'Create a new MCP instance by selecting a registered server.'}
+              ? 'Update your MCP connection configuration.'
+              : 'Create a new MCP connection by selecting a registered server.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -532,12 +532,12 @@ function NewMcpPageContent() {
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder="My MCP Instance"
+                        placeholder="My MCP Connection"
                         disabled={isSubmitting}
                         data-testid="mcp-name-input"
                       />
                     </FormControl>
-                    <FormDescription>A friendly name for this MCP instance</FormDescription>
+                    <FormDescription>A friendly name for this MCP connection</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -567,7 +567,7 @@ function NewMcpPageContent() {
                     <FormControl>
                       <Textarea
                         {...field}
-                        placeholder="Describe what this MCP instance is for"
+                        placeholder="Describe what this MCP connection is for"
                         disabled={isSubmitting}
                         data-testid="mcp-description-input"
                       />
@@ -584,7 +584,7 @@ function NewMcpPageContent() {
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">Enable MCP</FormLabel>
-                      <FormDescription>Make this MCP instance available for use</FormDescription>
+                      <FormDescription>Make this MCP connection available for use</FormDescription>
                     </div>
                     <FormControl>
                       <Switch
@@ -698,11 +698,11 @@ function NewMcpPageContent() {
               <div className="flex gap-4">
                 {editId ? (
                   <Button type="submit" disabled={isSubmitting} data-testid="mcp-update-button">
-                    {isSubmitting ? 'Updating...' : 'Update MCP'}
+                    {isSubmitting ? 'Updating...' : 'Update Connection'}
                   </Button>
                 ) : (
                   <Button type="submit" disabled={isSubmitting} data-testid="mcp-create-button">
-                    {isSubmitting ? 'Creating...' : 'Create MCP'}
+                    {isSubmitting ? 'Creating...' : 'Create Connection'}
                   </Button>
                 )}
                 <Button
