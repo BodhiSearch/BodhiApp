@@ -24,6 +24,14 @@ export class McpExplorePage extends BasePage {
     railDescription: '[data-testid="cat-mcp-detail-description"]',
     railConnection: '[data-testid="cat-mcp-detail-connection"]',
     detailClose: '[data-testid="cat-mcp-detail-close"]',
+    // Facets / reset / columns.
+    facets: '[data-testid="cat-mcp-facets"]',
+    auth: value => `[data-testid="cat-mcp-auth-${value}"]`,
+    verified: '[data-testid="cat-mcp-verified"]',
+    clearAll: '[data-testid="cat-mcp-clear-all"]',
+    columnsBtn: '[data-testid="cat-mcp-columns"]',
+    column: key => `[data-testid="cat-mcp-col-${key}"]`,
+    empty: '[data-testid="cat-mcp-empty"]',
   };
 
   /** Build N deterministic catalog servers. */
@@ -160,5 +168,30 @@ export class McpExplorePage extends BasePage {
     } catch {
       return raw;
     }
+  }
+
+  async clickAuth(value) {
+    await this.page.locator(this.selectors.auth(value)).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async toggleVerified() {
+    await this.page.locator(this.selectors.verified).click();
+    await this.waitForSPAReady();
+  }
+
+  async clearAllFilters() {
+    await this.page.locator(this.selectors.clearAll).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async toggleColumn(key) {
+    await this.page.locator(this.selectors.columnsBtn).click();
+    const item = this.page.locator(this.selectors.column(key));
+    await item.waitFor({ state: 'visible' });
+    await item.click();
+    await this.page.keyboard.press('Escape');
   }
 }

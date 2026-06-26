@@ -11,10 +11,13 @@ import { useViewTransition } from '@/hooks/useViewTransition';
 import { exploreMcpBreadcrumb } from '@/routes/mcps/explore/-shared/breadcrumbs';
 import { monogram, tintIndex } from '@/routes/models/explore/-shared/catalog-format';
 import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';
+import { ColumnPicker, useHiddenColumns } from '@/routes/models/explore/-shared/ColumnPicker';
+import { ResetButton } from '@/routes/models/explore/-shared/ResetButton';
 
 import type { ExploreMcpSearch } from '../index';
 
 import { ExploreMcpRail, ExploreMcpRailHeader } from './ExploreMcpRail';
+import { type McpFacetsState, ExploreMcpSidebar, hasActiveMcpFacets } from './ExploreMcpSidebar';
 import { McpServerLogo } from './McpServerLogo';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
@@ -65,9 +68,20 @@ const COLUMNS: CatalogColumn<McpServerSummary, McpSort>[] = [
     key: 'auth',
     label: 'AUTH',
     width: '110px',
+    optional: true,
     cell: (s) => <span className="cat-cell-text mono">{s.auth_type}</span>,
   },
 ];
+
+type McpAuthFacet = NonNullable<McpFacetsState['auth']>[number];
+
+function searchToFacets(search: ExploreMcpSearch): McpFacetsState {
+  return {
+    category: search.category,
+    auth: search.auth as McpAuthFacet[] | undefined,
+    verified: search.verified,
+  };
+}
 
 export function ExploreMcpScreen() {
   useListKeyNav();
@@ -80,19 +94,37 @@ export function ExploreMcpScreen() {
   const page = search.page ?? 1;
   const committedSearch = search.q ?? '';
   const selectedKey = search.select ?? null;
+  const facets = useMemo(() => searchToFacets(search), [search]);
 
   const [searchInput, setSearchInput] = useState(committedSearch);
+  const { hidden: hiddenColumns, toggle: toggleColumn, visibleColumns: filterVisible } = useHiddenColumns();
   useEffect(() => {
     setSearchInput(committedSearch);
   }, [committedSearch]);
 
+  const visibleColumns = useMemo(() => filterVisible(COLUMNS), [filterVisible]);
+
+  // category + auth are server-side params (repeatable OR). verified has no API param — filtered
+  // client-side below.
   const params = useMemo(
-    () => ({ q: committedSearch || undefined, sort, order, page, page_size: PAGE_SIZE }),
-    [committedSearch, order, page]
+    () => ({
+      q: committedSearch || undefined,
+      sort,
+      order,
+      page,
+      page_size: PAGE_SIZE,
+      ...(facets.category?.length ? { category: facets.category } : {}),
+      ...(facets.auth?.length ? { auth: facets.auth } : {}),
+    }),
+    [committedSearch, order, page, facets.category, facets.auth]
   );
   const { data, isLoading, error } = useMcpServers(params);
 
-  const rows = data?.items ?? [];
+  // verified is a client-side cut on the current page (the API has no `verified` query param).
+  const rows = useMemo(() => {
+    const items = data?.items ?? [];
+    return facets.verified ? items.filter((s) => s.verified) : items;
+  }, [data?.items, facets.verified]);
   const total = data?.total ?? rows.length;
 
   const commitSearch = useCallback(
@@ -145,6 +177,46 @@ export function ExploreMcpScreen() {
     [navigate]
   );
 
+  // Carry the non-facet slice (q/sort/order/select) across a facet change; `page` is omitted so a
+  // facet change resets to page 1.
+  const nonFacetSlice = useCallback((prev: ExploreMcpSearch): ExploreMcpSearch => {
+    const base: ExploreMcpSearch = {};
+    if (prev.q) base.q = prev.q;
+    if (prev.sort) base.sort = prev.sort;
+    if (prev.order) base.order = prev.order;
+    if (prev.select) base.select = prev.select;
+    return base;
+  }, []);
+  const onFacetsChange = useCallback(
+    (next: McpFacetsState) =>
+      navigate({
+        search: (prev: ExploreMcpSearch) => ({
+          ...nonFacetSlice(prev),
+          ...(next.category?.length ? { category: next.category } : {}),
+          ...(next.auth?.length ? { auth: next.auth } : {}),
+          ...(next.verified ? { verified: true } : {}),
+        }),
+      }),
+    [navigate, nonFacetSlice]
+  );
+  const onClearAllFacets = useCallback(
+    () => navigate({ search: (prev: ExploreMcpSearch) => nonFacetSlice(prev) }),
+    [navigate, nonFacetSlice]
+  );
+  // Toolbar reset, three states in precedence order: clear filters → clear query → nothing (inert).
+  const hasFilters = hasActiveMcpFacets(facets);
+  const hasQuery = committedSearch !== '';
+  const resetMode: 'filters' | 'query' | 'none' = hasFilters ? 'filters' : hasQuery ? 'query' : 'none';
+  const onReset = useCallback(() => {
+    if (resetMode === 'filters') onClearAllFacets();
+    else if (resetMode === 'query') commitSearch('');
+  }, [resetMode, onClearAllFacets, commitSearch]);
+
+  const sidebar = useMemo(
+    () => <ExploreMcpSidebar facets={facets} facetValues={data?.facets} onFacetsChange={onFacetsChange} />,
+    [facets, data?.facets, onFacetsChange]
+  );
+
   const withViewTransition = useViewTransition();
   // Selection lives in the URL via replace (no history entries) — Back/Forward skips past selections.
   // The rail auto-opens/closes from its content presence.
@@ -181,6 +253,7 @@ export function ExploreMcpScreen() {
 
   useShellChrome({
     breadcrumb: useMemo(() => BREADCRUMB, []),
+    sidebar,
     rail,
     railHeader,
     railDefaultOpen: false,
@@ -207,6 +280,10 @@ export function ExploreMcpScreen() {
               kbd="⌘K"
             />
           </div>
+          <ResetButton mode={resetMode} onReset={onReset} testId="cat-mcp-clear-all" />
+          <div className="cat-sortbar">
+            <ColumnPicker columns={COLUMNS} hidden={hiddenColumns} onToggle={toggleColumn} testIdPrefix="cat-mcp" />
+          </div>
         </div>
       </div>
 
@@ -227,7 +304,7 @@ export function ExploreMcpScreen() {
           </div>
         ) : (
           <CatalogTable<McpServerSummary, McpSort>
-            columns={COLUMNS}
+            columns={visibleColumns}
             rows={rows}
             rowKey={serverKey}
             rowTestId={(s) => `cat-mcp-row-${s.id}`}

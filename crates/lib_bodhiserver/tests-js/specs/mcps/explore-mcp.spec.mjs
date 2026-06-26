@@ -76,5 +76,32 @@ test.describe('Explore · MCP Servers', () => {
       await expect(mcpPage.page.locator(mcpPage.selectors.rail('srv-0'))).toHaveCount(0);
       expect(mcpPage.searchParams().has('select')).toBe(false);
     });
+
+    await test.step('Auth facet (data-driven) filters server-side; reset clears it', async () => {
+      await expect(mcpPage.page.locator(mcpPage.selectors.facets)).toBeVisible();
+      // Category rail is hidden (facets.category is empty); the auth rail shows the single http chip.
+      await expect(mcpPage.page.locator(mcpPage.selectors.auth('http'))).toBeVisible();
+      await mcpPage.clickAuth('http');
+      await expect(mcpPage.page.locator(mcpPage.selectors.auth('http'))).toHaveAttribute('aria-pressed', 'true');
+      // Reset is in 'filters' state and clears the auth filter back to the inert 'none' state.
+      await mcpPage.clearAllFilters();
+      await expect(mcpPage.page.locator(mcpPage.selectors.auth('http'))).toHaveAttribute('aria-pressed', 'false');
+      await expect(mcpPage.page.locator(mcpPage.selectors.clearAll)).toHaveAttribute('data-test-state', 'none');
+    });
+
+    await test.step('Verified facet filters client-side (no verified API param)', async () => {
+      // No stub server is verified → Verified yields an empty list.
+      await mcpPage.toggleVerified();
+      await expect(mcpPage.page.locator(mcpPage.selectors.verified)).toHaveAttribute('aria-pressed', 'true');
+      await expect(mcpPage.page.locator(mcpPage.selectors.empty)).toBeVisible();
+      await mcpPage.clearAllFilters();
+    });
+
+    await test.step('Column picker hides the Auth column', async () => {
+      await expect(mcpPage.page.locator(mcpPage.selectors.sort('name'))).toBeVisible();
+      await mcpPage.toggleColumn('auth');
+      // The Auth header is gone after hiding the optional column.
+      await expect(mcpPage.page.locator('[data-testid="cat-listhead"]')).not.toContainText('AUTH');
+    });
   });
 });

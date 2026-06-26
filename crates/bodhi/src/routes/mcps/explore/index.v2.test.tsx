@@ -29,9 +29,10 @@ beforeEach(() => {
 });
 
 function SlotsConsumer() {
-  const { rail, railHeader } = useShellSlots();
+  const { sidebar, rail, railHeader } = useShellSlots();
   return (
     <>
+      <div data-testid="harness-sidebar">{sidebar}</div>
       <div data-testid="harness-rail-header">{railHeader}</div>
       <div data-testid="harness-rail">{rail}</div>
     </>
@@ -164,5 +165,84 @@ describe('ExploreMcpScreen (Phase 2 — selection + rail)', () => {
     });
     await waitFor(() => expect(router.state.location.search).not.toMatchObject({ select: 'notion' }));
     expect(screen.queryByTestId('cat-mcp-detail-notion')).not.toBeInTheDocument();
+  });
+});
+
+describe('ExploreMcpScreen (Phase 3 — facets + reset + columns)', () => {
+  it('renders Auth facet data-driven; hides Category when the facet is empty (v1)', async () => {
+    server.use(...mockMcpServers()); // default facets: { category: [], auth: ['http'] }
+    await renderScreen();
+
+    const sidebar = screen.getByTestId('harness-sidebar');
+    expect(within(sidebar).getByTestId('cat-mcp-auth-http')).toBeInTheDocument();
+    // Category group is hidden while facets.category is empty.
+    expect(within(sidebar).queryByTestId('cat-mcp-category-Productivity')).not.toBeInTheDocument();
+    // Verified pill is always present.
+    expect(within(sidebar).getByTestId('cat-mcp-verified')).toBeInTheDocument();
+  });
+
+  it('shows Category chips data-driven when the facet is populated', async () => {
+    server.use(
+      ...mockMcpServers({
+        response: createMcpServersListResponse({ facets: { category: ['Productivity', 'Dev Tools'], auth: ['http'] } }),
+      })
+    );
+    await renderScreen();
+    const sidebar = screen.getByTestId('harness-sidebar');
+    expect(within(sidebar).getByTestId('cat-mcp-category-Productivity')).toBeInTheDocument();
+    expect(within(sidebar).getByTestId('cat-mcp-category-Dev Tools')).toBeInTheDocument();
+  });
+
+  it('clicking the Auth facet sends ?auth server-side; reset clears it', async () => {
+    const seen: URL[] = [];
+    server.use(...mockMcpServers({ onRequest: ({ url }) => seen.push(url) }));
+    const router = await renderScreen();
+
+    await act(async () => {
+      await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('cat-mcp-auth-http'));
+    });
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ auth: ['http'] }));
+    await waitFor(() => expect(seen.some((u) => u.searchParams.getAll('auth').includes('http'))).toBe(true));
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('cat-mcp-clear-all'));
+    });
+    await waitFor(() => expect(router.state.location.search).not.toMatchObject({ auth: ['http'] }));
+    expect(screen.getByTestId('cat-mcp-clear-all')).toHaveAttribute('data-test-state', 'none');
+  });
+
+  it('Verified filters client-side (no verified API param)', async () => {
+    const items = [
+      createMcpServerSummary({ id: 'a', slug: 'a', name: 'Alpha', verified: false }),
+      createMcpServerSummary({ id: 'b', slug: 'b', name: 'Bravo', verified: true }),
+    ];
+    const seen: URL[] = [];
+    server.use(
+      ...mockMcpServers({ response: createMcpServersListResponse({ items }), onRequest: ({ url }) => seen.push(url) })
+    );
+    await renderScreen();
+
+    expect(within(screen.getByTestId('cat-mcp-list')).getAllByRole('option').length).toBe(2);
+    await act(async () => {
+      await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('cat-mcp-verified'));
+    });
+    // Only the verified row remains; the request carried NO `verified` param (client-side cut).
+    await waitFor(() => expect(within(screen.getByTestId('cat-mcp-list')).getAllByRole('option').length).toBe(1));
+    expect(screen.getByTestId('cat-mcp-row-b')).toBeInTheDocument();
+    expect(seen.every((u) => !u.searchParams.has('verified'))).toBe(true);
+  });
+
+  it('column picker hides the Auth column', async () => {
+    server.use(...mockMcpServers());
+    await renderScreen();
+    expect(screen.getByTestId('cat-listhead')).toHaveTextContent('AUTH');
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('cat-mcp-columns'));
+    });
+    await act(async () => {
+      await userEvent.click(await screen.findByTestId('cat-mcp-col-auth'));
+    });
+    await waitFor(() => expect(screen.getByTestId('cat-listhead')).not.toHaveTextContent('AUTH'));
   });
 });
