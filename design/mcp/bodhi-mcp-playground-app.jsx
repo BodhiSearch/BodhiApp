@@ -3,54 +3,9 @@
    bodhi-mcp-playground-app.jsx  (load after bodhi-app-shell.jsx)
 ═══════════════════════════════════════════════════ */
 const { useState, useEffect, useRef, useMemo } = React;
-const Ic = ShellIcon;
 
-const SERVER_TOOLS = {
-  deepwiki: [
-    { name: 'read_wiki_structure', desc: 'Get a list of documentation topics for a GitHub repository.',
-      params: [{ name: 'repoName', type: 'string', required: true, desc: 'GitHub repository in owner/repo format (e.g. "facebook/react")', placeholder: 'facebook/react' }],
-      mockResponse: JSON.stringify([{ type: 'text', text: 'Available pages for facebook/react:\n\n- 1 Overview\n- 2 Architecture\n- 3 Reconciler\n- 4 Hooks\n- 5 Concurrent Mode\n- 6 Server Components\n- 7 Testing' }], null, 2) },
-    { name: 'read_wiki_contents', desc: 'View documentation about a GitHub repository or a specific topic.',
-      params: [{ name: 'repoName', type: 'string', required: true, desc: 'GitHub repository in owner/repo format', placeholder: 'facebook/react' }, { name: 'topic', type: 'string', required: false, desc: 'Specific topic page to read', placeholder: 'Hooks' }],
-      mockResponse: JSON.stringify({ type: 'text', text: 'React Hooks allow you to use state and other React features without writing a class component...' }, null, 2) },
-    { name: 'ask_question', desc: 'Ask any question about a GitHub repository.',
-      params: [{ name: 'repoName', type: 'string', required: true, desc: 'GitHub repository in owner/repo format', placeholder: 'facebook/react' }, { name: 'question', type: 'string', required: true, desc: 'Your question about the repository', placeholder: 'How does the reconciler work?' }],
-      mockResponse: JSON.stringify({ type: 'text', text: 'The React reconciler determines what needs to change in the UI by comparing the current virtual DOM tree with the new one (diffing). It uses a heuristic O(n) algorithm...' }, null, 2) },
-  ],
-  notion: [
-    { name: 'notion-search', desc: 'Perform a search across Notion — "internal" Search api.',
-      params: [{ name: 'query', type: 'string', required: true, desc: 'Search query string', placeholder: 'Project notes' }, { name: 'filter', type: 'string', required: false, desc: 'Filter by "page" or "database"', placeholder: 'page' }],
-      mockResponse: JSON.stringify({ results: [{ id: 'abc123', title: 'Q1 Project Notes', type: 'page' }, { id: 'def456', title: 'Meeting Notes', type: 'page' }] }, null, 2) },
-    { name: 'notion-fetch', desc: 'Retrieves details about a Notion entity (page, database, block).',
-      params: [{ name: 'pageId', type: 'string', required: true, desc: 'The Notion page or block ID', placeholder: 'abc123def456' }],
-      mockResponse: JSON.stringify({ id: 'abc123', object: 'page', properties: { title: { title: [{ text: { content: 'My Page' } }] } } }, null, 2) },
-    { name: 'notion-create-pages', desc: 'Overview: creates one or more Notion pages with given properties.',
-      params: [{ name: 'parent_id', type: 'string', required: true, desc: 'Parent page or database ID', placeholder: 'abc123' }, { name: 'title', type: 'string', required: true, desc: 'Page title', placeholder: 'My new page' }, { name: 'content', type: 'string', required: false, desc: 'Initial page content in markdown', placeholder: '## Hello' }],
-      mockResponse: JSON.stringify({ id: 'new-page-id', object: 'page', created_time: '2026-05-06T14:00:00Z', url: 'https://notion.so/My-new-page' }, null, 2) },
-    { name: 'notion-update-page', desc: 'Overview: update a Notion page properties.',
-      params: [{ name: 'page_id', type: 'string', required: true, desc: 'The Notion page ID to update', placeholder: 'abc123' }, { name: 'title', type: 'string', required: false, desc: 'New page title', placeholder: 'Updated title' }],
-      mockResponse: JSON.stringify({ id: 'abc123', object: 'page', last_edited_time: '2026-05-06T15:00:00Z' }, null, 2) },
-    { name: 'notion-delete', desc: 'Archive or permanently delete a Notion block or page.',
-      params: [{ name: 'block_id', type: 'string', required: true, desc: 'The Notion block or page ID to delete', placeholder: 'abc123' }],
-      mockResponse: JSON.stringify({ id: 'abc123', object: 'page', archived: true }, null, 2) },
-  ],
-  exa: [
-    { name: 'exa-search', desc: 'Perform a semantic web search using Exa.',
-      params: [{ name: 'query', type: 'string', required: true, desc: 'Search query', placeholder: 'latest AI model benchmarks 2026' }, { name: 'num_results', type: 'number', required: false, desc: 'Number of results to return (default 10)', placeholder: '10' }, { name: 'type', type: 'string', required: false, desc: '"keyword" or "neural" (default "neural")', placeholder: 'neural' }],
-      mockResponse: JSON.stringify({ results: [{ url: 'https://arxiv.org/abs/2405.0001', title: 'GPT-5 Benchmark Results', score: 0.97 }, { url: 'https://huggingface.co/blog/evals', title: 'Open LLM Leaderboard 2026', score: 0.94 }] }, null, 2) },
-    { name: 'exa-get-contents', desc: 'Retrieve contents of specific URLs.',
-      params: [{ name: 'urls', type: 'string', required: true, desc: 'Comma-separated list of URLs to fetch', placeholder: 'https://example.com' }],
-      mockResponse: JSON.stringify([{ url: 'https://example.com', text: 'Example Domain\nThis domain is for use in illustrative examples...' }], null, 2) },
-    { name: 'exa-find-similar', desc: 'Find pages similar to a given URL.',
-      params: [{ name: 'url', type: 'string', required: true, desc: 'URL to find similar pages for', placeholder: 'https://arxiv.org/abs/2405.0001' }, { name: 'num_results', type: 'number', required: false, desc: 'Number of results', placeholder: '5' }],
-      mockResponse: JSON.stringify({ results: [{ url: 'https://arxiv.org/abs/2405.0002', title: 'Related Paper', score: 0.91 }] }, null, 2) },
-  ],
-};
-const DEFAULT_TOOLS = [
-  { name: 'list_tools', desc: 'List all available tools on this MCP server.', params: [], mockResponse: JSON.stringify({ tools: ['list_tools', 'ping', 'echo'] }, null, 2) },
-  { name: 'ping', desc: 'Check connectivity to the MCP server.', params: [], mockResponse: JSON.stringify({ status: 'ok', latency_ms: 42 }, null, 2) },
-  { name: 'echo', desc: 'Echo back the provided message.', params: [{ name: 'message', type: 'string', required: true, desc: 'Message to echo back', placeholder: 'Hello, world!' }], mockResponse: JSON.stringify({ echo: 'Hello, world!' }, null, 2) },
-];
+/* Tool specs (SERVER_TOOLS / DEFAULT_TOOLS) and the toolsFor(id) lookup
+   come from mcp-catalog.jsx — the single source of truth loaded before this. */
 
 function escapeHtml(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function syntaxHighlight(json) {
@@ -238,7 +193,7 @@ function PlaygroundApp() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const instanceName = params.get('name') || 'my-instance';
   const serverId = params.get('server') || 'deepwiki';
-  const tools = SERVER_TOOLS[serverId] || DEFAULT_TOOLS;
+  const tools = toolsFor(serverId);
 
   const [status, setStatus] = useState('connecting');
   const [activeTool, setActiveTool] = useState(null);

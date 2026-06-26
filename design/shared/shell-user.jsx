@@ -216,7 +216,7 @@ function ShellFooter({ user, collapsed }) {
           </div>
         )}
 
-        <div className="shell-um-items">
+        <div className={'shell-um-items' + (multi ? '' : ' shell-um-items-flush')}>
           <button className="shell-um-item shell-um-logout" onClick={logout}>
             <ShellIcon name="log-out" size={14} />
             <span className="shell-um-label">Log out</span>

@@ -116,6 +116,7 @@
 .shell-um-org-chev svg { width: 14px; height: 14px; }
 
 .shell-um-items { padding-top: 4px; margin-top: 4px; border-top: 1px solid hsl(var(--border)); }
+.shell-um-items-flush { padding-top: 0; margin-top: 0; border-top: none; }
 .shell-um-item {
   width: 100%; display: flex; align-items: center; gap: 9px;
   padding: 8px 9px; border-radius: 8px; border: none; background: none;

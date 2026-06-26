@@ -1,0 +1,38 @@
+/* ═══════════════════════════════════════════════════════════════
+   BODHI MCP — SHARED PRIMITIVES  ·  every MCP page links this
+   mcp/mcp-common.css   (load AFTER bodhi-app-shell.css, BEFORE the
+   page-specific MCP sheet)
+
+   The bits that used to be copy-pasted across the per-page MCP sheets:
+   status/danger tokens, the auth badges, the icon button, and ONE spin
+   keyframe (was mcpspin / nsspin / pgspin in three files).
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Status + danger tokens (not in the shell palette) ── */
+:root {
+  --c-muted-bg: hsl(var(--muted)); --c-muted-bd: hsl(var(--border)); --c-muted-text: hsl(var(--muted-foreground));
+  --c-connected-bg: rgba(46,188,64,.10); --c-connected-bd: rgba(46,188,64,.25); --c-connected-text: #2A9B36;
+  --c-pending-bg:   rgba(250,138,46,.10); --c-pending-bd:   rgba(250,138,46,.25); --c-pending-text:   #B4500A;
+  --c-danger-text:  #C93030; --c-danger-bg: rgba(201,48,48,.08); --c-danger-bd: rgba(201,48,48,.25);
+}
+[data-theme="dark"] {
+  --c-connected-bg: rgba(139,217,99,.12); --c-connected-bd: rgba(139,217,99,.25); --c-connected-text: #8BD963;
+  --c-pending-bg:   rgba(250,138,46,.14); --c-pending-bd:   rgba(250,138,46,.28); --c-pending-text:   #FFAB5C;
+  --c-danger-text:  #F87171; --c-danger-bg: rgba(248,113,113,.12); --c-danger-bd: rgba(248,113,113,.28);
+}
+
+/* ── Shared spin keyframe ── */
+@keyframes mcp-spin { to { transform: rotate(360deg); } }
+
+/* ── Auth badges (OAuth / API Key / Public) ──
+   Public is neutral-grey so it never reads as "connected" green on a row. */
+.auth-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 5px; border: 1px solid; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.auth-badge svg { width: 10px; height: 10px; }
+.auth-oauth { background: var(--c-indigo-bg);  border-color: var(--c-indigo-bd);  color: var(--c-indigo-text); }
+.auth-key   { background: var(--c-saffron-bg); border-color: var(--c-saffron-bd); color: var(--c-saffron-text); }
+.auth-none  { background: var(--c-muted-bg);   border-color: var(--c-muted-bd);   color: var(--c-muted-text); }
+
+/* ── Icon button (header actions, toolbars) ── */
+.icon-btn { width: 30px; height: 30px; border-radius: 7px; border: 1px solid hsl(var(--border)); background: transparent; display: flex; align-items: center; justify-content: center; color: hsl(var(--muted-foreground)); transition: background 120ms, color 120ms; flex: none; }
+.icon-btn svg { width: 14px; height: 14px; }
+.icon-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }

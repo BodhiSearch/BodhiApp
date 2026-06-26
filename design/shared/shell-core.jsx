@@ -32,8 +32,9 @@ const SHELL_NAV = (typeof window !== 'undefined' && window.BSB_NAV) || [
     id: 'mcp', label: 'MCP', icon: 'plug', href: 'Bodhi MCP My MCPs.html',
     subPages: [
       { id: 'my-mcps',      label: 'My MCPs',      icon: 'layers',      href: 'Bodhi MCP My MCPs.html' },
-      { id: 'explore',      label: 'Explore',      icon: 'compass',     href: 'Bodhi MCP Discover v2.html' },
-      { id: 'new-mcp',      label: 'New Instance', icon: 'plus-circle', href: 'Bodhi MCP New Instance.html' },
+      { id: 'explore',      label: 'Explore MCPs',      icon: 'compass',     href: 'Bodhi MCP Discover v2.html' },
+      { id: 'new-server',   label: 'New MCP Server',   icon: 'server-cog',  href: 'Bodhi MCP New Server.html' },
+      { id: 'new-mcp',      label: 'New MCP Instance', icon: 'plus-circle', href: 'Bodhi MCP New Instance.html' },
     ],
   },
   {

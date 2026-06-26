@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bodhi · New MCP Instance</title>
+<title>Bodhi · Configure MCP Server</title>
 <link rel="stylesheet" href="shared/colors_and_type.css">
   <script src="shared/bodhi-theme.js"></script>
 <link rel="stylesheet" href="shared/bodhi-app-shell.css">
 <link rel="stylesheet" href="mcp/mcp-common.css">
 <link rel="stylesheet" href="shared/bodhi-form.css">
-<link rel="stylesheet" href="mcp/bodhi-mcp-new-instance.css">
+<link rel="stylesheet" href="mcp/bodhi-mcp-new-server.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -23,8 +23,8 @@
 <script type="text/babel" src="shared/shell-user.jsx"></script>
 <script type="text/babel" src="shared/shell-app.jsx"></script>
 <script type="text/babel" src="mcp/mcp-catalog.jsx"></script>
-<script type="text/babel" src="shared/tweaks-panel.jsx"></script>
-<script type="text/babel" src="mcp/bodhi-mcp-new-instance-app.jsx"></script>
+<script>window.MCP_SERVER_PAGE = 'view';</script>
+<script type="text/babel" src="mcp/bodhi-mcp-server-app.jsx"></script>
   <script src="shared/bodhi-select.js"></script>
 </body>
 </html>
