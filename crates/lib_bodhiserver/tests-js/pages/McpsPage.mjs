@@ -9,19 +9,19 @@ export class McpsPage extends BasePage {
   static MCP_CONNECTION_TIMEOUT = McpFixtures.MCP_CONNECTION_TIMEOUT;
 
   selectors = {
-    // Management tabs
-    managementTabs: '[data-testid="mcp-management-tabs"]',
-    tabMcps: '[data-testid="mcp-tab-mcps"]',
-    tabServers: '[data-testid="mcp-tab-mcp-servers"]',
+    // V2 My MCPs (server-centric list + detail rail). The old My-MCPs/My-MCP-Servers tab pages and
+    // their flat instance/server rows were removed; servers list here, instances live in the rail.
+    myMcpsContent: '[data-testid="my-mcps-content"]',
+    myMcpsList: '[data-testid="my-mcps-list"]',
+    serverRowV2: (id) => `[data-testid="my-mcps-row-${id}"]`,
+    railConfigureServer: '[data-testid="my-mcps-configure-server"]',
+    railInstance: (id) => `[data-testid="my-mcps-instance-${id}"]`,
+    railInstancePlay: (id) => `[data-testid="my-mcps-instance-play-${id}"]`,
+    railInstanceEdit: (id) => `[data-testid="my-mcps-instance-edit-${id}"]`,
+    railInstanceDelete: (id) => `[data-testid="my-mcps-instance-delete-${id}"]`,
+    railDeleteDialog: '[data-testid="my-mcps-delete-dialog"]',
 
-    // MCP Servers list page
-    serversPage: '[data-testid="mcp-servers-page"]',
-    serverNewButton: '[data-testid="mcp-server-new-button"]',
-    serverRow: (id) => `[data-testid="server-row-${id}"]`,
-    serverRowByName: (name) => `[data-test-server-name="${name}"]`,
-    serverToggle: (id) => `[data-testid="server-toggle-${id}"]`,
-    serverEditButton: (id) => `[data-testid="server-edit-button-${id}"]`,
-    serverViewButton: (id) => `[data-testid="server-view-button-${id}"]`,
+    // MCP Server new/edit page (forms unchanged)
 
     // Server view page - auth config inline form
     addAuthConfigButton: '[data-testid="add-auth-config-button"]',
@@ -48,16 +48,8 @@ export class McpsPage extends BasePage {
     serverEnabledSwitch: '[data-testid="mcp-server-enabled-switch"]',
     serverSaveButton: '[data-testid="mcp-server-save-button"]',
 
-    // MCPs list page
-    pageContainer: '[data-testid="mcps-page"]',
-    pageLoading: '[data-testid="mcps-page-loading"]',
-    tableContainer: '[data-testid="mcps-table-container"]',
-    newButton: '[data-testid="mcp-new-button"]',
-    mcpRow: (id) => `[data-testid="mcp-row-${id}"]`,
-    mcpRowByName: (name) => `[data-test-mcp-name="${name}"]`,
-    mcpStatus: (id) => `[data-testid="mcp-status-${id}"]`,
-    mcpEditButton: (id) => `[data-testid="mcp-edit-button-${id}"]`,
-    mcpDeleteButton: (id) => `[data-testid="mcp-delete-button-${id}"]`,
+    // V2 My MCPs list page (server-centric)
+    pageContainer: '[data-testid="my-mcps-content"]',
 
     // New/Edit MCP instance page
     newPageContainer: '[data-testid="new-mcp-page"]',
@@ -95,7 +87,6 @@ export class McpsPage extends BasePage {
     oauthConnectedInfo: '[data-testid="oauth-connected-info"]',
 
     // Playground page
-    mcpPlaygroundButton: (id) => `[data-testid="mcp-playground-button-${id}"]`,
     playgroundPage: '[data-testid="mcp-playground-page"]',
     playgroundLoading: '[data-testid="mcp-playground-loading"]',
     playgroundToolSidebar: '[data-testid="mcp-playground-tool-sidebar"]',
@@ -119,20 +110,10 @@ export class McpsPage extends BasePage {
     playgroundBackButton: 'a.shell-bc-seg[href="/ui/mcps/"]',
   };
 
-  // ========== MCP Servers Page Methods ==========
-
-  async navigateToServersList() {
-    await this.navigate('/ui/mcps/servers/');
-    await this.waitForSPAReady();
-  }
-
-  async expectServersListPage() {
-    await this.page.waitForURL(/\/ui\/mcps\/servers/);
-    await this.waitForSPAReady();
-  }
+  // ========== MCP Servers Methods (V2: registered via the form; surfaced in the My MCPs list) ==========
 
   async clickNewServer() {
-    await this.page.click(this.selectors.serverNewButton);
+    await this.navigate('/ui/mcps/servers/new/');
     await this.page.waitForURL(/\/ui\/mcps\/servers\/new/);
     await this.waitForSPAReady();
   }
@@ -154,14 +135,13 @@ export class McpsPage extends BasePage {
   }
 
   async clickServerSave() {
+    // V2: after save the server form returns to the My MCPs list (not a separate servers list).
     await this.page.click(this.selectors.serverSaveButton);
-    await this.page.waitForURL(/\/ui\/mcps\/servers(?!\/new)/);
+    await this.page.waitForURL(/\/ui\/mcps\/?(\?|$)/);
     await this.waitForSPAReady();
   }
 
   async createMcpServer(url, name, description = '') {
-    await this.navigateToServersList();
-    await this.expectServersListPage();
     await this.clickNewServer();
     await this.expectNewServerPage();
     await this.fillServerName(name);
@@ -170,19 +150,32 @@ export class McpsPage extends BasePage {
       await this.fillServerDescription(description);
     }
     await this.clickServerSave();
-    await this.expectServersListPage();
+    await this.expectMcpsListPage();
   }
 
   async getServerUuidByName(name) {
-    const row = this.page.locator(this.selectors.serverRowByName(name)).first();
-    const testId = await row.getAttribute('data-testid');
-    return testId?.replace('server-row-', '');
+    const row = this.page.locator(`[data-test-server-name="${name}"]`).first();
+    await expect(row).toBeVisible();
+    return await row.getAttribute('data-test-uuid');
   }
 
-  // ========== Server View Page — Inline Auth Config Form Methods ==========
+  // Open a server's detail rail by name (My Instances + Connect with live here in V2).
+  async openServerRail(name) {
+    await this.page.locator(`[data-test-server-name="${name}"]`).first().locator('.cat-name').first().click();
+    await this.page.waitForSelector('[data-testid^="my-mcps-detail-"]');
+  }
+
+  // ========== Server View / Configure Page (admin auth-config management) ==========
+
+  async openConfigureServer(name) {
+    await this.openServerRail(name);
+    await this.page.click(this.selectors.railConfigureServer);
+    await this.page.waitForURL(/\/ui\/mcps\/servers\/view/);
+    await this.waitForSPAReady();
+  }
 
   async clickViewServerById(id) {
-    await this.page.click(this.selectors.serverViewButton(id));
+    await this.navigate(`/ui/mcps/servers/view/?id=${id}`);
     await this.page.waitForURL(/\/ui\/mcps\/servers\/view/);
     await this.waitForSPAReady();
   }
@@ -313,32 +306,71 @@ export class McpsPage extends BasePage {
   }
 
   async clickNewMcp() {
-    await this.page.click(this.selectors.newButton);
+    // V2: there is no per-list "New" button; New Instance is the shell nav sub-page.
+    await this.navigate('/ui/mcps/new/');
     await this.page.waitForURL(/\/ui\/mcps\/new/);
     await this.waitForSPAReady();
   }
 
+  // V2: instances live in a server's detail rail, not a flat list. `ensureInstanceVisible` opens the
+  // owning server's rail (scanning server rows if no rail is open) so name-keyed lookups keep working
+  // for specs that don't track which server an instance belongs to.
+  async ensureInstanceVisible(instanceName) {
+    const inst = this.page.locator(`[data-test-instance-name="${instanceName}"]`).first();
+    if (await inst.isVisible().catch(() => false)) return inst;
+    const serverRows = this.page.locator('[data-test-server-name]');
+    await expect(serverRows.first()).toBeVisible();
+    const count = await serverRows.count();
+    for (let i = 0; i < count; i++) {
+      // Click the SERVER name cell (not the leftmost LinkRow target) so the row's onSelect fires.
+      await serverRows.nth(i).locator('.cat-name').first().click();
+      await this.page.waitForSelector('[data-testid^="my-mcps-detail-"]');
+      if (await inst.isVisible({ timeout: 2000 }).catch(() => false)) return inst;
+    }
+    await expect(inst).toBeVisible();
+    return inst;
+  }
+
   async getMcpRowByName(name) {
-    return this.page.locator(this.selectors.mcpRowByName(name)).first();
+    return await this.ensureInstanceVisible(name);
   }
 
   async getMcpUuidByName(name) {
-    const row = this.page.locator(this.selectors.mcpRowByName(name)).first();
+    const row = await this.ensureInstanceVisible(name);
     return await row.getAttribute('data-test-uuid');
   }
 
+  // Open whichever server rail contains the instance row for `id` (no-op if already visible).
+  async ensureInstanceRowVisible(id) {
+    const row = this.page.locator(this.selectors.railInstance(id));
+    if (await row.isVisible().catch(() => false)) return;
+    const serverRows = this.page.locator('[data-test-server-name]');
+    await expect(serverRows.first()).toBeVisible();
+    const count = await serverRows.count();
+    for (let i = 0; i < count; i++) {
+      await serverRows.nth(i).locator('.cat-name').first().click();
+      await this.page.waitForSelector('[data-testid^="my-mcps-detail-"]');
+      if (await row.isVisible({ timeout: 2000 }).catch(() => false)) return;
+    }
+    await expect(row).toBeVisible();
+  }
+
   async clickEditById(id) {
-    await this.page.click(this.selectors.mcpEditButton(id));
+    await this.ensureInstanceRowVisible(id);
+    await this.page.click(this.selectors.railInstanceEdit(id));
     await this.page.waitForURL(/\/ui\/mcps\/new\/?\?id=/);
     await this.waitForSPAReady();
   }
 
   async clickDeleteById(id) {
-    await this.page.click(this.selectors.mcpDeleteButton(id));
+    await this.ensureInstanceRowVisible(id);
+    await this.page.click(this.selectors.railInstanceDelete(id));
   }
 
   async confirmDelete() {
-    await this.page.click('button:has-text("Delete")');
+    await expect(this.page.locator(this.selectors.railDeleteDialog)).toBeVisible();
+    await this.page.locator(this.selectors.railDeleteDialog).getByRole('button', { name: /^Delete$/ }).click();
+    await expect(this.page.locator(this.selectors.railDeleteDialog)).not.toBeVisible();
   }
 
   // ========== New/Edit MCP Instance Methods ==========
@@ -533,7 +565,9 @@ export class McpsPage extends BasePage {
   // ========== Playground Page Methods ==========
 
   async clickPlaygroundById(id) {
-    await this.page.click(this.selectors.mcpPlaygroundButton(id));
+    // V2: the play action is on the instance row inside the server rail; open it if needed.
+    await this.ensureInstanceRowVisible(id);
+    await this.page.click(this.selectors.railInstancePlay(id));
     await this.page.waitForURL(/\/ui\/mcps\/playground\/?\?id=/);
     await this.waitForSPAReady();
   }

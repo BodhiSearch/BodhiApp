@@ -16,7 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateMcpServer, useStandaloneDynamicRegister, type CreateMcpAuthConfigRequest } from '@/hooks/mcps';
 import { toast } from '@/hooks/use-toast';
-import { ROUTE_MCPS, ROUTE_MCP_SERVERS } from '@/lib/constants';
+import { ROUTE_MCPS } from '@/lib/constants';
 import { validateMcpServerForm } from '@/lib/mcpFormValidation';
 import { extractSecondLevelDomain } from '@/lib/urlUtils';
 import { AuthConfigForm } from '@/routes/mcps/servers/-components/AuthConfigForm';
@@ -68,7 +68,7 @@ function NewMcpServerContent() {
   const createMutation = useCreateMcpServer({
     onSuccess: () => {
       toast({ title: 'MCP server created' });
-      navigate({ to: ROUTE_MCP_SERVERS });
+      navigate({ to: ROUTE_MCPS });
     },
     onError: (message) => {
       toast({ title: 'Failed to create MCP server', description: message, variant: 'destructive' });
@@ -288,7 +288,7 @@ function NewMcpServerContent() {
             </div>
 
             <div className="flex gap-2 justify-end">
-              <Button type="button" variant="outline" onClick={() => navigate({ to: ROUTE_MCP_SERVERS })}>
+              <Button type="button" variant="outline" onClick={() => navigate({ to: ROUTE_MCPS })}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isSaving} data-testid="mcp-server-save-button">

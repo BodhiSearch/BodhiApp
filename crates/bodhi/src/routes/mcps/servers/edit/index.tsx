@@ -263,7 +263,7 @@ function EditMcpServerContent() {
             </div>
 
             <div className="flex gap-2 justify-end">
-              <Button type="button" variant="outline" onClick={() => navigate({ to: ROUTE_MCP_SERVERS })}>
+              <Button type="button" variant="outline" onClick={() => navigate({ to: ROUTE_MCPS })}>
                 Cancel
               </Button>
               <Button type="submit" disabled={updateMutation.isPending} data-testid="mcp-server-save-button">

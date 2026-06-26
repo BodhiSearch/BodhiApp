@@ -1,0 +1,104 @@
+/* My MCPs — rail-local styles for the instance list + connect-with mechanism rows. Layered on the
+   shared list.css `dp-*` rail primitives. */
+
+.mcp-inst-list,
+.mcp-mech-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mcp-inst-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.mcp-inst-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.mcp-inst-dot-on {
+  background: var(--c-leaf-text, #16a34a);
+}
+.mcp-inst-dot-off {
+  background: var(--muted-foreground);
+}
+
+.mcp-inst-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.mcp-inst-name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mcp-inst-sub {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+.mcp-inst-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.mcp-inst-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.mcp-inst-act:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.mcp-inst-act[aria-disabled='true'] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.mcp-inst-act-danger:hover {
+  color: var(--destructive);
+}
+
+.mcp-mech-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: inherit;
+  cursor: pointer;
+}
+.mcp-mech-row:hover {
+  border-color: var(--border-strong, var(--border));
+  background: var(--accent);
+}
+.mcp-mech-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.mcp-mech-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.mcp-mech-sub {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}

@@ -184,7 +184,7 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
     expect(authConfig.client_secret).toBe('test-client-secret');
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/servers/' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/' });
     });
   });
 

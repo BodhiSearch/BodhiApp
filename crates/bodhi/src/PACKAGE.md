@@ -71,7 +71,6 @@ src/components/
 ├── ThemeProvider.tsx             # Dark/light theme
 ├── DataTable.tsx                # Generic data table
 ├── ModelSelector.tsx            # Model alias selector
-├── McpManagementTabs.tsx        # MCP instances/servers tabs
 ├── LoginMenu.tsx                # Login/logout menu
 ├── DeleteConfirmDialog.tsx      # Reusable delete confirmation
 ├── Combobox.tsx                 # Generic combobox
