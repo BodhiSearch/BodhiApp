@@ -13,3 +13,25 @@
   object-fit: contain;
   border-radius: inherit;
 }
+
+/* Install-status badge (derived from the user-instance join). */
+.mcp-install {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.mcp-install-enabled {
+  background: var(--c-leaf-bg);
+  color: var(--c-leaf-text);
+}
+.mcp-install-disabled {
+  background: var(--c-saffron-bg);
+  color: var(--c-saffron-text);
+}
+.mcp-install-none {
+  color: var(--muted-foreground);
+}

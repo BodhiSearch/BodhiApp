@@ -1,12 +1,14 @@
-import type { McpServerDetail, McpServerSummary } from '@bodhiapp/reference-api-types';
+import type { McpServerDetail } from '@bodhiapp/reference-api-types';
+import { Link } from '@tanstack/react-router';
 
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
+import { type McpJoinedRow, INSTALL_LABEL } from '@/routes/mcps/explore/-shared/instance-join';
 import { monogram, tintIndex } from '@/routes/models/explore/-shared/catalog-format';
 
 import { McpServerLogo } from './McpServerLogo';
 
-export function ExploreMcpRailHeader({ server, onClose }: { server: McpServerSummary; onClose: () => void }) {
+export function ExploreMcpRailHeader({ server, onClose }: { server: McpJoinedRow; onClose: () => void }) {
   return (
     <div className="dp-head">
       <McpServerLogo
@@ -36,7 +38,7 @@ function Row({ k, v }: { k: string; v: string | null | undefined }) {
 }
 
 interface RailProps {
-  server: McpServerSummary;
+  server: McpJoinedRow;
   detail: McpServerDetail | undefined;
   loading: boolean;
 }
@@ -47,6 +49,18 @@ export function ExploreMcpRail({ server, detail, loading }: RailProps) {
   return (
     <div className="dp-panel" data-testid={`cat-mcp-detail-${server.id}`}>
       <div className="dp-body">
+        <div className="dp-section">
+          <div className="dp-sec-lbl">Status</div>
+          <div className="cat-servedby-links" data-testid="cat-mcp-detail-status">
+            <span className={`mcp-install mcp-install-${server.install}`}>{INSTALL_LABEL[server.install]}</span>
+            {server.install === 'none' && (
+              <Link to="/mcps/new/" className="cat-doc-link" data-testid="cat-mcp-detail-add">
+                <ShellIcon name="circle-plus" size={13} /> Add to My MCPs
+              </Link>
+            )}
+          </div>
+        </div>
+
         {description && (
           <div className="dp-section">
             <div className="dp-sec-lbl">Description</div>

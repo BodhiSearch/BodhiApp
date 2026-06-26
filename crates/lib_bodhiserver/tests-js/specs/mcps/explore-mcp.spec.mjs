@@ -103,5 +103,16 @@ test.describe('Explore · MCP Servers', () => {
       // The Auth header is gone after hiding the optional column.
       await expect(mcpPage.page.locator('[data-testid="cat-listhead"]')).not.toContainText('AUTH');
     });
+
+    await test.step('Status column + rail reflect the instance join (none configured → Not installed)', async () => {
+      // No instances configured in the test DB → every catalog row joins to "Not installed".
+      await expect(mcpPage.page.locator(mcpPage.selectors.install('srv-0'))).toContainText('Not installed');
+      await expect(mcpPage.page.locator(mcpPage.selectors.installedFacet('not_installed'))).toBeVisible();
+
+      await mcpPage.openServer('srv-0');
+      await expect(mcpPage.page.locator(mcpPage.selectors.railStatus)).toContainText('Not installed');
+      // The uninstalled rail offers the deep-link to add an instance.
+      await expect(mcpPage.page.locator(mcpPage.selectors.railAdd)).toBeVisible();
+    });
   });
 });

@@ -5,9 +5,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { ExploreMcpScreen } from '@/routes/mcps/explore/-components/ExploreMcpScreen';
 import { exploreMcpSearchSchema } from '@/routes/mcps/explore/index';
+import { createMockMcp } from '@/test-fixtures/mcps';
 import { createMcpServerSummary, createMcpServersListResponse } from '@/test-fixtures/mcp-catalog';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockMcpServerDetail, mockMcpServers } from '@/test-utils/msw-v2/handlers/mcp-catalog';
+import { mockListMcps } from '@/test-utils/msw-v2/handlers/mcps';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { makeRouteRouter, RouteHarness } from '@/test-utils/router-harness';
@@ -24,7 +26,9 @@ beforeEach(() => {
   Wrapper = createWrapper();
   server.use(
     ...mockAppInfoReady(),
-    ...mockUserLoggedIn({ username: 'admin@example.com', role: 'resource_admin', id_token: 'test-id-token' })
+    ...mockUserLoggedIn({ username: 'admin@example.com', role: 'resource_admin', id_token: 'test-id-token' }),
+    // Default: the user has no configured instances, so every catalog row joins to "Not installed".
+    mockListMcps([])
   );
 });
 
@@ -244,5 +248,51 @@ describe('ExploreMcpScreen (Phase 3 — facets + reset + columns)', () => {
       await userEvent.click(await screen.findByTestId('cat-mcp-col-auth'));
     });
     await waitFor(() => expect(screen.getByTestId('cat-listhead')).not.toHaveTextContent('AUTH'));
+  });
+});
+
+describe('ExploreMcpScreen (Phase 4 — instance join → status)', () => {
+  // A catalog row whose endpoint matches a configured instance (URL match is normalized: trailing
+  // slash + case). Notion's endpoint is https://mcp.notion.com/mcp.
+  const installedInstance = createMockMcp({
+    mcp_server: { id: 's1', url: 'https://MCP.notion.com/mcp/', name: 'notion', enabled: true },
+    enabled: true,
+  });
+
+  it('shows Installed for a catalog row joined to an enabled instance', async () => {
+    server.use(...mockMcpServers(), mockListMcps([installedInstance]));
+    await renderScreen();
+    await waitFor(() => expect(screen.getByTestId('cat-mcp-install-notion')).toHaveTextContent('Installed'));
+    // A row with no matching instance stays Not installed.
+    expect(screen.getByTestId('cat-mcp-install-linear')).toHaveTextContent('Not installed');
+  });
+
+  it('shows Disabled when the matching instance is turned off', async () => {
+    server.use(...mockMcpServers(), mockListMcps([createMockMcp({ ...installedInstance, enabled: false })]));
+    await renderScreen();
+    await waitFor(() => expect(screen.getByTestId('cat-mcp-install-notion')).toHaveTextContent('Disabled'));
+  });
+
+  it('Installed facet filters client-side to joined rows (no API param)', async () => {
+    const seen: URL[] = [];
+    server.use(...mockMcpServers({ onRequest: ({ url }) => seen.push(url) }), mockListMcps([installedInstance]));
+    const router = await renderScreen();
+
+    await act(async () => {
+      await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('cat-mcp-installed-installed'));
+    });
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ installed: 'installed' }));
+    await waitFor(() => expect(within(screen.getByTestId('cat-mcp-list')).getAllByRole('option').length).toBe(1));
+    expect(screen.getByTestId('cat-mcp-row-notion')).toBeInTheDocument();
+    // The catalog request never carried an `installed` param — the cut is client-side.
+    expect(seen.every((u) => !u.searchParams.has('installed'))).toBe(true);
+  });
+
+  it('rail shows Not installed + an Add-to-My-MCPs CTA for an uninstalled server', async () => {
+    server.use(...mockMcpServers(), ...mockMcpServerDetail(), mockListMcps([]));
+    await renderScreen(['/mcps/explore/?select=notion']);
+    const rail = screen.getByTestId('harness-rail');
+    expect(within(rail).getByTestId('cat-mcp-detail-status')).toHaveTextContent('Not installed');
+    expect(within(rail).getByTestId('cat-mcp-detail-add')).toBeInTheDocument();
   });
 });

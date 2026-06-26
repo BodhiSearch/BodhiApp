@@ -12,14 +12,17 @@ import '@/routes/models/-components/models.css';
  * — no hard-coded taxonomy. `Verified` is the one boolean-backed pill.
  */
 
+export type InstalledFacet = 'installed' | 'not_installed';
+
 export interface McpFacetsState {
   category?: string[];
   auth?: McpAuthType[];
   verified?: boolean;
+  installed?: InstalledFacet;
 }
 
 export function hasActiveMcpFacets(f: McpFacetsState): boolean {
-  return Boolean(f.category?.length || f.auth?.length || f.verified);
+  return Boolean(f.category?.length || f.auth?.length || f.verified || f.installed);
 }
 
 function toggle<T>(list: T[] | undefined, value: T): T[] | undefined {
@@ -42,6 +45,21 @@ export function ExploreMcpSidebar({ facets, facetValues, onFacetsChange }: Sideb
 
   return (
     <div className="m-facets" data-testid="cat-mcp-facets">
+      <FacetGroup icon="download" title="Availability">
+        <Pills>
+          {(['installed', 'not_installed'] as InstalledFacet[]).map((v) => (
+            <FacetPill
+              key={v}
+              label={v === 'installed' ? 'Installed' : 'Not installed'}
+              active={facets.installed === v}
+              testId={`cat-mcp-installed-${v}`}
+              // Tri-state: re-selecting the active value clears it.
+              onToggle={() => onFacetsChange({ ...facets, installed: facets.installed === v ? undefined : v })}
+            />
+          ))}
+        </Pills>
+      </FacetGroup>
+
       {categoryValues.length > 0 && (
         <FacetGroup icon="shapes" title="Category">
           <Pills>

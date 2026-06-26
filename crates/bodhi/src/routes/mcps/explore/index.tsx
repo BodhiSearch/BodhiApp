@@ -27,10 +27,12 @@ export const exploreMcpSearchSchema = z.object({
   sort: z.enum(['name']).optional(),
   order: z.enum(['asc', 'desc']).optional(),
   page: z.number().int().positive().optional(),
-  // Facets: category + auth are server-side (repeatable OR); verified is a client-side filter.
+  // Facets: category + auth are server-side (repeatable OR); verified + installed are client-side
+  // (the catalog API has no such params — installed is derived by joining the user's instances).
   category: stringArrayParam(),
   auth: stringArrayParam(),
   verified: z.boolean().optional(),
+  installed: z.enum(['installed', 'not_installed']).optional(),
 });
 
 export type ExploreMcpSearch = z.infer<typeof exploreMcpSearchSchema>;

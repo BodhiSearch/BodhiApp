@@ -23,7 +23,11 @@ export class McpExplorePage extends BasePage {
     rail: id => `[data-testid="cat-mcp-detail-${id}"]`,
     railDescription: '[data-testid="cat-mcp-detail-description"]',
     railConnection: '[data-testid="cat-mcp-detail-connection"]',
+    railStatus: '[data-testid="cat-mcp-detail-status"]',
+    railAdd: '[data-testid="cat-mcp-detail-add"]',
     detailClose: '[data-testid="cat-mcp-detail-close"]',
+    install: id => `[data-testid="cat-mcp-install-${id}"]`,
+    installedFacet: v => `[data-testid="cat-mcp-installed-${v}"]`,
     // Facets / reset / columns.
     facets: '[data-testid="cat-mcp-facets"]',
     auth: value => `[data-testid="cat-mcp-auth-${value}"]`,

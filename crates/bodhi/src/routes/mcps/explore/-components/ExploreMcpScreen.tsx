@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { McpServerSummary } from '@bodhiapp/reference-api-types';
 import { getRouteApi } from '@tanstack/react-router';
 
 import { ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useListMcps } from '@/hooks/mcps';
 import { useMcpServerDetail, useMcpServers } from '@/hooks/reference';
 import { useViewTransition } from '@/hooks/useViewTransition';
 import { exploreMcpBreadcrumb } from '@/routes/mcps/explore/-shared/breadcrumbs';
+import {
+  type McpJoinedRow,
+  INSTALL_LABEL,
+  indexInstances,
+  joinInstances,
+} from '@/routes/mcps/explore/-shared/instance-join';
 import { monogram, tintIndex } from '@/routes/models/explore/-shared/catalog-format';
 import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';
 import { ColumnPicker, useHiddenColumns } from '@/routes/models/explore/-shared/ColumnPicker';
@@ -31,11 +37,11 @@ type McpSort = 'name';
 type SortOrder = 'asc' | 'desc';
 const PAGE_SIZE = 50;
 
-function serverKey(s: McpServerSummary): string {
+function serverKey(s: McpJoinedRow): string {
   return s.id;
 }
 
-const COLUMNS: CatalogColumn<McpServerSummary, McpSort>[] = [
+const COLUMNS: CatalogColumn<McpJoinedRow, McpSort>[] = [
   { key: 'num', label: '#', width: '44px', cell: () => null },
   {
     key: 'logo',
@@ -65,9 +71,19 @@ const COLUMNS: CatalogColumn<McpServerSummary, McpSort>[] = [
     ),
   },
   {
+    key: 'status',
+    label: 'STATUS',
+    width: '130px',
+    cell: (s) => (
+      <span className={`mcp-install mcp-install-${s.install}`} data-testid={`cat-mcp-install-${s.id}`}>
+        {INSTALL_LABEL[s.install]}
+      </span>
+    ),
+  },
+  {
     key: 'auth',
     label: 'AUTH',
-    width: '110px',
+    width: '100px',
     optional: true,
     cell: (s) => <span className="cat-cell-text mono">{s.auth_type}</span>,
   },
@@ -80,6 +96,7 @@ function searchToFacets(search: ExploreMcpSearch): McpFacetsState {
     category: search.category,
     auth: search.auth as McpAuthFacet[] | undefined,
     verified: search.verified,
+    installed: search.installed,
   };
 }
 
@@ -120,11 +137,18 @@ export function ExploreMcpScreen() {
   );
   const { data, isLoading, error } = useMcpServers(params);
 
-  // verified is a client-side cut on the current page (the API has no `verified` query param).
+  // Join the user's own instances (no per-user state in the catalog API) → derive install status.
+  const { data: instancesData } = useListMcps();
+  const byUrl = useMemo(() => indexInstances(instancesData?.mcps), [instancesData?.mcps]);
+
+  // verified + installed are client-side cuts on the current page (the API has neither param).
   const rows = useMemo(() => {
-    const items = data?.items ?? [];
-    return facets.verified ? items.filter((s) => s.verified) : items;
-  }, [data?.items, facets.verified]);
+    let items = joinInstances(data?.items ?? [], byUrl);
+    if (facets.verified) items = items.filter((s) => s.verified);
+    if (facets.installed === 'installed') items = items.filter((s) => s.install !== 'none');
+    else if (facets.installed === 'not_installed') items = items.filter((s) => s.install === 'none');
+    return items;
+  }, [data?.items, byUrl, facets.verified, facets.installed]);
   const total = data?.total ?? rows.length;
 
   const commitSearch = useCallback(
@@ -195,6 +219,7 @@ export function ExploreMcpScreen() {
           ...(next.category?.length ? { category: next.category } : {}),
           ...(next.auth?.length ? { auth: next.auth } : {}),
           ...(next.verified ? { verified: true } : {}),
+          ...(next.installed ? { installed: next.installed } : {}),
         }),
       }),
     [navigate, nonFacetSlice]
@@ -303,7 +328,7 @@ export function ExploreMcpScreen() {
             <div className="empty-sub">Try a different search.</div>
           </div>
         ) : (
-          <CatalogTable<McpServerSummary, McpSort>
+          <CatalogTable<McpJoinedRow, McpSort>
             columns={visibleColumns}
             rows={rows}
             rowKey={serverKey}
