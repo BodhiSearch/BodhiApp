@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
 import { createFileRoute, Link, useSearch } from '@tanstack/react-router';
@@ -6,6 +6,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
+import { useShellChrome } from '@/components/shell';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +31,7 @@ import {
   type McpAuthConfigResponse,
 } from '@/hooks/mcps';
 import { toast } from '@/hooks/use-toast';
-import { ROUTE_MCP_SERVERS } from '@/lib/constants';
+import { ROUTE_MCPS, ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { extractErrorMessage } from '@/lib/errorUtils';
 import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
 import { AuthConfigForm } from '@/routes/mcps/servers/-components/AuthConfigForm';
@@ -40,7 +41,14 @@ export const Route = createFileRoute('/mcps/servers/view/')({
   component: ServerViewPage,
 });
 
+const SERVER_VIEW_BREADCRUMB = [
+  { label: 'Bodhi' },
+  { label: 'MCP', href: ROUTE_MCPS },
+  { label: 'Configure server', current: true },
+];
+
 function ServerViewContent() {
+  useShellChrome({ breadcrumb: useMemo(() => SERVER_VIEW_BREADCRUMB, []) });
   const search = useSearch({ from: '/mcps/servers/view/' });
   const serverId = search.id || '';
 
@@ -178,7 +186,7 @@ function ServerViewContent() {
 
   if (serverLoading) {
     return (
-      <div className="container mx-auto p-4 max-w-3xl" data-testid="server-view-loading">
+      <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="server-view-loading">
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-48" />
@@ -194,7 +202,7 @@ function ServerViewContent() {
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-3xl" data-testid="server-view-page">
+    <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="server-view-page">
       <Card data-testid="server-info-section">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{server?.name}</CardTitle>

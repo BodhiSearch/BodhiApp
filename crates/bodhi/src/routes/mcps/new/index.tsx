@@ -4,15 +4,24 @@ import { z } from 'zod';
 export const Route = createFileRoute('/mcps/new/')({
   validateSearch: z.object({
     id: z.string().optional(),
+    // Create-mode prefill from the My-MCPs / Explore rail "Connect with" deep-link.
+    server: z.string().optional(),
+    auth: z.string().optional(),
   }),
   component: NewMcpPage,
 });
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import type { McpAuthParamInput, McpAuthType } from '@bodhiapp/ts-client';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate, useSearch } from '@tanstack/react-router';
+import { KeyRound } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 import * as zod from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
+import { useShellChrome } from '@/components/shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorPage } from '@/components/ui/ErrorPage';
@@ -21,14 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { safeNavigate } from '@/lib/safeNavigate';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { KeyRound } from 'lucide-react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useForm } from 'react-hook-form';
-
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/hooks/use-toast';
 import {
   useCreateMcp,
   useDeleteOAuthToken,
@@ -39,10 +41,13 @@ import {
   useUpdateMcp,
   type McpServerResponse,
 } from '@/hooks/mcps';
+import { toast } from '@/hooks/use-toast';
 import { useGetUser } from '@/hooks/users';
-import { isAdminRole } from '@/lib/roles';
-import { authConfigTypeLabel } from '@/lib/mcpUtils';
+import { ROUTE_MCPS } from '@/lib/constants';
 import { extractErrorMessage } from '@/lib/errorUtils';
+import { authConfigTypeLabel } from '@/lib/mcpUtils';
+import { isAdminRole } from '@/lib/roles';
+import { safeNavigate } from '@/lib/safeNavigate';
 import { useMcpFormStore } from '@/stores/mcpFormStore';
 
 import { type AuthConfigOption } from './-components/authUtils';
@@ -51,7 +56,16 @@ import McpServerSelector from './-components/McpServerSelector';
 import OAuthConnectedCard from './-components/OAuthConnectedCard';
 import OAuthConnectPanel from './-components/OAuthConnectPanel';
 
-import type { McpAuthParamInput, McpAuthType } from '@bodhiapp/ts-client';
+const NEW_INSTANCE_BREADCRUMB = [
+  { label: 'Bodhi' },
+  { label: 'MCP', href: ROUTE_MCPS },
+  { label: 'New MCP Instance', current: true },
+];
+const EDIT_INSTANCE_BREADCRUMB = [
+  { label: 'Bodhi' },
+  { label: 'MCP', href: ROUTE_MCPS },
+  { label: 'Edit MCP Instance', current: true },
+];
 
 const createMcpSchema = zod.object({
   mcp_server_id: zod.string().min(1, 'Please select an MCP server'),
@@ -85,6 +99,11 @@ function NewMcpPageContent() {
   const navigate = useNavigate();
   const search = useSearch({ from: '/mcps/new/' });
   const editId = search.id || null;
+  const prefillServerId = search.server || null;
+  const prefillAuth = search.auth || null;
+  useShellChrome({
+    breadcrumb: useMemo(() => (editId ? EDIT_INSTANCE_BREADCRUMB : NEW_INSTANCE_BREADCRUMB), [editId]),
+  });
   const { data: userInfo } = useGetUser();
   const isAdmin = userInfo?.auth_status === 'logged_in' && userInfo.role ? isAdminRole(userInfo.role) : false;
 
@@ -246,6 +265,7 @@ function NewMcpPageContent() {
     if (
       !editId &&
       !sessionRestoredRef.current &&
+      !prefillAuth &&
       selectedServer &&
       authConfigOptions.length > 0 &&
       !store.selectedAuthConfigId
@@ -255,7 +275,7 @@ function NewMcpPageContent() {
       form.setValue('auth_type', first.type as McpAuthType);
     }
     // store/form are stable refs; including them would retrigger auto-select on every render.
-  }, [authConfigOptions, selectedServer, editId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authConfigOptions, selectedServer, editId, prefillAuth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleServerSelect = useCallback(
     (server: McpServerResponse) => {
@@ -282,6 +302,49 @@ function NewMcpPageContent() {
     },
     [form, store]
   );
+
+  // Rail "Connect with" deep-link prefill (create mode only). Select the requested server once it
+  // loads; the auth-mechanism prefill (below) then runs after the server's auth-configs load.
+  const serverPrefillRef = useRef(false);
+  useEffect(() => {
+    if (editId || sessionRestoredRef.current || serverPrefillRef.current || !prefillServerId) return;
+    const server = enabledServers.find((s) => s.id === prefillServerId);
+    if (server) {
+      serverPrefillRef.current = true;
+      handleServerSelect(server);
+    }
+  }, [editId, prefillServerId, enabledServers, handleServerSelect]);
+
+  // Apply the requested auth mechanism once the selected server's auth-configs load. `public` maps to
+  // the synthetic no-auth option; any other value resolves an auth-config id, falling back to public.
+  const authPrefillRef = useRef(false);
+  useEffect(() => {
+    if (
+      editId ||
+      sessionRestoredRef.current ||
+      authPrefillRef.current ||
+      !prefillAuth ||
+      !selectedServer ||
+      selectedServer.id !== prefillServerId
+    ) {
+      return;
+    }
+    if (prefillAuth === 'public') {
+      authPrefillRef.current = true;
+      store.setSelectedAuthConfig(null, null);
+      form.setValue('auth_type', 'public');
+      return;
+    }
+    // Wait for the server's auth-configs to load before resolving a non-public mechanism; otherwise
+    // an empty first pass would consume the one-shot guard and miss the config once it arrives.
+    const opt = authConfigOptions.find((o) => o.id === prefillAuth);
+    if (opt) {
+      authPrefillRef.current = true;
+      store.setSelectedAuthConfig(opt.id, opt.type);
+      form.setValue('auth_type', opt.type as McpAuthType);
+    }
+    // store/form are stable refs; listing them would re-fire the one-shot prefill.
+  }, [editId, prefillAuth, prefillServerId, selectedServer, authConfigOptions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAuthConfigChange = (val: string) => {
     setShowNewAuthRedirect(false);
@@ -425,7 +488,7 @@ function NewMcpPageContent() {
 
   if (editId && loadingExisting) {
     return (
-      <div className="container mx-auto p-4 max-w-2xl" data-testid="new-mcp-loading">
+      <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="new-mcp-loading">
         <Skeleton className="h-10 w-full mb-4" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -433,7 +496,7 @@ function NewMcpPageContent() {
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-2xl" data-testid="new-mcp-page">
+    <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="new-mcp-page">
       <Card>
         <CardHeader>
           <CardTitle>{editId ? 'Edit MCP' : 'New MCP'}</CardTitle>

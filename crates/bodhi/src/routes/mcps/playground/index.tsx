@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { createFileRoute, Link, useSearch } from '@tanstack/react-router';
-import { ArrowLeft } from 'lucide-react';
+import { createFileRoute, useSearch } from '@tanstack/react-router';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
-import { Button } from '@/components/ui/button';
+import { useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGetMcp } from '@/hooks/mcps';
 import { useMcpClient } from '@/hooks/mcps/useMcpClient';
+import { ROUTE_MCPS } from '@/lib/constants';
 import { extractErrorMessage } from '@/lib/errorUtils';
 
 import { ExecutionArea } from './-components/ExecutionArea';
@@ -25,6 +25,17 @@ function McpPlaygroundContent() {
   const id = search.id || '';
   const { data: mcp, isLoading, error } = useGetMcp(id, { enabled: !!id });
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
+
+  useShellChrome({
+    breadcrumb: useMemo(
+      () => [
+        { label: 'Bodhi' },
+        { label: 'MCP', href: ROUTE_MCPS },
+        { label: mcp ? `${mcp.name} · Playground` : 'Playground', current: true },
+      ],
+      [mcp]
+    ),
+  });
 
   const mcpClient = useMcpClient(mcp?.path ?? null);
 
@@ -67,20 +78,12 @@ function McpPlaygroundContent() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]" data-testid="mcp-playground-page">
-      <div className="border-b px-4 py-3 flex items-center gap-3">
-        <Button variant="ghost" size="sm" asChild data-testid="mcp-playground-back-button">
-          <Link to="/mcps/">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            MCP Servers
-          </Link>
-        </Button>
-        <span className="text-muted-foreground">/</span>
-        <h1 className="font-semibold">{mcp.name} -- Playground</h1>
-        {mcpClient.status === 'error' && mcpClient.error && (
-          <span className="text-xs text-destructive ml-2">{mcpClient.error}</span>
-        )}
-      </div>
+    <div className="flex flex-col h-[calc(100vh-8rem)]" data-testid="mcp-playground-page">
+      {mcpClient.status === 'error' && mcpClient.error && (
+        <div className="border-b px-4 py-2 text-xs text-destructive" data-testid="mcp-playground-error">
+          {mcpClient.error}
+        </div>
+      )}
 
       <div className="flex flex-1 min-h-0">
         <ToolSidebar

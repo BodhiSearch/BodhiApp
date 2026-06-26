@@ -841,3 +841,42 @@ describe('NewMcpPage - Edit with DCR disconnect and update', () => {
     expect(updateBody).not.toHaveProperty('auth_config_id');
   });
 });
+
+describe('NewMcpPage - rail deep-link prefill (?server=&auth=)', () => {
+  beforeEach(() => {
+    server.use(
+      ...mockAppInfo({ status: 'ready' }, { stub: true }),
+      ...mockUserLoggedIn({}, { stub: true }),
+      mockListMcpServers([mockMcpServerResponse])
+    );
+  });
+
+  it('preselects the server and a header auth mechanism from the URL', async () => {
+    mockSearch = { server: mockMcpServerResponse.id, auth: mockAuthConfigHeader.id };
+    server.use(mockListAuthConfigs({ auth_configs: [mockAuthConfigHeader] }));
+
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-config-select')).toHaveAttribute('data-test-state', 'header');
+    });
+    // server is preselected → its name lands in the combobox + name field
+    expect(screen.getByDisplayValue(mockMcpServerResponse.name)).toBeInTheDocument();
+  });
+
+  it('preselects public when auth=public even if the server has configs', async () => {
+    mockSearch = { server: mockMcpServerResponse.id, auth: 'public' };
+    server.use(mockListAuthConfigs({ auth_configs: [mockAuthConfigHeader] }));
+
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-config-select')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('auth-config-select')).toHaveAttribute('data-test-state', 'public');
+  });
+});

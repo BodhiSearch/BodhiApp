@@ -26,6 +26,7 @@ vi.mock('@tanstack/react-router', async () => {
     ),
     useNavigate: () => navigateMock,
     useLocation: () => ({ pathname: '/mcps/servers/new' }),
+    useSearch: () => ({}),
   };
 });
 

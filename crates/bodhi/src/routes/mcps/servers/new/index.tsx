@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
+import { useShellChrome } from '@/components/shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,22 +16,32 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateMcpServer, useStandaloneDynamicRegister, type CreateMcpAuthConfigRequest } from '@/hooks/mcps';
 import { toast } from '@/hooks/use-toast';
-import { ROUTE_MCP_SERVERS } from '@/lib/constants';
+import { ROUTE_MCPS, ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { validateMcpServerForm } from '@/lib/mcpFormValidation';
 import { extractSecondLevelDomain } from '@/lib/urlUtils';
 import { AuthConfigForm } from '@/routes/mcps/servers/-components/AuthConfigForm';
 
+// Prefill params for the admin "Configure server" bridge from the catalog/My-MCPs rail.
 export const Route = createFileRoute('/mcps/servers/new/')({
+  validateSearch: z.object({ url: z.string().optional(), name: z.string().optional() }),
   component: NewMcpServerPage,
 });
+
+const NEW_SERVER_BREADCRUMB = [
+  { label: 'Bodhi' },
+  { label: 'MCP', href: ROUTE_MCPS },
+  { label: 'New MCP Server', current: true },
+];
 
 type AuthConfigType = 'none' | 'header' | 'oauth';
 type OAuthRegistrationType = 'pre_registered' | 'dynamic_registration';
 
 function NewMcpServerContent() {
+  useShellChrome({ breadcrumb: useMemo(() => NEW_SERVER_BREADCRUMB, []) });
   const navigate = useNavigate();
-  const [url, setUrl] = useState('');
-  const [name, setName] = useState('');
+  const search = useSearch({ strict: false }) as { url?: string; name?: string };
+  const [url, setUrl] = useState(search.url ?? '');
+  const [name, setName] = useState(search.name ?? '');
   const [description, setDescription] = useState('');
   const [enabled, setEnabled] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -153,7 +165,7 @@ function NewMcpServerContent() {
   const isSaving = createMutation.isPending || standaloneDcr.isPending;
 
   return (
-    <div className="container mx-auto p-4 max-w-2xl" data-testid="new-mcp-server-page">
+    <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="new-mcp-server-page">
       <Card>
         <CardHeader>
           <CardTitle>New MCP Server</CardTitle>

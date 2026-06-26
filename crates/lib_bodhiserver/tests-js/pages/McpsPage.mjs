@@ -115,7 +115,8 @@ export class McpsPage extends BasePage {
     playgroundResultTabRequest: '[data-testid="mcp-playground-result-tab-request"]',
     playgroundResultContent: '[data-testid="mcp-playground-result-content"]',
     playgroundCopyButton: '[data-testid="mcp-playground-copy-button"]',
-    playgroundBackButton: '[data-testid="mcp-playground-back-button"]',
+    // V2: the playground header bar was replaced by the shell breadcrumb; "back" is the MCP crumb.
+    playgroundBackButton: 'a.shell-bc-seg[href="/ui/mcps/"]',
   };
 
   // ========== MCP Servers Page Methods ==========

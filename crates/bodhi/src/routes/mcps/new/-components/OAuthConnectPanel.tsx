@@ -21,10 +21,10 @@ export function OAuthConnectPanel({
         <p>
           <span className="font-medium">Config:</span> {option.name}
         </p>
-        <p>
-          <span className="font-medium">Type:</span>{' '}
+        <div className="flex items-center gap-1">
+          <span className="font-medium">Type:</span>
           <Badge variant="secondary">{authConfigTypeLabel(option.type)}</Badge>
-        </p>
+        </div>
         <p>
           <span className="font-medium">Auth Server:</span>{' '}
           {option.config.type !== 'header' && safeOrigin(option.config.authorization_endpoint)}

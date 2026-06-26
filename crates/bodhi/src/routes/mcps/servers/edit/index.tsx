@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
 import { Trash2 } from 'lucide-react';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
+import { useShellChrome } from '@/components/shell';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +33,7 @@ import {
   type McpAuthConfigResponse,
 } from '@/hooks/mcps';
 import { toast } from '@/hooks/use-toast';
-import { ROUTE_MCP_SERVERS } from '@/lib/constants';
+import { ROUTE_MCPS, ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { extractErrorMessage } from '@/lib/errorUtils';
 import { validateMcpServerForm } from '@/lib/mcpFormValidation';
 import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
@@ -42,7 +43,14 @@ export const Route = createFileRoute('/mcps/servers/edit/')({
   component: EditMcpServerPage,
 });
 
+const EDIT_SERVER_BREADCRUMB = [
+  { label: 'Bodhi' },
+  { label: 'MCP', href: ROUTE_MCPS },
+  { label: 'Edit MCP Server', current: true },
+];
+
 function EditMcpServerContent() {
+  useShellChrome({ breadcrumb: useMemo(() => EDIT_SERVER_BREADCRUMB, []) });
   const navigate = useNavigate();
   const search = useSearch({ from: '/mcps/servers/edit/' });
   const serverId = search.id || '';
@@ -136,7 +144,7 @@ function EditMcpServerContent() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-4 max-w-2xl" data-testid="edit-mcp-server-loading">
+      <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="edit-mcp-server-loading">
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-48" />
@@ -152,7 +160,7 @@ function EditMcpServerContent() {
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-2xl" data-testid="edit-mcp-server-page">
+    <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="edit-mcp-server-page">
       <Card>
         <CardHeader>
           <CardTitle>Edit MCP Server</CardTitle>
