@@ -56,5 +56,25 @@ test.describe('Explore · MCP Servers', () => {
       await mcpPage.clearSearch();
       await expect(mcpPage.page.locator(mcpPage.selectors.anyRow)).toHaveCount(50);
     });
+
+    await test.step('Opening a server shows the rail with connection + metadata, and writes ?select', async () => {
+      await mcpPage.openServer('srv-0');
+      const conn = mcpPage.page.locator(mcpPage.selectors.railConnection);
+      await expect(conn).toContainText('streamable-http');
+      await expect(conn).toContainText('mcp.example.com');
+      await expect(mcpPage.page.locator(mcpPage.selectors.railMetadata)).toContainText('mcpservers.org');
+      expect(mcpPage.urlParam('select')).toBe('srv-0');
+    });
+
+    await test.step('Reload restores the rail from ?select; closing strips it', async () => {
+      await mcpPage.page.reload();
+      await mcpPage.waitForSPAReady();
+      await expect(mcpPage.page.locator(mcpPage.selectors.railConnection)).toBeVisible();
+      expect(mcpPage.urlParam('select')).toBe('srv-0');
+
+      await mcpPage.closeRail();
+      await expect(mcpPage.page.locator(mcpPage.selectors.rail('srv-0'))).toHaveCount(0);
+      expect(mcpPage.searchParams().has('select')).toBe(false);
+    });
   });
 });

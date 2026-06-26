@@ -10,6 +10,9 @@ import { ExploreMcpScreen } from './-components/ExploreMcpScreen';
 // round-trips exactly what the user changed. Facets/select added in later phases.
 export const exploreMcpSearchSchema = z.object({
   q: z.string().optional(),
+  // The open detail rail: the selected server's `id`. Written with replace (no history entries);
+  // Back/Forward restores the rail from whatever the target URL carries.
+  select: z.string().optional(),
   // The reference API only supports sort=name today.
   sort: z.enum(['name']).optional(),
   order: z.enum(['asc', 'desc']).optional(),

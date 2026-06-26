@@ -1,17 +1,19 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ShellSlotsProvider } from '@/components/shell';
+import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { ExploreMcpScreen } from '@/routes/mcps/explore/-components/ExploreMcpScreen';
 import { exploreMcpSearchSchema } from '@/routes/mcps/explore/index';
 import { createMcpServerSummary, createMcpServersListResponse } from '@/test-fixtures/mcp-catalog';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
-import { mockMcpServers } from '@/test-utils/msw-v2/handlers/mcp-catalog';
+import { mockMcpServerDetail, mockMcpServers } from '@/test-utils/msw-v2/handlers/mcp-catalog';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { makeRouteRouter, RouteHarness } from '@/test-utils/router-harness';
 import { createWrapper } from '@/tests/wrapper';
+
+vi.mock('@/hooks/useViewTransition', () => ({ useViewTransition: () => (cb: () => void) => cb() }));
 
 setupMswV2();
 
@@ -26,12 +28,23 @@ beforeEach(() => {
   );
 });
 
+function SlotsConsumer() {
+  const { rail, railHeader } = useShellSlots();
+  return (
+    <>
+      <div data-testid="harness-rail-header">{railHeader}</div>
+      <div data-testid="harness-rail">{rail}</div>
+    </>
+  );
+}
+
 function buildRouter(initialEntries?: string[]) {
   return makeRouteRouter({
     path: '/mcps/explore/',
     validateSearch: exploreMcpSearchSchema as never,
     Screen: () => (
       <ShellSlotsProvider>
+        <SlotsConsumer />
         <ExploreMcpScreen />
       </ShellSlotsProvider>
     ),
@@ -116,5 +129,41 @@ describe('ExploreMcpScreen (Phase 1 — list)', () => {
     server.use(...mockMcpServers({ response: createMcpServersListResponse({ items: [] }) }));
     await renderScreen();
     expect(screen.getByTestId('cat-mcp-empty')).toBeInTheDocument();
+  });
+});
+
+describe('ExploreMcpScreen (Phase 2 — selection + rail)', () => {
+  it('clicking a row writes ?select and opens the rail with connection + metadata', async () => {
+    server.use(...mockMcpServers(), ...mockMcpServerDetail());
+    const router = await renderScreen();
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('cat-mcp-row-notion'));
+    });
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: 'notion' }));
+
+    const rail = screen.getByTestId('harness-rail');
+    await waitFor(() => expect(within(rail).getByTestId('cat-mcp-detail-connection')).toBeInTheDocument());
+    expect(within(rail).getByTestId('cat-mcp-detail-connection')).toHaveTextContent('mcp.notion.com');
+    expect(within(rail).getByTestId('cat-mcp-detail-connection')).toHaveTextContent('streamable-http');
+    // details (long description) replaces the summary description once detail loads.
+    await waitFor(() =>
+      expect(within(rail).getByTestId('cat-mcp-detail-description')).toHaveTextContent('Search, read and write')
+    );
+    expect(within(rail).getByTestId('cat-mcp-detail-metadata')).toHaveTextContent('mcpservers.org');
+  });
+
+  it('restores the rail from ?select on load and closing strips the param', async () => {
+    server.use(...mockMcpServers(), ...mockMcpServerDetail());
+    const router = await renderScreen(['/mcps/explore/?select=notion']);
+
+    const rail = screen.getByTestId('harness-rail');
+    expect(within(rail).getByTestId('cat-mcp-detail-notion')).toBeInTheDocument();
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('cat-mcp-detail-close'));
+    });
+    await waitFor(() => expect(router.state.location.search).not.toMatchObject({ select: 'notion' }));
+    expect(screen.queryByTestId('cat-mcp-detail-notion')).not.toBeInTheDocument();
   });
 });

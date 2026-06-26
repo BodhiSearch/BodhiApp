@@ -19,6 +19,11 @@ export class McpExplorePage extends BasePage {
     pageBtn: n => `[data-testid="pagination-page-${n}"]`,
     search: '[data-testid="cat-mcp-search"] input',
     sort: key => `[data-testid="cat-mcp-sort-${key}"]`,
+    // Detail rail.
+    rail: id => `[data-testid="cat-mcp-detail-${id}"]`,
+    railConnection: '[data-testid="cat-mcp-detail-connection"]',
+    railMetadata: '[data-testid="cat-mcp-detail-metadata"]',
+    detailClose: '[data-testid="cat-mcp-detail-close"]',
   };
 
   /** Build N deterministic catalog servers. */
@@ -136,5 +141,28 @@ export class McpExplorePage extends BasePage {
 
   searchParams() {
     return new URL(this.page.url()).searchParams;
+  }
+
+  /** Open the detail rail for a server row; waits for the connection grid to render. */
+  async openServer(id) {
+    await this.page.locator(this.selectors.row(id)).click();
+    await this.waitForSPAReady();
+    await this.page.locator(this.selectors.railConnection).waitFor({ state: 'visible' });
+  }
+
+  async closeRail() {
+    await this.page.locator(this.selectors.detailClose).click();
+    await this.waitForSPAReady();
+  }
+
+  urlParam(key) {
+    const raw = this.searchParams().get(key);
+    if (raw == null) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return typeof parsed === 'string' ? parsed : String(parsed);
+    } catch {
+      return raw;
+    }
   }
 }

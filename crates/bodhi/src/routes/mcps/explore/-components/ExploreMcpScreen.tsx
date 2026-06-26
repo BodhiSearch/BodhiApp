@@ -3,16 +3,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { McpServerSummary } from '@bodhiapp/reference-api-types';
 import { getRouteApi } from '@tanstack/react-router';
 
-import { ShellIcon, ShellPagination, ShellSearch, useShellChrome } from '@/components/shell';
+import { ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMcpServers } from '@/hooks/reference';
+import { useMcpServerDetail, useMcpServers } from '@/hooks/reference';
+import { useViewTransition } from '@/hooks/useViewTransition';
 import { exploreMcpBreadcrumb } from '@/routes/mcps/explore/-shared/breadcrumbs';
 import { monogram, tintIndex } from '@/routes/models/explore/-shared/catalog-format';
 import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';
 
 import type { ExploreMcpSearch } from '../index';
 
+import { ExploreMcpRail, ExploreMcpRailHeader } from './ExploreMcpRail';
 import { McpServerLogo } from './McpServerLogo';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
@@ -68,6 +70,8 @@ const COLUMNS: CatalogColumn<McpServerSummary, McpSort>[] = [
 ];
 
 export function ExploreMcpScreen() {
+  useListKeyNav();
+
   const search = routeApi.useSearch();
   const navigate = routeApi.useNavigate();
 
@@ -75,6 +79,7 @@ export function ExploreMcpScreen() {
   const order: SortOrder = search.order ?? 'asc';
   const page = search.page ?? 1;
   const committedSearch = search.q ?? '';
+  const selectedKey = search.select ?? null;
 
   const [searchInput, setSearchInput] = useState(committedSearch);
   useEffect(() => {
@@ -140,8 +145,45 @@ export function ExploreMcpScreen() {
     [navigate]
   );
 
+  const withViewTransition = useViewTransition();
+  // Selection lives in the URL via replace (no history entries) — Back/Forward skips past selections.
+  // The rail auto-opens/closes from its content presence.
+  const select = useCallback(
+    (key: string | null) => {
+      if ((key ?? undefined) === search.select) return;
+      withViewTransition(() => {
+        navigate({
+          search: (prev: ExploreMcpSearch) => {
+            const out: ExploreMcpSearch = { ...prev };
+            if (key) out.select = key;
+            else delete out.select;
+            return out;
+          },
+          replace: true,
+        });
+      });
+    },
+    [navigate, withViewTransition, search.select]
+  );
+
+  // The selected row by id; if it isn't on the current page (filtered/paged out) the rail closes.
+  const selectedServer = useMemo(() => rows.find((s) => serverKey(s) === selectedKey) ?? null, [rows, selectedKey]);
+  const { data: detail, isLoading: detailLoading } = useMcpServerDetail(selectedServer ? selectedServer.id : null);
+
+  const railHeader = useMemo(
+    () => (selectedServer ? <ExploreMcpRailHeader server={selectedServer} onClose={() => select(null)} /> : null),
+    [selectedServer, select]
+  );
+  const rail = useMemo(
+    () => (selectedServer ? <ExploreMcpRail server={selectedServer} detail={detail} loading={detailLoading} /> : null),
+    [selectedServer, detail, detailLoading]
+  );
+
   useShellChrome({
     breadcrumb: useMemo(() => BREADCRUMB, []),
+    rail,
+    railHeader,
+    railDefaultOpen: false,
   });
 
   if (error) {
@@ -190,8 +232,8 @@ export function ExploreMcpScreen() {
             rowKey={serverKey}
             rowTestId={(s) => `cat-mcp-row-${s.id}`}
             rowLabel={(s) => `Open ${s.name}`}
-            activeKey={null}
-            onSelect={() => {}}
+            activeKey={selectedKey}
+            onSelect={(s) => select(serverKey(s))}
             sort={sort}
             order={order}
             onSort={onSort}
