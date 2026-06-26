@@ -6,14 +6,6 @@ import { monogram, tintIndex } from '@/routes/models/explore/-shared/catalog-for
 
 import { McpServerLogo } from './McpServerLogo';
 
-/** Epoch-ms → short date (the MCP catalog uses numeric timestamps, unlike the ISO model catalog). */
-function fmtEpoch(ms: number | null | undefined): string | undefined {
-  if (ms == null) return undefined;
-  const d = new Date(ms);
-  if (Number.isNaN(d.getTime())) return undefined;
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
 export function ExploreMcpRailHeader({ server, onClose }: { server: McpServerSummary; onClose: () => void }) {
   return (
     <div className="dp-head">
@@ -51,7 +43,6 @@ interface RailProps {
 
 export function ExploreMcpRail({ server, detail, loading }: RailProps) {
   const description = detail?.details ?? server.description;
-  const sources = detail?.sources?.length ? detail.sources.join(', ') : detail?.source;
 
   return (
     <div className="dp-panel" data-testid={`cat-mcp-detail-${server.id}`}>
@@ -89,17 +80,6 @@ export function ExploreMcpRail({ server, detail, loading }: RailProps) {
               )}
             </div>
           )}
-        </div>
-
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Metadata</div>
-          <div className="dp-rows" data-testid="cat-mcp-detail-metadata">
-            <Row k="Verified" v={server.verified ? 'Yes' : undefined} />
-            <Row k="Featured" v={server.featured ? 'Yes' : undefined} />
-            <Row k="Source" v={sources} />
-            <Row k="First seen" v={fmtEpoch(detail?.first_seen_at)} />
-            <Row k="Last scraped" v={fmtEpoch(detail?.last_scraped_at)} />
-          </div>
         </div>
       </div>
     </div>

@@ -150,7 +150,6 @@ describe('ExploreMcpScreen (Phase 2 — selection + rail)', () => {
     await waitFor(() =>
       expect(within(rail).getByTestId('cat-mcp-detail-description')).toHaveTextContent('Search, read and write')
     );
-    expect(within(rail).getByTestId('cat-mcp-detail-metadata')).toHaveTextContent('mcpservers.org');
   });
 
   it('restores the rail from ?select on load and closing strips the param', async () => {

@@ -21,8 +21,8 @@ export class McpExplorePage extends BasePage {
     sort: key => `[data-testid="cat-mcp-sort-${key}"]`,
     // Detail rail.
     rail: id => `[data-testid="cat-mcp-detail-${id}"]`,
+    railDescription: '[data-testid="cat-mcp-detail-description"]',
     railConnection: '[data-testid="cat-mcp-detail-connection"]',
-    railMetadata: '[data-testid="cat-mcp-detail-metadata"]',
     detailClose: '[data-testid="cat-mcp-detail-close"]',
   };
 
@@ -91,10 +91,6 @@ export class McpExplorePage extends BasePage {
       tools: null,
       license: null,
       repo: null,
-      source: 'mcpservers.org',
-      sources: ['mcpservers.org'],
-      first_seen_at: 1782400000000,
-      last_scraped_at: 1782400000000,
     };
   }
 

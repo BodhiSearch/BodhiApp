@@ -57,12 +57,12 @@ test.describe('Explore · MCP Servers', () => {
       await expect(mcpPage.page.locator(mcpPage.selectors.anyRow)).toHaveCount(50);
     });
 
-    await test.step('Opening a server shows the rail with connection + metadata, and writes ?select', async () => {
+    await test.step('Opening a server shows the rail with description + connection, and writes ?select', async () => {
       await mcpPage.openServer('srv-0');
       const conn = mcpPage.page.locator(mcpPage.selectors.railConnection);
       await expect(conn).toContainText('streamable-http');
       await expect(conn).toContainText('mcp.example.com');
-      await expect(mcpPage.page.locator(mcpPage.selectors.railMetadata)).toContainText('mcpservers.org');
+      await expect(mcpPage.page.locator(mcpPage.selectors.railDescription)).toBeVisible();
       expect(mcpPage.urlParam('select')).toBe('srv-0');
     });
 
