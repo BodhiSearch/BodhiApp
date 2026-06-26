@@ -31,3 +31,4 @@ export const ROUTE_MODELS_EXPLORE_PROVIDERS = '/models/explore/providers/';
 
 export const ROUTE_MCPS = '/mcps/';
 export const ROUTE_MCP_SERVERS = '/mcps/servers/';
+export const ROUTE_MCPS_EXPLORE = '/mcps/explore/';

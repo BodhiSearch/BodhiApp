@@ -10,6 +10,8 @@ export {
   refEndpointCatalogProviderModels,
   refEndpointCatalogModel,
   refEndpointCatalogLogo,
+  REF_ENDPOINT_MCP_SERVERS,
+  refEndpointMcpServer,
 } from './constants';
 export { useDiscoverModels, useModelDetail, buildModelsQuery } from './useDiscoverModels';
 export { useSearchRepos } from './useSearchRepos';
@@ -21,3 +23,4 @@ export {
   useCatalogModels,
   useCatalogModelDetail,
 } from './useCatalog';
+export { buildMcpServersQuery, useMcpServers, useMcpServerDetail } from './useMcpCatalog';

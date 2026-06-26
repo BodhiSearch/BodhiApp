@@ -1,6 +1,7 @@
 import {
   ROUTE_CHAT,
   ROUTE_MCPS,
+  ROUTE_MCPS_EXPLORE,
   ROUTE_MODELS_EXPLORE_API,
   ROUTE_MODELS_EXPLORE_LOCAL,
   ROUTE_MODELS_EXPLORE_PROVIDERS,
@@ -70,7 +71,8 @@ export const SHELL_NAV: ShellNavItem[] = [
     icon: 'plug',
     href: ROUTE_MCPS,
     subPages: [
-      { id: 'discover', label: 'All MCPs', icon: 'compass', href: ROUTE_MCPS },
+      { id: 'my-mcps', label: 'All MCPs', icon: 'globe-2', href: ROUTE_MCPS },
+      { id: 'explore-mcp', label: 'Explore · MCP Servers', icon: 'compass', href: ROUTE_MCPS_EXPLORE },
       { id: 'new-mcp', label: 'New Instance', icon: 'plus-circle', href: '/mcps/new/' },
     ],
   },

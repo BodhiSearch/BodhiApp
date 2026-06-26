@@ -1,0 +1,15 @@
+/* Explore · MCP Servers — page-specific styling layered on the shared catalog.css. */
+
+/* MCP rows carry real logo URLs; render the image edge-to-edge inside the tint tile, dropping the
+   tile's background so the logo shows on its own. */
+.cat-logo--img {
+  background: transparent;
+  overflow: hidden;
+  padding: 0;
+}
+.cat-logo--img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+}

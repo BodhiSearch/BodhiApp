@@ -16,6 +16,10 @@ export const referenceKeys = {
     [...referenceKeys.catalog(), 'provider', slug, 'models', paramsKey] as const,
   catalogModels: (paramsKey: string) => [...referenceKeys.catalog(), 'models', paramsKey] as const,
   catalogModel: (slug: string, modelId: string) => [...referenceKeys.catalog(), 'model', slug, modelId] as const,
+  // MCP-server catalog (`/api/v1/mcp-servers`) — the Explore · MCP Servers page.
+  mcp: () => [...referenceKeys.all, 'mcp'] as const,
+  mcpServers: (paramsKey: string) => [...referenceKeys.mcp(), 'servers', paramsKey] as const,
+  mcpServer: (id: string) => [...referenceKeys.mcp(), 'server', id] as const,
   // Repo autocomplete (`/api/v1/repos`) — full <author>/<repo> typeahead for the add-local-model form.
   repos: (paramsKey: string) => [...referenceKeys.all, 'repos', paramsKey] as const,
 };
@@ -36,3 +40,7 @@ export const refEndpointCatalogModel = (slug: string, modelId: string) =>
   `/api/v1/catalog/models/${encodeURIComponent(slug)}/${encodeURIComponent(modelId)}`;
 /** Provider logo SVG (currently 404s upstream — callers fall back to a monogram). */
 export const refEndpointCatalogLogo = (slug: string) => `/api/v1/catalog/logos/${encodeURIComponent(slug)}.svg`;
+
+/** MCP-server catalog endpoints. */
+export const REF_ENDPOINT_MCP_SERVERS = '/api/v1/mcp-servers';
+export const refEndpointMcpServer = (id: string) => `/api/v1/mcp-servers/${encodeURIComponent(id)}`;
