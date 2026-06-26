@@ -25,7 +25,8 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 | 3-4 | **New Local Model** form (`alias/new`+`edit`) — richest; consumes the 3-6 `quants[]` contract. Evolved in-place over 5 phases (create-then-download backend + `BODHI_TEST_MODE`; quant selector w/ local status; context-flag catalog; request-params editor + `system_prompt`; V2 chrome). V2-only, `new-local-model` flag retired. Plan: `../we-deferred-the-new-spicy-peach.md` | ✅ done (no flag) |
 | 3-5 | files / pull consolidation (fold download + quant table into the local-model form) — **largely absorbed by 3-4** (create-then-download + quant table landed there); remaining `/models/files*` retirement decision | ⬜ not started |
 | 3-7 | **API Models** discovery sub-view (reference API) | ⬜ not started |
-| 4 | MCP (3 screens) | ⬜ not started |
+| 4 | MCP | 🚧 in progress |
+| 4-1 | **Explore · MCP Servers** — new catalog view wired to the reference API (`/api/v1/mcp-servers`); near-clone of Explore·API Models (shared CatalogTable/keyboard-nav/Vimium/rail/pagination/Reset/ColumnPicker). Data-driven facets (Category hides when empty, Auth single `http` chip), client-side Verified + Installed facets, instance-join STATUS column (catalog `endpoint_url` ↔ user `mcp_server.url`), single-scroll rail (Description/Connection; provenance Metadata **dropped** — backend deletes it). V2-only, **no flag**. Plan: `../we-are-continiuing-docs-claude-plans-202-cheeky-crab.md`; gaps + deferrals (My MCPs migration, V2 new-instance/connect flow): `mcp-techdebt.md`. | ✅ done (no flag) |
 | 5 | Chat (1 screen, highest risk, last) | ⬜ not started |
 
 > **Batch 3 split + re-sequenced (2026-06-19):** the My Models *list* lands first on the real backend
