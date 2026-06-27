@@ -92,6 +92,14 @@ const CATALOG = [
     userInstances:[{ id:'inst-dw-1', name:'deepwiki', status:'connected', authType:'none', authName:'public', time:'2d ago' }],
     authConfigs:[] },
 
+  { id:'everything', name:'Everything', publisher:'MCP Reference', verified:true, icon:'✦', iconBg:'#4F46E5', iconColor:'#fff',
+    category:'Reference', catClass:'tag-indigo',
+    desc:'A reference MCP that exercises every capability — tools, prompts, resources, templates and the live interactions — for learning what an MCP can do.',
+    url:'https://mcp.example.com/everything', transport:'streamable-http',
+    registered:true, disabled:false, requestStatus:'none', auth:['none'],
+    userInstances:[{ id:'inst-everything-1', name:'everything', status:'connected', authType:'none', authName:'public', time:'just now' }],
+    authConfigs:[] },
+
   { id:'slack', name:'Slack', publisher:'Slack', verified:true, icon:'S', iconBg:'#4A154B', iconColor:'#fff',
     category:'Comms', catClass:'tag-indigo',
     desc:'Channel-based messaging: post, search, react across your Slack workspace.',
@@ -263,7 +271,7 @@ const toolsFor = id => SERVER_TOOLS[id] || DEFAULT_TOOLS;
 
 /* ══ NAVIGATION ═════════════════════════════════════════════════ */
 function goToPlayground(instId, instName, serverId) {
-  window.location.href = `Bodhi MCP Playground.html?instance=${instId}&name=${encodeURIComponent(instName)}&server=${serverId}`;
+  window.location.href = `MCP-Playground-Overview.html?instance=${instId}&name=${encodeURIComponent(instName)}&server=${serverId}`;
 }
 function goToNewInstance(serverId, authName) {
   window.location.href = `Bodhi MCP New Instance.html?server=${serverId}&auth=${encodeURIComponent(authName || 'public')}`;

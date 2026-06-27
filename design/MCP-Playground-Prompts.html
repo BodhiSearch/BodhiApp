@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bodhi · MCP Playground</title>
+<title>Bodhi · MCP Playground · Prompts</title>
 <link rel="stylesheet" href="shared/colors_and_type.css">
-  <script src="shared/bodhi-theme.js"></script>
+<script src="shared/bodhi-theme.js"></script>
 <link rel="stylesheet" href="shared/bodhi-app-shell.css">
 <link rel="stylesheet" href="mcp/mcp-common.css">
-<link rel="stylesheet" href="mcp/bodhi-mcp-playground.css">
+<link rel="stylesheet" href="mcp-playground/pg-app.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest"></script>
+<script>window.PG_PAGE_CAP = "prompts";</script>
 </head>
 <body>
 <div id="root"></div>
@@ -22,11 +23,12 @@
 <script type="text/babel" src="shared/shell-user.jsx"></script>
 <script type="text/babel" src="shared/shell-app.jsx"></script>
 <script type="text/babel" src="mcp/mcp-catalog.jsx"></script>
-<script type="text/babel" src="mcp/pg-data.jsx"></script>
-<script type="text/babel" src="mcp/pg-shared.jsx"></script>
-<script type="text/babel" src="mcp/pg-render.jsx"></script>
-<script type="text/babel" src="mcp/pg-views.jsx"></script>
-<script type="text/babel" src="mcp/bodhi-mcp-playground-app.jsx"></script>
-  <script src="shared/bodhi-select.js"></script>
+<script type="text/babel" src="mcp-playground/pg-tools.jsx"></script>
+<script type="text/babel" src="mcp-playground/pg-data.jsx"></script>
+<script type="text/babel" src="mcp-playground/pg-shared.jsx"></script>
+<script type="text/babel" src="mcp-playground/pg-render.jsx"></script>
+<script type="text/babel" src="mcp-playground/pg-views.jsx"></script>
+<script type="text/babel" src="mcp-playground/pg-chrome.jsx"></script>
+<script src="shared/bodhi-select.js"></script>
 </body>
 </html>

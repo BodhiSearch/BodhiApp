@@ -116,8 +116,11 @@ const templatesFor = id => SERVER_TEMPLATES[id] || [];
 
 /* Capability counts for a server id — drives the rail badges + Overview. */
 function capabilityCounts(serverId) {
+  const toolList = (typeof playgroundToolsFor === 'function')
+    ? playgroundToolsFor(serverId)
+    : (typeof toolsFor === 'function' ? toolsFor(serverId) : []);
   return {
-    tools: (typeof toolsFor === 'function' ? toolsFor(serverId) : []).length,
+    tools: toolList.length,
     prompts: promptsFor(serverId).length,
     resources: resourcesFor(serverId).length,
     templates: templatesFor(serverId).length,

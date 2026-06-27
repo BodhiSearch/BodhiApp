@@ -266,7 +266,7 @@ function NewInstanceApp() {
     if (!selectedServer) return;
     setSubmitting(true);
     setTimeout(() => {
-      window.location.href = `Bodhi MCP Playground.html?instance=${isEdit ? params.get('instance') : 'new-' + selectedServer.id}&name=${encodeURIComponent(name)}&server=${selectedServer.id}`;
+      window.location.href = `MCP-Playground-Overview.html?instance=${isEdit ? params.get('instance') : 'new-' + selectedServer.id}&name=${encodeURIComponent(name)}&server=${selectedServer.id}`;
     }, 1200);
   };
 

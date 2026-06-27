@@ -10,7 +10,8 @@
 
 /* ── Primary section nav (expanded dropdown OR collapsed icon rail) ── */
 function ShellNav({ section = 'chat', subPage = null }) {
-  const { collapsed, openPop, setOpenPop } = useShell();
+  const { collapsed, openPop, setOpenPop, navBase = '' } = useShell();
+  const nb = (h) => h ? navBase + h : '#';
   const open = openPop === 'nav';
   const anchorRef = React.useRef(null);
   const cur = SHELL_NAV.find((n) => n.id === section) || SHELL_NAV[0];
@@ -23,7 +24,7 @@ function ShellNav({ section = 'chat', subPage = null }) {
   }, [open]);
 
   const menuItems = SHELL_NAV.map((item) =>
-  <a key={item.id} href={item.href || '#'} className={'shell-nav-item' + (item.id === section ? ' on' : '')}>
+  <a key={item.id} href={nb(item.href)} className={'shell-nav-item' + (item.id === section ? ' on' : '')}>
       <ShellIcon name={item.icon} color={item.id === section ? '#DB456C' : 'currentColor'} />
       {item.label}
       {item.badge && <span className="shell-nav-badge">{item.badge}</span>}
@@ -43,7 +44,7 @@ function ShellNav({ section = 'chat', subPage = null }) {
         </AnchoredPopover>
         {cur.subPages && cur.subPages.length > 0 && <div className="shell-iconrail-div" />}
         {cur.subPages && cur.subPages.map((sp) =>
-        <a key={sp.id} href={sp.href || '#'}
+        <a key={sp.id} href={nb(sp.href)}
         className={'shell-railbtn shell-tip' + (sp.id === subPage ? ' on' : '')} data-tip={sp.label}>
             <ShellIcon name={sp.icon || 'circle'} size={17} />
             {sp.badge && <span className="rb-badge">{sp.badge}</span>}
@@ -66,7 +67,7 @@ function ShellNav({ section = 'chat', subPage = null }) {
       {cur.subPages && cur.subPages.length > 0 &&
       <div className="shell-sub">
           {cur.subPages.map((sp) =>
-        <a key={sp.id} href={sp.href || '#'} data-tip={sp.label} className={'shell-sub-item' + (sp.id === subPage ? ' on' : '')}>
+        <a key={sp.id} href={nb(sp.href)} data-tip={sp.label} className={'shell-sub-item' + (sp.id === subPage ? ' on' : '')}>
               <ShellIcon name={sp.icon || 'circle'} size={13} color={sp.id === subPage ? '#DB456C' : 'currentColor'} />
               {sp.label}
               {sp.badge && <span className="shell-sub-badge">{sp.badge}</span>}
@@ -204,9 +205,10 @@ function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable,
 
 /* ── Default brand mark ─────────────────────────────────────── */
 function ShellBrand({ collapsed }) {
+  const { navBase = '' } = useShell();
   return (
-    <a href="Bodhi Chat.html" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <img src="assets/bodhi-logo-60.svg" alt="Bodhi" onError={(e) => {e.target.style.display = 'none';}} />
+    <a href={navBase + 'Bodhi Chat.html'} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <img src={navBase + 'assets/bodhi-logo-60.svg'} alt="Bodhi" onError={(e) => {e.target.style.display = 'none';}} />
       {!collapsed &&
       <span>
           <span className="shell-brand-t" style={{ display: 'block' }}>Bodhi</span>

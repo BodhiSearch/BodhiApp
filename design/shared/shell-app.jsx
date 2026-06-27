@@ -34,7 +34,8 @@ function AppShell({
   breadcrumb, headerActions,
   brand, sidebar, footer, banner,
   toolbar, sidebarToolbar, railToolbar,
-  rail, railHeader, railDefaultOpen = true,
+  rail, railHeader, railDefaultOpen = true, railCollapsible = true,
+  navBase = '',
   contentClass = '', mainScroll = true, railScroll = true,
   children,
 }) {
@@ -58,6 +59,7 @@ function AppShell({
   const hasRail = Boolean(rail);
   const hasBand = Boolean(toolbar || sidebarToolbar || railToolbar);
   const effCollapsed = collapsed && !isMobile;
+  const railIsCollapsed = railCollapsible ? railCollapsed : false;   // pinned-open when not collapsible (desktop)
 
   /* ── column resize (widths persist; collapse does not) ── */
   React.useEffect(() => {
@@ -102,7 +104,7 @@ function AppShell({
   const toggleSidebar = () => { setOpenPop(null); isMobile ? setSbOpen(o => !o) : setCollapsed(c => !c); };
   const toggleRail = () => { isMobile ? setRailOpen(o => !o) : setRailCollapsed(c => !c); };
   const ctx = {
-    collapsed: effCollapsed, isMobile, openPop, setOpenPop,
+    collapsed: effCollapsed, isMobile, openPop, setOpenPop, navBase,
     openRail: () => { setRailCollapsed(false); setRailOpen(true); },
     closeRail: () => setRailOpen(false),
     collapseRail: () => { setRailCollapsed(true); setRailOpen(false); },
@@ -112,7 +114,7 @@ function AppShell({
 
   const shellClass = ['shell',
     effCollapsed ? 'sb-collapsed' : '',
-    (railCollapsed && !isMobile) ? 'rail-collapsed' : '',
+    (railIsCollapsed && !isMobile) ? 'rail-collapsed' : '',
     !hasRail ? 'no-rail' : '',
     sbOpen ? 'sb-open' : '',
     railOpen ? 'rail-open' : '',
@@ -158,7 +160,7 @@ function AppShell({
             <ShellBreadcrumb items={breadcrumb} />
             <div className="shell-head-actions">
               {headerActions}
-              {hasRail && (
+              {hasRail && (isMobile || railCollapsible) && (
                 <button className="shell-icon-btn shell-rail-toggle" onClick={toggleRail} title="Toggle detail panel">
                   <ShellIcon name="panel-right" size={16} />
                 </button>
@@ -190,7 +192,7 @@ function AppShell({
             <div className="shell-resize-grip" />
           </div>
         )}
-        {!isMobile && hasRail && !railCollapsed && (
+        {!isMobile && hasRail && !railIsCollapsed && (
           <div className="shell-resize right" style={{ left: 'calc(100% - var(--shell-rail-track))', transform: 'translateX(-50%)' }}
                onPointerDown={e => startDrag('right', e)} onDoubleClick={() => resetWidth('right')}>
             <div className="shell-resize-grip" />

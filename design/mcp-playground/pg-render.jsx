@@ -46,33 +46,62 @@ function ArgForm({ args, values, onChange, errors }) {
   );
 }
 
-/* ── light markdown (headings, bullets, **bold**) ────────────── */
-function inlineBold(text) {
-  const parts = String(text).split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((p, i) => /^\*\*[^*]+\*\*$/.test(p)
-    ? <strong key={i}>{p.slice(2, -2)}</strong> : <React.Fragment key={i}>{p}</React.Fragment>);
+/* ── light markdown (headings, bullets, **bold**, `code`, links,
+   > quotes, fenced code blocks and tables) ──────────────────── */
+function inlineMd(text) {
+  const nodes = [];
+  const re = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
+  let last = 0, m, i = 0;
+  while ((m = re.exec(text))) {
+    if (m.index > last) nodes.push(<React.Fragment key={i++}>{text.slice(last, m.index)}</React.Fragment>);
+    const tok = m[0];
+    if (tok.startsWith('**')) nodes.push(<strong key={i++}>{tok.slice(2, -2)}</strong>);
+    else if (tok.startsWith('`')) nodes.push(<code key={i++} className="md-code">{tok.slice(1, -1)}</code>);
+    else {
+      const mm = tok.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      nodes.push(<a key={i++} className="md-link" href={mm[2]} target="_blank" rel="noopener noreferrer">{mm[1]}</a>);
+    }
+    last = m.index + tok.length;
+  }
+  if (last < text.length) nodes.push(<React.Fragment key={i++}>{text.slice(last)}</React.Fragment>);
+  return nodes;
 }
 function Markdownish({ text }) {
   const lines = String(text).split('\n');
   const out = [];
-  let bullets = null;
+  let bullets = null, i = 0;
   const flush = () => { if (bullets) { out.push(<ul className="md-ul" key={'ul' + out.length}>{bullets}</ul>); bullets = null; } };
-  lines.forEach((ln, i) => {
-    const t = ln.trimEnd();
-    if (/^#{1,3}\s/.test(t)) {
-      flush();
-      const lvl = t.match(/^#+/)[0].length;
-      const txt = t.replace(/^#+\s/, '');
-      out.push(<div className={'md-h md-h' + lvl} key={i}>{inlineBold(txt)}</div>);
-    } else if (/^[-*]\s/.test(t)) {
-      (bullets = bullets || []).push(<li key={i}>{inlineBold(t.replace(/^[-*]\s/, ''))}</li>);
-    } else if (t === '') {
-      flush();
-    } else {
-      flush();
-      out.push(<p className="md-p" key={i}>{inlineBold(t)}</p>);
+  const parseRow = r => r.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(c => c.trim());
+  while (i < lines.length) {
+    const t = lines[i].trimEnd();
+    if (/^```/.test(t.trim())) {                       // fenced code block
+      flush(); const buf = []; i++;
+      while (i < lines.length && !/^```/.test(lines[i].trim())) { buf.push(lines[i]); i++; }
+      i++;
+      out.push(<pre className="md-pre" key={'cd' + out.length}><code>{buf.join('\n')}</code></pre>);
+      continue;
     }
-  });
+    if (t.includes('|') && i + 1 < lines.length && /-/.test(lines[i + 1]) && /^[\s:|-]+$/.test(lines[i + 1].trim())) {
+      flush();                                          // table
+      const headers = parseRow(t); i += 2; const rows = [];
+      while (i < lines.length && lines[i].includes('|') && lines[i].trim() !== '') { rows.push(parseRow(lines[i])); i++; }
+      out.push(
+        <div className="md-table-wrap" key={'tb' + out.length}>
+          <table className="md-table">
+            <thead><tr>{headers.map((h, hi) => <th key={hi}>{inlineMd(h)}</th>)}</tr></thead>
+            <tbody>{rows.map((r, ri) => <tr key={ri}>{r.map((c, ci) => <td key={ci}>{inlineMd(c)}</td>)}</tr>)}</tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+    if (/^#{1,3}\s/.test(t)) { flush(); const lvl = t.match(/^#+/)[0].length; out.push(<div className={'md-h md-h' + lvl} key={i}>{inlineMd(t.replace(/^#+\s/, ''))}</div>); }
+    else if (/^>\s?/.test(t)) { flush(); out.push(<blockquote className="md-quote" key={i}>{inlineMd(t.replace(/^>\s?/, ''))}</blockquote>); }
+    else if (/^[-*]\s/.test(t)) { (bullets = bullets || []).push(<li key={i}>{inlineMd(t.replace(/^[-*]\s/, ''))}</li>); }
+    else if (t === '') { flush(); }
+    else { flush(); out.push(<p className="md-p" key={i}>{inlineMd(t)}</p>); }
+    i++;
+  }
   flush();
   return <div className="md">{out}</div>;
 }
@@ -147,8 +176,127 @@ function MessagesView({ messages }) {
   );
 }
 
+/* ══ BEHAVIOUR HINTS — friendly chips; protocol term in the tooltip ══ */
+function BehaviourHints({ tool }) {
+  const hints = hintsForTool(tool);
+  if (!hints.length) return null;
+  return (
+    <div className="pg-hints">
+      {hints.map(h => (
+        <span key={h.key} className={'pg-hint shell-tip tone-' + h.tone} data-tip={h.term + ' — ' + h.tip}>
+          <Ic name={h.icon} size={11} /> <span className="pg-hint-label">{h.label}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/* ── one content block (text/image/link/embedded resource) ──── */
+function TextBlock({ block }) {
+  const fmt = block.format || 'markdown';
+  if (fmt === 'pre') return <pre className="pg-pre"><code>{block.text}</code></pre>;
+  if (fmt === 'plain') return <div className="pg-plain">{block.text}</div>;
+  return <Markdownish text={block.text} />;
+}
+const IMG_TINT = { indigo: 'var(--c-indigo-text)', lotus: 'var(--c-lotus-text)', leaf: 'var(--c-leaf-text)', saffron: 'var(--c-saffron-text)' };
+function ImageBlock({ block }) {
+  const w = block.w || 240, h = block.h || 150;
+  const accent = IMG_TINT[block.tint] || 'var(--c-indigo-text)';
+  return (
+    <figure className="pg-img">
+      <div className="pg-img-tile" style={{ aspectRatio: w + ' / ' + h, '--img-accent': accent }} role="img" aria-label={block.alt || block.name}>
+        <Ic name="image" size={22} />
+        <span className="pg-img-dims">{w}×{h}</span>
+      </div>
+      <figcaption className="pg-img-cap">
+        <span className="mono">{block.name || 'image'}</span>
+        <span className="pg-img-mime">{block.mimeType || 'image/png'}</span>
+      </figcaption>
+    </figure>
+  );
+}
+function ResourceLinkBlock({ block }) {
+  const { openResource } = usePgNav();
+  return (
+    <button type="button" className="pg-rlink" onClick={() => openResource(block)}>
+      <span className="pg-rlink-ico"><Ic name="file-text" size={15} /></span>
+      <span className="pg-rlink-body">
+        <span className="pg-rlink-name">{block.name || block.uri}</span>
+        {block.description && <span className="pg-rlink-desc">{block.description}</span>}
+        <span className="pg-rlink-uri mono">{block.uri}</span>
+      </span>
+      <span className="pg-rlink-go"><Ic name="arrow-up-right" size={14} /></span>
+    </button>
+  );
+}
+function ResourceBlock({ block }) {
+  const isText = /text|markdown|json/.test(block.mimeType || '');
+  return (
+    <div className="pg-embed">
+      <div className="pg-embed-head"><Ic name="paperclip" size={12} /> <span className="mono">{block.uri}</span><span className="pg-mime">{block.mimeType}</span></div>
+      {isText ? <Markdownish text={block.text || ''} /> : <DataView value={block.text} />}
+    </div>
+  );
+}
+function ContentBlock({ block }) {
+  if (block.type === 'image') return <ImageBlock block={block} />;
+  if (block.type === 'resource_link') return <ResourceLinkBlock block={block} />;
+  if (block.type === 'resource') return <ResourceBlock block={block} />;
+  return <TextBlock block={block} />;
+}
+
+/* structured data — caption a single {key:[rows]} as a titled table ── */
+function StructuredView({ data }) {
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const keys = Object.keys(data);
+    if (keys.length === 1 && Array.isArray(data[keys[0]]) && data[keys[0]].every(v => v && typeof v === 'object')) {
+      return (
+        <div className="pg-structured">
+          <div className="pg-structured-cap">{prettyKey(keys[0])}</div>
+          <DataTable rows={data[keys[0]]} />
+        </div>
+      );
+    }
+  }
+  if (Array.isArray(data) && data.every(v => v && typeof v === 'object')) return <DataTable rows={data} />;
+  return <DataView value={data} />;
+}
+
+/* ── tool result: ordered content blocks + optional structured data ── */
+function StructDetails({ data, defaultOpen }) {
+  const [open, setOpen] = useState(defaultOpen !== false);
+  return (
+    <div className={'pg-struct-wrap' + (open ? ' open' : '')}>
+      <button type="button" className="pg-struct-sum" onClick={() => setOpen(o => !o)}>
+        <Ic name={open ? 'chevron-down' : 'chevron-right'} size={12} />
+        <Ic name="table-2" size={12} /> <span>Structured data</span>
+      </button>
+      {open && <div className="pg-struct-body"><StructuredView data={data} /></div>}
+    </div>
+  );
+}
+function ToolResultView({ model }) {
+  const blocks = model.content || [];
+  const links = blocks.filter(b => b.type === 'resource_link');
+  const nonLinks = blocks.filter(b => b.type !== 'resource_link');
+  return (
+    <div className="pg-toolresult">
+      {nonLinks.map((b, i) => <ContentBlock key={i} block={b} />)}
+      {links.length > 0 && (
+        <div className="pg-rlinks">
+          {nonLinks.length > 0 && <div className="pg-rlinks-cap">Linked resources</div>}
+          {links.map((b, i) => <ResourceLinkBlock key={i} block={b} />)}
+        </div>
+      )}
+      {model.structuredContent !== undefined && <StructDetails data={model.structuredContent} defaultOpen={true} />}
+      {blocks.length === 0 && model.structuredContent === undefined && <div className="pg-noresult">The tool returned nothing.</div>}
+    </div>
+  );
+}
+
 /* ── readable switchboard by result kind ─────────────────────── */
 function ReadableResult({ run }) {
+  if (run.kind === 'tool') return <ToolResultView model={run.data} />;
   if (run.kind === 'messages') return <MessagesView messages={run.data} />;
   if (run.kind === 'text') return <TextContentView data={run.data} />;
   if (run.kind === 'resource') {
@@ -168,13 +316,11 @@ function ReadableResult({ run }) {
 }
 
 /* ══ RESULT PANEL ════════════════════════════════════════════════
-   Shared output surface. Readable by default; Raw is always one click
-   away; Request shows only in Developer mode. */
+   Shared output surface. The friendly Result reads first and is selected
+   on load; Raw and Request sit alongside it, always one click away. */
 function ResultPanel({ run, title = 'Result', emptyHint }) {
-  const { dev } = useDev();
   const [tab, setTab] = useState('readable');
   useEffect(() => { setTab('readable'); }, [run && run.token]);
-  useEffect(() => { if (tab === 'request' && !dev) setTab('readable'); }, [dev]);
 
   if (!run || run.phase === 'idle') {
     return (
@@ -206,7 +352,7 @@ function ResultPanel({ run, title = 'Result', emptyHint }) {
         <div className="pg-result-tabs">
           <button className={'pg-rtab' + (tab === 'readable' ? ' on' : '')} onClick={() => setTab('readable')}>{title}</button>
           <button className={'pg-rtab' + (tab === 'raw' ? ' on' : '')} onClick={() => setTab('raw')}>Raw</button>
-          {dev && run.request && <button className={'pg-rtab' + (tab === 'request' ? ' on' : '')} onClick={() => setTab('request')}>Request</button>}
+          {run.request && <button className={'pg-rtab' + (tab === 'request' ? ' on' : '')} onClick={() => setTab('request')}>Request</button>}
         </div>
         <CopyBtn text={tab === 'request' ? run.request : (tab === 'raw' ? run.raw : run.data)} />
       </div>
@@ -226,6 +372,7 @@ function ResultPanel({ run, title = 'Result', emptyHint }) {
 }
 
 Object.assign(window, {
-  CopyBtn, ArgForm, Markdownish, DataView, DataTable,
+  CopyBtn, ArgForm, Markdownish, inlineMd, DataView, DataTable,
   TextContentView, MessagesView, ReadableResult, ResultPanel, normalizeText,
+  BehaviourHints, ToolResultView, ContentBlock, ResourceLinkBlock, StructuredView,
 });

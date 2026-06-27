@@ -1,33 +1,34 @@
 /* ═══════════════════════════════════════════════════════════════
-   BODHI MCP — PLAYGROUND VIEWS
-   mcp/pg-views.jsx   (load AFTER pg-render.jsx, BEFORE the app root)
+   BODHI MCP — PLAYGROUND DETAILS + CAPABILITY CONFIG
+   mcp-playground/pg-views.jsx   (load AFTER pg-render.jsx, BEFORE pg-chrome)
 
-   The five capability surfaces the Playground shows once an instance
-   is chosen: Overview (a friendly dashboard) + Tools / Prompts /
-   Resources / Templates (each a searchable master-detail you can run).
+   The centre-panel DETAIL surfaces — one per capability (Tools / Prompts /
+   Resources / Templates) plus the Overview dashboard — and CAP_CONFIG,
+   which describes each capability's list + detail so pg-chrome can render
+   the right-rail list and the centre detail generically.
+
+   The master-detail is now SPLIT across the shell: the list lives in the
+   pinned right rail (pg-chrome) and the detail here in the centre.
 ═══════════════════════════════════════════════════════════════ */
 
 /* ── shared run simulator ────────────────────────────────────── */
 function useRunner() {
   const [run, setRun] = useState(null);
-  const exec = ({ request, kind, build, meta }) => {
+  const exec = ({ request, kind, build, meta, raw }) => {
     setRun({ phase: 'running' });
     setTimeout(() => {
       const data = build();
+      const rawStr = raw !== undefined
+        ? (typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2))
+        : JSON.stringify(data, null, 2);
       setRun({
-        phase: 'done', kind, data,
-        raw: JSON.stringify(data, null, 2), request,
+        phase: 'done', kind, data, raw: rawStr, request,
         meta: meta || ('200 OK · ' + (170 + Math.floor(Math.random() * 250)) + 'ms'),
         token: Date.now(),
       });
     }, 460 + Math.random() * 420);
   };
   return [run, exec, setRun];
-}
-function inferKind(parsed) {
-  if (Array.isArray(parsed) && parsed.every(b => b && b.type === 'text')) return 'text';
-  if (parsed && parsed.type === 'text') return 'text';
-  return 'data';
 }
 function chatHref(inst, kind, name) {
   return 'Bodhi Chat.html?mcp=' + encodeURIComponent(inst ? inst.instId : '') + '&' + kind + '=' + encodeURIComponent(name);
@@ -50,122 +51,85 @@ function DetailHead({ icon, name, mono, desc, tag, actions }) {
   );
 }
 
-/* ── generic master-detail frame ─────────────────────────────── */
-function MasterDetail({ items, getId, renderRow, renderDetail, searchKeys, searchPlaceholder, empty }) {
-  const [q, setQ] = useState('');
-  const [activeId, setActiveId] = useState(() => (items[0] ? getId(items[0]) : null));
-  useEffect(() => { setActiveId(items[0] ? getId(items[0]) : null); setQ(''); }, [items]);
+/* the centre "pick something" placeholder when nothing is selected */
+function PickSomething({ what }) {
+  return <div className="pg-pick"><Ic name="mouse-pointer-click" size={26} /><div>Pick {what} on the right to begin.</div></div>;
+}
 
-  if (!items || items.length === 0) {
-    return (
-      <div className="pg-cap-empty">
-        <Ic name={empty.icon} size={34} />
-        <div className="pg-cap-empty-t">{empty.title}</div>
-        <div className="pg-cap-empty-s">{empty.desc}</div>
-      </div>
-    );
-  }
-  const ql = q.toLowerCase();
-  const filtered = ql ? items.filter(it => searchKeys.some(k => String(it[k] || '').toLowerCase().includes(ql))) : items;
-  const active = items.find(it => getId(it) === activeId) || null;
-
+/* ════════════════════ TOOLS ════════════════════ */
+function ToolRow({ tool }) {
+  // Friendly title leads; the protocol name rides along in brackets. The
+  // primary behaviour hint (read-only / makes changes …) shows as a dot,
+  // always — hover it for the full explanation.
+  const hasTitle = !!tool.title;
+  const primary = hasTitle ? tool.title : tool.name;
+  const hint = hintsForTool(tool)[0];
   return (
-    <div className="pg-md">
-      <div className="pg-md-list">
-        <div className="pg-md-search">
-          <ShellSearch size="sm" value={q} onChange={setQ} placeholder={searchPlaceholder} />
+    <>
+      <span className="pg-row-name">
+        <span className={'pg-row-text' + (hasTitle ? '' : ' mono')}>
+          {primary}{hasTitle && <span className="pg-row-code"> ({tool.name})</span>}
+        </span>
+        {hint && <span className={'pg-row-dot shell-tip tone-' + hint.tone} data-tip={hint.label + ' \u2014 ' + hint.tip} />}
+      </span>
+      <span className="pg-row-sub">{tool.desc}</span>
+    </>
+  );
+}
+
+function ToolHeader({ tool, inst }) {
+  const hasTitle = !!tool.title;
+  return (
+    <div className="pg-dh pg-dh-tool">
+      <div className="pg-dh-ico"><Ic name="wrench" size={18} /></div>
+      <div className="pg-dh-text">
+        <div className="pg-dh-name-row">
+          <span className="pg-dh-name">{hasTitle ? tool.title : tool.name}</span>
+          {hasTitle && <span className="pg-dh-codename mono">({tool.name})</span>}
+          <span className="pg-dh-tag">Tool</span>
         </div>
-        <div className="pg-md-rows">
-          {filtered.length === 0 && <div className="pg-md-none">No matches</div>}
-          {filtered.map(it => (
-            <button key={getId(it)} type="button"
-              className={'pg-row' + (getId(it) === activeId ? ' on' : '')}
-              onClick={() => setActiveId(getId(it))}>
-              {renderRow(it)}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="pg-md-detail">
-        {active ? renderDetail(active) : (
-          <div className="pg-pick"><Ic name="hand-pointer" size={26} /><div>Pick something on the left to begin.</div></div>
-        )}
+        {tool.desc && <div className="pg-dh-desc">{tool.desc}</div>}
+        <BehaviourHints tool={tool} />
       </div>
     </div>
   );
 }
 
-/* ════════════════════ TOOLS ════════════════════ */
 function ToolDetail({ tool, inst }) {
-  const { dev } = useDev();
   const [values, setValues] = useState({});
   const [errors, setErrors] = useState({});
-  const [jsonMode, setJsonMode] = useState(false);
-  const [jsonText, setJsonText] = useState('');
   const [run, exec, setRun] = useRunner();
 
-  useEffect(() => { setValues({}); setErrors({}); setJsonMode(false); setJsonText(''); setRun(null); }, [tool.name]);
-  useEffect(() => { if (!dev) setJsonMode(false); }, [dev]);
+  useEffect(() => { setValues({}); setErrors({}); setRun(null); }, [tool.name]);
 
   const args = tool.params.map(p => ({ name: p.name, label: prettyKey(p.name), required: p.required, desc: p.desc, placeholder: p.placeholder, type: p.type }));
 
   const runIt = () => {
-    let vals = values;
-    if (jsonMode) {
-      try { vals = JSON.parse(jsonText || '{}'); }
-      catch (e) { setRun({ phase: 'error', error: 'That isn’t valid JSON — ' + e.message, token: Date.now() }); return; }
-    } else {
-      const errs = {};
-      tool.params.forEach(p => { if (p.required && !String(values[p.name] || '').trim()) errs[p.name] = true; });
-      if (Object.keys(errs).length) { setErrors(errs); setTimeout(() => setErrors({}), 2200); return; }
-    }
+    const errs = {};
+    tool.params.forEach(p => { if (p.required && !String(values[p.name] || '').trim()) errs[p.name] = true; });
+    if (Object.keys(errs).length) { setErrors(errs); setTimeout(() => setErrors({}), 2200); return; }
     const argsOut = {};
-    tool.params.forEach(p => { const v = vals[p.name]; if (v != null && String(v).trim() !== '') argsOut[p.name] = p.type === 'number' ? Number(v) : v; });
+    tool.params.forEach(p => { const v = values[p.name]; if (v != null && String(v).trim() !== '') argsOut[p.name] = p.type === 'number' ? Number(v) : v; });
     const request = { method: 'tools/call', params: { name: tool.name, arguments: argsOut } };
-    let parsed; try { parsed = JSON.parse(tool.mockResponse); } catch (e) { parsed = tool.mockResponse; }
-    exec({ request, kind: inferKind(parsed), build: () => parsed });
+    const model = toolResultModel(tool);
+    exec({ request, kind: 'tool', build: () => model, raw: toolResultEnvelope(model) });
   };
-
-  const jsonPlaceholder = (() => {
-    const o = {}; tool.params.forEach(p => { if (p.required) o[p.name] = p.type === 'number' ? 0 : ''; });
-    return JSON.stringify(o, null, 2);
-  })();
 
   return (
     <div className="pg-detail">
-      <DetailHead icon="wrench" name={tool.name} mono desc={tool.desc} tag="Tool"
-        actions={<a className="pg-ghost-btn" href={chatHref(inst, 'tool', tool.name)}><Ic name="message-circle" size={13} /> Use in Chat</a>} />
+      <ToolHeader tool={tool} inst={inst} />
       <div className="pg-detail-scroll">
         <div className="pg-run-card">
-          <div className="pg-run-head">
-            <span className="pg-run-title">{args.length ? 'Inputs' : 'Run'}</span>
-            {dev && args.length > 0 && (
-              <button className={'pg-mini-toggle' + (jsonMode ? ' on' : '')} onClick={() => setJsonMode(m => !m)}>
-                <Ic name="braces" size={12} /> JSON
-              </button>
-            )}
-          </div>
-          {jsonMode
-            ? <textarea className="pg-json" placeholder={jsonPlaceholder} value={jsonText} onChange={e => setJsonText(e.target.value)} />
-            : <ArgForm args={args} values={values} onChange={(n, v) => setValues(p => ({ ...p, [n]: v }))} errors={errors} />}
+          {args.length > 0 && <div className="pg-run-head"><span className="pg-run-title">Inputs</span></div>}
+          <ArgForm args={args} values={values} onChange={(n, v) => setValues(p => ({ ...p, [n]: v }))} errors={errors} />
           <div className="pg-run-row">
             <button className="pg-run-btn" onClick={runIt}><Ic name="play" size={14} /> Run tool</button>
-            {(args.length > 0) && <button className="pg-clear-btn" onClick={() => { setValues({}); setJsonText(''); setRun(null); }}>Reset</button>}
+            {(args.length > 0) && <button className="pg-clear-btn" onClick={() => { setValues({}); setRun(null); }}>Reset</button>}
           </div>
         </div>
         <ResultPanel run={run} title="Result" emptyHint="Run this tool to see what comes back" />
       </div>
     </div>
-  );
-}
-function ToolsView({ serverId, inst }) {
-  const tools = toolsFor(serverId);
-  return (
-    <MasterDetail items={tools} getId={t => t.name} searchKeys={['name', 'desc']}
-      searchPlaceholder="Search tools…"
-      empty={{ icon: 'wrench', title: 'No tools', desc: 'This MCP doesn’t expose any tools.' }}
-      renderRow={t => (<><span className="pg-row-name mono">{t.name}</span><span className="pg-row-sub">{t.desc}</span></>)}
-      renderDetail={t => <ToolDetail key={t.name} tool={t} inst={inst} />} />
   );
 }
 
@@ -203,16 +167,6 @@ function PromptDetail({ prompt, inst }) {
     </div>
   );
 }
-function PromptsView({ serverId, inst }) {
-  const prompts = promptsFor(serverId);
-  return (
-    <MasterDetail items={prompts} getId={p => p.name} searchKeys={['title', 'desc', 'name']}
-      searchPlaceholder="Search prompts…"
-      empty={{ icon: 'message-square-quote', title: 'No prompts', desc: 'This MCP doesn’t publish any ready-made prompts.' }}
-      renderRow={p => (<><span className="pg-row-name"><Ic name={p.icon || 'message-square-quote'} size={13} /> {p.title}</span><span className="pg-row-sub">{p.desc}</span></>)}
-      renderDetail={p => <PromptDetail key={p.name} prompt={p} inst={inst} />} />
-  );
-}
 
 /* ════════════════════ RESOURCES ════════════════════ */
 function ResourceDetail({ resource }) {
@@ -240,15 +194,16 @@ function ResourceDetail({ resource }) {
     </div>
   );
 }
-function ResourcesView({ serverId }) {
-  const resources = resourcesFor(serverId);
-  return (
-    <MasterDetail items={resources} getId={r => r.uri} searchKeys={['name', 'desc', 'uri']}
-      searchPlaceholder="Search resources…"
-      empty={{ icon: 'folder-open', title: 'No resources', desc: 'This MCP doesn’t expose any resources to read.' }}
-      renderRow={r => (<><span className="pg-row-name"><Ic name={r.icon || 'file-text'} size={13} /> {r.name}</span><span className="pg-row-sub mono">{r.uri}</span></>)}
-      renderDetail={r => <ResourceDetail key={r.uri} resource={r} />} />
-  );
+function makeTransientResource(link) {
+  const mime = link.mimeType || 'text/markdown';
+  const isJson = /json/.test(mime);
+  return {
+    uri: link.uri, name: link.name || link.uri, icon: 'file-text', mimeType: mime, transient: true,
+    desc: link.description || 'Opened from a tool result.',
+    contents: isJson
+      ? { uri: link.uri, openedFrom: 'tool result', note: 'Mock resource resolved from a tool link.' }
+      : `# ${link.name || 'Resource'}\n\n${link.description || ''}\n\nThis resource was opened from a tool result. Its address is \`${link.uri}\`.`,
+  };
 }
 
 /* ════════════════════ TEMPLATES ════════════════════ */
@@ -293,19 +248,9 @@ function TemplateDetail({ template }) {
     </div>
   );
 }
-function TemplatesView({ serverId }) {
-  const templates = templatesFor(serverId);
-  return (
-    <MasterDetail items={templates} getId={t => t.uriTemplate} searchKeys={['name', 'desc', 'uriTemplate']}
-      searchPlaceholder="Search templates…"
-      empty={{ icon: 'layout-template', title: 'No templates', desc: 'This MCP doesn’t expose any resource templates.' }}
-      renderRow={t => (<><span className="pg-row-name"><Ic name={t.icon || 'layout-template'} size={13} /> {t.name}</span><span className="pg-row-sub mono">{t.uriTemplate}</span></>)}
-      renderDetail={t => <TemplateDetail key={t.uriTemplate} template={t} />} />
-  );
-}
 
 /* ════════════════════ OVERVIEW ════════════════════ */
-function OverviewView({ inst, counts, onSelect, status }) {
+function OverviewView({ inst, counts, status, capHref }) {
   const s = inst.server;
   const authLabel = (AUTH_META[inst.authType] || AUTH_META.none).label;
   const cards = [
@@ -338,19 +283,73 @@ function OverviewView({ inst, counts, onSelect, status }) {
 
       <div className="pg-ov-section-label">What you can do here</div>
       <div className="pg-ov-cards">
-        {cards.map(c => (
-          <button key={c.id} className="pg-ov-card" onClick={() => onSelect(c.id)} disabled={c.n === 0}>
-            <div className="pg-ov-card-top"><span className="pg-ov-card-ico"><Ic name={c.icon} size={16} /></span><span className="pg-ov-card-n">{c.n}</span></div>
-            <div className="pg-ov-card-label">{c.label}</div>
-            <div className="pg-ov-card-blurb">{c.blurb}</div>
-          </button>
-        ))}
+        {cards.map(c => {
+          const disabled = c.n === 0;
+          return (
+            <a key={c.id} className={'pg-ov-card' + (disabled ? ' disabled' : '')}
+              href={disabled ? undefined : capHref(c.id)}>
+              <div className="pg-ov-card-top"><span className="pg-ov-card-ico"><Ic name={c.icon} size={16} /></span><span className="pg-ov-card-n">{c.n}</span></div>
+              <div className="pg-ov-card-label">{c.label}</div>
+              <div className="pg-ov-card-blurb">{c.blurb}</div>
+            </a>
+          );
+        })}
       </div>
     </div>
   );
 }
 
+/* ════════════════════ CAPABILITY CONFIG ════════════════════
+   Drives the right-rail list + the centre detail for each capability. */
+const CAP_CONFIG = {
+  tools: {
+    listTitle: 'Tools',
+    getItems: sid => playgroundToolsFor(sid),
+    getId: t => t.name,
+    searchKeys: ['title', 'name', 'desc'],
+    searchPlaceholder: 'Search tools…',
+    renderRow: t => <ToolRow tool={t} />,
+    renderDetail: (t, inst) => <ToolDetail key={t.name} tool={t} inst={inst} />,
+    empty: { icon: 'wrench', title: 'No tools', desc: 'This MCP doesn’t expose any tools.' },
+    pick: 'a tool',
+  },
+  prompts: {
+    listTitle: 'Prompts',
+    getItems: sid => promptsFor(sid),
+    getId: p => p.name,
+    searchKeys: ['title', 'desc', 'name'],
+    searchPlaceholder: 'Search prompts…',
+    renderRow: p => (<><span className="pg-row-name"><Ic name={p.icon || 'message-square-quote'} size={13} /> <span className="pg-row-text">{p.title}</span></span><span className="pg-row-sub">{p.desc}</span></>),
+    renderDetail: (p, inst) => <PromptDetail key={p.name} prompt={p} inst={inst} />,
+    empty: { icon: 'message-square-quote', title: 'No prompts', desc: 'This MCP doesn’t publish any ready-made prompts.' },
+    pick: 'a prompt',
+  },
+  resources: {
+    listTitle: 'Resources',
+    getItems: sid => resourcesFor(sid),
+    getId: r => r.uri,
+    searchKeys: ['name', 'desc', 'uri'],
+    searchPlaceholder: 'Search resources…',
+    renderRow: r => (<><span className="pg-row-name"><Ic name={r.icon || 'file-text'} size={13} /> <span className="pg-row-text">{r.name}</span>{r.transient && <span className="pg-row-badge">from tool</span>}</span><span className="pg-row-sub mono">{r.uri}</span></>),
+    renderDetail: (r) => <ResourceDetail key={r.uri} resource={r} />,
+    empty: { icon: 'folder-open', title: 'No resources', desc: 'This MCP doesn’t expose any resources to read.' },
+    pick: 'a resource',
+  },
+  templates: {
+    listTitle: 'Templates',
+    getItems: sid => templatesFor(sid),
+    getId: t => t.uriTemplate,
+    searchKeys: ['name', 'desc', 'uriTemplate'],
+    searchPlaceholder: 'Search templates…',
+    renderRow: t => (<><span className="pg-row-name"><Ic name={t.icon || 'layout-template'} size={13} /> <span className="pg-row-text">{t.name}</span></span><span className="pg-row-sub mono">{t.uriTemplate}</span></>),
+    renderDetail: (t) => <TemplateDetail key={t.uriTemplate} template={t} />,
+    empty: { icon: 'layout-template', title: 'No templates', desc: 'This MCP doesn’t expose any resource templates.' },
+    pick: 'a template',
+  },
+};
+
 Object.assign(window, {
-  useRunner, inferKind, chatHref, DetailHead, MasterDetail,
-  ToolsView, PromptsView, ResourcesView, TemplatesView, OverviewView,
+  useRunner, chatHref, DetailHead, PickSomething,
+  ToolRow, ToolHeader, ToolDetail, PromptDetail, ResourceDetail, TemplateDetail, OverviewView,
+  makeTransientResource, fillTemplate, CAP_CONFIG,
 });
