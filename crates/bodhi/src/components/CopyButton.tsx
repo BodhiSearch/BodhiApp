@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Check, Copy } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { copyToClipboard, getClipboardUnavailableMessage } from '@/lib/clipboard';
 
 interface CopyButtonProps {

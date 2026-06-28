@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 
 import { Button } from '@/components/ui/button';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { useLogoutHandler, useOAuthInitiate } from '@/hooks/auth';
 import { useGetAppInfo } from '@/hooks/info';
 import { useGetUser } from '@/hooks/users';

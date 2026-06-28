@@ -26,7 +26,7 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-vi.mock('@/hooks/use-media-query', () => ({
+vi.mock('@/hooks/useMediaQuery', () => ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   useMediaQuery: (_query: string) => {
     return true;

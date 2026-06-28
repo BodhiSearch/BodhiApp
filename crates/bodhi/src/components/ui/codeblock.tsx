@@ -3,7 +3,7 @@
 
 import { useTheme } from '@/components/ThemeProvider';
 import { Button } from '@/components/ui/button';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { copyToClipboard, getClipboardUnavailableMessage } from '@/lib/clipboard';
 import { Check, Copy } from 'lucide-react';
 import { FC, memo, useState } from 'react';

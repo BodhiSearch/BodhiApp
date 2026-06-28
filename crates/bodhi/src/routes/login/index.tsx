@@ -11,7 +11,7 @@ import { AuthCard } from '@/components/AuthCard';
 import { useOAuthInitiate, useDashboardOAuthInitiate } from '@/hooks/auth';
 import { useGetAppInfo } from '@/hooks/info';
 import { useListTenants, useTenantActivate } from '@/hooks/tenants';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { useGetUser } from '@/hooks/users';
 import { ROUTE_DEFAULT, ROUTE_REQUEST_ACCESS, ROUTE_SETUP_TENANTS } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';

@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useCreateModelRouter, useListModels, useUpdateModelRouter } from '@/hooks/models';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { extractErrorMessage } from '@/lib/errorUtils';
 import { isApiAlias } from '@/lib/utils';
 import { ChainItem } from '@/routes/models/-components/RoutingChainPreview';

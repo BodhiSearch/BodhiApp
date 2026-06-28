@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { UserAccessRequest } from '@bodhiapp/ts-client';
 
 import { useCollapsibleSearch } from '@/components/shell';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { useApproveRequest, useGetAuthenticatedUser, useListAllRequests, useRejectRequest } from '@/hooks/users';
 import { useViewTransition } from '@/hooks/useViewTransition';
 import { getAvailableRoles } from '@/lib/roles';

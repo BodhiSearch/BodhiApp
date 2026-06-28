@@ -6,8 +6,8 @@ import { motion } from 'framer-motion';
 
 import AppInitializer from '@/components/AppInitializer';
 import { BrowserExtensionCard } from '@/components/setup/BrowserExtensionCard';
-import { useBrowserDetection } from '@/hooks/use-browser-detection';
-import { useExtensionDetection } from '@/hooks/use-extension-detection';
+import { useBrowserDetection } from '@/hooks/useBrowserDetection';
+import { useExtensionDetection } from '@/hooks/useExtensionDetection';
 import type { BrowserInfo } from '@/lib/browser-utils';
 import { ROUTE_SETUP_COMPLETE } from '@/lib/constants';
 import { SetupContainer, SetupFooter } from '@/routes/setup/-components';

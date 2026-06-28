@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { useGetRequestStatus, useSubmitAccessRequest } from '@/hooks/users';
 import { useGetAuthenticatedUser } from '@/hooks/users';
 import { ROUTE_DEFAULT } from '@/lib/constants';

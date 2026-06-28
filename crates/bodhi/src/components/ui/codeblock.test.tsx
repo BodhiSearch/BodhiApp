@@ -12,7 +12,7 @@ vi.mock('@/components/ThemeProvider', () => ({
   }),
 }));
 
-vi.mock('@/hooks/use-toast-messages', () => ({
+vi.mock('@/hooks/useToastMessages', () => ({
   useToastMessages: () => ({
     showError: vi.fn(),
   }),

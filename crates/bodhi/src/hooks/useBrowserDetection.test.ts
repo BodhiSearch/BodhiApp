@@ -3,7 +3,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 import * as browserUtils from '@/lib/browser-utils';
 
-import { useBrowserDetection } from './use-browser-detection';
+import { useBrowserDetection } from './useBrowserDetection';
 
 vi.mock('ua-parser-js', () => {
   return {

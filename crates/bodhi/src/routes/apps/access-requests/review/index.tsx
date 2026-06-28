@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useGetAppAccessRequestReview, useApproveAppAccessRequest, useDenyAppAccessRequest } from '@/hooks/apps';
 import type { AccessRequestActionResponse, ApproveAccessRequest } from '@/hooks/apps';
 import { toast } from '@/hooks/use-toast';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { useGetUser } from '@/hooks/users';
 import { extractErrorMessage } from '@/lib/errorUtils';
 import { safeNavigate } from '@/lib/safeNavigate';

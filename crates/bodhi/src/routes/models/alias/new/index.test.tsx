@@ -20,7 +20,7 @@ import {
 import { createDetailModel } from '@/test-fixtures/discover-models';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/hooks/use-media-query', () => ({
+vi.mock('@/hooks/useMediaQuery', () => ({
   useMediaQuery: (query: string) => {
     return true;
   },

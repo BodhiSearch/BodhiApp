@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useSetupApp } from '@/hooks/info';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { ROUTE_SETUP_DOWNLOAD_MODELS, ROUTE_SETUP_RESOURCE_ADMIN } from '@/lib/constants';
 import { setupFormSchema, SetupFormData } from '@/schemas/objs';
 

@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCreateModel, useUpdateModel } from '@/hooks/models';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { hasLocalFileProperties, isUserAlias, isApiAlias } from '@/lib/utils';
 import { ALIAS_FORM_TOOLTIPS } from '@/routes/models/-components/tooltips';
 import {

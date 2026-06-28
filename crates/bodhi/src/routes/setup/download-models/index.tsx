@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import AppInitializer from '@/components/AppInitializer';
 import { useChatModelsCatalog, useEmbeddingModelsCatalog, useListDownloads, usePullModel } from '@/hooks/models';
 import { ModelInfo, ModelCatalog } from '@/hooks/models/model-catalog-types';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { ROUTE_SETUP_API_MODELS } from '@/lib/constants';
 import { SetupContainer, SetupFooter } from '@/routes/setup/-components';
 import { itemVariants } from '@/routes/setup/-shared/types';

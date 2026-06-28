@@ -20,7 +20,7 @@ import '@/components/shell/list.css';
 import '@/components/shell/tokens.css';
 import { useGetAppInfo } from '@/hooks/info';
 import { useListTokens, useUpdateToken } from '@/hooks/tokens';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 
 export const Route = createFileRoute('/tokens/')({

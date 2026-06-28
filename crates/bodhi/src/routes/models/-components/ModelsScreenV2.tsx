@@ -15,7 +15,7 @@ import {
   useListModels,
   useRetryDownload,
 } from '@/hooks/models';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 import { extractErrorMessage } from '@/lib/errorUtils';
 import { isApiAlias, isModelRouterAlias, isUserAlias } from '@/lib/utils';

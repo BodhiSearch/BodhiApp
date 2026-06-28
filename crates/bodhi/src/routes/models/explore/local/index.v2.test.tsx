@@ -22,7 +22,7 @@ vi.mock('@/hooks/useViewTransition', () => ({ useViewTransition: () => (cb: () =
 
 const showSuccess = vi.fn();
 const showError = vi.fn();
-vi.mock('@/hooks/use-toast-messages', () => ({ useToastMessages: () => ({ showSuccess, showError }) }));
+vi.mock('@/hooks/useToastMessages', () => ({ useToastMessages: () => ({ showSuccess, showError }) }));
 
 setupMswV2();
 

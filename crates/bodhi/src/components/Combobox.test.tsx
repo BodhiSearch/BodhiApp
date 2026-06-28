@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 
 const useMediaQuery = vi.fn();
 
-vi.mock('@/hooks/use-media-query', () => ({
+vi.mock('@/hooks/useMediaQuery', () => ({
   useMediaQuery: (query: string) => {
     return useMediaQuery(query);
   },

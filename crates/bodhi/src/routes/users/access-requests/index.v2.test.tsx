@@ -24,7 +24,7 @@ vi.mock('@tanstack/react-router', async () => {
   };
 });
 
-vi.mock('@/hooks/use-toast-messages', () => ({
+vi.mock('@/hooks/useToastMessages', () => ({
   useToastMessages: () => ({ showSuccess: vi.fn(), showError: vi.fn() }),
 }));
 

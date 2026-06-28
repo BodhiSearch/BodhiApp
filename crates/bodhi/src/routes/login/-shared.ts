@@ -1,7 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 
 import { useLogoutHandler } from '@/hooks/auth';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { ROUTE_DEFAULT, ROUTE_LOGIN } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
 

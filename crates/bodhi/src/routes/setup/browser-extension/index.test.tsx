@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import BrowserExtensionSetupPage from './index';
-import { useBrowserDetection } from '@/hooks/use-browser-detection';
-import { useExtensionDetection } from '@/hooks/use-extension-detection';
+import { useBrowserDetection } from '@/hooks/useBrowserDetection';
+import { useExtensionDetection } from '@/hooks/useExtensionDetection';
 import { SetupProvider } from '@/routes/setup/-components';
 
 const navigateMock = vi.fn();
@@ -48,11 +48,11 @@ vi.mock('@/components/setup/BrowserSelector', () => ({
   ),
 }));
 
-vi.mock('@/hooks/use-browser-detection', () => ({
+vi.mock('@/hooks/useBrowserDetection', () => ({
   useBrowserDetection: vi.fn(),
 }));
 
-vi.mock('@/hooks/use-extension-detection', () => ({
+vi.mock('@/hooks/useExtensionDetection', () => ({
   useExtensionDetection: vi.fn(),
 }));
 

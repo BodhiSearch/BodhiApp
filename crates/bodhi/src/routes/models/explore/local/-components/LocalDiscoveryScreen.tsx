@@ -15,7 +15,7 @@ import {
   useRetryDownload,
 } from '@/hooks/models';
 import { useDiscoverModels, useModelDetail } from '@/hooks/reference';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 import { exploreBreadcrumb } from '@/routes/models/explore/-shared/breadcrumbs';
 import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';

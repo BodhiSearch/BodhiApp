@@ -5,8 +5,8 @@ import type { AssistantMessage as PiAssistantMessage } from '@mariozechner/pi-ai
 
 import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
-import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useResponsiveTestId } from '@/hooks/useResponsiveTestid';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { cn } from '@/lib/utils';
 import { useAgentStore } from '@/stores/agentStore';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';

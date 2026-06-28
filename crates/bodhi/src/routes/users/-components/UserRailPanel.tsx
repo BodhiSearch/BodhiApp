@@ -4,7 +4,7 @@ import { UserInfo } from '@bodhiapp/ts-client';
 
 import { ShellIcon } from '@/components/shell';
 import { Badge } from '@/components/ui/badge';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { AuthenticatedUser, useChangeUserRole, useRemoveUser } from '@/hooks/users';
 import { getAvailableRoles, getRoleBadgeVariant, getRoleLabel } from '@/lib/roles';
 

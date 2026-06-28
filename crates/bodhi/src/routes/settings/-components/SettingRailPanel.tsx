@@ -4,7 +4,7 @@ import { SettingInfo } from '@bodhiapp/ts-client';
 
 import { ShellIcon } from '@/components/shell';
 import { useDeleteSetting, useUpdateSetting } from '@/hooks/settings';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { EDITABLE_KEYS, sourceBadgeClass } from '@/routes/settings/-components/settingsFormat';
 import { parseSettingValue, SettingValueInput, settingValueHint } from '@/routes/settings/-shared/settingInput';
 
