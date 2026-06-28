@@ -5,11 +5,9 @@ import { ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import type { SortState } from '@/types/models';
 
-export interface SortState {
-  column: string;
-  direction: 'asc' | 'desc';
-}
+export type { SortState };
 
 interface Column {
   id: string;

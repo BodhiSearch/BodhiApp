@@ -48,20 +48,8 @@ export interface Chat {
   createdAt: number;
   updatedAt?: number;
   model?: string;
-  settings?: ChatSettings;
   enabledTools?: Record<string, string[]>;
   enabledMcpTools?: Record<string, string[]>;
-}
-
-export interface ChatSettings {
-  model?: string;
-  systemPrompt?: string;
-  stopWords?: string[];
-  maxTokens?: number;
-  temperature?: number;
-  topP?: number;
-  frequencyPenalty?: number;
-  presencePenalty?: number;
 }
 
 export function extractTextFromAgentMessage(msg: PiAgentMessage): string {

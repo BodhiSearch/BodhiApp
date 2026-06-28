@@ -324,15 +324,6 @@ export const convertApiToForm = (apiData: ApiAliasResponse): ApiModelFormData =>
 export const convertApiToUpdateForm = (apiData: ApiAliasResponse): UpdateApiModelFormData =>
   convertApiToForm(apiData) as UpdateApiModelFormData;
 
-export const maskApiKey = (apiKey: string): string => {
-  if (!apiKey || apiKey.length < 10) {
-    return '***';
-  }
-  const firstPart = apiKey.substring(0, 3);
-  const lastPart = apiKey.substring(apiKey.length - 6);
-  return `${firstPart}...${lastPart}`;
-};
-
 export const isValidApiKey = (apiKey: string): boolean => {
   return !!apiKey && apiKey.length >= 10 && apiKey.length <= 200;
 };

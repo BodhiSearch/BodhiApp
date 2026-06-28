@@ -15,10 +15,10 @@ vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual('@tanstack/react-router');
   return {
     ...actual,
-    Link: React.forwardRef<HTMLAnchorElement, { to: string; children: React.ReactNode } & Record<string, unknown>>(
+    Link: React.forwardRef<HTMLAnchorElement, { to: string; children: React.ReactNode; [key: string]: unknown }>(
       ({ to, children, ...rest }, ref) => (
-        <a ref={ref} href={to} {...rest}>
-          {children}
+        <a ref={ref} href={to as string} {...rest}>
+          {children as React.ReactNode}
         </a>
       )
     ),
