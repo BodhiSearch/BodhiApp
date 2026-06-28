@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ModelLite } from '@bodhiapp/reference-api-types';
 import { getRouteApi } from '@tanstack/react-router';
 
-import { ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
+import { EmptyState } from '@/components/EmptyState';
+import { ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogModelDetail, useCatalogModels } from '@/hooks/reference';
@@ -374,13 +375,12 @@ export function ExploreApiScreen() {
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <div className="empty-state" data-testid="cat-model-empty">
-            <div className="empty-icon">
-              <ShellIcon name="search-x" size={28} />
-            </div>
-            <div className="empty-title">No models found</div>
-            <div className="empty-sub">Try a different search or filters.</div>
-          </div>
+          <EmptyState
+            icon="search-x"
+            title="No models found"
+            sub="Try a different search or filters."
+            testId="cat-model-empty"
+          />
         ) : (
           <CatalogTable<ModelLite, ModelSort>
             columns={visibleColumns}

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { SettingInfo } from '@bodhiapp/ts-client';
 
+import { EmptyState } from '@/components/EmptyState';
 import { ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
 import '@/components/shell/api-keys.css';
 import '@/components/shell/list.css';
@@ -249,15 +250,12 @@ export function SettingsPageV2({ config: staticConfig }: { config: SettingsConfi
             ))}
           </div>
         ) : !anyVisible ? (
-          <div className="empty-state" data-testid="no-settings">
-            <div className="empty-icon">
-              <ShellIcon name="search-x" size={28} />
-            </div>
-            <div className="empty-title">No settings match</div>
-            <div className="empty-sub">
-              {search ? 'Try a different search term.' : 'No settings match this filter.'}
-            </div>
-          </div>
+          <EmptyState
+            icon="search-x"
+            title="No settings match"
+            sub={search ? 'Try a different search term.' : 'No settings match this filter.'}
+            testId="no-settings"
+          />
         ) : (
           visibleGroups.map((g) => (
             <div

@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 
 import type { DownloadRequest } from '@bodhiapp/ts-client';
 
+import { EmptyState } from '@/components/EmptyState';
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -176,13 +177,13 @@ export function DownloadsPanel({ items, loading, onArchive, onRetry, busy, onJum
   if (items.length === 0) {
     return (
       <div className="ld-dl-panel" data-testid="ld-downloads-panel" data-pagestatus="ready">
-        <div className="empty-state" data-testid="ld-downloads-empty">
-          <div className="empty-icon">
-            <ShellIcon name="download" size={22} />
-          </div>
-          <div className="empty-title">No downloads yet</div>
-          <div className="empty-sub">Pull a model from the catalog to see it here.</div>
-        </div>
+        <EmptyState
+          icon="download"
+          iconSize={22}
+          title="No downloads yet"
+          sub="Pull a model from the catalog to see it here."
+          testId="ld-downloads-empty"
+        />
       </div>
     );
   }

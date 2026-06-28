@@ -4,6 +4,7 @@ import { TokenDetail } from '@bodhiapp/ts-client';
 import { createFileRoute } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
+import { EmptyState } from '@/components/EmptyState';
 import {
   LinkRow,
   ShellFilterTabs,
@@ -173,13 +174,12 @@ export function TokenPageContent() {
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <div className="empty-state" data-testid="tokens-empty">
-            <div className="empty-icon">
-              <ShellIcon name="key-round" size={28} />
-            </div>
-            <div className="empty-title">No tokens</div>
-            <div className="empty-sub">Create an API token to access the Bodhi API programmatically.</div>
-          </div>
+          <EmptyState
+            icon="key-round"
+            title="No tokens"
+            sub="Create an API token to access the Bodhi API programmatically."
+            testId="tokens-empty"
+          />
         ) : (
           <div className="l-listview">
             <div className="l-listhead">

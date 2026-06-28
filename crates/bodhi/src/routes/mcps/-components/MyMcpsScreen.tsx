@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Mcp, McpServerResponse } from '@bodhiapp/ts-client';
 import { getRouteApi, Link } from '@tanstack/react-router';
 
-import { ShellIcon, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
+import { EmptyState } from '@/components/EmptyState';
+import { ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -309,15 +310,16 @@ export function MyMcpsScreen() {
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <div className="empty-state" data-testid="my-mcps-empty">
-            <div className="empty-icon">
-              <ShellIcon name="plug" size={28} />
-            </div>
-            <div className="empty-title">No MCP servers yet</div>
-            <div className="empty-sub">
-              Browse the <Link to="/mcps/explore/">catalog</Link> to add one.
-            </div>
-          </div>
+          <EmptyState
+            icon="plug"
+            title="No MCP servers yet"
+            sub={
+              <>
+                Browse the <Link to="/mcps/explore/">catalog</Link> to add one.
+              </>
+            }
+            testId="my-mcps-empty"
+          />
         ) : (
           <CatalogTable<McpServerResponse, ServerSort>
             columns={COLUMNS}

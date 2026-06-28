@@ -4,6 +4,7 @@ import { AliasResponse, ApiAliasResponse } from '@bodhiapp/ts-client';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 
 import { DownloadsPanel, DownloadsPanelHeader, isActive } from '@/components/downloads-panel/DownloadsPanel';
+import { EmptyState } from '@/components/EmptyState';
 import { ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -433,17 +434,16 @@ export function ModelsScreenV2() {
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <div className="empty-state" data-testid="no-models">
-            <div className="empty-icon">
-              <ShellIcon name="search-x" size={28} />
-            </div>
-            <div className="empty-title">No models match</div>
-            <div className="empty-sub">
-              {committedSearch || hasActiveFilter(filter)
+          <EmptyState
+            icon="search-x"
+            title="No models match"
+            sub={
+              committedSearch || hasActiveFilter(filter)
                 ? 'Try a different search term or clear the filters.'
-                : 'No models configured yet.'}
-            </div>
-          </div>
+                : 'No models configured yet.'
+            }
+            testId="no-models"
+          />
         ) : (
           <CatalogTable<AliasResponse, ModelSort>
             columns={visibleColumns}

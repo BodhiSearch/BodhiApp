@@ -4,6 +4,7 @@ import type { Model, Quant, SortKey } from '@bodhiapp/reference-api-types';
 import { getRouteApi } from '@tanstack/react-router';
 
 import { DownloadsPanel, DownloadsPanelHeader, isActive } from '@/components/downloads-panel/DownloadsPanel';
+import { EmptyState } from '@/components/EmptyState';
 import { ShellIcon, ShellSearch, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -402,13 +403,12 @@ export function LocalDiscoveryScreen() {
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <div className="empty-state" data-testid="ld-empty">
-            <div className="empty-icon">
-              <ShellIcon name="search-x" size={28} />
-            </div>
-            <div className="empty-title">No repositories match</div>
-            <div className="empty-sub">Try a different search term.</div>
-          </div>
+          <EmptyState
+            icon="search-x"
+            title="No repositories match"
+            sub="Try a different search term."
+            testId="ld-empty"
+          />
         ) : (
           <>
             <CatalogTable<Model, SortKey>

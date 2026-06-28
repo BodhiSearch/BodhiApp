@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 
+import { EmptyState } from '@/components/EmptyState';
 import {
   ShellFilterTabs,
-  ShellIcon,
   ShellPagination,
   useCollapsibleSearch,
   useListKeyNav,
@@ -126,13 +126,12 @@ function ManageUsersContent() {
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <div className="empty-state" data-testid="no-users">
-            <div className="empty-icon">
-              <ShellIcon name="users" size={28} />
-            </div>
-            <div className="empty-title">No users</div>
-            <div className="empty-sub">{search ? 'No users match your search.' : 'No users match this filter.'}</div>
-          </div>
+          <EmptyState
+            icon="users"
+            title="No users"
+            sub={search ? 'No users match your search.' : 'No users match this filter.'}
+            testId="no-users"
+          />
         ) : (
           <div className="l-listview">
             <div className="l-listhead">

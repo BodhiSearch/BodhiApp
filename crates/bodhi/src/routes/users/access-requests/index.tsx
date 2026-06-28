@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
+import { EmptyState } from '@/components/EmptyState';
 import { ShellFilterTabs, ShellIcon, ShellPagination, useListKeyNav, useShellChrome } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import '@/components/shell/api-keys.css';
@@ -113,15 +114,12 @@ function AccessRequestsContent() {
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <div className="empty-state" data-testid="no-requests">
-            <div className="empty-icon">
-              <ShellIcon name="user-check" size={28} />
-            </div>
-            <div className="empty-title">No Access Requests</div>
-            <div className="empty-sub">
-              {search ? 'No requests match your search.' : 'No access requests match this filter.'}
-            </div>
-          </div>
+          <EmptyState
+            icon="user-check"
+            title="No Access Requests"
+            sub={search ? 'No requests match your search.' : 'No access requests match this filter.'}
+            testId="no-requests"
+          />
         ) : (
           <div className="l-listview">
             <div className="l-listhead">

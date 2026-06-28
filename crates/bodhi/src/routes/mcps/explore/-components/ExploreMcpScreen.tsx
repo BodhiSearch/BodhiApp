@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Mcp } from '@bodhiapp/ts-client';
 import { getRouteApi } from '@tanstack/react-router';
 
-import { ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
+import { EmptyState } from '@/components/EmptyState';
+import { ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -384,13 +385,12 @@ export function ExploreMcpScreen() {
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <div className="empty-state" data-testid="cat-mcp-empty">
-            <div className="empty-icon">
-              <ShellIcon name="search-x" size={28} />
-            </div>
-            <div className="empty-title">No MCP servers found</div>
-            <div className="empty-sub">Try a different search.</div>
-          </div>
+          <EmptyState
+            icon="search-x"
+            title="No MCP servers found"
+            sub="Try a different search."
+            testId="cat-mcp-empty"
+          />
         ) : (
           <CatalogTable<McpJoinedRow, McpSort>
             columns={visibleColumns}

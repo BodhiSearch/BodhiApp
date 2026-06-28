@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ProviderSummary } from '@bodhiapp/reference-api-types';
 import { getRouteApi } from '@tanstack/react-router';
 
-import { ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
+import { EmptyState } from '@/components/EmptyState';
+import { ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogProviderDetail, useCatalogProviderModels, useCatalogProviders } from '@/hooks/reference';
@@ -361,13 +362,12 @@ export function ExploreProvidersScreen() {
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <div className="empty-state" data-testid="cat-prov-empty">
-            <div className="empty-icon">
-              <ShellIcon name="search-x" size={28} />
-            </div>
-            <div className="empty-title">No providers found</div>
-            <div className="empty-sub">The catalog returned no providers.</div>
-          </div>
+          <EmptyState
+            icon="search-x"
+            title="No providers found"
+            sub="The catalog returned no providers."
+            testId="cat-prov-empty"
+          />
         ) : (
           <CatalogTable<ProviderSummary, ProviderSort>
             columns={visibleColumns}
