@@ -11,6 +11,7 @@ import { TokenForm } from '@/routes/tokens/-components/TokenForm';
 import '@/components/shell/api-keys.css';
 
 export const Route = createFileRoute('/tokens/new/')({
+  staticData: { section: 'api-keys', subPage: 'new-token' },
   component: NewTokenPage,
 });
 

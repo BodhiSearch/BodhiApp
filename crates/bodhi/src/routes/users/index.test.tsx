@@ -1,5 +1,5 @@
 import UsersPage from '@/routes/users/index';
-import { ShellChromeProvider, useShellSlots } from '@/components/shell';
+import { ShellHarness } from '@/test-utils/shell-harness';
 import { mockAppInfo, mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockUserLoggedIn,
@@ -35,17 +35,6 @@ vi.mock('@/hooks/useToastMessages', () => ({
 
 setupMswV2();
 
-function SlotsConsumer() {
-  const { headerActions, rail, railHeader } = useShellSlots();
-  return (
-    <>
-      <div data-testid="harness-header-actions">{headerActions}</div>
-      <div data-testid="harness-rail-header">{railHeader}</div>
-      <div data-testid="harness-rail">{rail}</div>
-    </>
-  );
-}
-
 function seed({ multiTenant = false }: { multiTenant?: boolean } = {}) {
   server.use(
     ...(multiTenant ? mockAppInfo({ deployment: 'multi_tenant' }) : mockAppInfoReady()),
@@ -64,10 +53,9 @@ afterEach(() => {
 async function renderReady() {
   await act(async () => {
     render(
-      <ShellChromeProvider>
-        <SlotsConsumer />
+      <ShellHarness>
         <UsersPage />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
   });
@@ -86,10 +74,9 @@ describe('ManageUsers V2', () => {
     );
 
     render(
-      <ShellChromeProvider>
-        <SlotsConsumer />
+      <ShellHarness>
         <UsersPage />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
 

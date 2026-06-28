@@ -5,6 +5,7 @@ import AppInitializer from '@/components/AppInitializer';
 import { ManageUsersV2 } from './-components/ManageUsersV2';
 
 export const Route = createFileRoute('/users/')({
+  staticData: { section: 'users', subPage: 'manage-users' },
   component: UsersPage,
 });
 

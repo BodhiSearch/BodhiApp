@@ -25,6 +25,7 @@ import { useToastMessages } from '@/hooks/useToastMessages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 
 export const Route = createFileRoute('/tokens/')({
+  staticData: { section: 'api-keys', subPage: 'api-tokens' },
   component: TokenPage,
 });
 

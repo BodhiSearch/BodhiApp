@@ -1,5 +1,5 @@
 import { Route as NewTokenRoute } from '@/routes/tokens/new/index';
-import { ShellChromeProvider } from '@/components/shell';
+import { ShellHarness } from '@/test-utils/shell-harness';
 import { showSuccessParams } from '@/lib/utils.test';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockCreateToken } from '@/test-utils/msw-v2/handlers/tokens';
@@ -47,9 +47,9 @@ afterEach(() => {
 function renderPage() {
   return act(async () => {
     render(
-      <ShellChromeProvider>
+      <ShellHarness>
         <NewTokenPage />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
   });

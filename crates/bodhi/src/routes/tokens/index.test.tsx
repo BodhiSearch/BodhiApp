@@ -1,5 +1,5 @@
 import { TokenPage } from '@/routes/tokens/index';
-import { ShellChromeProvider, useShellSlots } from '@/components/shell';
+import { ShellHarness } from '@/test-utils/shell-harness';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockTokens, mockUpdateTokenStatus } from '@/test-utils/msw-v2/handlers/tokens';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
@@ -65,27 +65,6 @@ afterEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
 });
-
-/** Mimics the root shell: renders the slots a screen publishes via useShellChrome so the
-    header-action button + detail rail are present, exactly as __root's <AppShell> would. */
-function SlotsConsumer() {
-  const { headerActions, rail } = useShellSlots();
-  return (
-    <>
-      <div data-testid="harness-header-actions">{headerActions}</div>
-      <div data-testid="harness-rail">{rail}</div>
-    </>
-  );
-}
-
-function ShellHarness({ children }: { children: React.ReactNode }) {
-  return (
-    <ShellChromeProvider>
-      <SlotsConsumer />
-      {children}
-    </ShellChromeProvider>
-  );
-}
 
 async function renderReady() {
   await act(async () => {
@@ -228,9 +207,9 @@ describe('TokenPage - Authentication & Initialization', () => {
 
     await act(async () => {
       render(
-        <ShellChromeProvider>
+        <ShellHarness>
           <TokenPage />
-        </ShellChromeProvider>,
+        </ShellHarness>,
         { wrapper: createWrapper() }
       );
     });
@@ -245,9 +224,9 @@ describe('TokenPage - Authentication & Initialization', () => {
 
     await act(async () => {
       render(
-        <ShellChromeProvider>
+        <ShellHarness>
           <TokenPage />
-        </ShellChromeProvider>,
+        </ShellHarness>,
         { wrapper: createWrapper() }
       );
     });
@@ -266,9 +245,9 @@ describe('TokenPage - Authentication & Initialization', () => {
 
     await act(async () => {
       render(
-        <ShellChromeProvider>
+        <ShellHarness>
           <TokenPage />
-        </ShellChromeProvider>,
+        </ShellHarness>,
         { wrapper: createWrapper() }
       );
     });

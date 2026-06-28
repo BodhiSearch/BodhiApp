@@ -16,6 +16,7 @@ import { useAccessRequestsList } from '@/routes/users/access-requests/-component
 import { REQUEST_BREADCRUMB } from '@/routes/users/access-requests/-components/utils';
 
 export const Route = createFileRoute('/users/access-requests/')({
+  staticData: { section: 'users', subPage: 'access-requests' },
   component: AccessRequestsPage,
 });
 

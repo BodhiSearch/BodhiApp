@@ -1,5 +1,5 @@
 import AllRequestsPage from '@/routes/users/access-requests/index';
-import { ShellChromeProvider, useShellSlots } from '@/components/shell';
+import { ShellHarness } from '@/test-utils/shell-harness';
 import { createWrapper } from '@/tests/wrapper';
 import { server } from '@/test-utils/msw-v2/setup';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
@@ -58,9 +58,9 @@ afterEach(() => {
 function renderPage() {
   return act(async () => {
     render(
-      <ShellChromeProvider>
+      <ShellHarness>
         <AllRequestsPage />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
   });
@@ -344,18 +344,6 @@ describe('AllRequestsPage Error Handling', () => {
   });
 });
 
-// Mirror the root shell: render the published header-actions and rail slots so we can assert them.
-function SlotsConsumer() {
-  const { headerActions, rail, railHeader } = useShellSlots();
-  return (
-    <>
-      <div data-testid="harness-header-actions">{headerActions}</div>
-      <div data-testid="harness-rail-header">{railHeader}</div>
-      <div data-testid="harness-rail">{rail}</div>
-    </>
-  );
-}
-
 describe('AccessRequestsPage V2 chrome', () => {
   beforeEach(() => {
     server.use(
@@ -373,10 +361,9 @@ describe('AccessRequestsPage V2 chrome', () => {
   async function renderReady() {
     await act(async () => {
       render(
-        <ShellChromeProvider>
-          <SlotsConsumer />
+        <ShellHarness>
           <AllRequestsPage />
-        </ShellChromeProvider>,
+        </ShellHarness>,
         { wrapper: createWrapper() }
       );
     });
@@ -394,10 +381,9 @@ describe('AccessRequestsPage V2 chrome', () => {
     );
 
     render(
-      <ShellChromeProvider>
-        <SlotsConsumer />
+      <ShellHarness>
         <AllRequestsPage />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
 
