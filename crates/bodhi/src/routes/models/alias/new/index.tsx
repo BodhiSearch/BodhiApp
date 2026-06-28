@@ -10,6 +10,7 @@ import { useShellChrome } from '@/components/shell';
 import AliasForm from '@/routes/models/alias/-components/AliasForm';
 
 export const Route = createFileRoute('/models/alias/new/')({
+  staticData: { section: 'models', subPage: 'new-local-model' },
   validateSearch: z.object({
     repo: z.string().optional(),
     filename: z.string().optional(),

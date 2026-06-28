@@ -33,6 +33,7 @@ export const modelsSearchSchema = z.object({
 export type ModelsSearch = z.infer<typeof modelsSearchSchema>;
 
 export const Route = createFileRoute('/models/')({
+  staticData: { section: 'models', subPage: 'my-models' },
   validateSearch: modelsSearchSchema,
   component: ModelsPage,
 });

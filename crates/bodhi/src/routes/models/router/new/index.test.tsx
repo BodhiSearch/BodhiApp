@@ -1,6 +1,6 @@
 import NewModelRouter from '@/routes/models/router/new/index';
 import EditModelRouter from '@/routes/models/router/edit/index';
-import { ShellChromeProvider, useShellSlots } from '@/components/shell';
+import { ShellHarness } from '@/test-utils/shell-harness';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { server } from '@/test-utils/msw-v2/setup';
@@ -40,17 +40,6 @@ afterEach(() => {
   searchMock = () => ({});
 });
 
-function SlotsConsumer() {
-  const { breadcrumb, rail } = useShellSlots();
-  const crumbs = Array.isArray(breadcrumb) ? breadcrumb.map((b) => b.label).join(' / ') : '';
-  return (
-    <>
-      <div data-testid="harness-breadcrumb">{crumbs}</div>
-      <div data-testid="harness-rail">{rail}</div>
-    </>
-  );
-}
-
 const readyHandlers = () => [...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_user' })];
 
 describe('New Model Router — V2 route chrome', () => {
@@ -58,10 +47,9 @@ describe('New Model Router — V2 route chrome', () => {
     server.use(...readyHandlers(), ...mockModels({ data: [], total: 0, page: 1, page_size: 30 }, { stub: true }));
 
     render(
-      <ShellChromeProvider>
-        <SlotsConsumer />
+      <ShellHarness>
         <NewModelRouter />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
 
@@ -83,10 +71,9 @@ describe('Edit Model Router — V2 route chrome', () => {
     );
 
     render(
-      <ShellChromeProvider>
-        <SlotsConsumer />
+      <ShellHarness>
         <EditModelRouter />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
 
@@ -101,10 +88,9 @@ describe('Edit Model Router — V2 route chrome', () => {
     server.use(...readyHandlers());
 
     render(
-      <ShellChromeProvider>
-        <SlotsConsumer />
+      <ShellHarness>
         <EditModelRouter />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
 

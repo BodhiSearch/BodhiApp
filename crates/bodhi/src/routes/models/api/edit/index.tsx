@@ -13,6 +13,7 @@ import { useGetApiModel } from '@/hooks/models';
 import { extractErrorMessage } from '@/lib/errorUtils';
 
 export const Route = createFileRoute('/models/api/edit/')({
+  staticData: { section: 'models' },
   validateSearch: z.object({ id: z.string().optional() }),
   component: EditApiModel,
 });

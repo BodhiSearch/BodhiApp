@@ -30,6 +30,7 @@ export const exploreProvidersSearchSchema = z.object({
 export type ExploreProvidersSearch = z.infer<typeof exploreProvidersSearchSchema>;
 
 export const Route = createFileRoute('/models/explore/providers/')({
+  staticData: { section: 'models', subPage: 'explore-api-providers' },
   validateSearch: exploreProvidersSearchSchema,
   component: ExploreProvidersPage,
 });

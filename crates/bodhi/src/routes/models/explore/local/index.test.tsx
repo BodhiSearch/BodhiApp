@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ShellChromeProvider, useShellSlots } from '@/components/shell';
+import { ShellHarness, ChromeProbe } from '@/test-utils/shell-harness';
 import { LocalDiscoveryScreen } from '@/routes/models/explore/local/-components/LocalDiscoveryScreen';
 import { localDiscoverySearchSchema } from '@/routes/models/explore/local/index';
 import { createListModel } from '@/test-fixtures/discover-models';
@@ -45,23 +45,10 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// Surfaces the published sidebar + rail slots so facet chips and the detail rail are in the DOM.
-function SlotsConsumer() {
-  const { sidebar, rail, railHeader, headerActions } = useShellSlots();
-  return (
-    <>
-      <div data-testid="harness-header-actions">{headerActions}</div>
-      <div data-testid="harness-sidebar">{sidebar}</div>
-      <div data-testid="harness-rail-header">{railHeader}</div>
-      <div data-testid="harness-rail">{rail}</div>
-    </>
-  );
-}
-
 function ScreenWithSlots() {
   return (
     <>
-      <SlotsConsumer />
+      <ChromeProbe />
       <LocalDiscoveryScreen />
     </>
   );
@@ -76,9 +63,9 @@ async function renderScreen(initialEntries?: string[]) {
   });
   await act(async () => {
     render(
-      <ShellChromeProvider>
+      <ShellHarness renderProbe={false}>
         <RouteHarness router={router} />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: Wrapper }
     );
   });
@@ -430,9 +417,9 @@ describe('LocalDiscoveryScreen (Phase 5 — error + empty states)', () => {
     });
     await act(async () => {
       render(
-        <ShellChromeProvider>
+        <ShellHarness renderProbe={false}>
           <RouteHarness router={router} />
-        </ShellChromeProvider>,
+        </ShellHarness>,
         { wrapper: Wrapper }
       );
     });

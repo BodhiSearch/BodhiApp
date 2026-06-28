@@ -1,6 +1,6 @@
 import NewApiModel from '@/routes/models/api/new/index';
 import EditApiModel from '@/routes/models/api/edit/index';
-import { ShellChromeProvider, useShellSlots } from '@/components/shell';
+import { ShellHarness } from '@/test-utils/shell-harness';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -284,13 +284,7 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
 
 // V2 shell chrome: publishes the Models breadcrumb + renders a centered container (always-on — the
 // API-model form shipped V2-only, no flag). The form itself is unchanged (same testids); this covers
-// the additive chrome via the canonical ShellChromeProvider harness (mirrors routes/models/index.v2.test).
-function BreadcrumbConsumer() {
-  const { breadcrumb } = useShellSlots();
-  const crumbs = Array.isArray(breadcrumb) ? breadcrumb.map((b) => b.label).join(' / ') : '';
-  return <div data-testid="harness-breadcrumb">{crumbs}</div>;
-}
-
+// the additive chrome via the shared ShellHarness (mirrors routes/models/index.v2.test).
 describe('New API Model Page - V2 shell chrome', () => {
   it('publishes the Models breadcrumb and renders the centered container', async () => {
     server.use(
@@ -303,10 +297,9 @@ describe('New API Model Page - V2 shell chrome', () => {
     );
 
     render(
-      <ShellChromeProvider>
-        <BreadcrumbConsumer />
+      <ShellHarness>
         <NewApiModel />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
 

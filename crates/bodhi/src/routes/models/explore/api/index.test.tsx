@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ShellChromeProvider, useShellSlots } from '@/components/shell';
+import { ShellHarness, ChromeProbe } from '@/test-utils/shell-harness';
 import { ExploreApiScreen } from '@/routes/models/explore/api/-components/ExploreApiScreen';
 import { exploreApiSearchSchema } from '@/routes/models/explore/api/index';
 import { createModelDetail, createModelLite, createModelsListResponse } from '@/test-fixtures/catalog-models';
@@ -35,22 +35,11 @@ beforeEach(() => {
 
 // The screen reads its filter/sort/search/page state from the URL via getRouteApi('/models/explore/api/'),
 // so tests mount it behind a real in-memory router carrying the route's validateSearch schema. The
-// SlotsConsumer surfaces the sidebar/rail shell slots the screen publishes.
-function SlotsConsumer() {
-  const { sidebar, rail, railHeader } = useShellSlots();
-  return (
-    <>
-      <div data-testid="harness-sidebar">{sidebar}</div>
-      <div data-testid="harness-rail-header">{railHeader}</div>
-      <div data-testid="harness-rail">{rail}</div>
-    </>
-  );
-}
-
+// ChromeProbe surfaces the sidebar/rail shell slots the screen publishes.
 function ScreenWithSlots() {
   return (
     <>
-      <SlotsConsumer />
+      <ChromeProbe />
       <ExploreApiScreen />
     </>
   );
@@ -69,9 +58,9 @@ async function renderScreen(initialEntries?: string[]) {
   const router = buildRouter(initialEntries);
   await act(async () => {
     render(
-      <ShellChromeProvider>
+      <ShellHarness renderProbe={false}>
         <RouteHarness router={router} />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: Wrapper }
     );
   });
@@ -177,9 +166,9 @@ describe('ExploreApiScreen (A1 — list)', () => {
     const router = buildRouter();
     await act(async () => {
       render(
-        <ShellChromeProvider>
+        <ShellHarness renderProbe={false}>
           <RouteHarness router={router} />
-        </ShellChromeProvider>,
+        </ShellHarness>,
         { wrapper: Wrapper }
       );
     });

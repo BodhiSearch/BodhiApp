@@ -1,5 +1,5 @@
 import EditApiModel from '@/routes/models/api/edit/index';
-import { ShellChromeProvider, useShellSlots } from '@/components/shell';
+import { ShellHarness } from '@/test-utils/shell-harness';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -255,14 +255,6 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
   });
 });
 
-// V2 shell chrome for the edit route: breadcrumb ("Edit API Model") + centered container (always-on,
-// no flag), with api_format locked on edit (unchanged behavior, re-asserted here).
-function BreadcrumbConsumer() {
-  const { breadcrumb } = useShellSlots();
-  const crumbs = Array.isArray(breadcrumb) ? breadcrumb.map((b) => b.label).join(' / ') : '';
-  return <div data-testid="harness-breadcrumb">{crumbs}</div>;
-}
-
 describe('Edit API Model Page - V2 shell chrome', () => {
   it('publishes the Edit breadcrumb, renders the container, and locks api_format', async () => {
     server.use(
@@ -283,10 +275,9 @@ describe('Edit API Model Page - V2 shell chrome', () => {
     );
 
     render(
-      <ShellChromeProvider>
-        <BreadcrumbConsumer />
+      <ShellHarness>
         <EditApiModel />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
 

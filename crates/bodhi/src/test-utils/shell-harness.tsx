@@ -15,7 +15,13 @@ import { ShellContext, type ShellContextValue } from '@/components/shell/ShellCo
  *   within(screen.getByTestId('harness-sidebar')).getByTestId('...');
  */
 
-function ChromeProbe() {
+/**
+ * Renders the published slots into stable `harness-*` testids. Exported so router-based tests
+ * (makeRouteRouter/RouteHarness) can render it INSIDE the in-memory router alongside the screen —
+ * the published rail/sidebar nodes are created in the screen's subtree and may depend on context
+ * (e.g. QueryClient) that lives there, so they must render in the same tree, not above the router.
+ */
+export function ChromeProbe() {
   const { breadcrumb, headerActions, sidebar, rail, railHeader } = useShellSlots();
   const crumbs = Array.isArray(breadcrumb) ? breadcrumb.map((b) => b.label).join(' / ') : '';
   return (
@@ -43,11 +49,16 @@ function WiredShellContext({ children }: { children: ReactNode }) {
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;
 }
 
-export function ShellHarness({ children }: { children: ReactNode }) {
+/**
+ * @param renderProbe Render the `harness-*` probe here (default). Set false for router-based tests
+ *   that render `<ChromeProbe/>` INSIDE their in-memory router instead (so published nodes share the
+ *   screen's context), avoiding a duplicate render of the rail/sidebar.
+ */
+export function ShellHarness({ children, renderProbe = true }: { children: ReactNode; renderProbe?: boolean }) {
   return (
     <ShellChromeProvider>
       <WiredShellContext>
-        <ChromeProbe />
+        {renderProbe && <ChromeProbe />}
         {children}
       </WiredShellContext>
     </ShellChromeProvider>

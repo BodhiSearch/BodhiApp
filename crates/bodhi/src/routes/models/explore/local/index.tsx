@@ -36,6 +36,7 @@ export const localDiscoverySearchSchema = z.object({
 export type LocalDiscoverySearch = z.infer<typeof localDiscoverySearchSchema>;
 
 export const Route = createFileRoute('/models/explore/local/')({
+  staticData: { section: 'models', subPage: 'explore-local' },
   validateSearch: localDiscoverySearchSchema,
   component: LocalDiscoverPage,
 });

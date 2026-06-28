@@ -12,6 +12,7 @@ import { extractErrorMessage } from '@/lib/errorUtils';
 import ModelRouterForm from '@/routes/models/router/-components/ModelRouterForm';
 
 export const Route = createFileRoute('/models/router/edit/')({
+  staticData: { section: 'models' },
   validateSearch: z.object({ id: z.string().optional() }),
   component: EditModelRouter,
 });

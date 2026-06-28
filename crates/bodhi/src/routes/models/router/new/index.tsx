@@ -4,6 +4,7 @@ import AppInitializer from '@/components/AppInitializer';
 import ModelRouterForm from '@/routes/models/router/-components/ModelRouterForm';
 
 export const Route = createFileRoute('/models/router/new/')({
+  staticData: { section: 'models', subPage: 'new-fallback-model' },
   component: NewModelRouter,
 });
 

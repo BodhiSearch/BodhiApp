@@ -13,6 +13,7 @@ import { useGetModel } from '@/hooks/models';
 import AliasForm from '@/routes/models/alias/-components/AliasForm';
 
 export const Route = createFileRoute('/models/alias/edit/')({
+  staticData: { section: 'models' },
   validateSearch: z.object({ id: z.string().optional() }),
   component: EditAliasPage,
 });

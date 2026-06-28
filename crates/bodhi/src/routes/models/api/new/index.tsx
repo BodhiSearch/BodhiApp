@@ -17,6 +17,7 @@ const newApiModelSearchSchema = z.object({
 });
 
 export const Route = createFileRoute('/models/api/new/')({
+  staticData: { section: 'models', subPage: 'new-api-model' },
   validateSearch: newApiModelSearchSchema,
   component: NewApiModel,
 });

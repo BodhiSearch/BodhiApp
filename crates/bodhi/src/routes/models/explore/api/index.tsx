@@ -51,6 +51,7 @@ export const exploreApiSearchSchema = z.object({
 export type ExploreApiSearch = z.infer<typeof exploreApiSearchSchema>;
 
 export const Route = createFileRoute('/models/explore/api/')({
+  staticData: { section: 'models', subPage: 'explore-api' },
   validateSearch: exploreApiSearchSchema,
   component: ExploreApiPage,
 });

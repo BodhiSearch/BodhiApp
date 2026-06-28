@@ -1,6 +1,6 @@
 import ModelRouterForm from '@/routes/models/router/-components/ModelRouterForm';
 import { ENDPOINT_MODEL_ROUTERS } from '@/hooks/models';
-import { ShellChromeProvider, useShellSlots } from '@/components/shell';
+import { ShellHarness } from '@/test-utils/shell-harness';
 import { createMockOpenAIModel } from '@/test-fixtures/models';
 import { mockModels } from '@/test-utils/msw-v2/handlers/models';
 import { mockCreateModelRouter } from '@/test-utils/msw-v2/handlers/model-routers';
@@ -11,12 +11,6 @@ import { AliasResponse, ModelRouterResponse } from '@bodhiapp/ts-client';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-
-/** Renders the published rail slot so tests can assert the live chain preview. */
-function RailConsumer() {
-  const { rail } = useShellSlots();
-  return <div data-testid="harness-rail">{rail}</div>;
-}
 
 const navigateMock = vi.fn();
 vi.mock('@tanstack/react-router', async () => {
@@ -280,10 +274,9 @@ describe('ModelRouterForm — V2 rebuild', () => {
   it('toggles a step off and marks it skipped in the rail chain', async () => {
     const user = renderWithAliases();
     render(
-      <ShellChromeProvider>
-        <RailConsumer />
+      <ShellHarness>
         <ModelRouterForm mode="create" />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
 
@@ -331,10 +324,9 @@ describe('ModelRouterForm — V2 rebuild', () => {
   it('publishes the live rail chain reflecting the steps in order', async () => {
     const user = renderWithAliases();
     render(
-      <ShellChromeProvider>
-        <RailConsumer />
+      <ShellHarness>
         <ModelRouterForm mode="create" />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
 
