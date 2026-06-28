@@ -1,0 +1,191 @@
+/* ═══════════════════════════════════════════════════════════════
+   Bodhi Chat — V2 conversation + composer styles (Batch 5 P2)
+   Co-located with the chat route. The 3-column shell, sidebar, rail
+   and resize come from the AppShell; this sheet styles only the
+   conversation bubbles, the meta-strip and the composer.
+   Mirrors the design prototype (chat/bodhi-chat.css), trimmed to the
+   real-data affordances the app actually has.
+═══════════════════════════════════════════════════════════════ */
+
+/* ════════ MAIN · conversation + composer ════════ */
+.chat-conv {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 28px 22px 16px;
+  min-height: 0;
+}
+.chat-conv::-webkit-scrollbar {
+  width: 5px;
+}
+.chat-conv::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+.chat-conv-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.chat-msg {
+  display: flex;
+  gap: 12px;
+}
+.chat-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+.chat-avatar svg {
+  width: 14px;
+  height: 14px;
+}
+.chat-avatar-user {
+  background: #3e4aa8;
+  color: #fff;
+}
+.chat-avatar-ai {
+  background: linear-gradient(135deg, #ffa4b8, #fa8a2e);
+  color: #12142b;
+}
+.chat-bubble {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.chat-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chat-model-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(62, 74, 168, 0.1);
+  color: #3e4aa8;
+  font-weight: 500;
+}
+.chat-body {
+  font-size: 14px;
+  line-height: 22px;
+}
+.chat-body p {
+  margin: 0 0 10px;
+}
+.chat-body p:last-child {
+  margin-bottom: 0;
+}
+.chat-user-body {
+  background: hsl(var(--muted));
+  padding: 10px 14px;
+  border-radius: 14px;
+  border-top-left-radius: 4px;
+  display: inline-block;
+  align-self: flex-start;
+  max-width: 100%;
+}
+
+/* Hover-reveal meta-strip: real data only (tokens in/out, t/s, copy). */
+.chat-meta-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 10px;
+  min-height: 28px;
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.chat-bubble:hover .chat-meta-strip,
+.chat-bubble:focus-within .chat-meta-strip {
+  opacity: 1;
+}
+.chat-mi {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+}
+.chat-mi svg {
+  width: 11px;
+  height: 11px;
+}
+.chat-mi b {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  font-family: var(--font-mono);
+}
+.chat-meta-spacer {
+  flex: 1;
+}
+
+/* On narrow viewports the meta-strip is always visible (no hover target). */
+@media (max-width: 767px) {
+  .chat-conv {
+    padding: 18px 14px 12px;
+  }
+  .chat-meta-strip {
+    opacity: 1;
+  }
+}
+
+/* ════════ Composer ════════ */
+.chat-composer {
+  padding: 10px 22px 16px;
+  background: hsl(var(--card));
+  border-top: 1px solid hsl(var(--border));
+  flex: none;
+}
+.chat-composer-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  border: 1px solid hsl(var(--border));
+  border-radius: 16px;
+  padding: 10px 12px;
+  background: hsl(var(--card));
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+.chat-composer-inner:focus-within {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.18);
+}
+.chat-composer textarea {
+  width: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  min-height: 44px;
+  max-height: 160px;
+  background: transparent;
+  color: inherit;
+}
+.chat-composer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}

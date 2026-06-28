@@ -51,7 +51,7 @@ describe('ChatMessage', () => {
       const user = userEvent.setup();
       const { container } = render(<ChatMessage message={baseMessage} />);
 
-      expect(screen.getByText('Assistant')).toBeInTheDocument();
+      expect(screen.getByText('Bodhi')).toBeInTheDocument();
       expect(screen.getByTestId('markdown')).toHaveTextContent('Test message content');
 
       const copyButton = screen.getByTestId('copy-button');
@@ -67,10 +67,11 @@ describe('ChatMessage', () => {
     it('displays complete metadata for assistant message', () => {
       render(<ChatMessage message={messageWithMetadata} />);
 
-      expect(screen.getByText(/Response:.+16 tokens/)).toBeInTheDocument();
-      expect(screen.getByText(/Query:.+5 tokens/)).toBeInTheDocument();
-
-      expect(screen.getByText(/Speed:.+31\.04 t\/s/)).toBeInTheDocument();
+      // The meta-strip splits values into <b> nodes, so assert on the container's text.
+      const meta = screen.getByTestId('message-metadata');
+      expect(meta).toHaveTextContent(/Query:\s*5\s*tokens/);
+      expect(meta).toHaveTextContent(/Response:\s*16\s*tokens/);
+      expect(meta).toHaveTextContent(/31\.04\s*t\/s/);
     });
 
     it('does not display metadata section for streaming messages', () => {
@@ -102,10 +103,10 @@ describe('ChatMessage', () => {
 
       render(<ChatMessage message={partialMetadataMessage} />);
 
-      expect(screen.getByText(/Response:.+16 tokens/)).toBeInTheDocument();
-      expect(screen.getByText(/Query:.+5 tokens/)).toBeInTheDocument();
-
-      expect(screen.queryByText(/Speed:/)).not.toBeInTheDocument();
+      const meta = screen.getByTestId('message-metadata');
+      expect(meta).toHaveTextContent(/Query:\s*5\s*tokens/);
+      expect(meta).toHaveTextContent(/Response:\s*16\s*tokens/);
+      expect(meta).not.toHaveTextContent(/t\/s/);
     });
 
     it('handles zero values in metadata correctly', () => {
@@ -126,8 +127,9 @@ describe('ChatMessage', () => {
 
       render(<ChatMessage message={zeroMetadataMessage} />);
 
-      expect(screen.getByText(/Response: 0 tokens/)).toBeInTheDocument();
-      expect(screen.getByText(/Query: 0 tokens/)).toBeInTheDocument();
+      const meta = screen.getByTestId('message-metadata');
+      expect(meta).toHaveTextContent(/Query:\s*0\s*tokens/);
+      expect(meta).toHaveTextContent(/Response:\s*0\s*tokens/);
     });
   });
 
@@ -149,6 +151,20 @@ describe('ChatMessage', () => {
       render(<ChatMessage message={messageWithMetadata} />);
       const copyButton = screen.getByTestId('copy-button');
       expect(copyButton).toHaveAttribute('data-copy-text', 'Test message content');
+    });
+  });
+
+  describe('real-data-only meta-strip', () => {
+    // The V2 design shows extra affordances (regenerate / branch / thumbs) that have no backing
+    // mutation in the app today. They are intentionally NOT rendered — only model, tokens, t/s, copy.
+    it('does not render prototype-only affordances without backing data', () => {
+      render(<ChatMessage message={messageWithMetadata} />);
+
+      expect(screen.queryByLabelText(/regenerate/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/branch/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/thumbs|good response|bad response/i)).not.toBeInTheDocument();
+      // Copy IS backed (real content) and stays.
+      expect(screen.getByTestId('copy-button')).toBeInTheDocument();
     });
   });
 });

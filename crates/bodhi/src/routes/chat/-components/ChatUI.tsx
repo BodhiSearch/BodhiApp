@@ -22,6 +22,8 @@ import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 import { useMcpSelectionStore } from '@/stores/mcpSelectionStore';
 import { extractTextFromAgentMessage, extractThinkingFromAgentMessage, Message } from '@/types/chat';
 
+import './chat.css';
+
 const EmptyState = () => (
   <div className="flex h-full items-center justify-center" data-testid="empty-chat-state">
     <div className="text-center space-y-3">
@@ -63,90 +65,90 @@ const ChatInput = memo(function ChatInput({
   const createNewChat = useChatStore((s) => s.createNewChat);
   const getTestId = useResponsiveTestId();
 
+  const autosize = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  };
+
   return (
-    <div
-      className="sticky bottom-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75"
-      data-testid={getTestId('chat-input-panel')}
-    >
-      <div className="mx-auto max-w-3xl px-4 py-2">
-        <div
-          className="relative flex items-center rounded-lg border bg-background shadow-sm"
-          data-testid={getTestId('chat-input-container')}
-        >
-          <div className="absolute left-2 flex items-center gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={createNewChat}
-              data-testid={getTestId('new-chat-inline-button')}
-            >
-              <Plus className="h-5 w-5" />
-              <span className="sr-only">New chat</span>
-            </Button>
+    <div className="chat-composer" data-testid={getTestId('chat-input-panel')}>
+      <form
+        onSubmit={handleSubmit}
+        className="chat-composer-inner"
+        data-testid={getTestId('chat-form')}
+        data-test-state={isModelSelected ? 'model-selected' : 'no-model'}
+      >
+        <textarea
+          ref={inputRef}
+          data-testid={getTestId('chat-input')}
+          className={cn(!isModelSelected && 'rounded-md ring-2 ring-destructive')}
+          rows={1}
+          placeholder={isModelSelected ? 'Ask me anything…   ⏎ to send' : 'Please select a model first'}
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            autosize(e.target);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit(e);
+            }
+          }}
+        />
 
-            <McpsPopover
-              enabledMcpTools={enabledMcpTools}
-              onToggleTool={onToggleMcpTool}
-              onToggleMcp={onToggleMcp}
-              disabled={streamLoading}
-              mcpTools={mcpTools}
-              mcpConnectionStatus={mcpConnectionStatus}
-            />
-          </div>
-
-          <form
-            onSubmit={handleSubmit}
-            className="flex w-full items-center"
-            data-testid={getTestId('chat-form')}
-            data-test-state={isModelSelected ? 'model-selected' : 'no-model'}
+        <div className="chat-composer-row">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={createNewChat}
+            data-testid={getTestId('new-chat-inline-button')}
           >
-            <textarea
-              ref={inputRef}
-              data-testid={getTestId('chat-input')}
-              className={cn(
-                'flex-1 resize-none bg-transparent pl-32 pr-12 py-3 text-sm outline-none disabled:opacity-50',
-                !isModelSelected && 'ring-2 ring-destructive'
-              )}
-              rows={1}
-              placeholder={isModelSelected ? 'Ask me anything...' : 'Please select a model first'}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }
-              }}
-            />
+            <Plus className="h-5 w-5" />
+            <span className="sr-only">New chat</span>
+          </Button>
+
+          <McpsPopover
+            enabledMcpTools={enabledMcpTools}
+            onToggleTool={onToggleMcpTool}
+            onToggleMcp={onToggleMcp}
+            disabled={streamLoading}
+            mcpTools={mcpTools}
+            mcpConnectionStatus={mcpConnectionStatus}
+          />
+
+          <div className="ml-auto">
             {streamLoading ? (
               <Button
                 type="button"
-                size="icon"
+                size="sm"
                 variant="destructive"
                 data-testid={getTestId('stop-button')}
-                className="absolute right-2 h-8 w-8"
+                className="h-8 gap-1.5"
                 onClick={onStop}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" className="h-4 w-4">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5">
                   <rect x="3" y="3" width="10" height="10" rx="1" fill="currentColor" />
                 </svg>
-                <span className="sr-only">Stop generating</span>
+                Stop
               </Button>
             ) : (
               <Button
                 type="submit"
-                size="icon"
+                size="sm"
                 data-testid={getTestId('send-button')}
                 disabled={!input.trim() || !isModelSelected}
-                className="absolute right-2 h-8 w-8"
+                className="h-8 gap-1.5"
               >
+                Send
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 16 16"
                   fill="none"
-                  className="h-4 w-4"
+                  className="h-3.5 w-3.5"
                   strokeWidth="2"
                 >
                   <path
@@ -154,16 +156,18 @@ const ChatInput = memo(function ChatInput({
                     fill="currentColor"
                   />
                 </svg>
-                <span className="sr-only">Send message</span>
               </Button>
             )}
-          </form>
+          </div>
         </div>
+      </form>
 
-        <p className="px-2 py-2 text-center text-xs text-muted-foreground" data-testid={getTestId('chat-disclaimer')}>
-          Chat assistant can make mistakes.
-        </p>
-      </div>
+      <p
+        className="mx-auto max-w-[760px] px-2 pt-2 text-center text-xs text-muted-foreground"
+        data-testid={getTestId('chat-disclaimer')}
+      >
+        Chat assistant can make mistakes.
+      </p>
     </div>
   );
 });
@@ -440,12 +444,8 @@ export function ChatUI() {
   return (
     <div data-testid={getTestId('chat-ui')} className="flex h-full flex-col">
       <div className="relative flex-1 min-h-0" data-testid={getTestId('chat-content-area')}>
-        <div className="absolute inset-0 overflow-y-auto" data-testid={getTestId('chat-scroll-area')}>
-          <div
-            className="sticky top-0 h-8 bg-background/80 backdrop-blur-sm z-30"
-            data-testid={getTestId('chat-header-spacer')}
-          />
-          <div className="px-3" data-testid={getTestId('chat-messages-container')}>
+        <div className="chat-conv absolute inset-0" data-testid={getTestId('chat-scroll-area')}>
+          <div className="chat-conv-inner" data-testid={getTestId('chat-messages-container')}>
             {isEmpty ? (
               <EmptyState />
             ) : (
