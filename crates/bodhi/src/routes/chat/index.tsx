@@ -21,6 +21,7 @@ import { McpServersPane } from './-components/settings/McpServersPane';
 import { ParametersPane } from './-components/settings/ParametersPane';
 
 export const Route = createFileRoute('/chat/')({
+  staticData: { section: 'chat' },
   validateSearch: z.object({
     model: z.string().optional(),
     id: z.string().optional(),
@@ -163,7 +164,6 @@ function ChatScreen() {
     sidebarWidth: 260,
     contentClass: 'flush',
     resizeKey: 'chat',
-    section: 'chat',
   });
 
   return (

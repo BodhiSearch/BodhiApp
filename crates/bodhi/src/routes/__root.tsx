@@ -8,8 +8,9 @@ import '@/styles/view-transitions.css';
 import ClientProviders from '@/components/ClientProviders';
 import { AppShell, type ShellFooterUser } from '@/components/shell';
 import { BareLayout } from '@/components/shell/BareLayout';
-import { isBareRoute, isFullscreenRoute, resolveShellRoute } from '@/components/shell/resolveShellRoute';
+import { isBareRoute, isFullscreenRoute } from '@/components/shell/resolveShellRoute';
 import { ShellChromeProvider, useShellSlots } from '@/components/shell/ShellChromeContext';
+import { useShellSection } from '@/components/shell/useShellSection';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { useLogoutHandler } from '@/hooks/auth';
@@ -37,6 +38,7 @@ export const Route = createRootRoute({
 function RootShell() {
   const { pathname } = useLocation();
   const slots = useShellSlots();
+  const { section, subPage } = useShellSection();
   const navigate = useNavigate();
 
   // App-shell-only data: skip the fetch on bare/fullscreen routes (login/setup) where the
@@ -88,20 +90,18 @@ function RootShell() {
     );
   }
 
-  const resolved = resolveShellRoute(pathname) ?? { section: '', subPage: null };
   return (
     <AppShell
-      subPage={resolved.subPage}
+      section={section}
+      subPage={subPage}
       user={shellUser}
       onLogout={() => logout()}
       logoutPending={logoutPending}
       {...slots}
-      // Precedence: a publishing screen's slot value wins; otherwise fall back to the
-      // pathname-derived section and the shell's default "flush" content. resizeKey defaults to
-      // the section so column widths persist per-section (chat publishes its own).
-      section={slots.section ?? resolved.section}
+      // section/subPage come from route staticData (useShellSection). Default the content to "flush"
+      // and persist column widths per-section; a screen can still override either via useShellChrome.
       contentClass={slots.contentClass ?? 'flush'}
-      resizeKey={slots.resizeKey ?? resolved.section}
+      resizeKey={slots.resizeKey ?? section}
     >
       <Outlet />
     </AppShell>

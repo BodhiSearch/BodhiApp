@@ -1,5 +1,5 @@
 import { Route as SettingsRoute } from '@/routes/settings/index';
-import { ShellChromeProvider, useShellSlots } from '@/components/shell';
+import { ShellHarness } from '@/test-utils/shell-harness';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { mockSettings, mockSettingsDefault, mockUpdateSetting } from '@/test-utils/msw-v2/handlers/settings';
@@ -26,19 +26,6 @@ setupMswV2();
 
 const SettingsPage = SettingsRoute.options.component as React.ComponentType;
 
-// Mirror the root shell: render the published sidebar/header/rail slots so we can assert them.
-function SlotsConsumer() {
-  const { sidebar, headerActions, rail, railHeader } = useShellSlots();
-  return (
-    <>
-      <div data-testid="harness-sidebar">{sidebar}</div>
-      <div data-testid="harness-header-actions">{headerActions}</div>
-      <div data-testid="harness-rail-header">{railHeader}</div>
-      <div data-testid="harness-rail">{rail}</div>
-    </>
-  );
-}
-
 beforeEach(() => {
   server.use(
     ...mockAppInfoReady(),
@@ -55,10 +42,9 @@ afterEach(() => {
 async function renderReady() {
   await act(async () => {
     render(
-      <ShellChromeProvider>
-        <SlotsConsumer />
+      <ShellHarness>
         <SettingsPage />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
   });
@@ -72,10 +58,9 @@ describe('SettingsPage V2', () => {
     server.use(...mockSettings([], { delayMs: 200, stub: true }));
 
     render(
-      <ShellChromeProvider>
-        <SlotsConsumer />
+      <ShellHarness>
         <SettingsPage />
-      </ShellChromeProvider>,
+      </ShellHarness>,
       { wrapper: createWrapper() }
     );
 

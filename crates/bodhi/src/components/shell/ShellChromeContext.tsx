@@ -40,7 +40,6 @@ export interface ShellSlots {
   railWidth?: number;
   sidebarWidth?: number;
   resizeKey?: string;
-  section?: string;
 }
 
 const EMPTY_SLOTS: ShellSlots = {};
@@ -88,7 +87,6 @@ export function useShellChrome(slots: ShellSlots): void {
     railWidth,
     sidebarWidth,
     resizeKey,
-    section,
   } = slots;
 
   // Re-publish whenever any individual slot changes; stable nodes keep this from thrashing.
@@ -106,7 +104,6 @@ export function useShellChrome(slots: ShellSlots): void {
       railWidth,
       sidebarWidth,
       resizeKey,
-      section,
     }),
     [
       breadcrumb,
@@ -121,7 +118,6 @@ export function useShellChrome(slots: ShellSlots): void {
       railWidth,
       sidebarWidth,
       resizeKey,
-      section,
     ]
   );
 
