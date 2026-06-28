@@ -1,39 +1,40 @@
-import McpPlaygroundPage from '@/routes/mcps/playground/index';
-import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
-import { mockGetMcp, mockMcp } from '@/test-utils/msw-v2/handlers/mcps';
-import { createMcpProtocolHandlers } from '@/test-utils/msw-v2/handlers/mcp-protocol';
-import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
-import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
-import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Mcp } from '@/hooks/mcps';
+import { PlaygroundScreen } from '@/routes/mcps/playground/-components/PlaygroundScreen';
+import { playgroundSearchSchema } from '@/routes/mcps/playground/index';
+import { ChromeProbe, ShellHarness } from '@/test-utils/shell-harness';
+import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
+import { mockGetMcp, mockListMcps } from '@/test-utils/msw-v2/handlers/mcps';
+import { createMcpProtocolHandlers } from '@/test-utils/msw-v2/handlers/mcp-protocol';
+import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
+import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
+import { makeRouteRouter, RouteHarness } from '@/test-utils/router-harness';
+import { createWrapper } from '@/tests/wrapper';
+import { createMockMcp, createMockMcpServerInfo } from '@/test-fixtures/mcps';
 
-const navigateMock = vi.fn();
-let mockSearch: Record<string, string | undefined> = {};
-
-vi.mock('@tanstack/react-router', async () => {
-  const actual = await vi.importActual('@tanstack/react-router');
-  return {
-    ...actual,
-    Link: ({ to, children, ...rest }: any) => (
-      <a href={to} {...rest}>
-        {children}
-      </a>
-    ),
-    useNavigate: () => navigateMock,
-    useLocation: () => ({ pathname: '/mcps/playground' }),
-    useSearch: () => mockSearch,
-  };
-});
+vi.mock('@/hooks/useViewTransition', () => ({ useViewTransition: () => (cb: () => void) => cb() }));
 
 setupMswV2();
 
+let Wrapper: ReturnType<typeof createWrapper>;
+
+const MCP_ID = 'mcp-uuid-1';
 const MCP_ENDPOINT = '/bodhi/v1/apps/mcps/mcp-uuid-1/mcp';
 
-const mcpTools = [
+const mockInstance = createMockMcp({
+  id: MCP_ID,
+  name: 'Test MCP',
+  mcp_server: createMockMcpServerInfo({
+    id: 'server-1',
+    name: 'Test Server',
+    url: 'https://example.com/mcp',
+  }),
+});
+const mcpForPlayground = { ...mockInstance, path: MCP_ENDPOINT };
+
+const mockTools = [
   {
     name: 'read_wiki_structure',
     description: 'Read the structure of a wiki',
@@ -59,214 +60,157 @@ const mcpTools = [
   },
 ];
 
-const mcpForPlayground: Mcp = {
-  ...mockMcp,
-  path: MCP_ENDPOINT,
-};
+const mockPrompts = [
+  {
+    name: 'summarize',
+    description: 'Summarize a topic',
+    arguments: [{ name: 'topic', description: 'Topic to summarize', required: true }],
+  },
+];
+
+const mockResources = [
+  {
+    uri: 'file:///docs/readme.md',
+    name: 'README',
+    mimeType: 'text/markdown',
+  },
+];
 
 beforeEach(() => {
-  navigateMock.mockClear();
-  mockSearch = { id: 'mcp-uuid-1' };
+  localStorage.clear();
+  Wrapper = createWrapper();
+  server.use(
+    ...mockAppInfoReady(),
+    ...mockUserLoggedIn({ username: 'admin@example.com', role: 'resource_admin', id_token: 'test-id-token' }),
+    mockGetMcp(mcpForPlayground),
+    mockListMcps([mockInstance])
+  );
 });
 
-afterEach(() => {
-  vi.resetAllMocks();
-});
-
-describe('McpPlaygroundPage - Authentication', () => {
-  it('redirects to /ui/setup if status is setup', async () => {
-    server.use(...mockAppInfo({ status: 'setup' }, { stub: true }), ...mockUserLoggedIn({}, { stub: true }));
-
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/' });
-    });
+function buildRouter(initialEntries?: string[]) {
+  return makeRouteRouter({
+    path: '/mcps/playground/',
+    validateSearch: playgroundSearchSchema as never,
+    Screen: () => (
+      <ShellHarness renderProbe={false}>
+        <ChromeProbe />
+        <PlaygroundScreen />
+      </ShellHarness>
+    ),
+    initialEntries: initialEntries ?? [`/mcps/playground/?id=${MCP_ID}`],
   });
+}
 
-  it('redirects to /ui/login if user is not logged in', async () => {
-    server.use(...mockAppInfo({ status: 'ready' }, { stub: true }), ...mockUserLoggedOut());
-
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
-    });
+async function renderScreen(initialEntries?: string[]) {
+  const router = buildRouter(initialEntries);
+  await act(async () => {
+    render(<RouteHarness router={router} />, { wrapper: Wrapper });
   });
-});
+  await waitFor(() => expect(screen.getByTestId('mcp-playground-page')).toBeInTheDocument(), { timeout: 5000 });
+  return router;
+}
 
-describe('McpPlaygroundPage - Tool List', () => {
+describe('McpPlaygroundPage — Overview (3-pane)', () => {
   beforeEach(() => {
     server.use(
-      ...mockAppInfo({ status: 'ready' }, { stub: true }),
-      ...mockUserLoggedIn({}, { stub: true }),
-      mockGetMcp(mcpForPlayground),
       ...createMcpProtocolHandlers({
         endpoint: MCP_ENDPOINT,
-        tools: mcpTools,
+        tools: mockTools,
+        prompts: mockPrompts,
+        resources: mockResources,
       })
     );
   });
 
-  it('renders tool list from MCP client', async () => {
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
-    });
+  it('renders sidebar with instance picker and capability nav', async () => {
+    await renderScreen();
+    const sidebar = await waitFor(() => screen.getByTestId('mcp-playground-sidebar'));
+    expect(within(sidebar).getByTestId('mcp-playground-instance-picker')).toBeInTheDocument();
+    expect(within(sidebar).getByTestId('mcp-playground-capability-overview')).toBeInTheDocument();
+    expect(within(sidebar).getByTestId('mcp-playground-capability-tools')).toBeInTheDocument();
+    expect(within(sidebar).getByTestId('mcp-playground-capability-prompts')).toBeInTheDocument();
+    expect(within(sidebar).getByTestId('mcp-playground-capability-resources')).toBeInTheDocument();
+  });
 
+  it('shows overview with capability counts after connect', async () => {
+    await renderScreen();
     await waitFor(
       () => {
-        expect(screen.getByTestId('mcp-playground-tool-read_wiki_structure')).toBeInTheDocument();
+        expect(screen.getByTestId('mcp-playground-capability-count-tools')).toHaveTextContent('2');
       },
       { timeout: 5000 }
     );
+    expect(screen.getByTestId('mcp-playground-capability-count-prompts')).toHaveTextContent('1');
+    expect(screen.getByTestId('mcp-playground-capability-count-resources')).toHaveTextContent('1');
 
-    expect(screen.getByTestId('mcp-playground-tool-ask_question')).toBeInTheDocument();
+    expect(screen.getByTestId('mcp-playground-overview')).toBeInTheDocument();
+    expect(screen.getByTestId('mcp-playground-overview-card-tools')).toBeInTheDocument();
+    expect(screen.getByTestId('mcp-playground-overview-card-prompts')).toBeInTheDocument();
+    expect(screen.getByTestId('mcp-playground-overview-card-resources')).toBeInTheDocument();
   });
 
-  it('shows empty state with no tools message', async () => {
-    server.use(
-      ...createMcpProtocolHandlers({
-        endpoint: MCP_ENDPOINT,
-        tools: [],
-      })
-    );
-
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('mcp-playground-page')).toBeInTheDocument();
-      },
-      { timeout: 5000 }
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('No tools available')).toBeInTheDocument();
-    });
-  });
-});
-
-describe('McpPlaygroundPage - Tool Selection', () => {
-  beforeEach(() => {
-    server.use(
-      ...mockAppInfo({ status: 'ready' }, { stub: true }),
-      ...mockUserLoggedIn({}, { stub: true }),
-      mockGetMcp(mcpForPlayground),
-      ...createMcpProtocolHandlers({
-        endpoint: MCP_ENDPOINT,
-        tools: mcpTools,
-      })
-    );
-  });
-
-  it('shows tool name and form fields when tool selected', async () => {
+  it('navigates to tools feature when capability card clicked', async () => {
     const user = userEvent.setup();
+    const router = await renderScreen();
+    await waitFor(() => expect(screen.getByTestId('mcp-playground-overview-card-tools')).toBeInTheDocument());
 
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
+    await user.click(screen.getByTestId('mcp-playground-overview-card-tools'));
+    await waitFor(() => {
+      expect(router.state.location.search).toMatchObject({ feature: 'tools' });
     });
+  });
+});
 
+describe('McpPlaygroundPage — Tools', () => {
+  beforeEach(() => {
+    server.use(
+      ...createMcpProtocolHandlers({
+        endpoint: MCP_ENDPOINT,
+        tools: mockTools,
+      })
+    );
+  });
+
+  it('shows tool list in rail when feature=tools', async () => {
+    await renderScreen([`/mcps/playground/?id=${MCP_ID}&feature=tools`]);
     await waitFor(
       () => {
-        expect(screen.getByTestId('mcp-playground-tool-read_wiki_structure')).toBeInTheDocument();
+        expect(screen.getByTestId('mcp-playground-rail-item-read_wiki_structure')).toBeInTheDocument();
       },
       { timeout: 5000 }
     );
+    expect(screen.getByTestId('mcp-playground-rail-item-ask_question')).toBeInTheDocument();
+  });
 
-    await user.click(screen.getByTestId('mcp-playground-tool-read_wiki_structure'));
+  it('selecting a rail item shows the ToolDetail', async () => {
+    const user = userEvent.setup();
+    await renderScreen([`/mcps/playground/?id=${MCP_ID}&feature=tools`]);
+    await waitFor(() => screen.getByTestId('mcp-playground-rail-item-read_wiki_structure'));
 
+    await user.click(screen.getByTestId('mcp-playground-rail-item-read_wiki_structure'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-playground-tool-detail')).toBeInTheDocument();
+    });
     expect(screen.getByTestId('mcp-playground-tool-name')).toHaveTextContent('read_wiki_structure');
     expect(screen.getByTestId('mcp-playground-param-repo_name')).toBeInTheDocument();
   });
-});
 
-describe('McpPlaygroundPage - Form/JSON Toggle', () => {
-  beforeEach(() => {
-    server.use(
-      ...mockAppInfo({ status: 'ready' }, { stub: true }),
-      ...mockUserLoggedIn({}, { stub: true }),
-      mockGetMcp(mcpForPlayground),
-      ...createMcpProtocolHandlers({
-        endpoint: MCP_ENDPOINT,
-        tools: mcpTools,
-      })
-    );
-  });
-
-  it('switches between form and JSON modes', async () => {
-    const user = userEvent.setup();
-
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('mcp-playground-tool-ask_question')).toBeInTheDocument();
-      },
-      { timeout: 5000 }
-    );
-
-    await user.click(screen.getByTestId('mcp-playground-tool-ask_question'));
-
-    expect(screen.getByTestId('mcp-playground-param-repo_url')).toBeInTheDocument();
-    expect(screen.queryByTestId('mcp-playground-json-editor')).not.toBeInTheDocument();
-
-    await user.click(screen.getByTestId('mcp-playground-input-mode-json'));
-
-    expect(screen.getByTestId('mcp-playground-json-editor')).toBeInTheDocument();
-    expect(screen.queryByTestId('mcp-playground-param-repo_url')).not.toBeInTheDocument();
-
-    await user.click(screen.getByTestId('mcp-playground-input-mode-form'));
-
-    expect(screen.getByTestId('mcp-playground-param-repo_url')).toBeInTheDocument();
-  });
-
-  it('syncs form changes to JSON editor', async () => {
-    const user = userEvent.setup();
-
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('mcp-playground-tool-ask_question')).toBeInTheDocument();
-      },
-      { timeout: 5000 }
-    );
-
-    await user.click(screen.getByTestId('mcp-playground-tool-ask_question'));
-
-    const paramContainer = screen.getByTestId('mcp-playground-param-repo_url');
-    const input = within(paramContainer).getByRole('textbox');
-    await user.type(input, 'https://github.com/test');
-
-    await user.click(screen.getByTestId('mcp-playground-input-mode-json'));
-
-    const jsonEditor = screen.getByTestId('mcp-playground-json-editor') as HTMLTextAreaElement;
-    expect(jsonEditor.value).toContain('https://github.com/test');
+  it('shows empty rail when no tools advertised', async () => {
+    server.use(...createMcpProtocolHandlers({ endpoint: MCP_ENDPOINT, tools: [] }));
+    await renderScreen([`/mcps/playground/?id=${MCP_ID}&feature=tools`]);
+    await waitFor(() => expect(screen.getByTestId('mcp-playground-rail-empty')).toBeInTheDocument());
   });
 });
 
-describe('McpPlaygroundPage - Execute', () => {
+describe('McpPlaygroundPage — Tool execution', () => {
   beforeEach(() => {
     server.use(
-      ...mockAppInfo({ status: 'ready' }, { stub: true }),
-      ...mockUserLoggedIn({}, { stub: true }),
-      mockGetMcp(mcpForPlayground),
       ...createMcpProtocolHandlers({
         endpoint: MCP_ENDPOINT,
-        tools: mcpTools,
-        toolCallHandler: (toolName, _args) => {
+        tools: mockTools,
+        toolCallHandler: (toolName) => {
           if (toolName === 'read_wiki_structure') {
-            return { text: JSON.stringify({ wiki: 'content' }), isError: false };
+            return { text: 'Wiki structure: chapter 1, chapter 2', isError: false };
           }
           if (toolName === 'ask_question') {
             return { text: 'Tool not allowed', isError: true };
@@ -277,156 +221,74 @@ describe('McpPlaygroundPage - Execute', () => {
     );
   });
 
-  it('executes tool and shows success result', async () => {
+  it('runs a tool and shows success result', async () => {
     const user = userEvent.setup();
+    await renderScreen([`/mcps/playground/?id=${MCP_ID}&feature=tools&item=read_wiki_structure`]);
+    await waitFor(() => screen.getByTestId('mcp-playground-tool-detail'));
 
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
-    });
+    // Fill required param
+    const paramContainer = screen.getByTestId('mcp-playground-param-repo_name');
+    const input = within(paramContainer).getByRole('textbox');
+    await user.type(input, 'my-repo');
 
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('mcp-playground-tool-read_wiki_structure')).toBeInTheDocument();
-      },
-      { timeout: 5000 }
-    );
-
-    await user.click(screen.getByTestId('mcp-playground-tool-read_wiki_structure'));
-    await user.click(screen.getByTestId('mcp-playground-execute-button'));
+    await user.click(screen.getByTestId('mcp-playground-run-button'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('mcp-playground-result-section')).toBeInTheDocument();
+      const status = screen.getByTestId('mcp-playground-result-status');
+      expect(status).toHaveAttribute('data-test-state', 'success');
     });
-
-    const status = screen.getByTestId('mcp-playground-result-status');
-    expect(status).toHaveAttribute('data-test-state', 'success');
   });
 
-  it('shows error result on execution failure', async () => {
+  it('shows error result when tool returns isError', async () => {
     const user = userEvent.setup();
+    await renderScreen([`/mcps/playground/?id=${MCP_ID}&feature=tools&item=ask_question`]);
+    await waitFor(() => screen.getByTestId('mcp-playground-tool-detail'));
 
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
-    });
+    // Fill required params
+    const repoUrlContainer = screen.getByTestId('mcp-playground-param-repo_url');
+    await user.type(within(repoUrlContainer).getByRole('textbox'), 'https://example.com');
+    const qContainer = screen.getByTestId('mcp-playground-param-question');
+    await user.type(within(qContainer).getByRole('textbox'), 'What is X?');
 
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('mcp-playground-tool-ask_question')).toBeInTheDocument();
-      },
-      { timeout: 5000 }
-    );
-
-    await user.click(screen.getByTestId('mcp-playground-tool-ask_question'));
-    await user.click(screen.getByTestId('mcp-playground-execute-button'));
+    await user.click(screen.getByTestId('mcp-playground-run-button'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('mcp-playground-result-section')).toBeInTheDocument();
+      const status = screen.getByTestId('mcp-playground-result-status');
+      expect(status).toHaveAttribute('data-test-state', 'error');
     });
-
-    const status = screen.getByTestId('mcp-playground-result-status');
-    expect(status).toHaveAttribute('data-test-state', 'error');
   });
 
   it('shows result tabs and allows switching', async () => {
     const user = userEvent.setup();
+    await renderScreen([`/mcps/playground/?id=${MCP_ID}&feature=tools&item=read_wiki_structure`]);
+    await waitFor(() => screen.getByTestId('mcp-playground-tool-detail'));
 
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
-    });
+    const paramContainer = screen.getByTestId('mcp-playground-param-repo_name');
+    await user.type(within(paramContainer).getByRole('textbox'), 'my-repo');
+    await user.click(screen.getByTestId('mcp-playground-run-button'));
 
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('mcp-playground-tool-read_wiki_structure')).toBeInTheDocument();
-      },
-      { timeout: 5000 }
-    );
-
-    await user.click(screen.getByTestId('mcp-playground-tool-read_wiki_structure'));
-    await user.click(screen.getByTestId('mcp-playground-execute-button'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mcp-playground-result-section')).toBeInTheDocument();
-    });
-
-    expect(screen.getByTestId('mcp-playground-result-tab-response')).toBeInTheDocument();
+    await waitFor(() => screen.getByTestId('mcp-playground-result-status'));
+    expect(screen.getByTestId('mcp-playground-result-tab-readable')).toBeInTheDocument();
     expect(screen.getByTestId('mcp-playground-result-tab-raw')).toBeInTheDocument();
     expect(screen.getByTestId('mcp-playground-result-tab-request')).toBeInTheDocument();
 
     await user.click(screen.getByTestId('mcp-playground-result-tab-request'));
-    const content = screen.getByTestId('mcp-playground-result-content');
-    expect(content.textContent).toContain('read_wiki_structure');
+    expect(screen.getByTestId('mcp-playground-result-request')).toBeInTheDocument();
   });
 });
 
-describe('McpPlaygroundPage - Refresh', () => {
+describe('McpPlaygroundPage — connection status', () => {
   beforeEach(() => {
-    server.use(
-      ...mockAppInfo({ status: 'ready' }, { stub: true }),
-      ...mockUserLoggedIn({}, { stub: true }),
-      mockGetMcp(mcpForPlayground),
-      ...createMcpProtocolHandlers({
-        endpoint: MCP_ENDPOINT,
-        tools: mcpTools,
-      })
-    );
+    server.use(...createMcpProtocolHandlers({ endpoint: MCP_ENDPOINT, tools: mockTools }));
   });
 
-  it('calls refreshTools when refresh button clicked', async () => {
-    const user = userEvent.setup();
-
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
-    });
-
+  it('reaches connected state', async () => {
+    await renderScreen();
     await waitFor(
       () => {
-        expect(screen.getByTestId('mcp-playground-tool-read_wiki_structure')).toBeInTheDocument();
+        expect(screen.getByTestId('mcp-playground-connection-status')).toHaveAttribute('data-test-state', 'connected');
       },
       { timeout: 5000 }
     );
-
-    await user.click(screen.getByTestId('mcp-playground-refresh-button'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mcp-playground-tool-read_wiki_structure')).toBeInTheDocument();
-      expect(screen.getByTestId('mcp-playground-tool-ask_question')).toBeInTheDocument();
-    });
-  });
-});
-
-describe('McpPlaygroundPage - Loading and Error', () => {
-  it('shows loading skeleton', async () => {
-    server.use(...mockAppInfo({ status: 'ready' }, { stub: true }), ...mockUserLoggedIn({}, { stub: true }));
-
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
-    });
-
-    expect(screen.getByTestId('mcp-playground-loading')).toBeInTheDocument();
-  });
-
-  it('shows prompt to select tool when none selected', async () => {
-    server.use(
-      ...mockAppInfo({ status: 'ready' }, { stub: true }),
-      ...mockUserLoggedIn({}, { stub: true }),
-      mockGetMcp(mcpForPlayground),
-      ...createMcpProtocolHandlers({
-        endpoint: MCP_ENDPOINT,
-        tools: mcpTools,
-      })
-    );
-
-    await act(async () => {
-      render(<McpPlaygroundPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('mcp-playground-page')).toBeInTheDocument();
-      },
-      { timeout: 5000 }
-    );
-
-    expect(screen.getByText('Select a tool from the sidebar to get started')).toBeInTheDocument();
   });
 });

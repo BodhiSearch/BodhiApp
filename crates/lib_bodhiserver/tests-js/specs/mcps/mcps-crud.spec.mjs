@@ -81,6 +81,13 @@ test.describe('MCP Server Management', () => {
       await mcpsPage.expectPlaygroundConnected();
     });
 
+    await test.step('Overview shows non-zero tool count', async () => {
+      const toolsCount = mcpsPage.page.locator('[data-testid="mcp-playground-capability-count-tools"]');
+      await expect(toolsCount).toBeVisible();
+      const text = (await toolsCount.textContent())?.trim() ?? '';
+      expect(Number(text)).toBeGreaterThan(0);
+    });
+
     await test.step('Select tool and execute', async () => {
       await mcpsPage.selectPlaygroundTool('echo');
       await mcpsPage.expectPlaygroundToolSelected('echo');
@@ -95,30 +102,15 @@ test.describe('MCP Server Management', () => {
 
     await test.step('Verify result tabs', async () => {
       await mcpsPage.clickPlaygroundResultTab('raw');
-      const rawContent = await mcpsPage.getPlaygroundResultContent();
+      const rawContent = await mcpsPage.getPlaygroundResultRaw();
       expect(rawContent).toBeTruthy();
 
       await mcpsPage.clickPlaygroundResultTab('request');
-      const requestContent = await mcpsPage.getPlaygroundResultContent();
+      const requestContent = await mcpsPage.getPlaygroundResultRequest();
       expect(requestContent).toContain('echo');
 
       const copyButton = mcpsPage.page.locator(mcpsPage.selectors.playgroundCopyButton);
       await expect(copyButton).toBeVisible();
-    });
-
-    await test.step('Test form/JSON toggle sync', async () => {
-      await mcpsPage.switchToJsonMode();
-      const jsonContent = await mcpsPage.getPlaygroundJsonContent();
-      expect(jsonContent).toContain('hello from playground');
-
-      const newValue = 'updated message';
-      const newJson = JSON.stringify({ message: newValue }, null, 2);
-      await mcpsPage.fillPlaygroundJson(newJson);
-
-      await mcpsPage.switchToFormMode();
-      const paramContainer = mcpsPage.page.locator(mcpsPage.selectors.playgroundParam('message'));
-      const input = paramContainer.locator('input, textarea').first();
-      await expect(input).toHaveValue(newValue);
     });
   });
 
@@ -149,14 +141,16 @@ test.describe('MCP Server Management', () => {
       // Wait for MCP client to connect
       await mcpsPage.expectPlaygroundConnected();
 
-      const toolSidebar = mcpsPage.page.locator(mcpsPage.selectors.playgroundToolList);
-      await expect(toolSidebar).toBeVisible();
+      // V2 lands on the Overview pane; switch to Tools to surface the rail.
+      await mcpsPage.page.click(mcpsPage.selectors.playgroundCapability('tools'));
+      const toolList = mcpsPage.page.locator(mcpsPage.selectors.playgroundToolList);
+      await expect(toolList).toBeVisible();
     });
 
     await test.step('Refresh tools', async () => {
       await mcpsPage.clickPlaygroundRefresh();
-      const toolSidebar = mcpsPage.page.locator(mcpsPage.selectors.playgroundToolList);
-      await expect(toolSidebar).toBeVisible();
+      const toolList = mcpsPage.page.locator(mcpsPage.selectors.playgroundToolList);
+      await expect(toolList).toBeVisible();
     });
 
     await test.step('Disable MCP instance and verify error on playground load', async () => {

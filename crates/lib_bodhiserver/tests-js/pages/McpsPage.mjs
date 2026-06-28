@@ -86,26 +86,26 @@ export class McpsPage extends BasePage {
     oauthDisconnectButton: '[data-testid="oauth-disconnect-button"]',
     oauthConnectedInfo: '[data-testid="oauth-connected-info"]',
 
-    // Playground page
+    // Playground page (Screen-V2): selectors live on McpPlaygroundPage; these are convenience
+    // aliases re-exported here so legacy spec call-sites that read `mcpsPage.selectors.playgroundXxx`
+    // keep compiling. New specs should prefer `new McpPlaygroundPage(page, baseUrl)`.
     playgroundPage: '[data-testid="mcp-playground-page"]',
     playgroundLoading: '[data-testid="mcp-playground-loading"]',
-    playgroundToolSidebar: '[data-testid="mcp-playground-tool-sidebar"]',
-    playgroundToolList: '[data-testid="mcp-playground-tool-list"]',
-    playgroundTool: (name) => `[data-testid="mcp-playground-tool-${name}"]`,
+    playgroundToolList: '[data-testid="mcp-playground-rail-list"]',
+    playgroundTool: (name) => `[data-testid="mcp-playground-rail-item-${name}"]`,
     playgroundRefreshButton: '[data-testid="mcp-playground-refresh-button"]',
     playgroundToolName: '[data-testid="mcp-playground-tool-name"]',
-    playgroundInputModeForm: '[data-testid="mcp-playground-input-mode-form"]',
-    playgroundInputModeJson: '[data-testid="mcp-playground-input-mode-json"]',
     playgroundParam: (name) => `[data-testid="mcp-playground-param-${name}"]`,
-    playgroundJsonEditor: '[data-testid="mcp-playground-json-editor"]',
-    playgroundExecuteButton: '[data-testid="mcp-playground-execute-button"]',
-    playgroundResultSection: '[data-testid="mcp-playground-result-section"]',
+    playgroundExecuteButton: '[data-testid="mcp-playground-run-button"]',
+    playgroundResultSection: '[data-testid="mcp-playground-result"]',
     playgroundResultStatus: '[data-testid="mcp-playground-result-status"]',
-    playgroundResultTabResponse: '[data-testid="mcp-playground-result-tab-response"]',
+    playgroundResultTabReadable: '[data-testid="mcp-playground-result-tab-readable"]',
     playgroundResultTabRaw: '[data-testid="mcp-playground-result-tab-raw"]',
     playgroundResultTabRequest: '[data-testid="mcp-playground-result-tab-request"]',
-    playgroundResultContent: '[data-testid="mcp-playground-result-content"]',
+    playgroundResultRaw: '[data-testid="mcp-playground-result-raw"]',
+    playgroundResultRequest: '[data-testid="mcp-playground-result-request"]',
     playgroundCopyButton: '[data-testid="mcp-playground-copy-button"]',
+    playgroundCapability: (feature) => `[data-testid="mcp-playground-capability-${feature}"]`,
     // V2: the playground header bar was replaced by the shell breadcrumb; "back" is the MCP crumb.
     playgroundBackButton: 'a.shell-bc-seg[href="/ui/mcps/"]',
   };
@@ -553,27 +553,26 @@ export class McpsPage extends BasePage {
     await this.clickCreate();
   }
 
-  // ========== Playground Connection Status Methods ==========
+  // ========== Playground methods (Screen-V2) ==========
+  // These delegate to McpPlaygroundPage via the shared selectors and adapt the result-tab
+  // names so existing specs ('response') continue to work against the V2 'readable' tab.
 
   async expectPlaygroundConnected(timeout = McpsPage.MCP_CONNECTION_TIMEOUT) {
     const status = this.page.locator('[data-testid="mcp-playground-connection-status"]');
-    await expect(status).toHaveText('connected', { timeout });
+    await expect(status).toHaveAttribute('data-test-state', 'connected', { timeout });
   }
 
   async expectPlaygroundConnectionError(timeout = McpsPage.MCP_CONNECTION_TIMEOUT) {
     const status = this.page.locator('[data-testid="mcp-playground-connection-status"]');
-    await expect(status).toHaveText('error', { timeout });
+    await expect(status).toHaveAttribute('data-test-state', 'error', { timeout });
   }
 
   async expectPlaygroundConnecting(timeout = 5000) {
     const status = this.page.locator('[data-testid="mcp-playground-connection-status"]');
-    await expect(status).toHaveText('connecting', { timeout });
+    await expect(status).toHaveAttribute('data-test-state', 'connecting', { timeout });
   }
 
-  // ========== Playground Page Methods ==========
-
   async clickPlaygroundById(id) {
-    // V2: the play action is on the instance row inside the server rail; open it if needed.
     await this.ensureInstanceRowVisible(id);
     await this.page.click(this.selectors.railInstancePlay(id));
     await this.page.waitForURL(/\/ui\/mcps\/playground\/?\?id=/);
@@ -585,6 +584,11 @@ export class McpsPage extends BasePage {
   }
 
   async selectPlaygroundTool(name) {
+    // V2: the tool rail only mounts on `?feature=tools`. Activate it if not already active.
+    const railItem = this.page.locator(this.selectors.playgroundTool(name));
+    if (!(await railItem.isVisible().catch(() => false))) {
+      await this.page.click(this.selectors.playgroundCapability('tools'));
+    }
     await this.page.click(this.selectors.playgroundTool(name));
   }
 
@@ -601,22 +605,6 @@ export class McpsPage extends BasePage {
     const paramContainer = this.page.locator(this.selectors.playgroundParam(name));
     const input = paramContainer.locator('input, textarea').first();
     await input.fill(value);
-  }
-
-  async switchToJsonMode() {
-    await this.page.click(this.selectors.playgroundInputModeJson);
-  }
-
-  async switchToFormMode() {
-    await this.page.click(this.selectors.playgroundInputModeForm);
-  }
-
-  async fillPlaygroundJson(json) {
-    await this.page.fill(this.selectors.playgroundJsonEditor, json);
-  }
-
-  async getPlaygroundJsonContent() {
-    return await this.page.locator(this.selectors.playgroundJsonEditor).inputValue();
   }
 
   async clickPlaygroundExecute() {
@@ -637,15 +625,21 @@ export class McpsPage extends BasePage {
 
   async clickPlaygroundResultTab(tab) {
     const selector = {
-      response: this.selectors.playgroundResultTabResponse,
+      readable: this.selectors.playgroundResultTabReadable,
+      // 'response' is a legacy alias kept for older specs; V2 calls this tab 'readable'.
+      response: this.selectors.playgroundResultTabReadable,
       raw: this.selectors.playgroundResultTabRaw,
       request: this.selectors.playgroundResultTabRequest,
     }[tab];
     await this.page.click(selector);
   }
 
-  async getPlaygroundResultContent() {
-    return await this.page.locator(this.selectors.playgroundResultContent).textContent();
+  async getPlaygroundResultRaw() {
+    return await this.page.locator(this.selectors.playgroundResultRaw).textContent();
+  }
+
+  async getPlaygroundResultRequest() {
+    return await this.page.locator(this.selectors.playgroundResultRequest).textContent();
   }
 
   async clickPlaygroundBack() {

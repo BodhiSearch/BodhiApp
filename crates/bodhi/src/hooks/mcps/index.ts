@@ -41,6 +41,21 @@ export type {
   OAuthTokenExchangeRequest,
 } from './useMcpOAuth';
 export { useMcpClient } from './useMcpClient';
-export type { McpConnectionStatus, McpClientTool, UseMcpClientReturn, McpToolCallResult } from './useMcpClient';
+export type {
+  McpCapabilityCounts,
+  McpClientPrompt,
+  McpClientPromptArg,
+  McpClientResource,
+  McpClientResourceTemplate,
+  McpClientTool,
+  McpConnectionStatus,
+  McpPromptGetResult,
+  McpPromptMessage,
+  McpResourceContent,
+  McpResourceReadResult,
+  McpToolAnnotations,
+  McpToolCallResult,
+  UseMcpClientReturn,
+} from './useMcpClient';
 export { useMcpClients } from './useMcpClients';
 export type { UseMcpClientsReturn } from './useMcpClients';
