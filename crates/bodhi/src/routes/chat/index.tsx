@@ -15,6 +15,7 @@ import { hydrateStoresForCurrentChat, initChatStoreSubscriptions } from '@/store
 
 import { ChatHistorySidebar } from './-components/ChatHistorySidebar';
 import { ChatRailTabs, type ChatRailTab } from './-components/ChatRailTabs';
+import { ChatTitle } from './-components/ChatTitle';
 import { ChatUI } from './-components/ChatUI';
 import { McpServersPane } from './-components/settings/McpServersPane';
 import { ParametersPane } from './-components/settings/ParametersPane';
@@ -27,7 +28,8 @@ export const Route = createFileRoute('/chat/')({
   component: ChatPage,
 });
 
-const CHAT_BREADCRUMB = [{ label: 'Chat' }];
+// The breadcrumb slot renders a custom node as-is; ChatTitle reads the current chat from the store.
+const CHAT_BREADCRUMB = <ChatTitle />;
 
 /** Keeps the `?model=&id=` URL in sync with the current chat / model selection. */
 function ChatUrlSync({ chatIdFromUrl, model }: { chatIdFromUrl?: string; model?: string }) {
