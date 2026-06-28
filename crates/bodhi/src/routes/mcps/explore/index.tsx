@@ -38,6 +38,7 @@ export const exploreMcpSearchSchema = z.object({
 export type ExploreMcpSearch = z.infer<typeof exploreMcpSearchSchema>;
 
 export const Route = createFileRoute('/mcps/explore/')({
+  staticData: { section: 'mcp', subPage: 'explore-mcp' },
   validateSearch: exploreMcpSearchSchema,
   component: ExploreMcpPage,
 });

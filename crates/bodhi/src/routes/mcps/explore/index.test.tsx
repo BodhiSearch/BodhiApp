@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ShellChromeProvider, useShellSlots } from '@/components/shell';
+import { ShellHarness } from '@/test-utils/shell-harness';
 import { ExploreMcpScreen } from '@/routes/mcps/explore/-components/ExploreMcpScreen';
 import { exploreMcpSearchSchema } from '@/routes/mcps/explore/index';
 import { createMockMcp, createMockMcpServerResponse } from '@/test-fixtures/mcps';
@@ -32,26 +32,14 @@ beforeEach(() => {
   );
 });
 
-function SlotsConsumer() {
-  const { sidebar, rail, railHeader } = useShellSlots();
-  return (
-    <>
-      <div data-testid="harness-sidebar">{sidebar}</div>
-      <div data-testid="harness-rail-header">{railHeader}</div>
-      <div data-testid="harness-rail">{rail}</div>
-    </>
-  );
-}
-
 function buildRouter(initialEntries?: string[]) {
   return makeRouteRouter({
     path: '/mcps/explore/',
     validateSearch: exploreMcpSearchSchema as never,
     Screen: () => (
-      <ShellChromeProvider>
-        <SlotsConsumer />
+      <ShellHarness>
         <ExploreMcpScreen />
-      </ShellChromeProvider>
+      </ShellHarness>
     ),
     initialEntries,
   });

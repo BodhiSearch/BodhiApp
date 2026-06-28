@@ -6,6 +6,7 @@ import { z } from 'zod';
  * so there's no separate edit page anymore. Keep the route as a redirect for any old deep-links.
  */
 export const Route = createFileRoute('/mcps/servers/edit/')({
+  staticData: { section: 'mcp' },
   validateSearch: z.object({ id: z.string().optional() }),
   beforeLoad: ({ search }) => {
     throw redirect({ to: '/mcps/servers/view/', search: { id: (search as { id?: string }).id } });

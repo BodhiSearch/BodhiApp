@@ -24,6 +24,7 @@ import { AuthConfigForm } from '@/routes/mcps/servers/-components/AuthConfigForm
 // Prefill params for the admin "Connect Server" bridge from the catalog rail: url + name + the
 // catalog's auth_type (e.g. oauth-dcr) so the auth section opens pre-selected and DCR auto-discovers.
 export const Route = createFileRoute('/mcps/servers/new/')({
+  staticData: { section: 'mcp', subPage: 'new-mcp-server' },
   validateSearch: z.object({
     url: z.string().optional(),
     name: z.string().optional(),

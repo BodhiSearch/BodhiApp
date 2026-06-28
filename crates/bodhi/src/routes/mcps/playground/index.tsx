@@ -16,6 +16,7 @@ import { ExecutionArea } from './-components/ExecutionArea';
 import { ToolSidebar } from './-components/ToolSidebar';
 
 export const Route = createFileRoute('/mcps/playground/')({
+  staticData: { section: 'mcp' },
   validateSearch: z.object({ id: z.string().optional() }),
   component: McpPlaygroundPage,
 });

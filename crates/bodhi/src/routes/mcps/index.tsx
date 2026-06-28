@@ -19,6 +19,7 @@ export const myMcpsSearchSchema = z.object({
 export type MyMcpsSearch = z.infer<typeof myMcpsSearchSchema>;
 
 export const Route = createFileRoute('/mcps/')({
+  staticData: { section: 'mcp', subPage: 'my-mcps' },
   validateSearch: myMcpsSearchSchema,
   component: McpsPage,
 });

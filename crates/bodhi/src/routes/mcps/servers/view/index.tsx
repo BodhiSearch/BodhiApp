@@ -41,6 +41,7 @@ import '@/routes/mcps/servers/-components/server-config.css';
 import '@/routes/mcps/-shared/auth-badges.css';
 
 export const Route = createFileRoute('/mcps/servers/view/')({
+  staticData: { section: 'mcp' },
   validateSearch: z.object({ id: z.string().optional() }),
   component: ServerViewPage,
 });

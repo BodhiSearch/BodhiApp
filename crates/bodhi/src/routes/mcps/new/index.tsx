@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
 export const Route = createFileRoute('/mcps/new/')({
+  staticData: { section: 'mcp', subPage: 'new-mcp' },
   validateSearch: z.object({
     id: z.string().optional(),
     // Create-mode prefill from the My-MCPs / Explore rail "Connect with" deep-link.
