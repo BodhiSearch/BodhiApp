@@ -11,9 +11,8 @@ import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 import { useChatStore } from '@/stores/chatStore';
 import { hydrateStoresForCurrentChat, initChatStoreSubscriptions } from '@/stores/initStores';
 
-import { ChatHistory } from './-components/ChatHistory';
+import { ChatHistorySidebar } from './-components/ChatHistorySidebar';
 import { ChatUI } from './-components/ChatUI';
-import { NewChatButton } from './-components/NewChatButton';
 import { SettingsSidebar } from './-components/settings/SettingsSidebar';
 
 export const Route = createFileRoute('/chat/')({
@@ -79,15 +78,7 @@ function ChatScreen() {
   const toggleHistory = useCallback(() => setHistoryOpen((o) => !o), [setHistoryOpen]);
   const toggleSettings = useCallback(() => setSettingsOpen((o) => !o), [setSettingsOpen]);
 
-  const sidebar = useMemo(
-    () => (
-      <div className="flex h-full min-h-0 flex-col">
-        <NewChatButton />
-        {historyOpen && <ChatHistory />}
-      </div>
-    ),
-    [historyOpen]
-  );
+  const sidebar = useMemo(() => <ChatHistorySidebar listOpen={historyOpen} />, [historyOpen]);
 
   const rail = useMemo(() => (settingsOpen ? <SettingsSidebar /> : null), [settingsOpen]);
 

@@ -9,6 +9,8 @@ export class ChatHistoryPage extends BasePage {
     // Chat items
     chatHistoryItem: (id) => `[data-testid="chat-history-item-${id}"]`,
     chatHistoryButton: (id) => `[data-testid="chat-history-button-${id}"]`,
+    // Delete now lives behind the per-row "⋯" actions menu (V2).
+    chatActionsButton: (id) => `[data-testid="chat-actions-${id}"]`,
     deleteChatButton: (id) => `[data-testid="delete-chat-${id}"]`,
 
     // History groups
@@ -89,12 +91,13 @@ export class ChatHistoryPage extends BasePage {
   async deleteChatById(chatId) {
     await this.openHistorySidebar();
 
-    // Find the chat item and hover to make delete button visible
+    // Hover the row to reveal the "⋯" actions button, open the menu, then click Delete.
     const chatItem = this.page.locator(this.selectors.chatHistoryItem(chatId));
     await expect(chatItem).toBeVisible();
     await chatItem.hover();
 
-    // Click the delete button
+    await this.page.click(this.selectors.chatActionsButton(chatId));
+
     const deleteButton = this.page.locator(this.selectors.deleteChatButton(chatId));
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
@@ -281,6 +284,8 @@ export class ChatHistoryPage extends BasePage {
 
     const chatItem = this.page.locator(this.selectors.chatHistoryItem(chatId));
     await chatItem.hover();
+
+    await this.page.click(this.selectors.chatActionsButton(chatId));
 
     const deleteButton = this.page.locator(this.selectors.deleteChatButton(chatId));
     await deleteButton.click();

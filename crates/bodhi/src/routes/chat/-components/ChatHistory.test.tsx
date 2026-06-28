@@ -108,33 +108,47 @@ describe('ChatHistory', () => {
   it('marks current chat as active', () => {
     render(<ChatHistory />, { wrapper: Wrapper });
 
-    const currentChat = screen.getByText('Today Chat').closest('button');
-    const otherChat = screen.getByText('Yesterday Chat').closest('button');
-
-    // The active row carries the standalone `bg-muted` class (the marker the E2E suite asserts).
-    // Match on a class boundary so the inactive row's `hover:bg-muted/50` doesn't false-positive.
-    const hasActiveClass = (el: Element | null) => /(^|\s)bg-muted(\s|$)/.test(el?.className ?? '');
-    expect(hasActiveClass(currentChat)).toBe(true);
-    expect(hasActiveClass(otherChat)).toBe(false);
+    // The active row carries the `on` class on its `chat-item` container (CSS-driven highlight).
+    const currentRow = screen.getByTestId('chat-history-item-1');
+    const otherRow = screen.getByTestId('chat-history-item-2');
+    expect(currentRow.className).toContain('on');
+    expect(otherRow.className).not.toContain('on');
   });
 
-  it('deletes chat when trash icon is clicked', async () => {
+  it('filters chats by the search prop', () => {
+    render(<ChatHistory search="yesterday" />, { wrapper: Wrapper });
+
+    expect(screen.getByText('Yesterday Chat')).toBeInTheDocument();
+    expect(screen.queryByText('Today Chat')).not.toBeInTheDocument();
+    expect(screen.queryByText('Previous Chat')).not.toBeInTheDocument();
+  });
+
+  it('deletes a chat from the ⋯ actions menu', async () => {
     const user = userEvent.setup();
     render(<ChatHistory />, { wrapper: Wrapper });
 
-    const deleteButton = screen.getByTestId('delete-chat-1');
-    await user.click(deleteButton);
+    // Delete now lives behind the per-row actions menu.
+    await user.click(screen.getByTestId('chat-actions-1'));
+    await user.click(screen.getByTestId('delete-chat-1'));
 
     expect(mockDeleteChat).toHaveBeenCalledWith('1');
+    expect(mockSetCurrentChatId).not.toHaveBeenCalled();
   });
 
-  it('prevents chat selection when deleting', async () => {
+  it('renders inert (un-backed) Rename/Pin/Duplicate/Export actions', async () => {
     const user = userEvent.setup();
     render(<ChatHistory />, { wrapper: Wrapper });
 
-    const deleteButton = screen.getByTestId('delete-chat-1');
-    await user.click(deleteButton);
+    await user.click(screen.getByTestId('chat-actions-1'));
+    for (const label of ['Rename', 'Pin', 'Duplicate', 'Export']) {
+      expect(screen.getByText(label)).toHaveAttribute('aria-disabled');
+    }
+  });
 
-    expect(mockSetCurrentChatId).not.toHaveBeenCalled();
+  it('renders the compact popover variant', () => {
+    render(<ChatHistory compact />, { wrapper: Wrapper });
+
+    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-history-button-1')).toBeInTheDocument();
   });
 });
