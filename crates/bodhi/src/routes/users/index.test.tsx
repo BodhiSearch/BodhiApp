@@ -1,5 +1,5 @@
 import UsersPage from '@/routes/users/index';
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell';
 import { mockAppInfo, mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockUserLoggedIn,
@@ -64,10 +64,10 @@ afterEach(() => {
 async function renderReady() {
   await act(async () => {
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <SlotsConsumer />
         <UsersPage />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: createWrapper() }
     );
   });
@@ -86,10 +86,10 @@ describe('ManageUsers V2', () => {
     );
 
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <SlotsConsumer />
         <UsersPage />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: createWrapper() }
     );
 

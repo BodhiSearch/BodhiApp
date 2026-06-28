@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell';
 import { myMcpsSearchSchema } from '@/routes/mcps/index';
 import { MyMcpsScreen } from '@/routes/mcps/-components/MyMcpsScreen';
 import {
@@ -78,10 +78,10 @@ function buildRouter(initialEntries?: string[]) {
     path: '/mcps/',
     validateSearch: myMcpsSearchSchema as never,
     Screen: () => (
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <SlotsConsumer />
         <MyMcpsScreen />
-      </ShellSlotsProvider>
+      </ShellChromeProvider>
     ),
     initialEntries,
   });

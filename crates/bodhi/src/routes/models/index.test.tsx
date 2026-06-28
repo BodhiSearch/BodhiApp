@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell';
 import { modelsSearchSchema } from '@/routes/models/index';
 import { ModelsScreenV2 } from '@/routes/models/-components/ModelsScreenV2';
 import {
@@ -105,9 +105,9 @@ async function renderScreen(initialEntries?: string[]) {
   });
   await act(async () => {
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <RouteHarness router={router} />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: Wrapper }
     );
   });

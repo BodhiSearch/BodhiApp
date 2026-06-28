@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell';
 import { LocalDiscoveryScreen } from '@/routes/models/explore/local/-components/LocalDiscoveryScreen';
 import { localDiscoverySearchSchema } from '@/routes/models/explore/local/index';
 import { createListModel } from '@/test-fixtures/discover-models';
@@ -76,9 +76,9 @@ async function renderScreen(initialEntries?: string[]) {
   });
   await act(async () => {
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <RouteHarness router={router} />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: Wrapper }
     );
   });
@@ -430,9 +430,9 @@ describe('LocalDiscoveryScreen (Phase 5 — error + empty states)', () => {
     });
     await act(async () => {
       render(
-        <ShellSlotsProvider>
+        <ShellChromeProvider>
           <RouteHarness router={router} />
-        </ShellSlotsProvider>,
+        </ShellChromeProvider>,
         { wrapper: Wrapper }
       );
     });

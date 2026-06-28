@@ -1,5 +1,5 @@
 import EditApiModel from '@/routes/models/api/edit/index';
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -283,10 +283,10 @@ describe('Edit API Model Page - V2 shell chrome', () => {
     );
 
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <BreadcrumbConsumer />
         <EditApiModel />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: createWrapper() }
     );
 

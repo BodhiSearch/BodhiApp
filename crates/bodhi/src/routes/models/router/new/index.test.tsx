@@ -1,6 +1,6 @@
 import NewModelRouter from '@/routes/models/router/new/index';
 import EditModelRouter from '@/routes/models/router/edit/index';
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { server } from '@/test-utils/msw-v2/setup';
@@ -58,10 +58,10 @@ describe('New Model Router — V2 route chrome', () => {
     server.use(...readyHandlers(), ...mockModels({ data: [], total: 0, page: 1, page_size: 30 }, { stub: true }));
 
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <SlotsConsumer />
         <NewModelRouter />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: createWrapper() }
     );
 
@@ -83,10 +83,10 @@ describe('Edit Model Router — V2 route chrome', () => {
     );
 
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <SlotsConsumer />
         <EditModelRouter />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: createWrapper() }
     );
 
@@ -101,10 +101,10 @@ describe('Edit Model Router — V2 route chrome', () => {
     server.use(...readyHandlers());
 
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <SlotsConsumer />
         <EditModelRouter />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: createWrapper() }
     );
 

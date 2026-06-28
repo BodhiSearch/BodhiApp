@@ -1,6 +1,6 @@
 import NewApiModel from '@/routes/models/api/new/index';
 import EditApiModel from '@/routes/models/api/edit/index';
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -284,7 +284,7 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
 
 // V2 shell chrome: publishes the Models breadcrumb + renders a centered container (always-on — the
 // API-model form shipped V2-only, no flag). The form itself is unchanged (same testids); this covers
-// the additive chrome via the canonical ShellSlotsProvider harness (mirrors routes/models/index.v2.test).
+// the additive chrome via the canonical ShellChromeProvider harness (mirrors routes/models/index.v2.test).
 function BreadcrumbConsumer() {
   const { breadcrumb } = useShellSlots();
   const crumbs = Array.isArray(breadcrumb) ? breadcrumb.map((b) => b.label).join(' / ') : '';
@@ -303,10 +303,10 @@ describe('New API Model Page - V2 shell chrome', () => {
     );
 
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <BreadcrumbConsumer />
         <NewApiModel />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: createWrapper() }
     );
 

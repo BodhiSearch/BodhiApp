@@ -1,5 +1,5 @@
 import AllRequestsPage from '@/routes/users/access-requests/index';
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell';
 import { createWrapper } from '@/tests/wrapper';
 import { server } from '@/test-utils/msw-v2/setup';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
@@ -58,9 +58,9 @@ afterEach(() => {
 function renderPage() {
   return act(async () => {
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <AllRequestsPage />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: createWrapper() }
     );
   });
@@ -373,10 +373,10 @@ describe('AccessRequestsPage V2 chrome', () => {
   async function renderReady() {
     await act(async () => {
       render(
-        <ShellSlotsProvider>
+        <ShellChromeProvider>
           <SlotsConsumer />
           <AllRequestsPage />
-        </ShellSlotsProvider>,
+        </ShellChromeProvider>,
         { wrapper: createWrapper() }
       );
     });
@@ -394,10 +394,10 @@ describe('AccessRequestsPage V2 chrome', () => {
     );
 
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <SlotsConsumer />
         <AllRequestsPage />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: createWrapper() }
     );
 

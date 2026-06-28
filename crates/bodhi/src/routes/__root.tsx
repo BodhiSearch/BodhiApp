@@ -9,7 +9,7 @@ import ClientProviders from '@/components/ClientProviders';
 import { AppShell, type ShellFooterUser } from '@/components/shell';
 import { BareLayout } from '@/components/shell/BareLayout';
 import { isBareRoute, isFullscreenRoute, resolveShellRoute } from '@/components/shell/resolveShellRoute';
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell/ShellSlotsContext';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell/ShellChromeContext';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { useLogoutHandler } from '@/hooks/auth';
@@ -32,7 +32,7 @@ export const Route = createRootRoute({
  *   deferred follow-up; see screen-v2/techdebt.md.)
  * - App routes render inside the V2 AppShell, with the active section/subPage derived from the
  *   pathname. A migrated screen contributes breadcrumb/headerActions/rail via `useShellChrome`
- *   (ShellSlotsContext); unmigrated screens render their existing content inside the shell.
+ *   (ShellChromeContext); unmigrated screens render their existing content inside the shell.
  */
 function RootShell() {
   const { pathname } = useLocation();
@@ -124,12 +124,12 @@ function RootLayout() {
     <ThemeProvider defaultTheme="system" storageKey="bodhi-ui-theme">
       <ClientProviders>
         <NavigationProvider items={defaultNavigationItems}>
-          <ShellSlotsProvider>
+          <ShellChromeProvider>
             <div data-testid="root-layout">
               <RootShell />
               <Toaster />
             </div>
-          </ShellSlotsProvider>
+          </ShellChromeProvider>
         </NavigationProvider>
       </ClientProviders>
     </ThemeProvider>

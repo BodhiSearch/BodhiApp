@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell';
 import { ExploreApiScreen } from '@/routes/models/explore/api/-components/ExploreApiScreen';
 import { exploreApiSearchSchema } from '@/routes/models/explore/api/index';
 import { createModelDetail, createModelLite, createModelsListResponse } from '@/test-fixtures/catalog-models';
@@ -69,9 +69,9 @@ async function renderScreen(initialEntries?: string[]) {
   const router = buildRouter(initialEntries);
   await act(async () => {
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <RouteHarness router={router} />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: Wrapper }
     );
   });
@@ -177,9 +177,9 @@ describe('ExploreApiScreen (A1 — list)', () => {
     const router = buildRouter();
     await act(async () => {
       render(
-        <ShellSlotsProvider>
+        <ShellChromeProvider>
           <RouteHarness router={router} />
-        </ShellSlotsProvider>,
+        </ShellChromeProvider>,
         { wrapper: Wrapper }
       );
     });

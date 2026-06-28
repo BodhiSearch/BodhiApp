@@ -1,4 +1,4 @@
-import { ShellSlotsProvider, useShellChrome, useShellSlots } from '@/components/shell/ShellSlotsContext';
+import { ShellChromeProvider, useShellChrome, useShellSlots } from '@/components/shell/ShellChromeContext';
 import { render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -51,13 +51,13 @@ function LayoutPublisher() {
   return <div>layout-publisher</div>;
 }
 
-describe('ShellSlotsContext', () => {
+describe('ShellChromeContext', () => {
   it('publishes a screen-provided slot to the root consumer', () => {
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <SlotsProbe />
         <Publisher label="New Token" />
-      </ShellSlotsProvider>
+      </ShellChromeProvider>
     );
     expect(screen.getByTestId('probe-actions')).toHaveTextContent('New Token');
   });
@@ -68,11 +68,11 @@ describe('ShellSlotsContext', () => {
     function Harness() {
       const [show, setShow] = useState(true);
       return (
-        <ShellSlotsProvider>
+        <ShellChromeProvider>
           <button onClick={() => setShow(false)}>hide</button>
           <SlotsProbe />
           {show && <Publisher label="New Token" />}
-        </ShellSlotsProvider>
+        </ShellChromeProvider>
       );
     }
 
@@ -85,9 +85,9 @@ describe('ShellSlotsContext', () => {
 
   it('returns empty slots with no publisher mounted', () => {
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <SlotsProbe />
-      </ShellSlotsProvider>
+      </ShellChromeProvider>
     );
     expect(screen.getByTestId('probe-actions')).toHaveTextContent('none');
     expect(screen.getByTestId('probe-sidebar')).toHaveTextContent('none');
@@ -99,11 +99,11 @@ describe('ShellSlotsContext', () => {
     function Harness() {
       const [show, setShow] = useState(true);
       return (
-        <ShellSlotsProvider>
+        <ShellChromeProvider>
           <button onClick={() => setShow(false)}>hide</button>
           <LayoutProbe />
           {show && <LayoutPublisher />}
-        </ShellSlotsProvider>
+        </ShellChromeProvider>
       );
     }
 
@@ -126,11 +126,11 @@ describe('ShellSlotsContext', () => {
     function Harness() {
       const [show, setShow] = useState(true);
       return (
-        <ShellSlotsProvider>
+        <ShellChromeProvider>
           <button onClick={() => setShow(false)}>hide</button>
           <SlotsProbe />
           {show && <SidebarPublisher label="Settings Groups" />}
-        </ShellSlotsProvider>
+        </ShellChromeProvider>
       );
     }
 

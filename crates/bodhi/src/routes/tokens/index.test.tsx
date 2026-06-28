@@ -1,5 +1,5 @@
 import { TokenPage } from '@/routes/tokens/index';
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockTokens, mockUpdateTokenStatus } from '@/test-utils/msw-v2/handlers/tokens';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
@@ -80,10 +80,10 @@ function SlotsConsumer() {
 
 function ShellHarness({ children }: { children: React.ReactNode }) {
   return (
-    <ShellSlotsProvider>
+    <ShellChromeProvider>
       <SlotsConsumer />
       {children}
-    </ShellSlotsProvider>
+    </ShellChromeProvider>
   );
 }
 
@@ -228,9 +228,9 @@ describe('TokenPage - Authentication & Initialization', () => {
 
     await act(async () => {
       render(
-        <ShellSlotsProvider>
+        <ShellChromeProvider>
           <TokenPage />
-        </ShellSlotsProvider>,
+        </ShellChromeProvider>,
         { wrapper: createWrapper() }
       );
     });
@@ -245,9 +245,9 @@ describe('TokenPage - Authentication & Initialization', () => {
 
     await act(async () => {
       render(
-        <ShellSlotsProvider>
+        <ShellChromeProvider>
           <TokenPage />
-        </ShellSlotsProvider>,
+        </ShellChromeProvider>,
         { wrapper: createWrapper() }
       );
     });
@@ -266,9 +266,9 @@ describe('TokenPage - Authentication & Initialization', () => {
 
     await act(async () => {
       render(
-        <ShellSlotsProvider>
+        <ShellChromeProvider>
           <TokenPage />
-        </ShellSlotsProvider>,
+        </ShellChromeProvider>,
         { wrapper: createWrapper() }
       );
     });

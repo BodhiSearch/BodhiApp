@@ -1,5 +1,5 @@
 import { Route as SettingsRoute } from '@/routes/settings/index';
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { mockSettings, mockSettingsDefault, mockUpdateSetting } from '@/test-utils/msw-v2/handlers/settings';
@@ -55,10 +55,10 @@ afterEach(() => {
 async function renderReady() {
   await act(async () => {
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <SlotsConsumer />
         <SettingsPage />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: createWrapper() }
     );
   });
@@ -72,10 +72,10 @@ describe('SettingsPage V2', () => {
     server.use(...mockSettings([], { delayMs: 200, stub: true }));
 
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <SlotsConsumer />
         <SettingsPage />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: createWrapper() }
     );
 

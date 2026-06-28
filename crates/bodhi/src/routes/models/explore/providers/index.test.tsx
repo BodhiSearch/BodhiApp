@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { ShellChromeProvider, useShellSlots } from '@/components/shell';
 import { ExploreProvidersScreen } from '@/routes/models/explore/providers/-components/ExploreProvidersScreen';
 import { exploreProvidersSearchSchema } from '@/routes/models/explore/providers/index';
 import { createProviderListResponse, createProviderSummary } from '@/test-fixtures/catalog-providers';
@@ -66,9 +66,9 @@ async function renderScreen(initialEntries?: string[]) {
   const router = buildRouter(initialEntries);
   await act(async () => {
     render(
-      <ShellSlotsProvider>
+      <ShellChromeProvider>
         <RouteHarness router={router} />
-      </ShellSlotsProvider>,
+      </ShellChromeProvider>,
       { wrapper: Wrapper }
     );
   });
@@ -153,9 +153,9 @@ describe('ExploreProvidersScreen (B1 — list)', () => {
     const router = buildRouter();
     await act(async () => {
       render(
-        <ShellSlotsProvider>
+        <ShellChromeProvider>
           <RouteHarness router={router} />
-        </ShellSlotsProvider>,
+        </ShellChromeProvider>,
         { wrapper: Wrapper }
       );
     });

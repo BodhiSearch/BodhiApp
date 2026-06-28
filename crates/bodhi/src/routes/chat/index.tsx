@@ -5,7 +5,7 @@ import { PanelLeftClose, PanelLeftOpen, Settings2, X } from 'lucide-react';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
-import { useShellChrome } from '@/components/shell/ShellSlotsContext';
+import { useShellChrome } from '@/components/shell/ShellChromeContext';
 import { useChatMcp } from '@/hooks/chat/useChatMcp';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useViewTransition } from '@/hooks/useViewTransition';
