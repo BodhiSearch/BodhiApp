@@ -25,6 +25,32 @@ function SidebarPublisher({ label }: { label: string }) {
   return <div>sidebar-publisher</div>;
 }
 
+function LayoutProbe() {
+  const slots = useShellSlots();
+  return (
+    <div>
+      <span data-testid="probe-main-scroll">{String(slots.mainScroll)}</span>
+      <span data-testid="probe-rail-scroll">{String(slots.railScroll)}</span>
+      <span data-testid="probe-content-class">{slots.contentClass ?? 'none'}</span>
+      <span data-testid="probe-rail-width">{String(slots.railWidth)}</span>
+      <span data-testid="probe-section">{slots.section ?? 'none'}</span>
+    </div>
+  );
+}
+
+function LayoutPublisher() {
+  useShellChrome({
+    mainScroll: false,
+    railScroll: false,
+    contentClass: 'flush',
+    railWidth: 360,
+    sidebarWidth: 260,
+    resizeKey: 'chat',
+    section: 'chat',
+  });
+  return <div>layout-publisher</div>;
+}
+
 describe('ShellSlotsContext', () => {
   it('publishes a screen-provided slot to the root consumer', () => {
     render(
@@ -65,6 +91,33 @@ describe('ShellSlotsContext', () => {
     );
     expect(screen.getByTestId('probe-actions')).toHaveTextContent('none');
     expect(screen.getByTestId('probe-sidebar')).toHaveTextContent('none');
+  });
+
+  it('round-trips layout-override fields (mainScroll/railScroll/contentClass/railWidth/section) and clears them on unmount', async () => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [show, setShow] = useState(true);
+      return (
+        <ShellSlotsProvider>
+          <button onClick={() => setShow(false)}>hide</button>
+          <LayoutProbe />
+          {show && <LayoutPublisher />}
+        </ShellSlotsProvider>
+      );
+    }
+
+    render(<Harness />);
+    expect(screen.getByTestId('probe-main-scroll')).toHaveTextContent('false');
+    expect(screen.getByTestId('probe-rail-scroll')).toHaveTextContent('false');
+    expect(screen.getByTestId('probe-content-class')).toHaveTextContent('flush');
+    expect(screen.getByTestId('probe-rail-width')).toHaveTextContent('360');
+    expect(screen.getByTestId('probe-section')).toHaveTextContent('chat');
+
+    await user.click(screen.getByRole('button', { name: 'hide' }));
+    expect(screen.getByTestId('probe-main-scroll')).toHaveTextContent('undefined');
+    expect(screen.getByTestId('probe-content-class')).toHaveTextContent('none');
+    expect(screen.getByTestId('probe-section')).toHaveTextContent('none');
   });
 
   it('publishes a screen-provided sidebar slot and clears it on unmount', async () => {

@@ -91,13 +91,17 @@ function RootShell() {
   const resolved = resolveShellRoute(pathname) ?? { section: '', subPage: null };
   return (
     <AppShell
-      section={resolved.section}
       subPage={resolved.subPage}
-      contentClass="flush"
       user={shellUser}
       onLogout={() => logout()}
       logoutPending={logoutPending}
       {...slots}
+      // Precedence: a publishing screen's slot value wins; otherwise fall back to the
+      // pathname-derived section and the shell's default "flush" content. resizeKey defaults to
+      // the section so column widths persist per-section (chat publishes its own).
+      section={slots.section ?? resolved.section}
+      contentClass={slots.contentClass ?? 'flush'}
+      resizeKey={slots.resizeKey ?? resolved.section}
     >
       <Outlet />
     </AppShell>

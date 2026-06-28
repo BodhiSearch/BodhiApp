@@ -27,6 +27,18 @@ export interface ShellSlots {
   rail?: ReactNode;
   railHeader?: ReactNode;
   railDefaultOpen?: boolean;
+  /**
+   * Layout overrides for screens that need a non-default shell (e.g. Chat owns its own
+   * conversation/composer scroll and a wider rail). Each is optional; omitted → AppShell default.
+   * The root shell spreads these onto `<AppShell>` (see `__root.tsx`).
+   */
+  mainScroll?: boolean;
+  railScroll?: boolean;
+  contentClass?: string;
+  railWidth?: number;
+  sidebarWidth?: number;
+  resizeKey?: string;
+  section?: string;
 }
 
 const EMPTY_SLOTS: ShellSlots = {};
@@ -61,12 +73,54 @@ export function useShellSlots(): ShellSlots {
  */
 export function useShellChrome(slots: ShellSlots): void {
   const setSlots = useContext(ShellSlotsSetContext);
-  const { breadcrumb, headerActions, sidebar, rail, railHeader, railDefaultOpen } = slots;
+  const {
+    breadcrumb,
+    headerActions,
+    sidebar,
+    rail,
+    railHeader,
+    railDefaultOpen,
+    mainScroll,
+    railScroll,
+    contentClass,
+    railWidth,
+    sidebarWidth,
+    resizeKey,
+    section,
+  } = slots;
 
   // Re-publish whenever any individual slot changes; stable nodes keep this from thrashing.
   const next = useMemo<ShellSlots>(
-    () => ({ breadcrumb, headerActions, sidebar, rail, railHeader, railDefaultOpen }),
-    [breadcrumb, headerActions, sidebar, rail, railHeader, railDefaultOpen]
+    () => ({
+      breadcrumb,
+      headerActions,
+      sidebar,
+      rail,
+      railHeader,
+      railDefaultOpen,
+      mainScroll,
+      railScroll,
+      contentClass,
+      railWidth,
+      sidebarWidth,
+      resizeKey,
+      section,
+    }),
+    [
+      breadcrumb,
+      headerActions,
+      sidebar,
+      rail,
+      railHeader,
+      railDefaultOpen,
+      mainScroll,
+      railScroll,
+      contentClass,
+      railWidth,
+      sidebarWidth,
+      resizeKey,
+      section,
+    ]
   );
 
   useEffect(() => {
