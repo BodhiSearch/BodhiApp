@@ -77,4 +77,16 @@ export class SettingsPage extends BasePage {
   async expectSettingValue(key, expectedValue) {
     await expect(this.page.locator(this.selectors.value(key))).toHaveText(String(expectedValue));
   }
+
+  /** Switch the list between the "Modified" and "All" filter tabs. */
+  async filterBy(which) {
+    const selector = which === 'modified' ? this.selectors.filterModified : this.selectors.filterAll;
+    await this.page.locator(selector).click();
+    await this.waitForSPAReady();
+  }
+
+  /** Count the currently-visible setting rows. */
+  async visibleSettingCount() {
+    return this.page.locator('[data-testid^="setting-row-"]').count();
+  }
 }

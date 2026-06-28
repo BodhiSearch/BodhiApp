@@ -1,7 +1,7 @@
 import { MultiTenantLoginPage } from '@/pages/MultiTenantLoginPage.mjs';
 import { RequestAccessPage } from '@/pages/RequestAccessPage.mjs';
 import { TenantRegistrationPage } from '@/pages/TenantRegistrationPage.mjs';
-import { UsersManagementPage } from '@/pages/UsersManagementPage.mjs';
+import { AllAccessRequestsPage } from '@/pages/AllAccessRequestsPage.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
 
@@ -132,11 +132,11 @@ test.describe('Multi-Tenant Lifecycle', () => {
       // ── Step 8: Manager approves user's access request ──
       await test.step('Manager approves user access request', async () => {
         managerPage = managerContext.pages()[0];
-        const managerUsersPage = new UsersManagementPage(managerPage, sharedServerUrl);
+        const managerRequestsPage = new AllAccessRequestsPage(managerPage, sharedServerUrl);
 
-        await managerUsersPage.navigateToPendingRequests();
-        await managerUsersPage.expectRequestExists(userCredentials.username);
-        await managerUsersPage.approveRequest(userCredentials.username, 'Manager');
+        await managerRequestsPage.navigateToPending();
+        await managerRequestsPage.expectRequestVisible(userCredentials.username);
+        await managerRequestsPage.approveRequest(userCredentials.username, 'resource_manager');
       });
 
       // ── Step 9: User session was invalidated by approval → re-auth ──

@@ -36,6 +36,18 @@ test.describe('App Settings V2', () => {
       await settingsPage.expectSettingValue('BODHI_KEEP_ALIVE_SECS', 700);
     });
 
+    await test.step('Filter tabs: Modified narrows the list, All restores it', async () => {
+      // BODHI_KEEP_ALIVE_SECS was just edited → it is "modified" and stays visible under Modified.
+      await settingsPage.filterBy('all');
+      const allCount = await settingsPage.visibleSettingCount();
+      await settingsPage.filterBy('modified');
+      await settingsPage.expectSettingVisible('BODHI_KEEP_ALIVE_SECS');
+      const modifiedCount = await settingsPage.visibleSettingCount();
+      expect(modifiedCount).toBeLessThanOrEqual(allCount);
+      // Restore the All tab so the reset step below sees every row.
+      await settingsPage.filterBy('all');
+    });
+
     await test.step('Reset BODHI_KEEP_ALIVE_SECS back to its default', async () => {
       await settingsPage.openSetting('BODHI_KEEP_ALIVE_SECS');
       const reset = page
