@@ -85,7 +85,9 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
     await this.expectVisible(this.selectors.continueButton);
 
     // Should show install guidance
-    await expect(this.page.locator('text=Install the extension, then verify the connection below')).toBeVisible();
+    await expect(
+      this.page.locator('text=Install the extension, then verify the connection below')
+    ).toBeVisible();
 
     // Verify button shows "Skip for Now"
     const continueButton = this.page.locator(this.selectors.continueButton);

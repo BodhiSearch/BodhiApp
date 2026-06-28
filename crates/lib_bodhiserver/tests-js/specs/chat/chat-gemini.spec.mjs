@@ -24,7 +24,9 @@ test.describe('Chat UI - Gemini format', () => {
     testCredentials = getTestCredentials();
     geminiApiKey = process.env[GEMINI_FORMAT.envKey];
     if (!geminiApiKey) {
-      throw new Error(`${GEMINI_FORMAT.envKey} missing in .env.test — required for chat-gemini spec`);
+      throw new Error(
+        `${GEMINI_FORMAT.envKey} missing in .env.test — required for chat-gemini spec`
+      );
     }
   });
 

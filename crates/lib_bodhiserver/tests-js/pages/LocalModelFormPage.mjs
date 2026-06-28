@@ -132,7 +132,9 @@ export class LocalModelFormPage extends BasePage {
 
   /** Fill the request-params textarea from a {key: value} map as `key=value` lines. */
   async fillRequestParams(params = {}) {
-    const lines = Object.entries(params).map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(',') : v}`);
+    const lines = Object.entries(params).map(
+      ([k, v]) => `${k}=${Array.isArray(v) ? v.join(',') : v}`
+    );
     if (lines.length) await this.page.fill(this.selectors.requestParamsTextarea, lines.join('\n'));
   }
 
@@ -172,7 +174,9 @@ export class LocalModelFormPage extends BasePage {
 
   async getFormData() {
     const alias = await this.page.locator(this.selectors.aliasInput).inputValue();
-    const contextParams = await this.page.locator(this.selectors.contextParamsTextarea).inputValue();
+    const contextParams = await this.page
+      .locator(this.selectors.contextParamsTextarea)
+      .inputValue();
     const repo = await this.page.locator(this.selectors.repoInput).inputValue();
     const snapshot = await this.page.locator(this.selectors.snapshotInput).inputValue();
 

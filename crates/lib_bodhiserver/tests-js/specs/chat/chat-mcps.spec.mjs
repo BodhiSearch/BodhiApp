@@ -72,7 +72,12 @@ test.describe('Chat Interface - MCP Integration', () => {
     });
 
     await test.step('Create Everything MCP instance', async () => {
-      await mcpsPage.createMcpInstance(serverData.name, instanceData.name, instanceData.slug, instanceData.description);
+      await mcpsPage.createMcpInstance(
+        serverData.name,
+        instanceData.name,
+        instanceData.slug,
+        instanceData.description
+      );
       await mcpsPage.expectMcpsListPage();
       const row = await mcpsPage.getMcpRowByName(instanceData.name);
       await expect(row).toBeVisible();

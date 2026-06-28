@@ -17,17 +17,17 @@ export class ProvidersPage extends BasePage {
     content: '[data-testid="explore-providers-content"]',
     list: '[data-testid="cat-prov-list"]',
     anyRow: '[data-testid^="cat-prov-row-"]',
-    row: slug => `[data-testid="cat-prov-row-${slug}"]`,
+    row: (slug) => `[data-testid="cat-prov-row-${slug}"]`,
     empty: '[data-testid="cat-prov-empty"]',
     pagination: '[data-testid="pagination"]',
-    pageBtn: n => `[data-testid="pagination-page-${n}"]`,
+    pageBtn: (n) => `[data-testid="pagination-page-${n}"]`,
     pageNext: '[data-testid="pagination-next"]',
     search: '[data-testid="cat-prov-search"] input',
-    sort: key => `[data-testid="cat-prov-sort-${key}"]`,
+    sort: (key) => `[data-testid="cat-prov-sort-${key}"]`,
     facets: '[data-testid="cat-prov-facets"]',
-    cap: id => `[data-testid="cat-prov-cap-${id}"]`,
-    fmt: id => `[data-testid="cat-prov-fmt-${id}"]`,
-    pricing: id => `[data-testid="cat-prov-pricing-${id}"]`,
+    cap: (id) => `[data-testid="cat-prov-cap-${id}"]`,
+    fmt: (id) => `[data-testid="cat-prov-fmt-${id}"]`,
+    pricing: (id) => `[data-testid="cat-prov-pricing-${id}"]`,
     labs: '[data-testid="cat-prov-labs"]',
     clearAll: '[data-testid="cat-prov-clear-all"]',
     // Detail rail. railPanel keys off the meta block (unique) to avoid matching the close button /
@@ -35,11 +35,11 @@ export class ProvidersPage extends BasePage {
     railPanel: '[data-testid="cat-prov-detail-meta"]',
     detailMeta: '[data-testid="cat-prov-detail-meta"]',
     detailModels: '[data-testid="cat-prov-models"]',
-    allModelsLink: slug => `[data-testid="cat-prov-allmodels-${slug}"]`,
-    addProviderLink: slug => `[data-testid="cat-prov-add-${slug}"]`,
-    modelAddLink: modelId => `[data-testid="cat-prov-model-add-${modelId}"]`,
+    allModelsLink: (slug) => `[data-testid="cat-prov-allmodels-${slug}"]`,
+    addProviderLink: (slug) => `[data-testid="cat-prov-add-${slug}"]`,
+    modelAddLink: (modelId) => `[data-testid="cat-prov-model-add-${modelId}"]`,
     columnsBtn: '[data-testid="cat-prov-columns"]',
-    colItem: key => `[data-testid="cat-prov-col-${key}"]`,
+    colItem: (key) => `[data-testid="cat-prov-col-${key}"]`,
     detailClose: '[data-testid="cat-prov-detail-close"]',
   };
 
@@ -76,7 +76,7 @@ export class ProvidersPage extends BasePage {
     // Single route keyed off the catalog path; dispatch by URL shape so glob overlap can't
     // mis-route (Playwright's `?` matches any char, so a `providers?*` glob would also swallow
     // `/providers/{slug}/models`). One matcher, explicit branching = no ordering hazard.
-    await this.page.route(/\/api\/v1\/catalog\/providers/, route => {
+    await this.page.route(/\/api\/v1\/catalog\/providers/, (route) => {
       const url = new URL(route.request().url());
       const path = url.pathname;
       const segments = path.split('/').filter(Boolean); // [..., providers, {slug?}, {models?}]
@@ -89,8 +89,8 @@ export class ProvidersPage extends BasePage {
       if (!slug) {
         const q = url.searchParams.get('q')?.toLowerCase();
         let filtered = providers;
-        if (q) filtered = filtered.filter(p => `${p.slug} ${p.name}`.toLowerCase().includes(q));
-        if (url.searchParams.get('is_lab') === 'true') filtered = filtered.filter(p => p.is_lab);
+        if (q) filtered = filtered.filter((p) => `${p.slug} ${p.name}`.toLowerCase().includes(q));
+        if (url.searchParams.get('is_lab') === 'true') filtered = filtered.filter((p) => p.is_lab);
         const page = Number(url.searchParams.get('page') ?? '1');
         const pageSize = Number(url.searchParams.get('page_size') ?? '30');
         const start = (page - 1) * pageSize;
@@ -110,7 +110,7 @@ export class ProvidersPage extends BasePage {
 
       // Provider models: /providers/{slug}/models
       if (isModels) {
-        const src = providers.find(p => p.slug === slug) ?? providers[0];
+        const src = providers.find((p) => p.slug === slug) ?? providers[0];
         return json(route, {
           items: [
             {
@@ -119,7 +119,12 @@ export class ProvidersPage extends BasePage {
               caps: ['reasoning', 'tool_call'],
               context_limit: 200000,
               output_limit: 64000,
-              pricing: { input_per_m: 3, output_per_m: 15, cache_read_per_m: null, cache_write_per_m: null },
+              pricing: {
+                input_per_m: 3,
+                output_per_m: 15,
+                cache_read_per_m: null,
+                cache_write_per_m: null,
+              },
               status: null,
               modalities_in: ['text'],
               modalities_out: ['text'],
@@ -128,7 +133,7 @@ export class ProvidersPage extends BasePage {
           total: 1,
         });
       }
-      const src = providers.find(p => p.slug === slug) ?? providers[0];
+      const src = providers.find((p) => p.slug === slug) ?? providers[0];
       return json(route, {
         slug: src.slug,
         name: src.name,
@@ -155,7 +160,10 @@ export class ProvidersPage extends BasePage {
     await this.navigate('/ui/models/explore/providers/');
     await this.waitForSPAReady();
     await this.expectVisible(this.selectors.content);
-    await expect(this.page.locator(this.selectors.content)).toHaveAttribute('data-pagestatus', 'ready');
+    await expect(this.page.locator(this.selectors.content)).toHaveAttribute(
+      'data-pagestatus',
+      'ready'
+    );
   }
 
   /** The current URL's query string (without the leading '?'). */
@@ -180,7 +188,10 @@ export class ProvidersPage extends BasePage {
   }
 
   async waitForListSettled() {
-    await this.page.locator(`${this.selectors.anyRow}, ${this.selectors.empty}`).first().waitFor({ state: 'visible' });
+    await this.page
+      .locator(`${this.selectors.anyRow}, ${this.selectors.empty}`)
+      .first()
+      .waitFor({ state: 'visible' });
   }
 
   async getRowCount() {

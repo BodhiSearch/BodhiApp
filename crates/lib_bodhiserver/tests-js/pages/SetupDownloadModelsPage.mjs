@@ -22,7 +22,7 @@ export class SetupDownloadModelsPage extends SetupBasePage {
   }
 
   async expectDownloadModelsPage() {
-    await this.page.waitForURL(url => url.pathname === '/ui/setup/download-models/');
+    await this.page.waitForURL((url) => url.pathname === '/ui/setup/download-models/');
     await this.expectVisible(this.selectors.chatModelsTitle);
     await this.expectStepIndicator(3);
     await this.expectRecommendedModelsDisplayed();

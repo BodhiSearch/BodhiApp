@@ -29,20 +29,31 @@ test.describe('API Models Forward All With Prefix', () => {
   });
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
-    loginPage = new LoginPage(page, sharedServerUrl, testData.authServerConfig, testData.testCredentials);
+    loginPage = new LoginPage(
+      page,
+      sharedServerUrl,
+      testData.authServerConfig,
+      testData.testCredentials
+    );
     modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     formPage = new ApiModelFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);
   });
 
-  test('forward_all_with_prefix: create, sync models, chat, prefix uniqueness', async ({ page }) => {
+  test('forward_all_with_prefix: create, sync models, chat, prefix uniqueness', async ({
+    page,
+  }) => {
     await loginPage.performOAuthLogin();
     await modelsPage.navigateToModels();
 
     // Create the forward_all model with prefix 'fwd/'
     await modelsPage.clickNewApiModel();
     await formPage.form.waitForFormReady();
-    await formPage.form.fillBasicInfoWithPrefix(testData.apiKey, 'fwd/', 'https://api.openai.com/v1');
+    await formPage.form.fillBasicInfoWithPrefix(
+      testData.apiKey,
+      'fwd/',
+      'https://api.openai.com/v1'
+    );
     await formPage.form.enableForwardAll();
     await formPage.form.expectModelSelectionState('disabled');
     const forwardAllModelId = await formPage.createModelAndCaptureId();
@@ -50,7 +61,7 @@ test.describe('API Models Forward All With Prefix', () => {
     // Synchronously populate the model cache via the sync-models endpoint.
     // Uses page.evaluate with credentials:'include' because this endpoint
     // requires a browser session cookie, not a Bearer token.
-    const syncResult = await page.evaluate(async modelId => {
+    const syncResult = await page.evaluate(async (modelId) => {
       const syncResp = await fetch(`/bodhi/v1/models/api/${modelId}/sync-models`, {
         method: 'POST',
         credentials: 'include',
@@ -67,7 +78,7 @@ test.describe('API Models Forward All With Prefix', () => {
     expect(syncResult.sync.id).toBe(forwardAllModelId);
     expect(syncResult.sync.prefix).toBe('fwd/');
     expect(syncResult.sync.forward_all_with_prefix).toBe(true);
-    expect(syncResult.models.some(m => m.id.startsWith('fwd/'))).toBe(true);
+    expect(syncResult.models.some((m) => m.id.startsWith('fwd/'))).toBe(true);
 
     // Verify the model row appears in the list (the V2 row shows the provider badge; prefix and
     // forward-all are read back from the edit form below).
@@ -99,7 +110,11 @@ test.describe('API Models Forward All With Prefix', () => {
     await modelsPage.navigateToModels();
     await modelsPage.clickNewApiModel();
     await formPage.form.waitForFormReady();
-    await formPage.form.fillBasicInfoWithPrefix(testData.apiKey, 'fwd/', 'https://api.openai.com/v1');
+    await formPage.form.fillBasicInfoWithPrefix(
+      testData.apiKey,
+      'fwd/',
+      'https://api.openai.com/v1'
+    );
     await formPage.form.enableForwardAll();
     await page.click('[data-testid="create-api-model-button"]');
     await formPage.form.waitForToast(/Prefix.*already.*used/i);

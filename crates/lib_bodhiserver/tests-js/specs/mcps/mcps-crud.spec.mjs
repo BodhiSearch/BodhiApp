@@ -167,7 +167,9 @@ test.describe('MCP Server Management', () => {
       await mcpsPage.expectNewMcpPage();
       // Scope to the form card (the breadcrumb also reads "Edit MCP Connection").
       await expect(
-        mcpsPage.page.locator('[data-testid="new-mcp-page"]').getByText('Edit MCP Connection', { exact: true })
+        mcpsPage.page
+          .locator('[data-testid="new-mcp-page"]')
+          .getByText('Edit MCP Connection', { exact: true })
       ).toBeVisible();
 
       const enabledSwitch = mcpsPage.page.locator(mcpsPage.selectors.enabledSwitch);

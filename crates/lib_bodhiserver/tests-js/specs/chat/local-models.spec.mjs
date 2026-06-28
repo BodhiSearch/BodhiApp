@@ -62,14 +62,23 @@ test.describe('Local GGUF Models - Standalone Smoke Test', () => {
       await formPage.fillBasicInfo(aliasName, QWEN_MODEL.repo, QWEN_MODEL.filename);
       // Click-to-add a runtime flag from the catalog (lands in the context-params textarea).
       await formPage.addContextFlag('--flash-attn');
-      await expect(formPage.page.locator(formPage.selectors.contextParamsTextarea)).toHaveValue(/--flash-attn/);
+      await expect(formPage.page.locator(formPage.selectors.contextParamsTextarea)).toHaveValue(
+        /--flash-attn/
+      );
       // Set a system prompt + a request param (catalog append) — both persist into request_params.
       await formPage.fillSystemPrompt('You are concise.');
       await formPage.addRequestParam('temperature');
-      await expect(formPage.page.locator(formPage.selectors.requestParamsTextarea)).toHaveValue(/temperature=/);
+      await expect(formPage.page.locator(formPage.selectors.requestParamsTextarea)).toHaveValue(
+        /temperature=/
+      );
       await formPage.createAlias();
 
-      await modelsPage.verifyLocalModelInList(aliasName, QWEN_MODEL.repo, QWEN_MODEL.filename, 'user');
+      await modelsPage.verifyLocalModelInList(
+        aliasName,
+        QWEN_MODEL.repo,
+        QWEN_MODEL.filename,
+        'user'
+      );
     });
 
     await test.step('Create alias for a not-yet-downloaded quant kicks off a download', async () => {

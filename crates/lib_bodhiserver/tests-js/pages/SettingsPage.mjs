@@ -85,7 +85,8 @@ export class SettingsPage extends BasePage {
 
   /** Switch the list between the "Modified" and "All" filter tabs. */
   async filterBy(which) {
-    const selector = which === 'modified' ? this.selectors.filterModified : this.selectors.filterAll;
+    const selector =
+      which === 'modified' ? this.selectors.filterModified : this.selectors.filterAll;
     await this.page.locator(selector).click();
     await this.waitForSPAReady();
   }

@@ -17,7 +17,10 @@ test.describe('Mobile detail-rail drawer', () => {
     testCredentials = getTestCredentials();
   });
 
-  test('Manage Users row-click opens the rail drawer on mobile @integration', async ({ page, sharedServerUrl }) => {
+  test('Manage Users row-click opens the rail drawer on mobile @integration', async ({
+    page,
+    sharedServerUrl,
+  }) => {
     await page.setViewportSize({ width: 390, height: 800 });
 
     const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
@@ -37,6 +40,8 @@ test.describe('Mobile detail-rail drawer', () => {
     // click the current user's row → the rail drawer slides in (`.shell.rail-open`)
     await page.locator(`[data-testid="user-row-${testCredentials.username}"]`).click();
     await expect(page.locator('.shell.rail-open')).toHaveCount(1);
-    await expect(page.locator(`[data-testid="user-detail-${testCredentials.username}"]`)).toBeVisible();
+    await expect(
+      page.locator(`[data-testid="user-detail-${testCredentials.username}"]`)
+    ).toBeVisible();
   });
 });

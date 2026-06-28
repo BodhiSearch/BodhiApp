@@ -161,7 +161,12 @@ export class McpsPage extends BasePage {
 
   // Open a server's detail rail by name (My Instances + Connect with live here in V2).
   async openServerRail(name) {
-    await this.page.locator(`[data-test-server-name="${name}"]`).first().locator('.cat-name').first().click();
+    await this.page
+      .locator(`[data-test-server-name="${name}"]`)
+      .first()
+      .locator('.cat-name')
+      .first()
+      .click();
     await this.page.waitForSelector('[data-testid^="my-mcps-detail-"]');
   }
 
@@ -369,7 +374,10 @@ export class McpsPage extends BasePage {
 
   async confirmDelete() {
     await expect(this.page.locator(this.selectors.railDeleteDialog)).toBeVisible();
-    await this.page.locator(this.selectors.railDeleteDialog).getByRole('button', { name: /^Delete$/ }).click();
+    await this.page
+      .locator(this.selectors.railDeleteDialog)
+      .getByRole('button', { name: /^Delete$/ })
+      .click();
     await expect(this.page.locator(this.selectors.railDeleteDialog)).not.toBeVisible();
   }
 

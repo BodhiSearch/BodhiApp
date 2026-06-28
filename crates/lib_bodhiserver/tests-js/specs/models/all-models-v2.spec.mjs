@@ -51,7 +51,9 @@ test.describe('All Models V2', () => {
     await modelsPage.expectVisible(modelsPage.selectors.railChat);
     await expect(modelsPage.page.locator(modelsPage.selectors.railEdit)).toHaveCount(0);
 
-    const chatHref = await modelsPage.page.locator(modelsPage.selectors.railChat).getAttribute('href');
+    const chatHref = await modelsPage.page
+      .locator(modelsPage.selectors.railChat)
+      .getAttribute('href');
     expect(chatHref).toContain('/ui/chat/?');
     expect(chatHref).toContain('model=');
 

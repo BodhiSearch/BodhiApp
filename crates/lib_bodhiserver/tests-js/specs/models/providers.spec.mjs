@@ -38,8 +38,12 @@ test.describe('Explore · API Providers', () => {
     await test.step('List renders rows; there is no result bar (count is in the pager)', async () => {
       expect(await providersPage.getRowCount()).toBe(30);
       await expect(providersPage.page.locator('[data-testid="cat-prov-resultbar"]')).toHaveCount(0);
-      await expect(providersPage.page.locator(providersPage.selectors.row('prov-0'))).toContainText('Provider 0');
-      await expect(providersPage.page.locator(providersPage.selectors.row('prov-0'))).toContainText('1000');
+      await expect(providersPage.page.locator(providersPage.selectors.row('prov-0'))).toContainText(
+        'Provider 0'
+      );
+      await expect(providersPage.page.locator(providersPage.selectors.row('prov-0'))).toContainText(
+        '1000'
+      );
     });
 
     await test.step('Numbered pager navigates to page 2 and writes ?page=2', async () => {
@@ -58,7 +62,9 @@ test.describe('Explore · API Providers', () => {
       await expect(meta).toBeVisible();
       await expect(meta).toContainText('PROV_0_API_KEY');
       await expect(meta).toContainText('prov-0.example.com');
-      await expect(providersPage.page.locator(providersPage.selectors.detailModels)).toContainText('Model A');
+      await expect(providersPage.page.locator(providersPage.selectors.detailModels)).toContainText(
+        'Model A'
+      );
 
       // See All Models from Provider → API Models filtered by this provider.
       const allModels = providersPage.page.locator(providersPage.selectors.allModelsLink('prov-0'));
@@ -69,10 +75,9 @@ test.describe('Explore · API Providers', () => {
       await expect(add).toHaveAttribute('href', /\/models\/api\/new\//);
       await expect(add).toHaveAttribute('href', /api_format=/);
       // Per-model + link is present and targets the create form with the model id.
-      await expect(providersPage.page.locator(providersPage.selectors.modelAddLink('prov-0/model-a'))).toHaveAttribute(
-        'href',
-        /\/models\/api\/new\//
-      );
+      await expect(
+        providersPage.page.locator(providersPage.selectors.modelAddLink('prov-0/model-a'))
+      ).toHaveAttribute('href', /\/models\/api\/new\//);
     });
 
     await test.step('Selecting a row writes ?select to the URL; reload restores the rail; close strips it', async () => {
@@ -107,7 +112,9 @@ test.describe('Explore · API Providers', () => {
       expect(providersPage.urlParam('q')).toBe('Provider 7');
       await expect(providersPage.page.locator(providersPage.selectors.row('prov-7'))).toBeVisible();
       // Facets are global value arrays (no per-search counts); the capability chip stays present + enabled.
-      await expect(providersPage.page.locator(providersPage.selectors.cap('reasoning'))).toBeEnabled();
+      await expect(
+        providersPage.page.locator(providersPage.selectors.cap('reasoning'))
+      ).toBeEnabled();
 
       await providersPage.clearSearch();
       expect(providersPage.searchParams().has('q')).toBe(false);
@@ -117,17 +124,18 @@ test.describe('Explore · API Providers', () => {
     await test.step('Sort by the MODELS column writes ?sort and marks the header active', async () => {
       await providersPage.sortBy('model_count');
       expect(providersPage.urlParam('sort')).toBe('model_count');
-      await expect(providersPage.page.locator(providersPage.selectors.sort('model_count'))).toHaveAttribute(
-        'data-test-state',
-        'active'
-      );
+      await expect(
+        providersPage.page.locator(providersPage.selectors.sort('model_count'))
+      ).toHaveAttribute('data-test-state', 'active');
     });
 
     await test.step('Sort by the FORMAT column (api_format); rank + cheapest sorts are gone', async () => {
       await providersPage.sortBy('api_format');
       expect(providersPage.urlParam('sort')).toBe('api_format');
       await expect(providersPage.page.locator(providersPage.selectors.sort('rank'))).toHaveCount(0);
-      await expect(providersPage.page.locator(providersPage.selectors.sort('pricing'))).toHaveCount(0);
+      await expect(providersPage.page.locator(providersPage.selectors.sort('pricing'))).toHaveCount(
+        0
+      );
     });
 
     await test.step('Back/Forward revert and re-apply the sort + URL', async () => {
@@ -139,10 +147,16 @@ test.describe('Explore · API Providers', () => {
     });
 
     await test.step('Labs-only toggle filters to labs and writes ?is_lab=true', async () => {
-      await expect(providersPage.page.locator(providersPage.selectors.labs)).toHaveAttribute('aria-pressed', 'false');
+      await expect(providersPage.page.locator(providersPage.selectors.labs)).toHaveAttribute(
+        'aria-pressed',
+        'false'
+      );
       await providersPage.clickLabs();
       expect(providersPage.urlParam('is_lab')).toBe('true');
-      await expect(providersPage.page.locator(providersPage.selectors.labs)).toHaveAttribute('aria-pressed', 'true');
+      await expect(providersPage.page.locator(providersPage.selectors.labs)).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
       // Every 4th stub provider is a lab → 8 of 31 (prov-0,4,…,28).
       await expect(providersPage.page.locator(providersPage.selectors.anyRow)).toHaveCount(8);
       await providersPage.clickLabs();
@@ -160,7 +174,9 @@ test.describe('Explore · API Providers', () => {
       const reset = providersPage.page.locator(providersPage.selectors.clearAll);
       // Reset lives in the toolbar, not the sidebar facet panel.
       await expect(
-        providersPage.page.locator(`${providersPage.selectors.facets} ${providersPage.selectors.clearAll}`)
+        providersPage.page.locator(
+          `${providersPage.selectors.facets} ${providersPage.selectors.clearAll}`
+        )
       ).toHaveCount(0);
 
       await providersPage.searchFor('Provider');
@@ -169,10 +185,9 @@ test.describe('Explore · API Providers', () => {
 
       await providersPage.clickReset();
       // Facets cleared, query kept.
-      await expect(providersPage.page.locator(providersPage.selectors.cap('reasoning'))).toHaveAttribute(
-        'aria-pressed',
-        'false'
-      );
+      await expect(
+        providersPage.page.locator(providersPage.selectors.cap('reasoning'))
+      ).toHaveAttribute('aria-pressed', 'false');
       expect(providersPage.urlParam('q')).toBe('Provider');
       await expect(reset).toHaveAttribute('data-test-state', 'query');
 
@@ -182,11 +197,15 @@ test.describe('Explore · API Providers', () => {
     });
 
     await test.step('Column picker hides the Format column', async () => {
-      await expect(providersPage.page.locator(providersPage.selectors.list)).toContainText('FORMAT');
+      await expect(providersPage.page.locator(providersPage.selectors.list)).toContainText(
+        'FORMAT'
+      );
       await providersPage.page.locator(providersPage.selectors.columnsBtn).click();
       await providersPage.page.locator(providersPage.selectors.colItem('api_format')).click();
       await providersPage.page.keyboard.press('Escape');
-      await expect(providersPage.page.locator(providersPage.selectors.list)).not.toContainText('FORMAT');
+      await expect(providersPage.page.locator(providersPage.selectors.list)).not.toContainText(
+        'FORMAT'
+      );
     });
   });
 });

@@ -35,7 +35,9 @@ test.describe('Explore · API Models', () => {
 
     await test.step('List renders the first page of model rows', async () => {
       expect(await modelsPage.getRowCount()).toBe(30);
-      await expect(modelsPage.page.locator(modelsPage.selectors.row('anthropic', 'model-0'))).toContainText('Model 0');
+      await expect(
+        modelsPage.page.locator(modelsPage.selectors.row('anthropic', 'model-0'))
+      ).toContainText('Model 0');
     });
 
     await test.step('Numbered pager navigates to page 2', async () => {
@@ -87,7 +89,9 @@ test.describe('Explore · API Models', () => {
       const specs = modelsPage.page.locator(modelsPage.selectors.railSpecs);
       await expect(specs).toContainText('Context');
       await expect(specs).toContainText('Stable'); // null status → synthesized "Stable"
-      await expect(modelsPage.page.locator(modelsPage.selectors.railServedBy)).toContainText('OpenRouter');
+      await expect(modelsPage.page.locator(modelsPage.selectors.railServedBy)).toContainText(
+        'OpenRouter'
+      );
       // Selection is captured in the URL (composite slug/model_id).
       expect(modelsPage.urlParam('select')).toBe('anthropic/model-0');
     });
@@ -129,7 +133,9 @@ test.describe('Explore · API Models', () => {
       await modelsPage.navigateToModels();
       await modelsPage.waitForListSettled();
       await modelsPage.openModel('anthropic', 'model-0');
-      await expect(modelsPage.page.locator('[data-testid="cat-model-configure-cta"]')).toHaveCount(0);
+      await expect(modelsPage.page.locator('[data-testid="cat-model-configure-cta"]')).toHaveCount(
+        0
+      );
     });
 
     await test.step('Served-by "All Models from Provider" filters in place via ?provider=', async () => {
@@ -172,7 +178,9 @@ test.describe('Explore · API Models', () => {
       await modelsPage.page.waitForURL(/\/models\/explore\/providers\//);
       await expect(modelsPage.page).toHaveURL(/q=OpenRouter/);
       // The providers search box is seeded from ?q=.
-      await expect(modelsPage.page.locator('[data-testid="cat-prov-search"] input')).toHaveValue('OpenRouter');
+      await expect(modelsPage.page.locator('[data-testid="cat-prov-search"] input')).toHaveValue(
+        'OpenRouter'
+      );
     });
 
     await test.step('Search narrows the list and auto-ranks by relevance', async () => {
@@ -188,7 +196,10 @@ test.describe('Explore · API Models', () => {
     await test.step('Free pins pricing=free and pares the list to free models', async () => {
       // Fixture models are paid ($3/$15) → Free yields an empty list (the stub has no $0 models).
       await modelsPage.toggleFree();
-      await expect(modelsPage.page.locator(modelsPage.selectors.pricingFree)).toHaveAttribute('aria-pressed', 'true');
+      await expect(modelsPage.page.locator(modelsPage.selectors.pricingFree)).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
       await expect(modelsPage.page.locator(modelsPage.selectors.empty)).toBeVisible();
       await modelsPage.toggleFree();
       await modelsPage.waitForListSettled();
@@ -196,7 +207,9 @@ test.describe('Explore · API Models', () => {
 
     await test.step('Provider autocomplete selects from facet options and shows a removable chip', async () => {
       await modelsPage.selectProvider('anthropic');
-      await expect(modelsPage.page.locator(modelsPage.selectors.providerChip('anthropic'))).toBeVisible();
+      await expect(
+        modelsPage.page.locator(modelsPage.selectors.providerChip('anthropic'))
+      ).toBeVisible();
     });
 
     await test.step('Capability facet filters; toolbar reset clears it', async () => {
@@ -213,7 +226,10 @@ test.describe('Explore · API Models', () => {
         'aria-pressed',
         'false'
       );
-      await expect(modelsPage.page.locator(modelsPage.selectors.clearAll)).toHaveAttribute('data-test-state', 'none');
+      await expect(modelsPage.page.locator(modelsPage.selectors.clearAll)).toHaveAttribute(
+        'data-test-state',
+        'none'
+      );
     });
   });
 });
