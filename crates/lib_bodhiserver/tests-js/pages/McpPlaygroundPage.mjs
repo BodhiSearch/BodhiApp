@@ -46,6 +46,10 @@ export class McpPlaygroundPage extends BasePage {
     promptPreviewButton: '[data-testid="mcp-playground-prompt-preview-button"]',
     promptMessage: (i) => `[data-testid="mcp-playground-prompt-msg-${i}"]`,
 
+    resourceDetail: '[data-testid="mcp-playground-resource-detail"]',
+    resourceName: '[data-testid="mcp-playground-resource-name"]',
+    resourceReadButton: '[data-testid="mcp-playground-resource-read-button"]',
+
     resultStatus: '[data-testid="mcp-playground-result-status"]',
     resultTab: (tab) => `[data-testid="mcp-playground-result-tab-${tab}"]`,
     resultRaw: '[data-testid="mcp-playground-result-raw"]',
@@ -166,6 +170,18 @@ export class McpPlaygroundPage extends BasePage {
 
   async expectPromptMessageVisible(index) {
     await expect(this.page.locator(this.selectors.promptMessage(index))).toBeVisible();
+  }
+
+  async selectResource(uri) {
+    const railItem = this.page.locator(this.selectors.railItem(uri));
+    if (!(await railItem.isVisible().catch(() => false))) {
+      await this.selectCapability('resources');
+    }
+    await this.page.click(this.selectors.railItem(uri));
+  }
+
+  async clickResourceRead() {
+    await this.page.click(this.selectors.resourceReadButton);
   }
 
   async goBackToList() {

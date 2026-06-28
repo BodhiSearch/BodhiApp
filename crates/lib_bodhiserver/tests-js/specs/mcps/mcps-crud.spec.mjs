@@ -124,6 +124,19 @@ test.describe('MCP Server Management', () => {
       );
       await expect(mcpsPage.page.locator('[data-testid="mcp-playground-prompt-msg-0"]')).toBeVisible();
     });
+
+    await test.step('Read the first resource and verify success', async () => {
+      await mcpsPage.page.click(mcpsPage.selectors.playgroundCapability('resources'));
+      const firstResource = mcpsPage.page.locator('[data-testid^="mcp-playground-rail-item-"]').first();
+      await expect(firstResource).toBeVisible();
+      await firstResource.click();
+      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-resource-detail"]')).toBeVisible();
+      await mcpsPage.page.click('[data-testid="mcp-playground-resource-read-button"]');
+      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-result-status"]')).toHaveAttribute(
+        'data-test-state',
+        'success'
+      );
+    });
   });
 
   test('MCP Playground - Refresh and Disabled States', async ({ page, sharedServerUrl }) => {

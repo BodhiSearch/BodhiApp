@@ -293,6 +293,44 @@ describe('McpPlaygroundPage — connection status', () => {
   });
 });
 
+describe('McpPlaygroundPage — Resources', () => {
+  beforeEach(() => {
+    server.use(
+      ...createMcpProtocolHandlers({
+        endpoint: MCP_ENDPOINT,
+        tools: mockTools,
+        resources: mockResources,
+        resourceReadHandler: (uri) => ({
+          contents: [{ uri, mimeType: 'text/markdown', text: `# README\n\nDetails for ${uri}` }],
+        }),
+      })
+    );
+  });
+
+  it('shows resource list in rail when feature=resources', async () => {
+    await renderScreen([`/mcps/playground/?id=${MCP_ID}&feature=resources`]);
+    await waitFor(
+      () => expect(screen.getByTestId('mcp-playground-rail-item-file:///docs/readme.md')).toBeInTheDocument(),
+      { timeout: 5000 }
+    );
+  });
+
+  it('reads a resource and renders its contents', async () => {
+    const user = userEvent.setup();
+    await renderScreen([
+      `/mcps/playground/?id=${MCP_ID}&feature=resources&item=${encodeURIComponent(mockResources[0].uri)}`,
+    ]);
+    await waitFor(() => screen.getByTestId('mcp-playground-resource-detail'));
+    expect(screen.getByTestId('mcp-playground-resource-name')).toHaveTextContent('README');
+
+    await user.click(screen.getByTestId('mcp-playground-resource-read-button'));
+    await waitFor(() => {
+      const status = screen.getByTestId('mcp-playground-result-status');
+      expect(status).toHaveAttribute('data-test-state', 'success');
+    });
+  });
+});
+
 describe('McpPlaygroundPage — Prompts', () => {
   beforeEach(() => {
     server.use(

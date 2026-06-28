@@ -18,6 +18,7 @@ import { InstancePicker } from './InstancePicker';
 import { OverviewView, type Feature } from './OverviewView';
 import { PlaygroundRail } from './PlaygroundRail';
 import { PromptDetail } from './PromptDetail';
+import { ResourceDetail } from './ResourceDetail';
 import { ToolDetail } from './ToolDetail';
 
 import './playground.css';
@@ -217,7 +218,9 @@ export function PlaygroundScreen() {
       {feature === 'prompts' && (
         <PromptsCenter prompts={mcpClient.prompts} item={item} getPrompt={mcpClient.getPrompt} />
       )}
-      {feature === 'resources' && <ComingSoon feature="resources" />}
+      {feature === 'resources' && (
+        <ResourcesCenter resources={mcpClient.resources} item={item} readResource={mcpClient.readResource} />
+      )}
       {feature === 'templates' && <ComingSoon feature="templates" />}
     </div>
   );
@@ -307,6 +310,39 @@ function PromptsCenter({
   }
 
   return <PromptDetail key={selected.name} prompt={selected} getPrompt={getPrompt} />;
+}
+
+function ResourcesCenter({
+  resources,
+  item,
+  readResource,
+}: {
+  resources: ReturnType<typeof useMcpClient>['resources'];
+  item: string | null;
+  readResource: ReturnType<typeof useMcpClient>['readResource'];
+}) {
+  const selected = useMemo(() => (item ? (resources.find((r) => r.uri === item) ?? null) : null), [resources, item]);
+
+  if (resources.length === 0) {
+    return (
+      <EmptyState
+        icon="folder-open"
+        title="No resources"
+        sub="This MCP doesn’t expose any resources to read."
+        testId="mcp-playground-resources-empty"
+      />
+    );
+  }
+
+  if (!selected) {
+    return (
+      <div className="pg-pick" data-testid="mcp-playground-pick">
+        <div className="pg-pick-text">Pick a resource on the right to read it.</div>
+      </div>
+    );
+  }
+
+  return <ResourceDetail key={selected.uri} resource={selected} readResource={readResource} />;
 }
 
 function ComingSoon({ feature }: { feature: Feature }) {
