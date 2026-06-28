@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react';
 
 import { UserInfo } from '@bodhiapp/ts-client';
 
+import { DetailRail, DetailRailBody, DetailRailRows, DetailRailSection } from '@/components/detail-rail';
 import { ShellIcon } from '@/components/shell';
 import { Badge } from '@/components/ui/badge';
-import { useToastMessages } from '@/hooks/useToastMessages';
 import { AuthenticatedUser, useChangeUserRole, useRemoveUser } from '@/hooks/users';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { getAvailableRoles, getRoleBadgeVariant, getRoleLabel } from '@/lib/roles';
 
 import { canModify, isSelf } from './usersUtils';
@@ -46,7 +47,7 @@ export function UserRailPanel({ user, me, myRole }: UserRailPanelProps) {
   const busy = changeRole.isPending || removeUser.isPending;
 
   return (
-    <div className="dp-panel manage-users-rail" data-testid={`user-detail-${user.username}`}>
+    <DetailRail className="manage-users-rail" testId={`user-detail-${user.username}`}>
       <div className="dp-status-row">
         <Badge variant={getRoleBadgeVariant(user.role ?? '')}>{getRoleLabel(user.role ?? '')}</Badge>
         {self && (
@@ -56,10 +57,9 @@ export function UserRailPanel({ user, me, myRole }: UserRailPanelProps) {
         )}
       </div>
 
-      <div className="dp-body">
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Account</div>
-          <div className="dp-rows">
+      <DetailRailBody>
+        <DetailRailSection label="Account">
+          <DetailRailRows>
             <div className="dp-row">
               <span className="dp-row-k">
                 <ShellIcon name="at-sign" size={13} /> Username
@@ -72,12 +72,11 @@ export function UserRailPanel({ user, me, myRole }: UserRailPanelProps) {
               </span>
               <span className="dp-row-v">{getRoleLabel(user.role ?? '')}</span>
             </div>
-          </div>
-        </div>
+          </DetailRailRows>
+        </DetailRailSection>
 
         {modifiable ? (
-          <div className="dp-section">
-            <div className="dp-sec-lbl">Change role</div>
+          <DetailRailSection label="Change role">
             <div className="dp-field">
               <select
                 className="dp-role-select"
@@ -93,9 +92,9 @@ export function UserRailPanel({ user, me, myRole }: UserRailPanelProps) {
               </select>
               <span className="dp-field-hint">Updating the role changes what this user can access across Bodhi.</span>
             </div>
-          </div>
+          </DetailRailSection>
         ) : (
-          <div className="dp-section">
+          <DetailRailSection>
             <div className="dp-readonly-note" data-testid={`no-actions-${user.username}`}>
               <ShellIcon name={self ? 'user' : 'lock'} size={14} />
               <span data-testid={self ? 'current-user-indicator' : 'restricted-user-indicator'}>
@@ -104,9 +103,9 @@ export function UserRailPanel({ user, me, myRole }: UserRailPanelProps) {
                   : "This user outranks you, so you can't change their role or remove them."}
               </span>
             </div>
-          </div>
+          </DetailRailSection>
         )}
-      </div>
+      </DetailRailBody>
 
       {modifiable && (
         <div className="dp-foot">
@@ -143,6 +142,6 @@ export function UserRailPanel({ user, me, myRole }: UserRailPanelProps) {
           )}
         </div>
       )}
-    </div>
+    </DetailRail>
   );
 }

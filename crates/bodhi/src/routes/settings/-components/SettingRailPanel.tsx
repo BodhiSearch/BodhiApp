@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 
 import { SettingInfo } from '@bodhiapp/ts-client';
 
+import { DetailRail, DetailRailBody, DetailRailRows, DetailRailSection } from '@/components/detail-rail';
 import { ShellIcon } from '@/components/shell';
 import { useDeleteSetting, useUpdateSetting } from '@/hooks/settings';
 import { useToastMessages } from '@/hooks/useToastMessages';
@@ -48,22 +49,21 @@ export function SettingRailPanel({ setting, description }: SettingRailPanelProps
   };
 
   return (
-    <div className="dp-panel settings-screen-rail" data-testid={`setting-detail-${setting.key}`}>
+    <DetailRail className="settings-screen-rail" testId={`setting-detail-${setting.key}`}>
       <div className="dp-status-row">
         <span className={`s-badge ${sourceBadgeClass(setting.source)}`}>{setting.source}</span>
         <span className="type-badge">{setting.metadata.type}</span>
       </div>
 
-      <div className="dp-body">
+      <DetailRailBody>
         {description && (
-          <div className="dp-section">
+          <DetailRailSection>
             <p className="dp-desc">{description}</p>
-          </div>
+          </DetailRailSection>
         )}
 
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Values</div>
-          <div className="dp-rows">
+        <DetailRailSection label="Values">
+          <DetailRailRows>
             {!hideValue && (
               <div className="dp-row">
                 <span className="dp-row-k">
@@ -78,26 +78,25 @@ export function SettingRailPanel({ setting, description }: SettingRailPanelProps
               </span>
               <span className="dp-row-v mono">{String(setting.default_value ?? '—')}</span>
             </div>
-          </div>
-        </div>
+          </DetailRailRows>
+        </DetailRailSection>
 
         {editable ? (
-          <div className="dp-section">
-            <div className="dp-sec-lbl">New value</div>
+          <DetailRailSection label="New value">
             <div className="dp-field">
               <SettingValueInput setting={setting} value={draft} onChange={setDraft} testId="setting-new-value" />
               <span className="dp-field-hint">{settingValueHint(setting.metadata)}</span>
             </div>
-          </div>
+          </DetailRailSection>
         ) : (
-          <div className="dp-section">
+          <DetailRailSection>
             <div className="dp-readonly-note" data-testid="setting-readonly-note">
               <ShellIcon name="lock" size={14} />
               <div>This setting is read-only (set via {setting.source}).</div>
             </div>
-          </div>
+          </DetailRailSection>
         )}
-      </div>
+      </DetailRailBody>
 
       {editable && (
         <div className="dp-foot">
@@ -130,6 +129,6 @@ export function SettingRailPanel({ setting, description }: SettingRailPanelProps
           </div>
         </div>
       )}
-    </div>
+    </DetailRail>
   );
 }

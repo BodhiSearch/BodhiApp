@@ -2,6 +2,7 @@ import type { McpServerDetail } from '@bodhiapp/reference-api-types';
 import type { Mcp, McpAuthConfigResponse } from '@bodhiapp/ts-client';
 import { Link } from '@tanstack/react-router';
 
+import { DetailRail, DetailRailBody, DetailRailRow, DetailRailRows, DetailRailSection } from '@/components/detail-rail';
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
@@ -41,16 +42,6 @@ export function ExploreMcpRailHeader({ server, onClose }: { server: McpJoinedRow
   );
 }
 
-function Row({ k, v }: { k: string; v: string | null | undefined }) {
-  if (v == null || v === '') return null;
-  return (
-    <div className="dp-row">
-      <span className="dp-row-k">{k}</span>
-      <span className="dp-row-v mono">{v}</span>
-    </div>
-  );
-}
-
 interface RailProps {
   server: McpJoinedRow;
   detail: McpServerDetail | undefined;
@@ -77,26 +68,24 @@ export function ExploreMcpRail({
   const serverDisabled = registered ? !registered.enabled : false;
 
   return (
-    <div className="dp-panel" data-testid={`cat-mcp-detail-${server.id}`}>
-      <div className="dp-body">
+    <DetailRail testId={`cat-mcp-detail-${server.id}`}>
+      <DetailRailBody>
         {description && (
-          <div className="dp-section">
-            <div className="dp-sec-lbl">Description</div>
+          <DetailRailSection label="Description">
             <div className="cat-sub" data-testid="cat-mcp-detail-description">
               {description}
             </div>
-          </div>
+          </DetailRailSection>
         )}
 
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Server</div>
+        <DetailRailSection label="Server">
           {loading && !detail ? (
             <Skeleton className="h-16 w-full" data-testid="cat-mcp-detail-skeleton" />
           ) : (
-            <div className="dp-rows" data-testid="cat-mcp-detail-server">
-              <Row k="URL" v={server.endpoint_url} />
-              <Row k="Transport" v={TRANSPORT_LABEL[server.transport] ?? server.transport} />
-              <Row k="Publisher" v={detail?.publisher} />
+            <DetailRailRows testId="cat-mcp-detail-server">
+              <DetailRailRow k="URL" v={server.endpoint_url} />
+              <DetailRailRow k="Transport" v={TRANSPORT_LABEL[server.transport] ?? server.transport} />
+              <DetailRailRow k="Publisher" v={detail?.publisher} />
               <div className="dp-row dp-row-auth">
                 <span className="dp-row-k">Supported auth</span>
                 <span className="dp-row-auth-badges">
@@ -116,9 +105,9 @@ export function ExploreMcpRail({
                   </a>
                 </div>
               )}
-            </div>
+            </DetailRailRows>
           )}
-        </div>
+        </DetailRailSection>
 
         {registered ? (
           <>
@@ -153,7 +142,7 @@ export function ExploreMcpRail({
             </div>
           </div>
         )}
-      </div>
+      </DetailRailBody>
 
       {/* Footer: admin registers an unregistered server (one click → New Server prefilled), or
           configures a registered one. */}
@@ -170,6 +159,6 @@ export function ExploreMcpRail({
         </div>
       )}
       {registered && isAdmin && <McpConfigureServerFooter prefix="cat-mcp" serverId={registered.id} />}
-    </div>
+    </DetailRail>
   );
 }

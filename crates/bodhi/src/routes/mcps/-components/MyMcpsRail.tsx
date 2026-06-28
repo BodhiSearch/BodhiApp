@@ -1,5 +1,6 @@
 import type { Mcp, McpAuthConfigResponse, McpServerResponse } from '@bodhiapp/ts-client';
 
+import { DetailRail, DetailRailBody, DetailRailRow, DetailRailRows, DetailRailSection } from '@/components/detail-rail';
 import { ShellIcon } from '@/components/shell';
 import { AuthBadge, authKind } from '@/routes/mcps/-shared/auth-badges';
 import {
@@ -20,16 +21,6 @@ export function MyMcpsRailHeader({ server, onClose }: { server: McpServerRespons
       <button className="dp-close" onClick={onClose} title="Close" data-testid="my-mcps-detail-close">
         <ShellIcon name="x" size={15} />
       </button>
-    </div>
-  );
-}
-
-function Row({ k, v }: { k: string; v: string | null | undefined }) {
-  if (v == null || v === '') return null;
-  return (
-    <div className="dp-row">
-      <span className="dp-row-k">{k}</span>
-      <span className="dp-row-v mono">{v}</span>
     </div>
   );
 }
@@ -56,22 +47,20 @@ export function MyMcpsRail({
   const supportedKinds = Array.from(new Set<string>(['public', ...(authConfigs ?? []).map((c) => authKind(c.type))]));
 
   return (
-    <div className="dp-panel" data-testid={`my-mcps-detail-${server.id}`}>
-      <div className="dp-body">
+    <DetailRail testId={`my-mcps-detail-${server.id}`}>
+      <DetailRailBody>
         {server.description && (
-          <div className="dp-section">
-            <div className="dp-sec-lbl">Description</div>
+          <DetailRailSection label="Description">
             <div className="cat-sub" data-testid="my-mcps-detail-description">
               {server.description}
             </div>
-          </div>
+          </DetailRailSection>
         )}
 
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Server</div>
-          <div className="dp-rows" data-testid="my-mcps-detail-server">
-            <Row k="URL" v={server.url} />
-            <Row k="Status" v={server.enabled ? 'Enabled' : 'Disabled'} />
+        <DetailRailSection label="Server">
+          <DetailRailRows testId="my-mcps-detail-server">
+            <DetailRailRow k="URL" v={server.url} />
+            <DetailRailRow k="Status" v={server.enabled ? 'Enabled' : 'Disabled'} />
             {!authConfigsLoading && (
               <div className="dp-row dp-row-auth">
                 <span className="dp-row-k">Supported auth</span>
@@ -82,8 +71,8 @@ export function MyMcpsRail({
                 </span>
               </div>
             )}
-          </div>
-        </div>
+          </DetailRailRows>
+        </DetailRailSection>
 
         <McpInstancesSection
           prefix="my-mcps"
@@ -100,9 +89,9 @@ export function MyMcpsRail({
             loading={authConfigsLoading}
           />
         )}
-      </div>
+      </DetailRailBody>
 
       {isAdmin && <McpConfigureServerFooter prefix="my-mcps" serverId={server.id} />}
-    </div>
+    </DetailRail>
   );
 }

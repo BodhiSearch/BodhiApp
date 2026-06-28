@@ -2,6 +2,7 @@ import { AliasResponse, ApiAliasResponse, ModelRouterResponse } from '@bodhiapp/
 import { Link } from '@tanstack/react-router';
 
 import { CopyButton } from '@/components/CopyButton';
+import { DetailRail, DetailRailBody, DetailRailRows, DetailRailSection } from '@/components/detail-rail';
 import { ShellIcon } from '@/components/shell';
 import { apiModelChatString, chatModelForAlias, modelId } from '@/lib/modelAlias';
 import { isApiAlias, isModelRouterAlias, isUserAlias } from '@/lib/utils';
@@ -84,8 +85,8 @@ interface ModelDetailRailProps {
 export function ModelDetailRail({ alias, onEdit }: ModelDetailRailProps) {
   const id = isApiAlias(alias) || isModelRouterAlias(alias) ? alias.id : alias.alias;
   return (
-    <div className="dp-panel models-screen-rail" data-testid={`model-detail-${id}`}>
-      <div className="dp-body">
+    <DetailRail className="models-screen-rail" testId={`model-detail-${id}`}>
+      <DetailRailBody>
         {isApiAlias(alias) ? (
           <ApiRailBody alias={alias} />
         ) : isModelRouterAlias(alias) ? (
@@ -93,12 +94,12 @@ export function ModelDetailRail({ alias, onEdit }: ModelDetailRailProps) {
         ) : (
           <LocalRailBody alias={alias} />
         )}
-      </div>
+      </DetailRailBody>
 
       <div className="dp-foot">
         <RailFooter alias={alias} onEdit={onEdit} />
       </div>
-    </div>
+    </DetailRail>
   );
 }
 
@@ -143,9 +144,8 @@ function LocalRailBody({ alias }: { alias: AliasResponse }) {
   const metadata = 'metadata' in local ? local.metadata : undefined;
   return (
     <>
-      <div className="dp-section">
-        <div className="dp-sec-lbl">File</div>
-        <div className="dp-rows">
+      <DetailRailSection label="File">
+        <DetailRailRows>
           <Row k="repo" v={local.repo} href={`https://huggingface.co/${local.repo}`} />
           <Row
             k="filename"
@@ -154,24 +154,23 @@ function LocalRailBody({ alias }: { alias: AliasResponse }) {
           />
           <Row k="snapshot" v={local.snapshot} />
           {size != null && <Row k="size" v={formatSize(size)} />}
-        </div>
-      </div>
+        </DetailRailRows>
+      </DetailRailSection>
 
       {metadata?.capabilities && (
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Capabilities</div>
+        <DetailRailSection label="Capabilities">
           <div className="m-cap-chips" data-testid="model-detail-capabilities">
             {metadata.capabilities.vision && <span className="m-cap-chip">vision</span>}
             {metadata.capabilities.tools?.function_calling && <span className="m-cap-chip">tool-use</span>}
             {metadata.capabilities.thinking && <span className="m-cap-chip">reasoning</span>}
           </div>
-        </div>
+        </DetailRailSection>
       )}
 
       {alias.source === 'user' && (
-        <div className="dp-section">
+        <DetailRailSection>
           <p className="dp-desc">User-created alias with custom system prompt and parameters.</p>
-        </div>
+        </DetailRailSection>
       )}
     </>
   );
@@ -180,15 +179,13 @@ function LocalRailBody({ alias }: { alias: AliasResponse }) {
 function ApiRailBody({ alias }: { alias: ApiAliasResponse }) {
   return (
     <>
-      <div className="dp-section">
-        <div className="dp-sec-lbl">Connection</div>
-        <div className="dp-rows">
+      <DetailRailSection label="Connection">
+        <DetailRailRows>
           <Row k="base URL" v={alias.base_url} copyable />
           <Row k="provider" v={alias.api_format} />
-        </div>
-      </div>
-      <div className="dp-section">
-        <div className="dp-sec-lbl">Models ({alias.models.length})</div>
+        </DetailRailRows>
+      </DetailRailSection>
+      <DetailRailSection label={`Models (${alias.models.length})`}>
         <div className="cat-prov-models" data-testid="model-detail-models">
           {alias.models.map((m) => {
             const id = modelId(m);
@@ -212,7 +209,7 @@ function ApiRailBody({ alias }: { alias: ApiAliasResponse }) {
             );
           })}
         </div>
-      </div>
+      </DetailRailSection>
     </>
   );
 }
@@ -226,22 +223,20 @@ function FallbackRailBody({ alias }: { alias: ModelRouterResponse }) {
           {enabledCount} of {alias.targets.length} steps active
         </span>
       </div>
-      <div className="dp-section">
-        <div className="dp-sec-lbl">Routing chain</div>
+      <DetailRailSection label="Routing chain">
         <RoutingChainPreview
           testId="model-detail-chain"
           disabledLabel="disabled"
           items={alias.targets.map((t) => ({ alias: t.alias, model: t.model, enabled: t.enabled !== false }))}
         />
-      </div>
-      <div className="dp-section">
-        <div className="dp-sec-lbl">Behavior</div>
-        <div className="dp-rows">
+      </DetailRailSection>
+      <DetailRailSection label="Behavior">
+        <DetailRailRows>
           <Row k="on error" v="try next step" />
           <Row k="on success" v="return immediately" />
           <Row k="strategy" v={alias.strategy.strategy} />
-        </div>
-      </div>
+        </DetailRailRows>
+      </DetailRailSection>
     </>
   );
 }

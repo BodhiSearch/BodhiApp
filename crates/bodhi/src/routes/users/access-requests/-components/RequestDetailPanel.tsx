@@ -1,5 +1,6 @@
 import { UserAccessRequest } from '@bodhiapp/ts-client';
 
+import { DetailRail, DetailRailBody, DetailRailRows, DetailRailSection } from '@/components/detail-rail';
 import { ShellIcon } from '@/components/shell';
 import { RoleSelect } from '@/routes/users/access-requests/-components/RoleSelect';
 import { StatusChip } from '@/routes/users/access-requests/-components/StatusChip';
@@ -25,17 +26,16 @@ export function RequestDetailPanel({
   const pending = req.status === 'pending';
   const approved = req.status === 'approved';
   return (
-    <div className="dp-panel" data-testid="request-detail-rail">
+    <DetailRail testId="request-detail-rail">
       <div className="dp-status-row">
         <StatusChip status={req.status} />
         <span className="dp-head-sub" style={{ marginLeft: 'auto' }}>
           {whenText(req)}
         </span>
       </div>
-      <div className="dp-body">
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Account</div>
-          <div className="dp-rows">
+      <DetailRailBody>
+        <DetailRailSection label="Account">
+          <DetailRailRows>
             <div className="dp-row">
               <span className="dp-row-k">
                 <ShellIcon name="at-sign" size={13} /> Email
@@ -48,12 +48,11 @@ export function RequestDetailPanel({
               </span>
               <span className="dp-row-v">{fmtDate(req.created_at)}</span>
             </div>
-          </div>
-        </div>
+          </DetailRailRows>
+        </DetailRailSection>
 
         {pending ? (
-          <div className="dp-section">
-            <div className="dp-sec-lbl">Assign role</div>
+          <DetailRailSection label="Assign role">
             <div className="dp-field">
               <RoleSelect
                 value={selectedRole}
@@ -64,12 +63,11 @@ export function RequestDetailPanel({
               />
               <span className="dp-field-hint">The role is granted to this user when you approve the request.</span>
             </div>
-          </div>
+          </DetailRailSection>
         ) : null}
 
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Timeline</div>
-          <div className="dp-rows">
+        <DetailRailSection label="Timeline">
+          <DetailRailRows>
             <div className="dp-row">
               <span className="dp-row-k">
                 <ShellIcon name="clock" size={13} /> Requested
@@ -84,9 +82,9 @@ export function RequestDetailPanel({
                 <span className="dp-row-v">{fmtDate(req.updated_at)}</span>
               </div>
             )}
-          </div>
-        </div>
-      </div>
+          </DetailRailRows>
+        </DetailRailSection>
+      </DetailRailBody>
       <div className="dp-foot">
         {pending ? (
           <>
@@ -116,6 +114,6 @@ export function RequestDetailPanel({
           </div>
         )}
       </div>
-    </div>
+    </DetailRail>
   );
 }

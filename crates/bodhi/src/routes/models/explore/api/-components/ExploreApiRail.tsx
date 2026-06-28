@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { ModelDetailResponse, ModelLite, ServedBy } from '@bodhiapp/reference-api-types';
 import { Link } from '@tanstack/react-router';
 
+import { DetailRail, DetailRailBody, DetailRailRow, DetailRailRows, DetailRailSection } from '@/components/detail-rail';
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogProviderDetail } from '@/hooks/reference';
@@ -36,16 +37,6 @@ export function ExploreApiRailHeader({ model, onClose }: { model: ModelLite; onC
   );
 }
 
-function Row({ k, v }: { k: string; v: string | null | undefined }) {
-  if (v == null || v === '') return null;
-  return (
-    <div className="dp-row">
-      <span className="dp-row-k">{k}</span>
-      <span className="dp-row-v mono">{v}</span>
-    </div>
-  );
-}
-
 interface RailProps {
   model: ModelLite;
   detail: ModelDetailResponse | undefined;
@@ -56,10 +47,9 @@ export function ExploreApiRail({ model, detail, loading }: RailProps) {
   const free = isFree(model.pricing.input_per_m, model.pricing.output_per_m);
 
   return (
-    <div className="dp-panel models-screen-rail" data-testid={`cat-model-detail-${model.slug}-${model.model_id}`}>
-      <div className="dp-body">
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Capabilities</div>
+    <DetailRail className="models-screen-rail" testId={`cat-model-detail-${model.slug}-${model.model_id}`}>
+      <DetailRailBody>
+        <DetailRailSection label="Capabilities">
           <div className="cat-caps" data-testid="cat-model-detail-caps">
             {model.caps.map((c) => (
               <span className={`cap-chip cap-${CAP_TONE[c]}`} key={c}>
@@ -67,32 +57,37 @@ export function ExploreApiRail({ model, detail, loading }: RailProps) {
               </span>
             ))}
           </div>
-        </div>
+        </DetailRailSection>
 
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Specs</div>
+        <DetailRailSection label="Specs">
           {loading && !detail ? (
             <Skeleton className="h-24 w-full" data-testid="cat-model-detail-skeleton" />
           ) : (
-            <div className="dp-rows" data-testid="cat-model-detail-specs">
-              <Row k="Context" v={fmtContext(model.context_limit)} />
-              <Row k="Max output" v={detail ? fmtContext(detail.output_limit) : fmtContext(model.output_limit)} />
-              <Row k="Input" v={free ? 'Free' : `${fmtPrice(model.pricing.input_per_m)}/M`} />
-              <Row k="Output" v={free ? 'Free' : `${fmtPrice(model.pricing.output_per_m)}/M`} />
-              <Row k="Status" v={statusLabel(model.status)} />
-              <Row k="Modalities" v={[...model.modalities_in, '→', ...model.modalities_out].join(' ')} />
-              <Row k="Knowledge" v={detail?.knowledge_cutoff} />
-              <Row k="Released" v={model.release_date} />
-              <Row k="Open weights" v={model.open_weights ? 'Yes' : undefined} />
-            </div>
+            <DetailRailRows testId="cat-model-detail-specs">
+              <DetailRailRow k="Context" v={fmtContext(model.context_limit)} />
+              <DetailRailRow
+                k="Max output"
+                v={detail ? fmtContext(detail.output_limit) : fmtContext(model.output_limit)}
+              />
+              <DetailRailRow k="Input" v={free ? 'Free' : `${fmtPrice(model.pricing.input_per_m)}/M`} />
+              <DetailRailRow k="Output" v={free ? 'Free' : `${fmtPrice(model.pricing.output_per_m)}/M`} />
+              <DetailRailRow k="Status" v={statusLabel(model.status)} />
+              <DetailRailRow k="Modalities" v={[...model.modalities_in, '→', ...model.modalities_out].join(' ')} />
+              <DetailRailRow k="Knowledge" v={detail?.knowledge_cutoff} />
+              <DetailRailRow k="Released" v={model.release_date} />
+              <DetailRailRow k="Open weights" v={model.open_weights ? 'Yes' : undefined} />
+            </DetailRailRows>
           )}
-        </div>
+        </DetailRailSection>
 
-        <div className="dp-section">
-          <div className="dp-sec-lbl">
-            Served by ({detail?.served_by.length ?? model.provider_count}){' '}
-            <span className="cat-sub">· $in / $out per M</span>
-          </div>
+        <DetailRailSection
+          label={
+            <>
+              Served by ({detail?.served_by.length ?? model.provider_count}){' '}
+              <span className="cat-sub">· $in / $out per M</span>
+            </>
+          }
+        >
           {loading && !detail ? (
             <Skeleton className="h-16 w-full" data-testid="cat-model-servedby-skeleton" />
           ) : (
@@ -102,9 +97,9 @@ export function ExploreApiRail({ model, detail, loading }: RailProps) {
               ))}
             </div>
           )}
-        </div>
-      </div>
-    </div>
+        </DetailRailSection>
+      </DetailRailBody>
+    </DetailRail>
   );
 }
 
@@ -155,10 +150,10 @@ function ServedByRow({ served, modelId }: { served: ServedBy; modelId: string })
           {isLoading && !provider ? (
             <Skeleton className="h-12 w-full" />
           ) : (
-            <div className="dp-rows">
-              <Row k="Base URL" v={provider?.api_base_url ?? served.base_url ?? '— (preset)'} />
-              <Row k="API format" v={provider?.bridge.api_format} />
-              <Row k="API keys" v={provider?.env?.length ? provider.env.join(', ') : undefined} />
+            <DetailRailRows>
+              <DetailRailRow k="Base URL" v={provider?.api_base_url ?? served.base_url ?? '— (preset)'} />
+              <DetailRailRow k="API format" v={provider?.bridge.api_format} />
+              <DetailRailRow k="API keys" v={provider?.env?.length ? provider.env.join(', ') : undefined} />
               <div className="cat-servedby-links">
                 {/* Filter the Models page in place to this provider (provider facet = slug). */}
                 <Link
@@ -179,7 +174,7 @@ function ServedByRow({ served, modelId }: { served: ServedBy; modelId: string })
                   <ShellIcon name="external-link" size={13} /> View
                 </Link>
               </div>
-            </div>
+            </DetailRailRows>
           )}
         </div>
       )}

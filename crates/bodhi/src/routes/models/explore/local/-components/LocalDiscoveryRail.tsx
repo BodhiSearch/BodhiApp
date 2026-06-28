@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import type { GetModelResponse, Model, Quant } from '@bodhiapp/reference-api-types';
 
+import { DetailRailRow, DetailRailRows, DetailRailSection } from '@/components/detail-rail';
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -74,15 +75,6 @@ export function LocalDiscoveryRailHeader({ model, onClose }: { model: Model; onC
       <button className="dp-close" onClick={onClose} title="Close" data-testid="ld-detail-close">
         <ShellIcon name="x" size={15} />
       </button>
-    </div>
-  );
-}
-
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="dp-row">
-      <span className="dp-row-k">{k}</span>
-      <span className="dp-row-v mono">{v}</span>
     </div>
   );
 }
@@ -166,8 +158,7 @@ function OverviewTab({
   return (
     <>
       {caps.length > 0 && (
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Capabilities</div>
+        <DetailRailSection label="Capabilities">
           <div className="m-cap-chips" data-testid="ld-detail-capabilities">
             {caps.map((c) => (
               <span className="m-cap-chip" key={c}>
@@ -175,23 +166,25 @@ function OverviewTab({
               </span>
             ))}
           </div>
-        </div>
+        </DetailRailSection>
       )}
 
-      <div className="dp-section">
-        <div className="dp-sec-lbl">Specs</div>
+      <DetailRailSection label="Specs">
         {loading && !detail ? (
           <Skeleton className="h-20 w-full" data-testid="ld-detail-specs-skeleton" />
         ) : (
-          <div className="dp-rows" data-testid="ld-detail-specs">
-            <Row k="Context" v={detail?.context_max != null ? `${detail.context_max.toLocaleString()} tokens` : '—'} />
-            <Row k="Architecture" v={detail?.architecture ?? model.architecture ?? '—'} />
-            <Row k="Parameters" v={model.params_b ? `${model.params_b}B` : '—'} />
-            <Row k="License" v={model.license ?? '—'} />
-            <Row k="Created" v={fmtDate(model.created_at)} />
-          </div>
+          <DetailRailRows testId="ld-detail-specs">
+            <DetailRailRow
+              k="Context"
+              v={detail?.context_max != null ? `${detail.context_max.toLocaleString()} tokens` : '—'}
+            />
+            <DetailRailRow k="Architecture" v={detail?.architecture ?? model.architecture ?? '—'} />
+            <DetailRailRow k="Parameters" v={model.params_b ? `${model.params_b}B` : '—'} />
+            <DetailRailRow k="License" v={model.license ?? '—'} />
+            <DetailRailRow k="Created" v={fmtDate(model.created_at)} />
+          </DetailRailRows>
         )}
-      </div>
+      </DetailRailSection>
     </>
   );
 }

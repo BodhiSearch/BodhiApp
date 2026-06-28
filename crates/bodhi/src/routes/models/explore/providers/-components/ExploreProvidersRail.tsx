@@ -1,6 +1,7 @@
 import type { ProviderDetailResponse, ProviderModelRow, ProviderSummary } from '@bodhiapp/reference-api-types';
 import { Link } from '@tanstack/react-router';
 
+import { DetailRail, DetailRailBody, DetailRailRow, DetailRailRows, DetailRailSection } from '@/components/detail-rail';
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -38,15 +39,6 @@ export function ExploreProvidersRailHeader({ provider, onClose }: { provider: Pr
   );
 }
 
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="dp-row">
-      <span className="dp-row-k">{k}</span>
-      <span className="dp-row-v mono">{v}</span>
-    </div>
-  );
-}
-
 interface RailProps {
   provider: ProviderSummary;
   detail: ProviderDetailResponse | undefined;
@@ -67,18 +59,17 @@ export function ExploreProvidersRail({ provider, detail, detailLoading, models, 
   };
 
   return (
-    <div className="dp-panel models-screen-rail" data-testid={`cat-prov-detail-${provider.slug}`}>
-      <div className="dp-body">
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Connection</div>
+    <DetailRail className="models-screen-rail" testId={`cat-prov-detail-${provider.slug}`}>
+      <DetailRailBody>
+        <DetailRailSection label="Connection">
           {detailLoading && !detail ? (
             <Skeleton className="h-24 w-full" data-testid="cat-prov-detail-skeleton" />
           ) : (
-            <div className="dp-rows" data-testid="cat-prov-detail-meta">
-              <Row k="Base URL" v={detail?.api_base_url ?? '— (preset)'} />
-              <Row k="API keys" v={detail?.env?.length ? detail.env.join(', ') : '—'} />
-              <Row k="API format" v={detail?.bridge.api_format ?? '—'} />
-            </div>
+            <DetailRailRows testId="cat-prov-detail-meta">
+              <DetailRailRow k="Base URL" v={detail?.api_base_url ?? '— (preset)'} />
+              <DetailRailRow k="API keys" v={detail?.env?.length ? detail.env.join(', ') : '—'} />
+              <DetailRailRow k="API format" v={detail?.bridge.api_format ?? '—'} />
+            </DetailRailRows>
           )}
           <div className="cat-servedby-links">
             {/* Filter the API Models page in place to this provider (provider facet = slug). */}
@@ -100,10 +91,9 @@ export function ExploreProvidersRail({ provider, detail, detailLoading, models, 
               <ShellIcon name="circle-plus" size={13} /> Add API Model
             </Link>
           </div>
-        </div>
+        </DetailRailSection>
 
-        <div className="dp-section">
-          <div className="dp-sec-lbl">Models ({models.length})</div>
+        <DetailRailSection label={`Models (${models.length})`}>
           {modelsLoading ? (
             <Skeleton className="h-20 w-full" data-testid="cat-prov-models-skeleton" />
           ) : models.length === 0 ? (
@@ -121,9 +111,9 @@ export function ExploreProvidersRail({ provider, detail, detailLoading, models, 
               ))}
             </div>
           )}
-        </div>
-      </div>
-    </div>
+        </DetailRailSection>
+      </DetailRailBody>
+    </DetailRail>
   );
 }
 

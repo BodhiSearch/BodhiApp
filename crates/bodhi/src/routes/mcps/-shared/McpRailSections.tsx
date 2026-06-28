@@ -1,6 +1,7 @@
 import type { Mcp, McpAuthConfigResponse } from '@bodhiapp/ts-client';
 import { Link } from '@tanstack/react-router';
 
+import { DetailRailSection } from '@/components/detail-rail';
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
@@ -27,8 +28,7 @@ export function McpInstancesSection({
   onDeleteInstance: (mcp: Mcp) => void;
 }) {
   return (
-    <div className="dp-section">
-      <div className="dp-sec-lbl">My Instances</div>
+    <DetailRailSection label="My Instances">
       {instances.length === 0 ? (
         <div className="cat-sub" data-testid={`${prefix}-detail-no-instances`}>
           No instances yet. Connect below to create one.
@@ -82,7 +82,7 @@ export function McpInstancesSection({
           ))}
         </div>
       )}
-    </div>
+    </DetailRailSection>
   );
 }
 
@@ -101,8 +101,7 @@ export function McpConnectWithSection({
 }) {
   const mechanisms = buildAuthMechanisms(authConfigs);
   return (
-    <div className="dp-section">
-      <div className="dp-sec-lbl">Connect with</div>
+    <DetailRailSection label="Connect with">
       <div className="mcp-mech-hint">Pick an auth mechanism to create a new instance.</div>
       {loading ? (
         <Skeleton className="h-12 w-full" data-testid={`${prefix}-detail-mechs-skeleton`} />
@@ -128,7 +127,7 @@ export function McpConnectWithSection({
           ))}
         </div>
       )}
-    </div>
+    </DetailRailSection>
   );
 }
 
