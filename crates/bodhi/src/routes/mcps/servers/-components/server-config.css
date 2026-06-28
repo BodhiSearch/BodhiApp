@@ -1,7 +1,5 @@
-/* Configure server hub — view/edit. Layered on the shell tokens; mirrors the hi-fi bf-*/ns-* layout
-   (one bordered card · per-section editing · auth-mechanism rows with icon tiles). */
-
-.sc-card {
+/* Configure server hub — view/edit. Layered on the shell tokens; mirrors the hi-fi bf-*/
+ns-* layout (one bordered card · per-section editing · auth-mechanism rows with icon tiles). */ .sc-card {
   border: 1px solid hsl(var(--border));
   border-radius: 14px;
   background: hsl(var(--card));

@@ -12,7 +12,12 @@ import {
   createMockMcpServerResponse,
 } from '@/test-fixtures/mcps';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
-import { mockDeleteMcp, mockListAuthConfigs, mockListMcps, mockListMcpServers } from '@/test-utils/msw-v2/handlers/mcps';
+import {
+  mockDeleteMcp,
+  mockListAuthConfigs,
+  mockListMcps,
+  mockListMcpServers,
+} from '@/test-utils/msw-v2/handlers/mcps';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { makeRouteRouter, RouteHarness } from '@/test-utils/router-harness';
@@ -142,7 +147,10 @@ describe('MyMcpsScreen — detail rail', () => {
     await waitFor(() => expect(screen.getByTestId('my-mcps-configure-server')).toBeInTheDocument());
     // The RouteHarness router has no /ui basepath; the app prepends it at runtime via <Link>.
     expect(screen.getByTestId('my-mcps-configure-server')).toHaveAttribute('href', '/mcps/servers/view/?id=server-a');
-    expect(screen.getByTestId('my-mcps-connect-public')).toHaveAttribute('href', '/mcps/new/?server=server-a&auth=public');
+    expect(screen.getByTestId('my-mcps-connect-public')).toHaveAttribute(
+      'href',
+      '/mcps/new/?server=server-a&auth=public'
+    );
   });
 
   it('deletes an instance via confirm dialog', async () => {

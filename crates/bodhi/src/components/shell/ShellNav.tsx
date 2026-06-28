@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Link } from '@tanstack/react-router';
 
@@ -22,6 +22,9 @@ export function ShellNav({ section = 'chat', subPage = null }: ShellNavProps) {
   const { collapsed, openPop, setOpenPop } = useShell();
   const open = openPop === 'nav';
   const anchorRef = useRef<HTMLButtonElement>(null);
+  const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const [focusIndex, setFocusIndex] = useState(0);
+  const wasOpen = useRef(false);
   const { data: appInfo } = useGetAppInfo();
   const isMultiTenant = appInfo?.deployment === 'multi_tenant';
   const { data: userInfo } = useGetUser();
@@ -44,12 +47,56 @@ export function ShellNav({ section = 'chat', subPage = null }: ShellNavProps) {
     return () => document.removeEventListener('click', h);
   }, [open, setOpenPop]);
 
-  const menuItems = SHELL_NAV.map((item) => (
+  const activeIndex = Math.max(
+    0,
+    SHELL_NAV.findIndex((n) => n.id === section)
+  );
+
+  // Move focus into the menu (onto the active item) when it opens, and return focus to the
+  // trigger when it closes — so arrow keys work immediately and the keyboard never gets stranded.
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      setFocusIndex(activeIndex);
+      requestAnimationFrame(() => itemRefs.current[activeIndex]?.focus());
+    } else if (!open && wasOpen.current) {
+      anchorRef.current?.focus();
+    }
+    wasOpen.current = open;
+  }, [open, activeIndex]);
+
+  // Roving focus among the items: ↑/↓ move (no wrap), Home/End jump, Escape closes (the only
+  // close path on the expanded sidebar, which has no AnchoredPopover wrapper). Enter/Space fall
+  // through so the focused <Link> activates natively (its onClick also closes the menu).
+  function onItemKeyDown(e: React.KeyboardEvent, idx: number) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    let next = idx;
+    if (e.key === 'ArrowDown') next = Math.min(SHELL_NAV.length - 1, idx + 1);
+    else if (e.key === 'ArrowUp') next = Math.max(0, idx - 1);
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = SHELL_NAV.length - 1;
+    else if (e.key === 'Escape') {
+      e.preventDefault();
+      setOpenPop(null);
+      return;
+    } else return;
+    e.preventDefault();
+    setFocusIndex(next);
+    itemRefs.current[next]?.focus();
+  }
+
+  const menuItems = SHELL_NAV.map((item, idx) => (
     <Link
       key={item.id}
       to={item.href}
+      ref={(el) => {
+        itemRefs.current[idx] = el;
+      }}
+      role="menuitem"
+      tabIndex={idx === focusIndex ? 0 : -1}
       data-testid={`shell-nav-${item.id}`}
       className={'shell-nav-item' + (item.id === section ? ' on' : '')}
+      onClick={() => setOpenPop(null)}
+      onKeyDown={(e) => onItemKeyDown(e, idx)}
     >
       <ShellIcon name={item.icon} color={item.id === section ? LOTUS : 'currentColor'} />
       {item.label}
@@ -65,6 +112,8 @@ export function ShellNav({ section = 'chat', subPage = null }: ShellNavProps) {
           className="shell-railbtn shell-tip on"
           data-testid={`shell-nav-${cur.id}`}
           data-tip={cur.label + ' · switch section'}
+          aria-haspopup="menu"
+          aria-expanded={open}
           onClick={(e) => {
             e.stopPropagation();
             setOpenPop(open ? null : 'nav');
@@ -74,7 +123,7 @@ export function ShellNav({ section = 'chat', subPage = null }: ShellNavProps) {
         </button>
         <AnchoredPopover open={open} anchorRef={anchorRef} onClose={() => setOpenPop(null)}>
           <div className="shell-pop-title">Go to section</div>
-          {menuItems}
+          <div role="menu">{menuItems}</div>
         </AnchoredPopover>
         {cur.subPages && cur.subPages.length > 0 && <div className="shell-iconrail-div" />}
         {cur.subPages &&
@@ -98,9 +147,12 @@ export function ShellNav({ section = 'chat', subPage = null }: ShellNavProps) {
     <div className="shell-nav-block">
       <div className={'shell-nav' + (open ? ' open' : '')} onClick={(e) => e.stopPropagation()}>
         <button
+          ref={anchorRef}
           className="shell-nav-trigger"
           data-testid={`shell-nav-trigger`}
           data-tip="Switch section"
+          aria-haspopup="menu"
+          aria-expanded={open}
           onClick={(e) => {
             e.stopPropagation();
             setOpenPop(open ? null : 'nav');
@@ -114,7 +166,11 @@ export function ShellNav({ section = 'chat', subPage = null }: ShellNavProps) {
             <ShellIcon name="chevron-down" />
           </span>
         </button>
-        {open && <div className="shell-nav-menu">{menuItems}</div>}
+        {open && (
+          <div className="shell-nav-menu" role="menu">
+            {menuItems}
+          </div>
+        )}
       </div>
       {cur.subPages && cur.subPages.length > 0 && (
         <div className="shell-sub">

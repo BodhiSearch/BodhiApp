@@ -773,6 +773,12 @@ a {
   background: hsl(var(--muted));
   color: hsl(var(--foreground));
 }
+.shell-nav-item:focus-visible {
+  outline: none;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  box-shadow: 0 0 0 2px hsl(var(--ring));
+}
 .shell-nav-item.on {
   background: var(--c-lotus-bg);
   color: var(--c-lotus-text);
