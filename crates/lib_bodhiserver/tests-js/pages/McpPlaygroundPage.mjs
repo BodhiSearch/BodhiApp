@@ -41,6 +41,11 @@ export class McpPlaygroundPage extends BasePage {
     runButton: '[data-testid="mcp-playground-run-button"]',
     resetButton: '[data-testid="mcp-playground-reset-button"]',
 
+    promptDetail: '[data-testid="mcp-playground-prompt-detail"]',
+    promptName: '[data-testid="mcp-playground-prompt-name"]',
+    promptPreviewButton: '[data-testid="mcp-playground-prompt-preview-button"]',
+    promptMessage: (i) => `[data-testid="mcp-playground-prompt-msg-${i}"]`,
+
     resultStatus: '[data-testid="mcp-playground-result-status"]',
     resultTab: (tab) => `[data-testid="mcp-playground-result-tab-${tab}"]`,
     resultRaw: '[data-testid="mcp-playground-result-raw"]',
@@ -141,6 +146,26 @@ export class McpPlaygroundPage extends BasePage {
 
   async expectCopyButtonVisible() {
     await expect(this.page.locator(this.selectors.copyButton)).toBeVisible();
+  }
+
+  async selectPrompt(name) {
+    const railItem = this.page.locator(this.selectors.railItem(name));
+    if (!(await railItem.isVisible().catch(() => false))) {
+      await this.selectCapability('prompts');
+    }
+    await this.page.click(this.selectors.railItem(name));
+  }
+
+  async expectPromptSelected(name) {
+    await expect(this.page.locator(this.selectors.promptName)).toContainText(name);
+  }
+
+  async clickPromptPreview() {
+    await this.page.click(this.selectors.promptPreviewButton);
+  }
+
+  async expectPromptMessageVisible(index) {
+    await expect(this.page.locator(this.selectors.promptMessage(index))).toBeVisible();
   }
 
   async goBackToList() {

@@ -112,6 +112,18 @@ test.describe('MCP Server Management', () => {
       const copyButton = mcpsPage.page.locator(mcpsPage.selectors.playgroundCopyButton);
       await expect(copyButton).toBeVisible();
     });
+
+    await test.step('Preview a prompt and render messages', async () => {
+      await mcpsPage.page.click(mcpsPage.selectors.playgroundCapability('prompts'));
+      await mcpsPage.page.click('[data-testid="mcp-playground-rail-item-simple-prompt"]');
+      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-prompt-detail"]')).toBeVisible();
+      await mcpsPage.page.click('[data-testid="mcp-playground-prompt-preview-button"]');
+      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-result-status"]')).toHaveAttribute(
+        'data-test-state',
+        'success'
+      );
+      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-prompt-msg-0"]')).toBeVisible();
+    });
   });
 
   test('MCP Playground - Refresh and Disabled States', async ({ page, sharedServerUrl }) => {

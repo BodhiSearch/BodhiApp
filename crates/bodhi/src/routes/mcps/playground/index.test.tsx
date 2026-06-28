@@ -292,3 +292,47 @@ describe('McpPlaygroundPage — connection status', () => {
     );
   });
 });
+
+describe('McpPlaygroundPage — Prompts', () => {
+  beforeEach(() => {
+    server.use(
+      ...createMcpProtocolHandlers({
+        endpoint: MCP_ENDPOINT,
+        tools: mockTools,
+        prompts: mockPrompts,
+        promptGetHandler: (name, args) => ({
+          description: `Summary of ${args.topic ?? 'unknown'}`,
+          messages: [
+            { role: 'user', content: { type: 'text', text: `Please summarize ${args.topic}` } },
+            { role: 'assistant', content: { type: 'text', text: `Here is a summary of ${args.topic}.` } },
+          ],
+        }),
+      })
+    );
+  });
+
+  it('shows prompt list in rail when feature=prompts', async () => {
+    await renderScreen([`/mcps/playground/?id=${MCP_ID}&feature=prompts`]);
+    await waitFor(() => expect(screen.getByTestId('mcp-playground-rail-item-summarize')).toBeInTheDocument(), {
+      timeout: 5000,
+    });
+  });
+
+  it('selecting a prompt shows PromptDetail and Preview works', async () => {
+    const user = userEvent.setup();
+    await renderScreen([`/mcps/playground/?id=${MCP_ID}&feature=prompts&item=summarize`]);
+    await waitFor(() => screen.getByTestId('mcp-playground-prompt-detail'));
+    expect(screen.getByTestId('mcp-playground-prompt-name')).toHaveTextContent('summarize');
+
+    const topicContainer = screen.getByTestId('mcp-playground-param-topic');
+    await user.type(within(topicContainer).getByRole('textbox'), 'TanStack Router');
+    await user.click(screen.getByTestId('mcp-playground-prompt-preview-button'));
+
+    await waitFor(() => {
+      const status = screen.getByTestId('mcp-playground-result-status');
+      expect(status).toHaveAttribute('data-test-state', 'success');
+    });
+    expect(screen.getByTestId('mcp-playground-prompt-msg-0')).toBeInTheDocument();
+    expect(screen.getByTestId('mcp-playground-prompt-msg-1')).toBeInTheDocument();
+  });
+});

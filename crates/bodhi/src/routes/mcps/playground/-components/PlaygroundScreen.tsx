@@ -17,6 +17,7 @@ import { ConnectionStatus } from './ConnectionStatus';
 import { InstancePicker } from './InstancePicker';
 import { OverviewView, type Feature } from './OverviewView';
 import { PlaygroundRail } from './PlaygroundRail';
+import { PromptDetail } from './PromptDetail';
 import { ToolDetail } from './ToolDetail';
 
 import './playground.css';
@@ -213,7 +214,9 @@ export function PlaygroundScreen() {
         <ToolsCenter tools={mcpClient.tools} item={item} callTool={mcpClient.callTool} onOpenResource={openResource} />
       )}
 
-      {feature === 'prompts' && <ComingSoon feature="prompts" />}
+      {feature === 'prompts' && (
+        <PromptsCenter prompts={mcpClient.prompts} item={item} getPrompt={mcpClient.getPrompt} />
+      )}
       {feature === 'resources' && <ComingSoon feature="resources" />}
       {feature === 'templates' && <ComingSoon feature="templates" />}
     </div>
@@ -271,6 +274,39 @@ function ToolsCenter({
   }
 
   return <ToolDetail key={selected.name} tool={selected} callTool={callTool} onOpenResource={onOpenResource} />;
+}
+
+function PromptsCenter({
+  prompts,
+  item,
+  getPrompt,
+}: {
+  prompts: ReturnType<typeof useMcpClient>['prompts'];
+  item: string | null;
+  getPrompt: ReturnType<typeof useMcpClient>['getPrompt'];
+}) {
+  const selected = useMemo(() => (item ? (prompts.find((p) => p.name === item) ?? null) : null), [prompts, item]);
+
+  if (prompts.length === 0) {
+    return (
+      <EmptyState
+        icon="sparkles"
+        title="No prompts"
+        sub="This MCP doesn’t expose any prompts."
+        testId="mcp-playground-prompts-empty"
+      />
+    );
+  }
+
+  if (!selected) {
+    return (
+      <div className="pg-pick" data-testid="mcp-playground-pick">
+        <div className="pg-pick-text">Pick a prompt on the right to begin.</div>
+      </div>
+    );
+  }
+
+  return <PromptDetail key={selected.name} prompt={selected} getPrompt={getPrompt} />;
 }
 
 function ComingSoon({ feature }: { feature: Feature }) {
