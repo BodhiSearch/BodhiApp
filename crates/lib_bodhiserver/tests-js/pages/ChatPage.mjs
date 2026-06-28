@@ -258,9 +258,9 @@ export class ChatPage extends BasePage {
   async verifyModelSelected(modelName) {
     await this.openSettingsPanel();
 
-    // Check that the combobox shows the selected model
+    // The combobox trigger is a free-text <input>; the selected model lives in `value`.
     const trigger = this.page.locator(this.selectors.comboboxTrigger);
-    await expect(trigger).toContainText(modelName);
+    await expect(trigger).toHaveValue(modelName);
   }
 
   // Chat management
@@ -505,8 +505,9 @@ export class ChatPage extends BasePage {
     const modelSelector = this.page.locator(this.selectors.comboboxTrigger);
     await expect(modelSelector).toBeVisible();
 
-    // The model selector should contain the expected model name
-    await expect(modelSelector).toContainText(modelName);
+    // The model selector is a free-text autocomplete <input>; its selected model lives in `value`
+    // (not textContent), so assert on the input value.
+    await expect(modelSelector).toHaveValue(modelName);
 
     // Verify the message input is enabled (not showing "Please select a model first")
     const messageInput = this.page.locator(this.selectors.messageInput);
