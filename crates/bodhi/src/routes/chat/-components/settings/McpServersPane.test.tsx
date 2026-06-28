@@ -32,7 +32,8 @@ function renderPane(props: Partial<Parameters<typeof McpServersPane>[0]> = {}) {
       mcps={[mcp()]}
       enabledMcpTools={{}}
       onToggleTool={vi.fn()}
-      onToggleMcp={vi.fn()}
+      onAdd={vi.fn()}
+      onRemove={vi.fn()}
       mcpTools={tools}
       mcpConnectionStatus={status}
       {...props}
@@ -55,15 +56,15 @@ describe('McpServersPane (add-server model)', () => {
     expect(screen.queryByTestId('mcp-item-m1')).not.toBeInTheDocument();
   });
 
-  it('adds a server (enabling all its tools) from the combobox', async () => {
+  it('adds a server from the combobox (establishes its connection)', async () => {
     const user = userEvent.setup();
-    const onToggleMcp = vi.fn();
-    renderPane({ onToggleMcp });
+    const onAdd = vi.fn();
+    renderPane({ onAdd });
 
     await user.click(screen.getByTestId('mcp-add-trigger'));
     await user.click(screen.getByTestId('mcp-add-option-m1'));
 
-    expect(onToggleMcp).toHaveBeenCalledWith('m1', ['read_file', 'write_file']);
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ id: 'm1' }));
   });
 
   it('lists an added server as an expandable row and reveals its tools', async () => {
@@ -89,13 +90,13 @@ describe('McpServersPane (add-server model)', () => {
     expect(onToggleTool).toHaveBeenCalledWith('m1', 'write_file');
   });
 
-  it('removes an added server', async () => {
+  it('removes an added server (tears down its connection)', async () => {
     const user = userEvent.setup();
-    const onToggleMcp = vi.fn();
-    renderPane({ onToggleMcp, enabledMcpTools: { m1: ['read_file'] } });
+    const onRemove = vi.fn();
+    renderPane({ onRemove, enabledMcpTools: { m1: ['read_file'] } });
 
     await user.click(screen.getByTestId('mcp-remove-m1'));
-    expect(onToggleMcp).toHaveBeenCalledWith('m1', ['read_file']);
+    expect(onRemove).toHaveBeenCalledWith('m1');
   });
 
   it('omits unavailable servers from the add combobox', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 import type { Mcp } from '@bodhiapp/ts-client';
 import type { AgentTool } from '@mariozechner/pi-agent-core';
@@ -13,11 +13,14 @@ export interface ChatMcp {
   mcps: Mcp[];
   enabledMcpTools: Record<string, string[]>;
   toggleTool: (mcpId: string, toolName: string) => void;
-  toggleMcp: (mcpId: string, allToolNames: string[]) => void;
+  /** Add a server to the chat: marks it added and establishes its MCP connection. */
+  addMcp: (mcp: Mcp) => void;
+  /** Remove a server from the chat: drops it and tears down its MCP connection. */
+  removeMcp: (mcpId: string) => void;
   mcpTools: Map<string, McpClientTool[]>;
   mcpConnectionStatus: Map<string, McpConnectionStatus>;
   agentTools: AgentTool[];
-  /** Number of MCP servers with at least one tool enabled (rail-tab badge). */
+  /** Number of MCP servers added to this chat (rail-tab badge). */
   mcpCount: number;
 }
 
@@ -29,7 +32,8 @@ export interface ChatMcp {
 export function useChatMcp(): ChatMcp {
   const enabledMcpTools = useMcpSelectionStore((s) => s.enabledTools);
   const toggleTool = useMcpSelectionStore((s) => s.toggleTool);
-  const toggleMcp = useMcpSelectionStore((s) => s.toggleMcp);
+  const addMcpToSelection = useMcpSelectionStore((s) => s.addMcp);
+  const removeMcpFromSelection = useMcpSelectionStore((s) => s.removeMcp);
   const setEnabledMcpTools = useMcpSelectionStore((s) => s.setEnabledTools);
 
   const { data: mcpsResponse } = useListMcps();
@@ -37,14 +41,27 @@ export function useChatMcp(): ChatMcp {
 
   const mcpClients = useMcpClients();
 
+  // The set of MCPs added to THIS chat (a key in the selection). Connections track this set — adding
+  // a server connects it, removing it tears the connection down — via connectAll's diffing.
+  const addedMcps = useMemo(
+    () => mcps.filter((m) => enabledMcpTools[m.id] !== undefined && m.mcp_server.enabled && m.enabled && m.path),
+    [mcps, enabledMcpTools]
+  );
+
+  // Reconcile connections to the added set on every change (connectAll diffs: connects new, drops
+  // removed). NO cleanup here — tearing down on each change would disconnect/reconnect everything.
   useEffect(() => {
-    const enabledMcps = mcps.filter((m) => m.mcp_server.enabled && m.enabled && m.path);
-    mcpClients.connectAll(enabledMcps);
+    mcpClients.connectAll(addedMcps);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the added set; connectAll is stable
+  }, [addedMcps]);
+
+  // Disconnect everything only when the chat screen unmounts.
+  useEffect(() => {
     return () => {
       mcpClients.disconnectAll();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on mcps; mcpClients.connectAll/disconnectAll are stable and intentionally excluded
-  }, [mcps]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount-only; disconnectAll is stable
+  }, []);
 
   const mcpSlugs = useMemo(() => {
     const map = new Map<string, string>();
@@ -60,7 +77,22 @@ export function useChatMcp(): ChatMcp {
     return map;
   }, [mcpClients.clients]);
 
-  // Drop tools whose MCP is no longer available (disabled by admin/user).
+  // A freshly-added server is registered with an empty tool list (so it connects); once it connects
+  // and its tools arrive, default to all tools enabled.
+  useEffect(() => {
+    for (const [id, tools] of Object.entries(enabledMcpTools)) {
+      if (tools.length > 0) continue;
+      const connected = mcpClients.allTools.get(id);
+      if (connected && connected.length > 0) {
+        addMcpToSelection(
+          id,
+          connected.map((t) => t.name)
+        );
+      }
+    }
+  }, [enabledMcpTools, mcpClients.allTools, addMcpToSelection]);
+
+  // Drop selections whose MCP is no longer available (disabled by admin/user).
   useEffect(() => {
     if (mcps.length === 0) return;
 
@@ -88,16 +120,19 @@ export function useChatMcp(): ChatMcp {
     callTool: mcpClients.callTool,
   });
 
-  const mcpCount = useMemo(
-    () => Object.values(enabledMcpTools).filter((tools) => tools.length > 0).length,
-    [enabledMcpTools]
-  );
+  // Add marks the server added (empty selection → connects → tools populate); remove drops it.
+  const addMcp = useCallback((mcp: Mcp) => addMcpToSelection(mcp.id, []), [addMcpToSelection]);
+  const removeMcp = useCallback((mcpId: string) => removeMcpFromSelection(mcpId), [removeMcpFromSelection]);
+
+  // Badge = servers added to this chat.
+  const mcpCount = useMemo(() => Object.keys(enabledMcpTools).length, [enabledMcpTools]);
 
   return {
     mcps,
     enabledMcpTools,
     toggleTool,
-    toggleMcp,
+    addMcp,
+    removeMcp,
     mcpTools: mcpClients.allTools,
     mcpConnectionStatus,
     agentTools,

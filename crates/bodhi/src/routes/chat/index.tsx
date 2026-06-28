@@ -114,7 +114,8 @@ function ChatScreen() {
             mcps={mcp.mcps}
             enabledMcpTools={mcp.enabledMcpTools}
             onToggleTool={mcp.toggleTool}
-            onToggleMcp={mcp.toggleMcp}
+            onAdd={mcp.addMcp}
+            onRemove={mcp.removeMcp}
             mcpTools={mcp.mcpTools}
             mcpConnectionStatus={mcp.mcpConnectionStatus}
           />

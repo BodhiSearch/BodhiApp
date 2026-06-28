@@ -35,6 +35,11 @@ export interface McpSelectionStoreState {
 
   toggleTool: (mcpId: string, toolName: string) => void;
   toggleMcp: (mcpId: string, allToolNames: string[]) => void;
+  /** Add an MCP to the chat (membership marker). Pass the known tool names, or [] to default to all
+   *  once the connection establishes (see the populate step in useChatMcp). */
+  addMcp: (mcpId: string, toolNames: string[]) => void;
+  /** Remove an MCP from the chat entirely (drops the key → its connection is torn down). */
+  removeMcp: (mcpId: string) => void;
   isMcpEnabled: (mcpId: string) => boolean;
   isToolEnabled: (mcpId: string, toolName: string) => boolean;
   getMcpCheckboxState: (mcpId: string, totalTools: number) => CheckboxState;
@@ -95,6 +100,20 @@ export const useMcpSelectionStore = create<McpSelectionStoreState>((set, get) =>
     }
     saveLastMcpSelection(next);
     set({ enabledTools: next, hasChanges: computeHasChanges(next) });
+  },
+
+  addMcp: (mcpId, toolNames) => {
+    const next = { ...get().enabledTools, [mcpId]: toolNames };
+    saveLastMcpSelection(next);
+    set({ enabledTools: next, hasChanges: computeHasChanges(next) });
+  },
+
+  removeMcp: (mcpId) => {
+    const prev = get().enabledTools;
+    if (!(mcpId in prev)) return;
+    const { [mcpId]: _, ...rest } = prev;
+    saveLastMcpSelection(rest);
+    set({ enabledTools: rest, hasChanges: computeHasChanges(rest) });
   },
 
   isMcpEnabled: (mcpId) => {

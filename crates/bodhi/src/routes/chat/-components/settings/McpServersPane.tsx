@@ -14,8 +14,10 @@ interface McpServersPaneProps {
   mcps: Mcp[];
   enabledMcpTools: Record<string, string[]>;
   onToggleTool: (mcpId: string, toolName: string) => void;
-  /** Add a server to the chat (enables all its tools) or remove it (when already added). */
-  onToggleMcp: (mcpId: string, allToolNames: string[]) => void;
+  /** Add a server to the chat (establishes its MCP connection). */
+  onAdd: (mcp: Mcp) => void;
+  /** Remove a server from the chat (tears down its MCP connection). */
+  onRemove: (mcpId: string) => void;
   mcpTools: Map<string, McpClientTool[]>;
   mcpConnectionStatus: Map<string, McpConnectionStatus>;
 }
@@ -171,7 +173,8 @@ export function McpServersPane({
   mcps,
   enabledMcpTools,
   onToggleTool,
-  onToggleMcp,
+  onAdd,
+  onRemove,
   mcpTools,
   mcpConnectionStatus,
 }: McpServersPaneProps) {
@@ -210,15 +213,7 @@ export function McpServersPane({
   return (
     <div className="chat-rail-pane" data-testid="mcp-servers-pane">
       {available.length > 0 ? (
-        <AddServerCombo
-          available={available}
-          onAdd={(mcp) =>
-            onToggleMcp(
-              mcp.id,
-              (mcpTools.get(mcp.id) || []).map((t) => t.name)
-            )
-          }
-        />
+        <AddServerCombo available={available} onAdd={onAdd} />
       ) : (
         added.length > 0 && <div className="chat-mcp-add-done">All configured servers added</div>
       )}
@@ -239,7 +234,7 @@ export function McpServersPane({
               onToggleExpand={() => toggleExpand(mcp.id)}
               enabledMcpTools={enabledMcpTools}
               onToggleTool={onToggleTool}
-              onRemove={() => onToggleMcp(mcp.id, enabledMcpTools[mcp.id] || [])}
+              onRemove={() => onRemove(mcp.id)}
               tools={mcpTools.get(mcp.id) || []}
               connectionStatus={mcpConnectionStatus.get(mcp.id)}
             />
