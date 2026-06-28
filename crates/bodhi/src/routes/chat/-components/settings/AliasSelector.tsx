@@ -74,7 +74,10 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
 
   // Free-text autocomplete: the input accepts ANY value; the list is suggestions, not a constraint.
   const [open, setOpen] = useState(false);
+  // Index into the ordered options list highlighted via arrow keys (-1 = none / the typed text).
+  const [activeIndex, setActiveIndex] = useState(-1);
   const comboRef = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -83,6 +86,11 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
     };
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
+  }, [open]);
+
+  // Reset the highlight whenever the list closes.
+  useEffect(() => {
+    if (!open) setActiveIndex(-1);
   }, [open]);
 
   const commitModel = (value: string) => {
@@ -105,22 +113,39 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
     .filter((m) => m.toLowerCase().includes(q))
     .sort((a, b) => (a === model ? -1 : b === model ? 1 : byName(a, b)));
   const nonMatching = allModels.filter((m) => !m.toLowerCase().includes(q)).sort(byName);
-  const renderOption = (m: string) => (
-    <button
-      key={m}
-      type="button"
-      data-testid={`combobox-option-${m}`}
-      className={cn('chat-model-opt', m === model && 'sel')}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={() => {
-        commitModel(m);
-        setOpen(false);
-      }}
-    >
-      <span className="name">{m}</span>
-      {m === model && <Check className="h-3.5 w-3.5" />}
-    </button>
-  );
+  // Flat keyboard-navigation order (matching first, then the rest); a divider sits between them.
+  const ordered = [...matching, ...nonMatching];
+
+  // Scroll the active option into view as the highlight moves.
+  useEffect(() => {
+    if (!open || activeIndex < 0) return;
+    const el = popRef.current?.querySelector<HTMLElement>(`[data-opt-index="${activeIndex}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [open, activeIndex]);
+
+  const selectOption = (value: string) => {
+    commitModel(value);
+    setOpen(false);
+  };
+
+  const renderOption = (m: string) => {
+    const index = ordered.indexOf(m);
+    return (
+      <button
+        key={m}
+        type="button"
+        data-testid={`combobox-option-${m}`}
+        data-opt-index={index}
+        className={cn('chat-model-opt', m === model && 'sel', index === activeIndex && 'active')}
+        onMouseDown={(e) => e.preventDefault()}
+        onMouseEnter={() => setActiveIndex(index)}
+        onClick={() => selectOption(m)}
+      >
+        <span className="name">{m}</span>
+        {m === model && <Check className="h-3.5 w-3.5" />}
+      </button>
+    );
+  };
 
   return (
     <div className="space-y-4" data-testid="model-selector-loaded">
@@ -166,6 +191,7 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
             disabled={isLoading}
             onChange={(e) => {
               commitModel(e.target.value);
+              setActiveIndex(-1);
               setOpen(true);
             }}
             onFocus={() => setOpen(true)}
@@ -174,6 +200,34 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
               if (e.key === 'Escape') {
                 setOpen(false);
                 e.currentTarget.blur();
+                return;
+              }
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!open) {
+                  setOpen(true);
+                  return;
+                }
+                if (ordered.length) setActiveIndex((i) => (i + 1) % ordered.length);
+                return;
+              }
+              if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!open) {
+                  setOpen(true);
+                  return;
+                }
+                if (ordered.length) setActiveIndex((i) => (i <= 0 ? ordered.length - 1 : i - 1));
+                return;
+              }
+              if (e.key === 'Enter') {
+                // Enter selects the highlighted option, or commits the typed text as-is.
+                if (open && activeIndex >= 0 && ordered[activeIndex]) {
+                  e.preventDefault();
+                  selectOption(ordered[activeIndex]);
+                } else {
+                  setOpen(false);
+                }
               }
             }}
           />
@@ -181,7 +235,7 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
             <ChevronDown className="h-3.5 w-3.5" />
           </span>
           {open && (
-            <div className="chat-model-pop">
+            <div className="chat-model-pop" ref={popRef}>
               {matching.map(renderOption)}
               {matching.length > 0 && nonMatching.length > 0 && <div className="chat-model-div" />}
               {nonMatching.map(renderOption)}

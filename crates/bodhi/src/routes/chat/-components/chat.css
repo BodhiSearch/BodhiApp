@@ -280,7 +280,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.chat-model-opt:hover {
+.chat-model-opt:hover,
+.chat-model-opt.active {
   background: hsl(var(--muted));
 }
 .chat-model-opt.sel {
@@ -872,6 +873,17 @@
 .chat-composer-inner:focus-within {
   border-color: hsl(var(--ring));
   box-shadow: 0 0 0 3px hsl(var(--primary) / 0.18);
+}
+/* No model selected: a gentle "needs attention" highlight on the whole panel — not the focus glow,
+   so it doesn't read as active/inviting. */
+.chat-composer-inner.no-model,
+.chat-composer-inner.no-model:focus-within {
+  border-color: hsl(var(--destructive) / 0.45);
+  background: hsl(var(--destructive) / 0.04);
+  box-shadow: none;
+}
+.chat-composer-inner.no-model textarea::placeholder {
+  color: hsl(var(--destructive) / 0.75);
 }
 .chat-composer textarea {
   width: 100%;

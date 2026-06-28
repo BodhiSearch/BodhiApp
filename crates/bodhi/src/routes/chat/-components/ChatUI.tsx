@@ -57,14 +57,13 @@ const ChatInput = memo(function ChatInput({
     <div className="chat-composer" data-testid={getTestId('chat-input-panel')}>
       <form
         onSubmit={handleSubmit}
-        className="chat-composer-inner"
+        className={cn('chat-composer-inner', !isModelSelected && 'no-model')}
         data-testid={getTestId('chat-form')}
         data-test-state={isModelSelected ? 'model-selected' : 'no-model'}
       >
         <textarea
           ref={inputRef}
           data-testid={getTestId('chat-input')}
-          className={cn(!isModelSelected && 'rounded-md ring-2 ring-destructive')}
           rows={1}
           placeholder={isModelSelected ? 'Ask me anything…   ⏎ to send' : 'Please select a model first'}
           value={input}

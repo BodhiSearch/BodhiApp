@@ -179,4 +179,49 @@ describe('AliasSelector (free-text autocomplete)', () => {
     expect(setApiFormat).toHaveBeenCalledWith('openai');
     expect(setLlmLibertyProvider).toHaveBeenCalledWith(null);
   });
+
+  describe('keyboard navigation', () => {
+    it('highlights the first option on ArrowDown and selects it on Enter', () => {
+      // models sort A→Z: gpt-4, tinyllama-chat
+      renderSelector();
+      fireEvent.focus(input());
+      fireEvent.keyDown(input(), { key: 'ArrowDown' });
+      expect(screen.getByTestId('combobox-option-gpt-4').className).toContain('active');
+
+      fireEvent.keyDown(input(), { key: 'Enter' });
+      expect(setModel).toHaveBeenCalledWith('gpt-4');
+    });
+
+    it('moves the highlight down through the list', () => {
+      renderSelector();
+      fireEvent.focus(input());
+      fireEvent.keyDown(input(), { key: 'ArrowDown' });
+      fireEvent.keyDown(input(), { key: 'ArrowDown' });
+      expect(screen.getByTestId('combobox-option-tinyllama-chat').className).toContain('active');
+    });
+
+    it('wraps to the last option on ArrowUp from the top', () => {
+      renderSelector();
+      fireEvent.focus(input());
+      fireEvent.keyDown(input(), { key: 'ArrowUp' });
+      expect(screen.getByTestId('combobox-option-tinyllama-chat').className).toContain('active');
+    });
+
+    it('opens the list on ArrowDown when closed', () => {
+      renderSelector();
+      // Not opened yet — options absent.
+      expect(screen.queryByTestId('combobox-option-gpt-4')).not.toBeInTheDocument();
+      fireEvent.keyDown(input(), { key: 'ArrowDown' });
+      expect(screen.getByTestId('combobox-option-gpt-4')).toBeInTheDocument();
+    });
+
+    it('Enter with no highlight keeps the typed text (commits via onChange, not selection)', () => {
+      renderSelector();
+      fireEvent.change(input(), { target: { value: 'free-typed' } });
+      setModel.mockClear();
+      fireEvent.keyDown(input(), { key: 'Enter' });
+      // No option was highlighted, so Enter does not re-commit a list value.
+      expect(setModel).not.toHaveBeenCalled();
+    });
+  });
 });
