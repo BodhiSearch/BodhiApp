@@ -50,6 +50,11 @@ export class McpPlaygroundPage extends BasePage {
     resourceName: '[data-testid="mcp-playground-resource-name"]',
     resourceReadButton: '[data-testid="mcp-playground-resource-read-button"]',
 
+    templateDetail: '[data-testid="mcp-playground-template-detail"]',
+    templateName: '[data-testid="mcp-playground-template-name"]',
+    templateResolved: '[data-testid="mcp-playground-template-resolved"]',
+    templateReadButton: '[data-testid="mcp-playground-template-read-button"]',
+
     resultStatus: '[data-testid="mcp-playground-result-status"]',
     resultTab: (tab) => `[data-testid="mcp-playground-result-tab-${tab}"]`,
     resultRaw: '[data-testid="mcp-playground-result-raw"]',
@@ -182,6 +187,22 @@ export class McpPlaygroundPage extends BasePage {
 
   async clickResourceRead() {
     await this.page.click(this.selectors.resourceReadButton);
+  }
+
+  async selectTemplate(uriTemplate) {
+    const railItem = this.page.locator(this.selectors.railItem(uriTemplate));
+    if (!(await railItem.isVisible().catch(() => false))) {
+      await this.selectCapability('templates');
+    }
+    await this.page.click(this.selectors.railItem(uriTemplate));
+  }
+
+  async expectTemplateResolved(expected) {
+    await expect(this.page.locator(this.selectors.templateResolved)).toHaveText(expected);
+  }
+
+  async clickTemplateRead() {
+    await this.page.click(this.selectors.templateReadButton);
   }
 
   async goBackToList() {

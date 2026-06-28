@@ -19,6 +19,7 @@ import { OverviewView, type Feature } from './OverviewView';
 import { PlaygroundRail } from './PlaygroundRail';
 import { PromptDetail } from './PromptDetail';
 import { ResourceDetail } from './ResourceDetail';
+import { TemplateDetail } from './TemplateDetail';
 import { ToolDetail } from './ToolDetail';
 
 import './playground.css';
@@ -221,7 +222,9 @@ export function PlaygroundScreen() {
       {feature === 'resources' && (
         <ResourcesCenter resources={mcpClient.resources} item={item} readResource={mcpClient.readResource} />
       )}
-      {feature === 'templates' && <ComingSoon feature="templates" />}
+      {feature === 'templates' && (
+        <TemplatesCenter templates={mcpClient.resourceTemplates} item={item} readResource={mcpClient.readResource} />
+      )}
     </div>
   );
 }
@@ -345,13 +348,38 @@ function ResourcesCenter({
   return <ResourceDetail key={selected.uri} resource={selected} readResource={readResource} />;
 }
 
-function ComingSoon({ feature }: { feature: Feature }) {
-  return (
-    <EmptyState
-      icon="hourglass"
-      title={`${feature.charAt(0).toUpperCase() + feature.slice(1)} are coming soon`}
-      sub="The Screen-V2 playground enables this capability in a follow-up phase."
-      testId={`mcp-playground-coming-${feature}`}
-    />
+function TemplatesCenter({
+  templates,
+  item,
+  readResource,
+}: {
+  templates: ReturnType<typeof useMcpClient>['resourceTemplates'];
+  item: string | null;
+  readResource: ReturnType<typeof useMcpClient>['readResource'];
+}) {
+  const selected = useMemo(
+    () => (item ? (templates.find((t) => t.uriTemplate === item) ?? null) : null),
+    [templates, item]
   );
+
+  if (templates.length === 0) {
+    return (
+      <EmptyState
+        icon="layout-template"
+        title="No templates"
+        sub="This MCP doesn’t expose any resource templates."
+        testId="mcp-playground-templates-empty"
+      />
+    );
+  }
+
+  if (!selected) {
+    return (
+      <div className="pg-pick" data-testid="mcp-playground-pick">
+        <div className="pg-pick-text">Pick a template on the right to fill in and resolve.</div>
+      </div>
+    );
+  }
+
+  return <TemplateDetail key={selected.uriTemplate} template={selected} readResource={readResource} />;
 }

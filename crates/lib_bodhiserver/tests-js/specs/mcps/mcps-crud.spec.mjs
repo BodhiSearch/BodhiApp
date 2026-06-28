@@ -137,6 +137,26 @@ test.describe('MCP Server Management', () => {
         'success'
       );
     });
+
+    await test.step('Resolve a template and verify the resource is read', async () => {
+      await mcpsPage.page.click(mcpsPage.selectors.playgroundCapability('templates'));
+      const firstTemplate = mcpsPage.page.locator('[data-testid^="mcp-playground-rail-item-"]').first();
+      await expect(firstTemplate).toBeVisible();
+      await firstTemplate.click();
+      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-template-detail"]')).toBeVisible();
+      const fields = mcpsPage.page.locator('[data-testid^="mcp-playground-param-"] input, [data-testid^="mcp-playground-param-"] textarea');
+      const count = await fields.count();
+      for (let i = 0; i < count; i++) {
+        await fields.nth(i).fill('1');
+      }
+      const resolved = mcpsPage.page.locator('[data-testid="mcp-playground-template-resolved"]');
+      await expect(resolved).toHaveAttribute('data-filled', 'true');
+      await mcpsPage.page.click('[data-testid="mcp-playground-template-read-button"]');
+      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-result-status"]')).toHaveAttribute(
+        'data-test-state',
+        'success'
+      );
+    });
   });
 
   test('MCP Playground - Refresh and Disabled States', async ({ page, sharedServerUrl }) => {

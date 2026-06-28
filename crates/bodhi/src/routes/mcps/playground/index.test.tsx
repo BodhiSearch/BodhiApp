@@ -76,6 +76,15 @@ const mockResources = [
   },
 ];
 
+const mockTemplates = [
+  {
+    uriTemplate: 'file:///docs/{section}.md',
+    name: 'Doc section',
+    description: 'Read a specific doc section',
+    mimeType: 'text/markdown',
+  },
+];
+
 beforeEach(() => {
   localStorage.clear();
   Wrapper = createWrapper();
@@ -324,6 +333,55 @@ describe('McpPlaygroundPage — Resources', () => {
     expect(screen.getByTestId('mcp-playground-resource-name')).toHaveTextContent('README');
 
     await user.click(screen.getByTestId('mcp-playground-resource-read-button'));
+    await waitFor(() => {
+      const status = screen.getByTestId('mcp-playground-result-status');
+      expect(status).toHaveAttribute('data-test-state', 'success');
+    });
+  });
+});
+
+describe('McpPlaygroundPage — Templates', () => {
+  beforeEach(() => {
+    server.use(
+      ...createMcpProtocolHandlers({
+        endpoint: MCP_ENDPOINT,
+        tools: mockTools,
+        resourceTemplates: mockTemplates,
+        resourceReadHandler: (uri) => ({
+          contents: [{ uri, mimeType: 'text/markdown', text: `# Section\n\nDetails at ${uri}` }],
+        }),
+      })
+    );
+  });
+
+  it('shows template list in rail when feature=templates', async () => {
+    await renderScreen([`/mcps/playground/?id=${MCP_ID}&feature=templates`]);
+    await waitFor(
+      () => expect(screen.getByTestId('mcp-playground-rail-item-file:///docs/{section}.md')).toBeInTheDocument(),
+      { timeout: 5000 }
+    );
+  });
+
+  it('resolves URI live and reads the resource', async () => {
+    const user = userEvent.setup();
+    await renderScreen([
+      `/mcps/playground/?id=${MCP_ID}&feature=templates&item=${encodeURIComponent(mockTemplates[0].uriTemplate)}`,
+    ]);
+    await waitFor(() => screen.getByTestId('mcp-playground-template-detail'));
+
+    const resolved = screen.getByTestId('mcp-playground-template-resolved');
+    expect(resolved).toHaveTextContent('file:///docs/{section}.md');
+    expect(resolved).toHaveAttribute('data-filled', 'false');
+
+    const sectionContainer = screen.getByTestId('mcp-playground-param-section');
+    await user.type(within(sectionContainer).getByRole('textbox'), 'intro');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-playground-template-resolved')).toHaveTextContent('file:///docs/intro.md');
+    });
+    expect(screen.getByTestId('mcp-playground-template-resolved')).toHaveAttribute('data-filled', 'true');
+
+    await user.click(screen.getByTestId('mcp-playground-template-read-button'));
     await waitFor(() => {
       const status = screen.getByTestId('mcp-playground-result-status');
       expect(status).toHaveAttribute('data-test-state', 'success');
