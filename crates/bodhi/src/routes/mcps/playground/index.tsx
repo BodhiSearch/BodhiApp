@@ -14,7 +14,7 @@ export const playgroundSearchSchema = z.object({
 export type PlaygroundSearch = z.infer<typeof playgroundSearchSchema>;
 
 export const Route = createFileRoute('/mcps/playground/')({
-  staticData: { section: 'mcp' },
+  staticData: { section: 'mcp', subPage: 'playground' },
   validateSearch: playgroundSearchSchema,
   component: McpPlaygroundPage,
 });

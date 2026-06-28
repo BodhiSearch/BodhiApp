@@ -75,6 +75,7 @@ export const SHELL_NAV: ShellNavItem[] = [
     subPages: [
       { id: 'my-mcps', label: 'My MCPs', icon: 'globe-2', href: ROUTE_MCPS },
       { id: 'explore-mcp', label: 'Explore · MCP Servers', icon: 'compass', href: ROUTE_MCPS_EXPLORE },
+      { id: 'playground', label: 'Playground', icon: 'flask-conical', href: '/mcps/playground/' },
       { id: 'new-mcp-server', label: 'New MCP Server', icon: 'server', href: '/mcps/servers/new/', adminOnly: true },
       { id: 'new-mcp', label: 'New MCP Connection', icon: 'plus-circle', href: '/mcps/new/' },
     ],

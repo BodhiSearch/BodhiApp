@@ -122,7 +122,11 @@ export function PlaygroundScreen() {
   const sidebar = useMemo(
     () => (
       <div className="pg-sidebar" data-testid="mcp-playground-sidebar">
-        <InstancePicker instances={instances} selectedId={id} onSelect={selectInstance} />
+        <div className="pg-sidebar-section">
+          <div className="pg-sidebar-label">Active MCP</div>
+          <InstancePicker instances={instances} selectedId={id} onSelect={selectInstance} />
+        </div>
+        <div className="pg-sidebar-div" />
         <CapabilityNav active={feature} counts={mcpClient.counts} onSelect={selectFeature} />
       </div>
     ),
@@ -183,7 +187,28 @@ export function PlaygroundScreen() {
   });
 
   if (!id) {
-    return <ErrorPage message="No MCP ID provided" />;
+    return (
+      <div className="pg-pick" data-testid="mcp-playground-no-id">
+        <div className="pg-pick-ico">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <div className="pg-pick-text">
+          {instances.length === 0 ? (
+            <>No MCP connections yet — create one first.</>
+          ) : (
+            <>Select an MCP connection from the list above to begin.</>
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (mcpError) {
