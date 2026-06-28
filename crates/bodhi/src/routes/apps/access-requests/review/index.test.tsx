@@ -952,3 +952,27 @@ describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
     expect(body.approved.version).toBe('1');
   });
 });
+
+describe('ReviewAccessRequestPage V2', () => {
+  it('renders the consent page with the V2 header and preserves review testids', async () => {
+    mockSearch = { id: MOCK_REQUEST_ID };
+    setupHandlers(mockDraftReviewResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-access-page')).toBeInTheDocument();
+    });
+
+    // V2 consent header treatment
+    expect(screen.getByText('Decide which of your resources this 3rd-party app can use.')).toBeInTheDocument();
+    // V2 root carries the api-keys-screen V2 class
+    expect(screen.getByTestId('review-access-page')).toHaveClass('api-keys-screen');
+    // real-data testids preserved
+    expect(screen.getByTestId('review-app-name')).toBeInTheDocument();
+    expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
+    expect(screen.getByTestId('review-deny-button')).toBeInTheDocument();
+  });
+});

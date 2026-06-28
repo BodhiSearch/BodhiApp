@@ -1,5 +1,5 @@
 import AllRequestsPage from '@/routes/users/access-requests/index';
-import { ShellSlotsProvider } from '@/components/shell';
+import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { createWrapper } from '@/tests/wrapper';
 import { server } from '@/test-utils/msw-v2/setup';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
@@ -17,6 +17,7 @@ import {
 import {
   ADMIN_ROLES,
   BLOCKED_ROLES,
+  mockAllRequests,
   mockPendingRequest,
   mockApprovedRequest,
   mockRejectedRequest,
@@ -340,5 +341,149 @@ describe('AllRequestsPage Error Handling', () => {
     await u.click(rejectButton);
 
     expect(rejectButton).toBeInTheDocument();
+  });
+});
+
+// Mirror the root shell: render the published header-actions and rail slots so we can assert them.
+function SlotsConsumer() {
+  const { headerActions, rail, railHeader } = useShellSlots();
+  return (
+    <>
+      <div data-testid="harness-header-actions">{headerActions}</div>
+      <div data-testid="harness-rail-header">{railHeader}</div>
+      <div data-testid="harness-rail">{rail}</div>
+    </>
+  );
+}
+
+describe('AccessRequestsPage V2 chrome', () => {
+  beforeEach(() => {
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ username: 'admin@example.com', role: 'resource_admin' }),
+      ...mockAccessRequests({
+        requests: mockAllRequests.requests,
+        total: mockAllRequests.total,
+        page: 1,
+        page_size: 10,
+      })
+    );
+  });
+
+  async function renderReady() {
+    await act(async () => {
+      render(
+        <ShellSlotsProvider>
+          <SlotsConsumer />
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('all-requests-page')).toHaveAttribute('data-pagestatus', 'ready');
+    });
+  }
+
+  it('shows shimmer filter badges while the requests query is pending', async () => {
+    server.use(
+      ...mockAccessRequests(
+        { requests: mockAllRequests.requests, total: mockAllRequests.total },
+        { delayMs: 200, stub: true }
+      )
+    );
+
+    render(
+      <ShellSlotsProvider>
+        <SlotsConsumer />
+        <AllRequestsPage />
+      </ShellSlotsProvider>,
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('requests-filter-pending')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('all-requests-page')).toHaveAttribute('data-pagestatus', 'loading');
+    expect(screen.getAllByLabelText('Loading count').length).toBeGreaterThan(0);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('all-requests-page')).toHaveAttribute('data-pagestatus', 'ready');
+    });
+    expect(screen.queryByLabelText('Loading count')).not.toBeInTheDocument();
+  });
+
+  it('publishes a pending-count pill to the shell header', async () => {
+    await renderReady();
+
+    const pill = within(screen.getByTestId('harness-header-actions')).getByTestId('pending-pill');
+    expect(pill).toHaveTextContent('1 pending review');
+  });
+
+  it('opens the detail rail when a pending row is selected', async () => {
+    const user = userEvent.setup();
+    await renderReady();
+
+    expect(within(screen.getByTestId('harness-rail')).queryByTestId('request-detail-rail')).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('request-row-user@example.com'));
+
+    const rail = within(screen.getByTestId('harness-rail')).getByTestId('request-detail-rail');
+    expect(rail).toBeInTheDocument();
+    expect(within(rail).getByTestId('request-detail-role-select')).toBeInTheDocument();
+    expect(within(rail).getByTestId('request-detail-approve')).toBeInTheDocument();
+    expect(within(rail).getByTestId('request-detail-reject')).toBeInTheDocument();
+  });
+
+  it('renders each row as an accessible link and activating it opens the rail', async () => {
+    const user = userEvent.setup();
+    await renderReady();
+
+    const row = screen.getByTestId('request-row-user@example.com');
+    const link = within(row).getByTestId('row-link');
+    expect(link.tagName).toBe('A');
+    expect(link).toHaveAccessibleName('Open access request from user@example.com');
+
+    await user.click(link);
+    expect(within(screen.getByTestId('harness-rail')).getByTestId('request-detail-rail')).toBeInTheDocument();
+  });
+
+  it('changing the in-row role select does not open the rail (control stays above the link)', async () => {
+    const user = userEvent.setup();
+    await renderReady();
+
+    await user.selectOptions(screen.getByTestId('role-select-user@example.com'), 'resource_power_user');
+    expect(within(screen.getByTestId('harness-rail')).queryByTestId('request-detail-rail')).not.toBeInTheDocument();
+  });
+
+  it('shows a static decided rail (no actions) for a decided row', async () => {
+    const user = userEvent.setup();
+    await renderReady();
+
+    await user.click(screen.getByTestId('requests-filter-all'));
+    await user.click(screen.getByTestId(`request-row-${mockApprovedRequest.username}`));
+
+    const rail = within(screen.getByTestId('harness-rail')).getByTestId('request-detail-rail');
+    expect(within(rail).queryByTestId('request-detail-approve')).not.toBeInTheDocument();
+    expect(within(rail).queryByTestId('request-detail-role-select')).not.toBeInTheDocument();
+    expect(within(rail).getByTestId('request-status-approved')).toBeInTheDocument();
+    expect(
+      within(rail).getAllByText((_content, el) => el?.textContent === 'Approved Jan 2, 2024').length
+    ).toBeGreaterThan(0);
+  });
+
+  it('approves from the rail via the real mutation', async () => {
+    const user = userEvent.setup();
+    server.use(...mockAccessRequestApprove('01HQXYZ0000000000000000001'));
+    await renderReady();
+
+    await user.click(screen.getByTestId('request-row-user@example.com'));
+    const approve = within(screen.getByTestId('harness-rail')).getByTestId('request-detail-approve');
+    expect(approve).toBeEnabled();
+    await user.click(approve);
+
+    await waitFor(() =>
+      expect(within(screen.getByTestId('harness-rail')).getByTestId('request-detail-approve')).toBeInTheDocument()
+    );
   });
 });
