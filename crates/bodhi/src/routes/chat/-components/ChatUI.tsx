@@ -2,7 +2,6 @@ import { FormEvent, RefObject, useCallback, useEffect, useRef, memo, useMemo } f
 
 import type { AgentMessage, AgentTool } from '@mariozechner/pi-agent-core';
 import type { AssistantMessage as PiAssistantMessage } from '@mariozechner/pi-ai';
-import { Plus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
@@ -11,7 +10,6 @@ import { useToastMessages } from '@/hooks/use-toast-messages';
 import { cn } from '@/lib/utils';
 import { useAgentStore } from '@/stores/agentStore';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';
-import { useChatStore } from '@/stores/chatStore';
 import { extractTextFromAgentMessage, extractThinkingFromAgentMessage, Message } from '@/types/chat';
 
 import { ChatMessage } from './ChatMessage';
@@ -47,7 +45,6 @@ const ChatInput = memo(function ChatInput({
   inputRef,
   isModelSelected,
 }: ChatInputProps) {
-  const createNewChat = useChatStore((s) => s.createNewChat);
   const getTestId = useResponsiveTestId();
 
   const autosize = (el: HTMLTextAreaElement | null) => {
@@ -84,18 +81,6 @@ const ChatInput = memo(function ChatInput({
         />
 
         <div className="chat-composer-row">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={createNewChat}
-            data-testid={getTestId('new-chat-inline-button')}
-          >
-            <Plus className="h-5 w-5" />
-            <span className="sr-only">New chat</span>
-          </Button>
-
           <div className="ml-auto">
             {streamLoading ? (
               <Button

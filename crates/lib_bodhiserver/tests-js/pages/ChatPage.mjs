@@ -27,7 +27,6 @@ export class ChatPage extends BasePage {
 
     // Chat management
     newChatButton: '[data-testid="new-chat-button"]',
-    newChatInlineButton: '[data-testid="new-chat-inline-button"]',
     emptyState: '[data-testid="empty-chat-state"]',
 
     // Model selection (in settings panel)
@@ -54,9 +53,12 @@ export class ChatPage extends BasePage {
     // The rail-tab badge always renders the enabled-tool count (0 when none enabled).
     mcpsBadge: '[data-testid="chat-rail-mcp-count"]',
     mcpsEmptyState: '[data-testid="mcps-empty-state"]',
+    // Servers are ADDED to the chat via a combobox, then appear as rows; tools toggle within a row.
+    mcpAddTrigger: '[data-testid="mcp-add-trigger"]',
+    mcpAddOption: id => `[data-testid="mcp-add-option-${id}"]`,
+    mcpRemove: id => `[data-testid="mcp-remove-${id}"]`,
     mcpRow: id => `[data-testid="mcp-row-${id}"]`,
     mcpExpand: id => `[data-testid="mcp-expand-${id}"]`,
-    mcpCheckbox: id => `[data-testid="mcp-checkbox-${id}"]`,
     mcpItem: id => `[data-testid="mcp-item-${id}"]`,
     mcpToolRow: (mcpId, toolName) => `[data-testid="mcp-tool-row-${mcpId}-${toolName}"]`,
     mcpToolCheckbox: (mcpId, toolName) => `[data-testid="mcp-tool-checkbox-${mcpId}-${toolName}"]`,
@@ -272,14 +274,6 @@ export class ChatPage extends BasePage {
     await expect(this.page.locator(this.selectors.emptyState)).toBeVisible({ timeout: 10000 });
   }
 
-  /**
-   * Start a new chat using the inline button (+ button in chat input)
-   */
-  async startNewChatInline() {
-    await this.page.click(this.selectors.newChatInlineButton);
-    await this.waitForSPAReady();
-    await expect(this.page.locator(this.selectors.emptyState)).toBeVisible({ timeout: 10000 });
-  }
 
   async expectChatPage() {
     await this.page.waitForURL(url => url.pathname === '/ui/chat/');
@@ -594,19 +588,26 @@ export class ChatPage extends BasePage {
     await expect(this.page.locator(this.selectors.mcpsPane)).toBeVisible();
   }
 
+  // A not-yet-added server is offered inside the add combobox.
   async expectMcpInPopover(mcpId) {
-    const mcpRow = this.page.locator(this.selectors.mcpsPane).locator(this.selectors.mcpRow(mcpId));
-    await expect(mcpRow).toBeVisible();
+    await this.page.click(this.selectors.mcpAddTrigger);
+    await expect(this.page.locator(this.selectors.mcpAddOption(mcpId))).toBeVisible();
   }
 
   async expandMcp(mcpId) {
     await this.page.locator(this.selectors.mcpExpand(mcpId)).click();
   }
 
+  // Add a server to the chat (enables all its tools). Opens the combobox if it isn't already open.
   async enableMcp(mcpId) {
-    const checkbox = this.page.locator(this.selectors.mcpCheckbox(mcpId));
-    await expect(checkbox).toBeEnabled();
-    await checkbox.click();
+    const option = this.page.locator(this.selectors.mcpAddOption(mcpId));
+    if (!(await option.isVisible())) {
+      await this.page.click(this.selectors.mcpAddTrigger);
+    }
+    await expect(option).toBeVisible();
+    await option.click();
+    // The server now appears as an added row.
+    await expect(this.page.locator(this.selectors.mcpItem(mcpId))).toBeVisible();
   }
 
   async enableMcpTool(mcpId, toolName) {
@@ -615,9 +616,9 @@ export class ChatPage extends BasePage {
     await checkbox.click();
   }
 
+  // "Added to this chat" → the server is shown as a row (no parent checkbox in the add-server model).
   async expectMcpCheckboxChecked(mcpId) {
-    const checkbox = this.page.locator(this.selectors.mcpCheckbox(mcpId));
-    await expect(checkbox).toBeChecked();
+    await expect(this.page.locator(this.selectors.mcpItem(mcpId))).toBeVisible();
   }
 
   async expectMcpBadgeVisible(count) {
@@ -645,7 +646,10 @@ export class ChatPage extends BasePage {
     await expect(this.page.locator(this.selectors.mcpsEmptyState)).toBeVisible();
   }
 
+  // Servers are loaded once they can be added (the combobox trigger) or are already added (a row).
   async waitForMcpsToLoad() {
-    await this.page.waitForSelector('[data-testid^="mcp-item-"]', { timeout: 15000 });
+    await this.page.waitForSelector(`${this.selectors.mcpAddTrigger}, [data-testid^="mcp-item-"]`, {
+      timeout: 15000,
+    });
   }
 }

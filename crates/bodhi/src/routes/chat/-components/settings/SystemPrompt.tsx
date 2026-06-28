@@ -16,7 +16,8 @@ export function SystemPrompt({ isLoading = false, tooltip }: SystemPromptProps) 
   const setSystemPrompt = useChatSettingsStore((s) => s.setSystemPrompt);
   const setSystemPromptEnabled = useChatSettingsStore((s) => s.setSystemPromptEnabled);
 
-  const isDisabled = isLoading || !systemPrompt_enabled;
+  // Control is shown only when the setting is switched on (design: off → control hidden).
+  const showControl = systemPrompt_enabled;
 
   return (
     <div className="space-y-4">
@@ -33,14 +34,16 @@ export function SystemPrompt({ isLoading = false, tooltip }: SystemPromptProps) 
           size="sm"
         />
       </div>
-      <Textarea
-        id="system-prompt"
-        placeholder="Enter system prompt..."
-        value={systemPrompt || ''}
-        onChange={(e) => setSystemPrompt(e.target.value || undefined)}
-        disabled={isDisabled}
-        className={`min-h-[100px] ${isDisabled ? 'opacity-50' : ''}`}
-      />
+      {showControl && (
+        <Textarea
+          id="system-prompt"
+          placeholder="Enter system prompt..."
+          value={systemPrompt || ''}
+          onChange={(e) => setSystemPrompt(e.target.value || undefined)}
+          disabled={isLoading}
+          className="min-h-[100px]"
+        />
+      )}
     </div>
   );
 }

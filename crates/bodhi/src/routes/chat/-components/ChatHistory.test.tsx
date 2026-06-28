@@ -123,26 +123,14 @@ describe('ChatHistory', () => {
     expect(screen.queryByText('Previous Chat')).not.toBeInTheDocument();
   });
 
-  it('deletes a chat from the ⋯ actions menu', async () => {
+  it('deletes a chat via the hover trash icon without selecting it', async () => {
     const user = userEvent.setup();
     render(<ChatHistory />, { wrapper: Wrapper });
 
-    // Delete now lives behind the per-row actions menu.
-    await user.click(screen.getByTestId('chat-actions-1'));
     await user.click(screen.getByTestId('delete-chat-1'));
 
     expect(mockDeleteChat).toHaveBeenCalledWith('1');
     expect(mockSetCurrentChatId).not.toHaveBeenCalled();
-  });
-
-  it('renders inert (un-backed) Rename/Pin/Duplicate/Export actions', async () => {
-    const user = userEvent.setup();
-    render(<ChatHistory />, { wrapper: Wrapper });
-
-    await user.click(screen.getByTestId('chat-actions-1'));
-    for (const label of ['Rename', 'Pin', 'Duplicate', 'Export']) {
-      expect(screen.getByText(label)).toHaveAttribute('aria-disabled');
-    }
   });
 
   it('renders the compact popover variant', () => {

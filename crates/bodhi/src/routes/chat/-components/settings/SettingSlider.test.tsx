@@ -152,11 +152,12 @@ describe('SettingSlider', () => {
       expect(switchElement).toBeDisabled();
     });
 
-    it('disables slider when enabled is false', () => {
+    it('hides the slider when enabled is false', () => {
       render(<SettingSlider {...defaultProps} enabled={false} />);
 
-      const slider = screen.getByRole('slider');
-      expect(slider).toBeDisabled();
+      // Control is hidden when the setting is off; the toggle switch remains.
+      expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+      expect(screen.getByRole('switch')).toBeInTheDocument();
     });
 
     it('prevents interactions while loading', () => {

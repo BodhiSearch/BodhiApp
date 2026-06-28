@@ -72,16 +72,18 @@ export function ParametersPane() {
               size="sm"
             />
           </SettingRow>
-          <Input
-            type="password"
-            id="api-token"
-            data-testid="api-token-input"
-            data-enabled={String(!isLoading && settings.api_token_enabled)}
-            value={settings.api_token || ''}
-            onChange={(e) => settings.setApiToken(e.target.value || undefined)}
-            disabled={isLoading || !settings.api_token_enabled}
-            placeholder="Enter your API token"
-          />
+          {settings.api_token_enabled && (
+            <Input
+              type="password"
+              id="api-token"
+              data-testid="api-token-input"
+              data-enabled={String(!isLoading)}
+              value={settings.api_token || ''}
+              onChange={(e) => settings.setApiToken(e.target.value || undefined)}
+              disabled={isLoading}
+              placeholder="Enter your API token"
+            />
+          )}
         </div>
 
         <div className="space-y-2">
@@ -94,15 +96,17 @@ export function ParametersPane() {
               size="sm"
             />
           </SettingRow>
-          <Input
-            type="number"
-            id="seed-input"
-            value={settings.seed}
-            onChange={(e) => settings.setSeed(parseInt(e.target.value) || 0)}
-            min={0}
-            max={999999}
-            disabled={isLoading || !settings.seed_enabled}
-          />
+          {settings.seed_enabled && (
+            <Input
+              type="number"
+              id="seed-input"
+              value={settings.seed}
+              onChange={(e) => settings.setSeed(parseInt(e.target.value) || 0)}
+              min={0}
+              max={999999}
+              disabled={isLoading}
+            />
+          )}
         </div>
 
         <div className="space-y-2">
@@ -119,16 +123,18 @@ export function ParametersPane() {
               size="sm"
             />
           </SettingRow>
-          <Input
-            type="number"
-            id="max-tool-iterations"
-            data-testid="max-tool-iterations-input"
-            value={settings.maxToolIterations ?? 5}
-            onChange={(e) => settings.setMaxToolIterations(parseInt(e.target.value) || 5)}
-            min={1}
-            max={20}
-            disabled={isLoading || !settings.maxToolIterations_enabled}
-          />
+          {settings.maxToolIterations_enabled && (
+            <Input
+              type="number"
+              id="max-tool-iterations"
+              data-testid="max-tool-iterations-input"
+              value={settings.maxToolIterations ?? 5}
+              onChange={(e) => settings.setMaxToolIterations(parseInt(e.target.value) || 5)}
+              min={1}
+              max={20}
+              disabled={isLoading}
+            />
+          )}
         </div>
 
         <SystemPrompt isLoading={isLoading} tooltip={SETTINGS_TOOLTIPS.systemPrompt} />

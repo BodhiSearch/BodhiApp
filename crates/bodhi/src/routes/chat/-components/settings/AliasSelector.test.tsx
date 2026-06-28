@@ -1,33 +1,17 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { AliasResponse } from '@bodhiapp/ts-client';
 import { AliasSelector } from '@/routes/chat/-components/settings/AliasSelector';
 import { createWrapper } from '@/tests/wrapper';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 
-vi.mock('@/hooks/use-media-query', () => ({
-  useMediaQuery: () => true,
-}));
 vi.mock('@/components/CopyButton', () => ({
   CopyButton: () => <div>Copy Button</div>,
 }));
 
-Object.assign(window.HTMLElement.prototype, {
-  scrollIntoView: vi.fn(),
-  releasePointerCapture: vi.fn(),
-  hasPointerCapture: vi.fn(),
-  setPointerCapture: vi.fn(),
-  getBoundingClientRect: vi.fn().mockReturnValue({
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-  }),
-});
+const setModel = vi.fn();
+const setApiFormat = vi.fn();
+const setLlmLibertyProvider = vi.fn();
 
 vi.mock('@/stores/chatStore', () => {
   const { create } = require('zustand');
@@ -40,14 +24,14 @@ vi.mock('@/stores/chatSettingsStore', () => {
     model: '',
     apiFormat: 'openai',
     llmLibertyProvider: null,
-    setModel: vi.fn(),
-    setApiFormat: vi.fn(),
-    setLlmLibertyProvider: vi.fn(),
+    setModel: (...a: unknown[]) => setModel(...a),
+    setApiFormat: (...a: unknown[]) => setApiFormat(...a),
+    setLlmLibertyProvider: (...a: unknown[]) => setLlmLibertyProvider(...a),
   }));
   return { useChatSettingsStore: store };
 });
 
-const mockModels = [
+const localModels: AliasResponse[] = [
   {
     source: 'user',
     alias: 'gpt-4',
@@ -57,7 +41,7 @@ const mockModels = [
     request_params: {},
     context_params: [],
     model_params: {},
-  },
+  } as AliasResponse,
   {
     source: 'user',
     alias: 'tinyllama-chat',
@@ -67,30 +51,17 @@ const mockModels = [
     request_params: {},
     context_params: [],
     model_params: {},
-  },
+  } as AliasResponse,
 ];
 
-const mockUnifiedModels: AliasResponse[] = [
-  {
-    source: 'user',
-    id: 'local-1',
-    alias: 'local-model-1',
-    repo: 'user/repo1',
-    filename: 'model1.gguf',
-    snapshot: 'abc123',
-    request_params: {},
-    context_params: [],
-    model_params: {},
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z',
-  },
+const apiModels: AliasResponse[] = [
   {
     source: 'model',
     alias: 'local-model-2',
     repo: 'user/repo2',
     filename: 'model2.gguf',
     snapshot: 'def456',
-  },
+  } as AliasResponse,
   {
     source: 'api',
     id: 'openai-api',
@@ -98,14 +69,11 @@ const mockUnifiedModels: AliasResponse[] = [
     api_format: 'openai' as const,
     base_url: 'https://api.openai.com/v1',
     has_api_key: true,
-    models: [
-      { id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' },
-      { id: 'gpt-3.5-turbo', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' },
-    ],
+    models: [{ id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' }],
     forward_all_with_prefix: false,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
-  },
+  } as AliasResponse,
   {
     source: 'api',
     id: 'anthropic-api',
@@ -121,413 +89,94 @@ const mockUnifiedModels: AliasResponse[] = [
         type: 'model',
         provider: 'anthropic' as const,
       },
-      {
-        id: 'claude-3-sonnet',
-        display_name: 'Claude 3 Sonnet',
-        created_at: '2024-01-01T00:00:00Z',
-        type: 'model',
-        provider: 'anthropic' as const,
-      },
     ],
     forward_all_with_prefix: false,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
-  },
+  } as AliasResponse,
 ];
 
-describe('AliasSelector', () => {
+const renderSelector = (props: Partial<Parameters<typeof AliasSelector>[0]> = {}) =>
+  render(<AliasSelector models={localModels} tooltip="Pick a model" {...props} />, { wrapper: createWrapper() });
+
+const input = () => screen.getByTestId('model-selector-trigger') as HTMLInputElement;
+
+describe('AliasSelector (free-text autocomplete)', () => {
   beforeEach(() => {
-    useChatSettingsStore.setState({
-      model: '',
-      setModel: vi.fn(),
-      setApiFormat: vi.fn(),
-      setLlmLibertyProvider: vi.fn(),
+    vi.clearAllMocks();
+    useChatSettingsStore.setState({ model: '', apiFormat: 'openai', llmLibertyProvider: null });
+  });
+
+  it('disables the input while loading', () => {
+    renderSelector({ isLoading: true });
+    expect(input()).toBeDisabled();
+  });
+
+  it('shows the placeholder when no model is selected', () => {
+    renderSelector();
+    expect(input()).toHaveValue('');
+    expect(input()).toHaveAttribute('placeholder', expect.stringContaining('model name'));
+  });
+
+  it('reflects the current model from chat settings', () => {
+    useChatSettingsStore.setState({ model: 'tinyllama-chat' });
+    renderSelector();
+    expect(input()).toHaveValue('tinyllama-chat');
+  });
+
+  it('opens the suggestion list on focus and lists all models', () => {
+    renderSelector();
+    fireEvent.focus(input());
+    expect(screen.getByTestId('combobox-option-gpt-4')).toBeInTheDocument();
+    expect(screen.getByTestId('combobox-option-tinyllama-chat')).toBeInTheDocument();
+  });
+
+  it('commits a selected suggestion via setModel', () => {
+    renderSelector();
+    fireEvent.focus(input());
+    fireEvent.click(screen.getByTestId('combobox-option-tinyllama-chat'));
+    expect(setModel).toHaveBeenCalledWith('tinyllama-chat');
+  });
+
+  it('accepts free-typed text that is not in the list (any value allowed)', () => {
+    renderSelector();
+    fireEvent.change(input(), { target: { value: 'some/custom-model:latest' } });
+    expect(setModel).toHaveBeenCalledWith('some/custom-model:latest');
+  });
+
+  describe('unified API + local models', () => {
+    it('expands API models into per-model entries alongside local ones', () => {
+      renderSelector({ models: apiModels });
+      fireEvent.focus(input());
+      expect(screen.getByTestId('combobox-option-local-model-2')).toBeInTheDocument();
+      // No alias prefix on these fixtures → bare model ids.
+      expect(screen.getByTestId('combobox-option-gpt-4')).toBeInTheDocument();
+      expect(screen.getByTestId('combobox-option-claude-3-opus')).toBeInTheDocument();
+    });
+
+    it('sets apiFormat=openai and clears the liberty provider when a local model is picked', () => {
+      renderSelector({ models: apiModels });
+      fireEvent.focus(input());
+      fireEvent.click(screen.getByTestId('combobox-option-local-model-2'));
+      expect(setModel).toHaveBeenCalledWith('local-model-2');
+      expect(setApiFormat).toHaveBeenCalledWith('openai');
+      expect(setLlmLibertyProvider).toHaveBeenCalledWith(null);
+    });
+
+    it('sets the API model api_format when an API model is picked', () => {
+      renderSelector({ models: apiModels });
+      fireEvent.focus(input());
+      fireEvent.click(screen.getByTestId('combobox-option-claude-3-opus'));
+      expect(setModel).toHaveBeenCalledWith('claude-3-opus');
+      expect(setApiFormat).toHaveBeenCalledWith('anthropic');
     });
   });
 
-  it('renders in disabled state when loading', () => {
-    render(<AliasSelector models={mockModels} isLoading={true} tooltip="Select a model" />, {
-      wrapper: createWrapper(),
-    });
-
-    const select = screen.getByRole('combobox');
-    expect(select).toBeDisabled();
-  });
-
-  it('renders in enabled state when not loading', () => {
-    render(<AliasSelector models={mockModels} isLoading={false} tooltip="Select a model" />, {
-      wrapper: createWrapper(),
-    });
-
-    const select = screen.getByRole('combobox');
-    expect(select).not.toBeDisabled();
-  });
-
-  it('shows placeholder text when no model is selected', () => {
-    render(<AliasSelector models={mockModels} tooltip="Select a model" />, {
-      wrapper: createWrapper(),
-    });
-
-    expect(screen.getByText('Select alias')).toBeInTheDocument();
-  });
-
-  it('displays the current model from chat settings', () => {
-    useChatSettingsStore.setState({ model: 'gpt-4' });
-
-    render(<AliasSelector models={mockModels} tooltip="Select a model" />, {
-      wrapper: createWrapper(),
-    });
-
-    expect(screen.getByText('gpt-4')).toBeInTheDocument();
-  });
-
-  it('calls setModel when selection changes', () => {
-    const mockSetModel = vi.fn();
-    useChatSettingsStore.setState({ model: '', setModel: mockSetModel });
-
-    render(<AliasSelector models={mockModels} tooltip="Select a model" />, {
-      wrapper: createWrapper(),
-    });
-
-    const select = screen.getByRole('combobox');
-    fireEvent.click(select);
-
-    const option = screen.getByText('tinyllama-chat');
-    fireEvent.click(option);
-
-    expect(mockSetModel).toHaveBeenCalledWith('tinyllama-chat');
-  });
-
-  it('renders all provided model options', () => {
-    render(<AliasSelector models={mockModels} tooltip="Select a model" />, {
-      wrapper: createWrapper(),
-    });
-
-    const select = screen.getByRole('combobox');
-    fireEvent.click(select);
-
-    mockModels.forEach((model) => {
-      expect(screen.getByText(model.alias)).toBeInTheDocument();
-    });
-  });
-
-  describe('Unified Model Support', () => {
-    it('expands API models to show individual model names with api_format labels', () => {
-      const apiOnlyModels = mockUnifiedModels.filter((m) => m.source === 'api');
-
-      render(<AliasSelector models={apiOnlyModels} tooltip="Select a model" />, {
-        wrapper: createWrapper(),
-      });
-
-      const select = screen.getByRole('combobox');
-      fireEvent.click(select);
-
-      expect(screen.getByText('gpt-4')).toBeInTheDocument();
-      expect(screen.getByText('gpt-3.5-turbo')).toBeInTheDocument();
-      expect(screen.getByText('claude-3-opus')).toBeInTheDocument();
-      expect(screen.getByText('claude-3-sonnet')).toBeInTheDocument();
-    });
-
-    it('shows local models as individual entries with their alias names', () => {
-      const localOnlyModels = mockUnifiedModels.filter((m) => m.source === 'user' || m.source === 'model');
-
-      render(<AliasSelector models={localOnlyModels} tooltip="Select a model" />, {
-        wrapper: createWrapper(),
-      });
-
-      const select = screen.getByRole('combobox');
-      fireEvent.click(select);
-
-      expect(screen.getByText('local-model-1')).toBeInTheDocument();
-      expect(screen.getByText('local-model-2')).toBeInTheDocument();
-    });
-
-    it('handles mixed local and API models correctly', () => {
-      render(<AliasSelector models={mockUnifiedModels} tooltip="Select a model" />, {
-        wrapper: createWrapper(),
-      });
-
-      const select = screen.getByRole('combobox');
-      fireEvent.click(select);
-
-      expect(screen.getByText('local-model-1')).toBeInTheDocument();
-      expect(screen.getByText('local-model-2')).toBeInTheDocument();
-
-      expect(screen.getByText('gpt-4')).toBeInTheDocument();
-      expect(screen.getByText('gpt-3.5-turbo')).toBeInTheDocument();
-      expect(screen.getByText('claude-3-opus')).toBeInTheDocument();
-      expect(screen.getByText('claude-3-sonnet')).toBeInTheDocument();
-    });
-
-    it('calls setModel with correct value when local model is selected', () => {
-      const mockSetModel = vi.fn();
-      useChatSettingsStore.setState({ model: '', setModel: mockSetModel });
-
-      const localOnlyModels = mockUnifiedModels.filter((m) => m.source === 'user' || m.source === 'model');
-
-      render(<AliasSelector models={localOnlyModels} tooltip="Select a model" />, {
-        wrapper: createWrapper(),
-      });
-
-      const select = screen.getByRole('combobox');
-      fireEvent.click(select);
-
-      const localModelOption = screen.getByText('local-model-1');
-      fireEvent.click(localModelOption);
-
-      expect(mockSetModel).toHaveBeenCalledWith('local-model-1');
-    });
-
-    it('calls setModel with correct value when API model is selected', () => {
-      const mockSetModel = vi.fn();
-      useChatSettingsStore.setState({ model: '', setModel: mockSetModel });
-
-      const apiOnlyModels = mockUnifiedModels.filter((m) => m.source === 'api');
-
-      render(<AliasSelector models={apiOnlyModels} tooltip="Select a model" />, {
-        wrapper: createWrapper(),
-      });
-
-      const select = screen.getByRole('combobox');
-      fireEvent.click(select);
-
-      const apiModelOption = screen.getByText('gpt-4');
-      fireEvent.click(apiModelOption);
-
-      expect(mockSetModel).toHaveBeenCalledWith('gpt-4');
-    });
-
-    it('correctly identifies and displays currently selected API model', () => {
-      useChatSettingsStore.setState({ model: 'claude-3-opus' });
-
-      const apiOnlyModels = mockUnifiedModels.filter((m) => m.source === 'api');
-
-      render(<AliasSelector models={apiOnlyModels} tooltip="Select a model" />, {
-        wrapper: createWrapper(),
-      });
-
-      expect(screen.getByText('claude-3-opus')).toBeInTheDocument();
-    });
-
-    it('correctly identifies and displays currently selected local model', () => {
-      useChatSettingsStore.setState({ model: 'local-model-2' });
-
-      const localOnlyModels = mockUnifiedModels.filter((m) => m.source === 'user' || m.source === 'model');
-
-      render(<AliasSelector models={localOnlyModels} tooltip="Select a model" />, {
-        wrapper: createWrapper(),
-      });
-
-      expect(screen.getByText('local-model-2')).toBeInTheDocument();
-    });
-
-    it('handles API models with empty models array', () => {
-      const apiModelWithoutModels = [
-        {
-          source: 'api',
-          id: 'empty-api',
-          name: 'Empty API',
-          api_format: 'openai' as const,
-          base_url: 'https://api.example.com/v1',
-          has_api_key: false,
-          models: [],
-          forward_all_with_prefix: false,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ];
-
-      render(<AliasSelector models={apiModelWithoutModels} tooltip="Select a model" />, {
-        wrapper: createWrapper(),
-      });
-
-      const select = screen.getByRole('combobox');
-      fireEvent.click(select);
-
-      expect(screen.queryByText('openai')).not.toBeInTheDocument();
-    });
-
-    it.each([
-      {
-        apiFormat: 'openai' as const,
-        modelId: 'gpt-4',
-        models: [{ id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' as const }],
-        expectedProvider: null as string | null,
-        llmLibertySummary: null as null | {
-          provider: string;
-          envelope_version: string;
-          expires_at: number;
-          has_refresh_token: boolean;
-        },
-      },
-      {
-        apiFormat: 'openai_responses' as const,
-        modelId: 'gpt-4o',
-        models: [{ id: 'gpt-4o', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' as const }],
-        expectedProvider: null as string | null,
-        llmLibertySummary: null as null | {
-          provider: string;
-          envelope_version: string;
-          expires_at: number;
-          has_refresh_token: boolean;
-        },
-      },
-      {
-        apiFormat: 'anthropic' as const,
-        modelId: 'claude-3-opus',
-        models: [
-          {
-            id: 'claude-3-opus',
-            display_name: 'Claude 3 Opus',
-            created_at: '2024-01-01T00:00:00Z',
-            type: 'model',
-            provider: 'anthropic' as const,
-          },
-        ],
-        expectedProvider: null as string | null,
-        llmLibertySummary: null as null | {
-          provider: string;
-          envelope_version: string;
-          expires_at: number;
-          has_refresh_token: boolean;
-        },
-      },
-      {
-        apiFormat: 'anthropic_oauth' as const,
-        modelId: 'claude-haiku-4-5-20251001',
-        models: [
-          {
-            id: 'claude-haiku-4-5-20251001',
-            display_name: 'Claude 3 Haiku',
-            created_at: '2024-01-01T00:00:00Z',
-            type: 'model',
-            provider: 'anthropic' as const,
-          },
-        ],
-        expectedProvider: null as string | null,
-        llmLibertySummary: null as null | {
-          provider: string;
-          envelope_version: string;
-          expires_at: number;
-          has_refresh_token: boolean;
-        },
-      },
-      {
-        apiFormat: 'llm_liberty_oauth' as const,
-        modelId: 'claude-haiku-4-5-20251001',
-        models: [
-          {
-            id: 'claude-haiku-4-5-20251001',
-            display_name: 'Claude 3 Haiku',
-            created_at: '2024-01-01T00:00:00Z',
-            type: 'model',
-            provider: 'anthropic' as const,
-          },
-        ],
-        expectedProvider: 'anthropic' as string | null,
-        llmLibertySummary: {
-          provider: 'anthropic',
-          envelope_version: 'v1',
-          expires_at: 1_900_000_000,
-          has_refresh_token: true,
-        },
-      },
-      {
-        apiFormat: 'llm_liberty_oauth' as const,
-        modelId: 'gpt-5.2',
-        models: [{ id: 'gpt-5.2', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' as const }],
-        expectedProvider: 'openai-codex' as string | null,
-        llmLibertySummary: {
-          provider: 'openai-codex',
-          envelope_version: 'v1',
-          expires_at: 1_900_000_000,
-          has_refresh_token: true,
-        },
-      },
-    ])(
-      'calls setApiFormat with $apiFormat and setLlmLibertyProvider when API model is selected',
-      ({ apiFormat, modelId, models, expectedProvider, llmLibertySummary }) => {
-        const mockSetApiFormat = vi.fn();
-        const mockSetLlmLibertyProvider = vi.fn();
-        useChatSettingsStore.setState({
-          model: '',
-          setModel: vi.fn(),
-          setApiFormat: mockSetApiFormat,
-          setLlmLibertyProvider: mockSetLlmLibertyProvider,
-        });
-
-        const apiModels = [
-          {
-            source: 'api',
-            id: 'test-api',
-            name: 'Test API',
-            api_format: apiFormat,
-            base_url: 'https://api.example.com/v1',
-            has_api_key: true,
-            models,
-            forward_all_with_prefix: false,
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-            llm_liberty: llmLibertySummary,
-          },
-        ];
-
-        render(<AliasSelector models={apiModels} tooltip="Select a model" />, {
-          wrapper: createWrapper(),
-        });
-
-        const select = screen.getByRole('combobox');
-        fireEvent.click(select);
-        fireEvent.click(screen.getByText(modelId));
-
-        expect(mockSetApiFormat).toHaveBeenCalledWith(apiFormat);
-        expect(mockSetLlmLibertyProvider).toHaveBeenCalledWith(expectedProvider);
-      }
-    );
-
-    it('calls setApiFormat with openai and clears llmLibertyProvider when local model is selected', () => {
-      const mockSetApiFormat = vi.fn();
-      const mockSetLlmLibertyProvider = vi.fn();
-      useChatSettingsStore.setState({
-        model: '',
-        setModel: vi.fn(),
-        setApiFormat: mockSetApiFormat,
-        setLlmLibertyProvider: mockSetLlmLibertyProvider,
-      });
-
-      const localModels = [
-        {
-          source: 'user',
-          alias: 'my-local-model',
-          repo: 'test/repo',
-          filename: 'model.gguf',
-          snapshot: 'abc123',
-          request_params: {},
-          context_params: [],
-          model_params: {},
-        },
-      ];
-
-      render(<AliasSelector models={localModels} tooltip="Select a model" />, {
-        wrapper: createWrapper(),
-      });
-
-      const select = screen.getByRole('combobox');
-      fireEvent.click(select);
-      fireEvent.click(screen.getByText('my-local-model'));
-
-      expect(mockSetApiFormat).toHaveBeenCalledWith('openai');
-      expect(mockSetLlmLibertyProvider).toHaveBeenCalledWith(null);
-    });
-
-    it('falls back to displaying unknown selected model', () => {
-      useChatSettingsStore.setState({ model: 'unknown-model-not-in-list' });
-
-      render(<AliasSelector models={mockUnifiedModels} tooltip="Select a model" />, {
-        wrapper: createWrapper(),
-      });
-
-      expect(screen.getByText('unknown-model-not-in-list')).toBeInTheDocument();
-    });
+  it('falls back to openai format for a free-typed unknown model', () => {
+    renderSelector({ models: apiModels });
+    fireEvent.change(input(), { target: { value: 'unknown-model-not-in-list' } });
+    expect(setModel).toHaveBeenCalledWith('unknown-model-not-in-list');
+    expect(setApiFormat).toHaveBeenCalledWith('openai');
+    expect(setLlmLibertyProvider).toHaveBeenCalledWith(null);
   });
 });

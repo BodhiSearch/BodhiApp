@@ -1,6 +1,4 @@
-import { useEffect, useState } from 'react';
-
-import { Copy, Download, Edit3, MessageCircle, MoreHorizontal, Pin, Trash2 } from 'lucide-react';
+import { MessageCircle, Trash2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useChatStore } from '@/stores/chatStore';
@@ -31,15 +29,6 @@ export function ChatHistory({ search = '', compact = false, onSelect }: ChatHist
   const deleteChat = useChatStore((s) => s.deleteChat);
   const currentChatId = useChatStore((s) => s.currentChatId);
   const setCurrentChatId = useChatStore((s) => s.setCurrentChatId);
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
-
-  // A single document-level click closes any open ⋯ menu.
-  useEffect(() => {
-    if (menuOpen === null) return;
-    const h = () => setMenuOpen(null);
-    document.addEventListener('click', h);
-    return () => document.removeEventListener('click', h);
-  }, [menuOpen]);
 
   const q = search.trim().toLowerCase();
   const matches = (c: Chat) => !q || (c.title || 'Untitled Chat').toLowerCase().includes(q);
@@ -97,49 +86,15 @@ export function ChatHistory({ search = '', compact = false, onSelect }: ChatHist
         <button
           type="button"
           className="chat-item-more"
-          aria-label="Chat actions"
-          data-testid={`chat-actions-${chat.id}`}
+          aria-label="Delete chat"
+          data-testid={`delete-chat-${chat.id}`}
           onClick={(e) => {
             e.stopPropagation();
-            setMenuOpen(menuOpen === chat.id ? null : chat.id);
+            deleteChat(chat.id);
           }}
         >
-          <MoreHorizontal className="h-3.5 w-3.5" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
-        {menuOpen === chat.id && (
-          <div className="chat-ctx-menu" onClick={(e) => e.stopPropagation()}>
-            {/* Rename / Pin / Duplicate / Export have no backing mutation yet — inert placeholders. */}
-            <div className="ci disabled" aria-disabled>
-              <Edit3 />
-              Rename
-            </div>
-            <div className="ci disabled" aria-disabled>
-              <Pin />
-              Pin
-            </div>
-            <div className="ci disabled" aria-disabled>
-              <Copy />
-              Duplicate
-            </div>
-            <div className="ci disabled" aria-disabled>
-              <Download />
-              Export
-            </div>
-            <div className="sep" />
-            <button
-              type="button"
-              className="ci danger"
-              data-testid={`delete-chat-${chat.id}`}
-              onClick={() => {
-                setMenuOpen(null);
-                deleteChat(chat.id);
-              }}
-            >
-              <Trash2 />
-              Delete
-            </button>
-          </div>
-        )}
       </div>
     );
   };

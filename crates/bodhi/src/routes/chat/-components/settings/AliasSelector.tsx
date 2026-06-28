@@ -1,17 +1,16 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AliasResponse } from '@bodhiapp/ts-client';
 import type { ApiFormat } from '@bodhiapp/ts-client';
-import { RefreshCw } from 'lucide-react';
+import { Check, ChevronDown, RefreshCw } from 'lucide-react';
 
-import { ComboBoxResponsive } from '@/components/Combobox';
 import { CopyButton } from '@/components/CopyButton';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { modelKeys } from '@/hooks/models/constants';
 import { useQueryClient } from '@/hooks/useQuery';
-import { isApiAlias } from '@/lib/utils';
+import { cn, isApiAlias } from '@/lib/utils';
 import { formatPrefixedModel, getApiModelId } from '@/schemas/apiModel';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 
@@ -62,26 +61,66 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
     setLlmLibertyProvider(selectedLlmLibertyProvider);
   }, [model, models.length, selectedApiFormat, selectedLlmLibertyProvider, setApiFormat, setLlmLibertyProvider]);
 
-  const modelStatuses = models.flatMap((m) => {
-    if (isApiAlias(m)) {
-      return (m.models || []).map((apiModel) => {
-        const prefixedModelName = formatPrefixedModel(getApiModelId(apiModel, m.prefix), m.prefix);
-        return {
-          value: prefixedModelName,
-          label: prefixedModelName,
-        };
-      });
-    } else {
-      return [
-        {
-          value: m.alias,
-          label: m.alias,
-        },
-      ];
-    }
-  });
+  // Every selectable model name (aliases + prefixed API models), used as autocomplete suggestions.
+  const allModels = useMemo(
+    () =>
+      models.flatMap((m) =>
+        isApiAlias(m)
+          ? (m.models || []).map((apiModel) => formatPrefixedModel(getApiModelId(apiModel, m.prefix), m.prefix))
+          : [m.alias]
+      ),
+    [models]
+  );
 
-  const selectedStatus = model ? modelStatuses.find((s) => s.value === model) || { value: model, label: model } : null;
+  // Free-text autocomplete: the input accepts ANY value; the list is suggestions, not a constraint.
+  const [open, setOpen] = useState(false);
+  const comboRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (comboRef.current && !comboRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [open]);
+
+  const commitModel = (value: string) => {
+    setModel(value);
+    const alias = modelToAliasMap.get(value);
+    if (alias && isApiAlias(alias)) {
+      setApiFormat(alias.api_format as ApiFormat);
+      setLlmLibertyProvider(alias.llm_liberty?.provider ?? null);
+    } else {
+      // Unknown / free-typed model: keep openai as the default format.
+      setApiFormat('openai');
+      setLlmLibertyProvider(null);
+    }
+  };
+
+  // Matching suggestions float to the top (current model first), then the rest A→Z.
+  const q = (model || '').toLowerCase().trim();
+  const byName = (a: string, b: string) => a.localeCompare(b);
+  const matching = allModels
+    .filter((m) => m.toLowerCase().includes(q))
+    .sort((a, b) => (a === model ? -1 : b === model ? 1 : byName(a, b)));
+  const nonMatching = allModels.filter((m) => !m.toLowerCase().includes(q)).sort(byName);
+  const renderOption = (m: string) => (
+    <button
+      key={m}
+      type="button"
+      data-testid={`combobox-option-${m}`}
+      className={cn('chat-model-opt', m === model && 'sel')}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => {
+        commitModel(m);
+        setOpen(false);
+      }}
+    >
+      <span className="name">{m}</span>
+      {m === model && <Check className="h-3.5 w-3.5" />}
+    </button>
+  );
 
   return (
     <div className="space-y-4" data-testid="model-selector-loaded">
@@ -114,26 +153,42 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
             {model && <CopyButton text={model} size="icon" variant="ghost" />}
           </div>
         </div>
-        <ComboBoxResponsive
-          selectedStatus={selectedStatus}
-          setSelectedStatus={(status) => {
-            const value = status?.value ?? '';
-            setModel(value);
-            const alias = modelToAliasMap.get(value);
-            if (alias && isApiAlias(alias)) {
-              setApiFormat(alias.api_format as ApiFormat);
-              setLlmLibertyProvider(alias.llm_liberty?.provider ?? null);
-            } else {
-              setApiFormat('openai');
-              setLlmLibertyProvider(null);
-            }
-          }}
-          statuses={modelStatuses}
-          placeholder="Select alias"
-          id="model-selector"
-          data-testid="model-selector-trigger"
-          loading={isLoading}
-        />
+        <div className={cn('chat-model-combo', open && 'open')} ref={comboRef}>
+          <input
+            id="model-selector"
+            data-testid="model-selector-trigger"
+            className="chat-model-input"
+            type="text"
+            value={model ?? ''}
+            placeholder="Search or type a model name…"
+            spellCheck={false}
+            autoComplete="off"
+            disabled={isLoading}
+            onChange={(e) => {
+              commitModel(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onClick={() => setOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setOpen(false);
+                e.currentTarget.blur();
+              }
+            }}
+          />
+          <span className="chat-model-caret">
+            <ChevronDown className="h-3.5 w-3.5" />
+          </span>
+          {open && (
+            <div className="chat-model-pop">
+              {matching.map(renderOption)}
+              {matching.length > 0 && nonMatching.length > 0 && <div className="chat-model-div" />}
+              {nonMatching.map(renderOption)}
+              {allModels.length === 0 && <div className="chat-model-empty">No models available</div>}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

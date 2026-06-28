@@ -62,17 +62,19 @@ export function SettingSlider({
           />
         </div>
       </div>
-      <Slider
-        id={id}
-        defaultValue={[currentValue]}
-        max={max}
-        min={min}
-        step={step}
-        onValueChange={(values) => onValueChange(values[0])}
-        disabled={isDisabled}
-        className={cn('[&_[role=slider]]:h-4 [&_[role=slider]]:w-4', isDisabled && 'opacity-50')}
-        aria-label={label}
-      />
+      {enabled && (
+        <Slider
+          id={id}
+          defaultValue={[currentValue]}
+          max={max}
+          min={min}
+          step={step}
+          onValueChange={(values) => onValueChange(values[0])}
+          disabled={isLoading}
+          className="[&_[role=slider]]:h-4 [&_[role=slider]]:w-4"
+          aria-label={label}
+        />
+      )}
     </div>
   );
 }
