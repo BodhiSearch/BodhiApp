@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import type { ProviderSummary } from '@bodhiapp/reference-api-types';
 import { getRouteApi } from '@tanstack/react-router';
@@ -8,7 +8,6 @@ import { ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/c
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogProviderDetail, useCatalogProviderModels, useCatalogProviders } from '@/hooks/reference';
-import { useViewTransition } from '@/hooks/useViewTransition';
 import { exploreBreadcrumb } from '@/routes/models/explore/-shared/breadcrumbs';
 import {
   CAP_LABELS,
@@ -21,7 +20,7 @@ import {
 import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';
 import { ColumnPicker, useHiddenColumns } from '@/routes/models/explore/-shared/ColumnPicker';
 import { ResetButton } from '@/routes/models/explore/-shared/ResetButton';
-import { persistSortPreference, resolveSortPreference } from '@/routes/models/explore/-shared/useSortPreference';
+import { useCatalogScreenState } from '@/routes/models/explore/-shared/useCatalogScreenState';
 
 import type { ExploreProvidersSearch } from '../index';
 
@@ -120,29 +119,37 @@ export function ExploreProvidersScreen() {
   const search = routeApi.useSearch();
   const navigate = routeApi.useNavigate();
 
-  // Effective sort precedence: URL > localStorage (request-only, never written to URL) > none.
-  const resolvedSort = resolveSortPreference<ProviderSort, SortOrder>({
-    urlSort: search.sort,
-    urlOrder: search.order,
-    storageKey: SORT_STORAGE_KEY,
-    validSorts: PERSISTED_SORTS,
-    validOrders: VALID_ORDERS,
-    naturalOrder: (s) => NATURAL_ORDER[s],
+  const {
+    facets,
+    sort,
+    order,
+    page,
+    committedSearch,
+    selectedKey: selectedSlug,
+    searchInput,
+    onSearchChange,
+    onSearchKeyDown,
+    onSort,
+    onFacetsChange,
+    resetMode,
+    onReset,
+    onPage,
+    select,
+  } = useCatalogScreenState<ExploreProvidersSearch, ProviderFacets, ProviderSort>({
+    search,
+    navigate,
+    searchToFacets,
+    facetsToSearch,
+    hasActiveFacets: hasActiveProviderFacets,
+    sortConfig: {
+      storageKey: SORT_STORAGE_KEY,
+      persistedSorts: PERSISTED_SORTS,
+      validOrders: VALID_ORDERS,
+      naturalOrder: (s) => NATURAL_ORDER[s],
+    },
   });
-  const sort = resolvedSort.sort;
-  const order = resolvedSort.order;
-  const page = search.page ?? 1;
-  const committedSearch = search.q ?? '';
-  const facets = useMemo(() => searchToFacets(search), [search]);
 
-  // The open detail rail is the URL's `select` (provider slug). Deriving it (not mirroring in state)
-  // makes Back/Forward restoration and the ?select cross-link automatic.
-  const selectedSlug = search.select ?? null;
-  const [searchInput, setSearchInput] = useState(committedSearch);
   const { hidden: hiddenColumns, toggle: toggleColumn, visibleColumns: filterVisible } = useHiddenColumns();
-  useEffect(() => {
-    setSearchInput(committedSearch);
-  }, [committedSearch]);
   const visibleColumns = useMemo(() => filterVisible(COLUMNS), [filterVisible]);
 
   const params = useMemo(() => searchToParams(search, { sort, order }), [search, sort, order]);
@@ -150,111 +157,6 @@ export function ExploreProvidersScreen() {
 
   const rows = data?.items ?? [];
   const total = data?.total ?? rows.length;
-
-  const withViewTransition = useViewTransition();
-  // Selection lives in the URL via replace (no history entries). The rail auto-opens/closes from its
-  // content presence, so no openRail() call is needed.
-  const select = useCallback(
-    (slug: string | null) => {
-      if ((slug ?? undefined) === search.select) return; // dedup
-      withViewTransition(() => {
-        navigate({
-          search: (prev: ExploreProvidersSearch) => {
-            const out: ExploreProvidersSearch = { ...prev };
-            if (slug) out.select = slug;
-            else delete out.select;
-            return out;
-          },
-          replace: true,
-        });
-      });
-    },
-    [navigate, withViewTransition, search.select]
-  );
-
-  // The non-facet slice (q/sort/order) carried across a facet change; `page` is omitted so facet
-  // changes reset to page 1.
-  const nonFacetSlice = useCallback((prev: ExploreProvidersSearch): ExploreProvidersSearch => {
-    const base: ExploreProvidersSearch = {};
-    if (prev.q) base.q = prev.q;
-    if (prev.sort) base.sort = prev.sort;
-    if (prev.order) base.order = prev.order;
-    if (prev.select) base.select = prev.select; // keep the open rail across facet changes
-    return base;
-  }, []);
-
-  const commitSearch = useCallback(
-    (value: string) => {
-      const next = value.trim();
-      navigate({
-        search: (prev: ExploreProvidersSearch) => {
-          const out: ExploreProvidersSearch = { ...prev };
-          delete out.page;
-          if (next) out.q = next;
-          else delete out.q;
-          return out;
-        },
-      });
-    },
-    [navigate]
-  );
-  const onSearchChange = useCallback(
-    (value: string) => {
-      setSearchInput(value);
-      if (value.trim() === '') commitSearch('');
-    },
-    [commitSearch]
-  );
-  const onSearchKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') commitSearch(searchInput);
-    },
-    [commitSearch, searchInput]
-  );
-  const onSort = useCallback(
-    (next: ProviderSort) => {
-      // Clicking the active sort toggles direction; a new sort adopts its natural default.
-      const nextOrder: SortOrder = sort === next ? (order === 'asc' ? 'desc' : 'asc') : NATURAL_ORDER[next];
-      persistSortPreference(SORT_STORAGE_KEY, next, nextOrder);
-      navigate({
-        search: (prev: ExploreProvidersSearch) => {
-          const out: ExploreProvidersSearch = { ...prev };
-          delete out.page;
-          out.sort = next;
-          if (nextOrder === NATURAL_ORDER[next]) delete out.order;
-          else out.order = nextOrder;
-          return out;
-        },
-      });
-    },
-    [navigate, sort, order]
-  );
-  const onFacetsChange = useCallback(
-    (next: ProviderFacets) =>
-      navigate({ search: (prev: ExploreProvidersSearch) => ({ ...nonFacetSlice(prev), ...facetsToSearch(next) }) }),
-    [navigate, nonFacetSlice]
-  );
-  const onClearAllFacets = useCallback(
-    () => navigate({ search: (prev: ExploreProvidersSearch) => nonFacetSlice(prev) }),
-    [navigate, nonFacetSlice]
-  );
-
-  // The toolbar reset waterfalls: clear active filters first, else the search query, else inert.
-  const hasFilters = hasActiveProviderFacets(facets);
-  const hasQuery = committedSearch !== '';
-  const resetMode: 'filters' | 'query' | 'none' = hasFilters ? 'filters' : hasQuery ? 'query' : 'none';
-  const onReset = useCallback(() => {
-    if (resetMode === 'filters') onClearAllFacets();
-    else if (resetMode === 'query') commitSearch('');
-  }, [resetMode, onClearAllFacets, commitSearch]);
-
-  const onPage = useCallback(
-    (p: number) =>
-      navigate({
-        search: (prev: ExploreProvidersSearch) => (p === 1 ? { ...prev, page: undefined } : { ...prev, page: p }),
-      }),
-    [navigate]
-  );
 
   const sidebar = useMemo(
     () => (

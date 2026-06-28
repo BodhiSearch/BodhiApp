@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import type { ModelLite } from '@bodhiapp/reference-api-types';
 import { getRouteApi } from '@tanstack/react-router';
@@ -8,7 +8,6 @@ import { ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/c
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogModelDetail, useCatalogModels } from '@/hooks/reference';
-import { useViewTransition } from '@/hooks/useViewTransition';
 import { exploreBreadcrumb } from '@/routes/models/explore/-shared/breadcrumbs';
 import {
   CAP_LABELS,
@@ -22,7 +21,7 @@ import {
 import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';
 import { ColumnPicker, useHiddenColumns } from '@/routes/models/explore/-shared/ColumnPicker';
 import { ResetButton } from '@/routes/models/explore/-shared/ResetButton';
-import { persistSortPreference, resolveSortPreference } from '@/routes/models/explore/-shared/useSortPreference';
+import { useCatalogScreenState } from '@/routes/models/explore/-shared/useCatalogScreenState';
 
 import type { ExploreApiSearch } from '../index';
 
@@ -163,32 +162,38 @@ export function ExploreApiScreen() {
   const search = routeApi.useSearch();
   const navigate = routeApi.useNavigate();
 
-  // Effective sort precedence: URL > localStorage (request-only, never written to URL) > none.
-  const resolvedSort = resolveSortPreference<ModelSort, SortOrder>({
-    urlSort: search.sort,
-    urlOrder: search.order,
-    storageKey: SORT_STORAGE_KEY,
-    validSorts: PERSISTED_SORTS,
-    validOrders: VALID_ORDERS,
-    naturalOrder: (s) => NATURAL_ORDER[s],
+  const {
+    facets,
+    sort,
+    order,
+    page,
+    committedSearch,
+    selectedKey,
+    searchInput,
+    onSearchChange,
+    onSearchKeyDown,
+    onSort,
+    onFacetsChange,
+    resetMode,
+    onReset,
+    onPage,
+    select,
+  } = useCatalogScreenState<ExploreApiSearch, ModelFacetsState, ModelSort>({
+    search,
+    navigate,
+    searchToFacets,
+    facetsToSearch,
+    hasActiveFacets: hasActiveModelFacets,
+    sortConfig: {
+      storageKey: SORT_STORAGE_KEY,
+      persistedSorts: PERSISTED_SORTS,
+      validOrders: VALID_ORDERS,
+      naturalOrder: (s) => NATURAL_ORDER[s],
+      searchRelevanceSort: 'relevance',
+    },
   });
-  const sort = resolvedSort.sort;
-  const order = resolvedSort.order;
-  const page = search.page ?? 1;
-  const committedSearch = search.q ?? '';
-  const facets = useMemo(() => searchToFacets(search), [search]);
 
-  // The open detail rail is the URL's `select` (composite `${slug}/${model_id}`). Deriving it (not
-  // mirroring in state) makes Back/Forward restoration automatic.
-  const selectedKey = search.select ?? null;
-  // Local-only UI state: uncommitted search text and column visibility are ephemeral per page-load.
-  const [searchInput, setSearchInput] = useState(committedSearch);
   const { hidden: hiddenColumns, toggle: toggleColumn, visibleColumns: filterVisible } = useHiddenColumns();
-  // Sync the input down from the URL on Back/Forward (URL→input only; never writes back).
-  useEffect(() => {
-    setSearchInput(committedSearch);
-  }, [committedSearch]);
-
   const visibleColumns = useMemo(() => filterVisible(COLUMNS), [filterVisible]);
 
   const params = useMemo(() => searchToParams(search, { sort, order }), [search, sort, order]);
@@ -198,118 +203,6 @@ export function ExploreApiScreen() {
   // via useMemo([search]). Filter/sort/search writes drop `page` (→ resets to 1); only the pager sets it.
   const rows = data?.items ?? [];
   const total = data?.total ?? rows.length;
-
-  const withViewTransition = useViewTransition();
-  // Selection lives in the URL via replace (no history entries) — Back/Forward skips past selections.
-  // The rail auto-opens/closes from its content presence, so no openRail() call is needed.
-  const select = useCallback(
-    (key: string | null) => {
-      if ((key ?? undefined) === search.select) return; // dedup
-      withViewTransition(() => {
-        navigate({
-          search: (prev: ExploreApiSearch) => {
-            const out: ExploreApiSearch = { ...prev };
-            if (key) out.select = key;
-            else delete out.select;
-            return out;
-          },
-          replace: true,
-        });
-      });
-    },
-    [navigate, withViewTransition, search.select]
-  );
-
-  // The non-facet slice (q/sort/order) carried across a facet change; `page` is omitted so facet
-  // changes reset to page 1.
-  const nonFacetSlice = useCallback((prev: ExploreApiSearch): ExploreApiSearch => {
-    const base: ExploreApiSearch = {};
-    if (prev.q) base.q = prev.q;
-    if (prev.sort) base.sort = prev.sort;
-    if (prev.order) base.order = prev.order;
-    if (prev.select) base.select = prev.select; // keep the open rail across facet changes
-    return base;
-  }, []);
-
-  const commitSearch = useCallback(
-    (value: string) => {
-      const next = value.trim();
-      navigate({
-        search: (prev: ExploreApiSearch) => {
-          const out: ExploreApiSearch = { ...prev };
-          delete out.page;
-          delete out.order;
-          // Searching ranks by text match; clearing drops the sort → natural order (or stored pref).
-          if (next) {
-            out.q = next;
-            out.sort = 'relevance';
-          } else {
-            delete out.q;
-            delete out.sort;
-          }
-          return out;
-        },
-      });
-    },
-    [navigate]
-  );
-  const onSearchChange = useCallback(
-    (value: string) => {
-      setSearchInput(value);
-      if (value.trim() === '') commitSearch('');
-    },
-    [commitSearch]
-  );
-  const onSearchKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') commitSearch(searchInput);
-    },
-    [commitSearch, searchInput]
-  );
-  const onSort = useCallback(
-    (next: ModelSort) => {
-      // Clicking the active column toggles direction; a new column adopts its natural default.
-      const nextOrder: SortOrder = sort === next ? (order === 'asc' ? 'desc' : 'asc') : NATURAL_ORDER[next];
-      // Persist the explicit pick so it applies on a later clean-URL visit (relevance excluded).
-      if (next !== 'relevance') persistSortPreference(SORT_STORAGE_KEY, next, nextOrder);
-      navigate({
-        search: (prev: ExploreApiSearch) => {
-          const out: ExploreApiSearch = { ...prev };
-          delete out.page;
-          out.sort = next;
-          // Omit order when it matches the sort's natural direction; the resolver refills it on read.
-          if (nextOrder === NATURAL_ORDER[next]) delete out.order;
-          else out.order = nextOrder;
-          return out;
-        },
-      });
-    },
-    [navigate, sort, order]
-  );
-  const onFacetsChange = useCallback(
-    (next: ModelFacetsState) =>
-      // Replace the whole facet slice (a shallow merge can't delete a removed facet); keep q/sort/order.
-      navigate({ search: (prev: ExploreApiSearch) => ({ ...nonFacetSlice(prev), ...facetsToSearch(next) }) }),
-    [navigate, nonFacetSlice]
-  );
-  const onClearAllFacets = useCallback(
-    () => navigate({ search: (prev: ExploreApiSearch) => nonFacetSlice(prev) }),
-    [navigate, nonFacetSlice]
-  );
-  // The toolbar reset is always visible with three states (in precedence order): clear active filters
-  // first, else clear the search query, else nothing to reset (inert noop).
-  const hasFilters = hasActiveModelFacets(facets);
-  const hasQuery = committedSearch !== '';
-  const resetMode: 'filters' | 'query' | 'none' = hasFilters ? 'filters' : hasQuery ? 'query' : 'none';
-  const onReset = useCallback(() => {
-    if (resetMode === 'filters') onClearAllFacets();
-    else if (resetMode === 'query') commitSearch('');
-  }, [resetMode, onClearAllFacets, commitSearch]);
-  const onPage = useCallback(
-    (p: number) =>
-      navigate({ search: (prev: ExploreApiSearch) => (p === 1 ? { ...prev, page: undefined } : { ...prev, page: p }) }),
-    [navigate]
-  );
 
   const sidebar = useMemo(
     () => <ExploreApiSidebar facets={facets} facetValues={data?.facets} onFacetsChange={onFacetsChange} />,
