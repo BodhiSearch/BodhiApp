@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 import type { Mcp } from '@bodhiapp/ts-client';
 import { Link } from '@tanstack/react-router';
-import { ChevronDown, ChevronRight, Loader2, Plug, Search, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, Plug, Trash2 } from 'lucide-react';
 
 import { Checkbox } from '@/components/ui/checkbox';
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { McpClientTool, McpConnectionStatus } from '@/hooks/mcps/useMcpClient';
-import { cn } from '@/lib/utils';
 
 interface McpServersPaneProps {
   mcps: Mcp[];
@@ -114,76 +115,52 @@ interface AddComboProps {
   onAdd: (mcp: Mcp) => void;
 }
 
+/**
+ * "Add an MCP server" picker on shadcn Command + Popover (cmdk). cmdk gives real listbox/option
+ * semantics, keyboard nav (↑/↓ + Enter), search filtering and the app's popover theming for free.
+ */
 function AddServerCombo({ available, onAdd }: AddComboProps) {
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        setQ('');
-      }
-    };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [open]);
-
-  const filtered = available.filter((m) => m.slug.toLowerCase().includes(q.toLowerCase()));
 
   return (
-    <div className={cn('chat-mcp-add', open && 'open')} ref={ref}>
-      <button
-        type="button"
-        className="chat-mcp-add-trigger"
-        data-testid="mcp-add-trigger"
-        onClick={() => setOpen((o) => !o)}
-      >
-        <Plug className="h-3.5 w-3.5" />
-        <span className="lbl">Add an MCP server…</span>
-        <ChevronDown className="h-3.5 w-3.5" />
-      </button>
-      {open && (
-        <div className="chat-mcp-add-pop">
-          <div className="chat-mcp-add-search">
-            <Search className="h-3.5 w-3.5" />
-            <input
-              autoFocus
-              type="text"
-              value={q}
-              placeholder="Search servers…"
-              spellCheck={false}
-              data-testid="mcp-add-search"
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-          {filtered.map((mcp) => {
-            const disabled = !isMcpAvailable(mcp);
-            return (
-              <button
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          className="chat-mcp-add-trigger"
+          data-testid="mcp-add-trigger"
+        >
+          <Plug className="h-3.5 w-3.5" />
+          <span className="lbl">Add an MCP server…</span>
+          <ChevronDown className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="chat-mcp-add-pop" align="start">
+        <Command>
+          <CommandInput placeholder="Search servers…" data-testid="mcp-add-search" />
+          <CommandList>
+            <CommandEmpty>No servers found</CommandEmpty>
+            {available.map((mcp) => (
+              <CommandItem
                 key={mcp.id}
-                type="button"
-                className="chat-mcp-add-opt"
+                value={mcp.slug}
+                aria-label={mcp.slug}
                 data-testid={`mcp-add-option-${mcp.id}`}
-                disabled={disabled}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
+                onSelect={() => {
                   onAdd(mcp);
                   setOpen(false);
-                  setQ('');
                 }}
+                className="chat-mcp-add-opt"
               >
                 <span className="name">{mcp.slug}</span>
-                {disabled && <span className="meta">unavailable</span>}
-              </button>
-            );
-          })}
-          {filtered.length === 0 && <div className="chat-mcp-add-empty">No servers found</div>}
-        </div>
-      )}
-    </div>
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
