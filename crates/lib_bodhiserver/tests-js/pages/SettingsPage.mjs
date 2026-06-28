@@ -71,6 +71,11 @@ export class SettingsPage extends BasePage {
     const save = rail.locator(this.selectors.save);
     await expect(save).toBeEnabled();
     await save.click();
+    // Wait for the mutation to actually land before moving on: the list row reflects the new value
+    // and the Save button drops back to its non-dirty "Saved" (disabled) state. Without this, a
+    // following navigate()/refetch can race the in-flight PUT and read the stale value under load.
+    await expect(this.page.locator(this.selectors.value(key))).toHaveText(String(newValue));
+    await expect(save).toBeDisabled();
     await this.waitForSPAReady();
   }
 
