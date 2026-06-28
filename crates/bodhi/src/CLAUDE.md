@@ -158,7 +158,7 @@ Route constants defined in `src/lib/constants.ts`.
 
 Direct MCP protocol communication via `@modelcontextprotocol/sdk` (Streamable HTTP transport):
 
-- `useMcpClient(endpoint)` -- single MCP connection. Status: `disconnected | connecting | connected | refreshing | error`. Returns `connect`, `disconnect`, `callTool`, `refreshTools`. Used by MCP playground page.
+- `useMcpClient(endpoint)` -- single MCP connection. Status: `disconnected | connecting | connected | refreshing | error`. Returns `connect`, `disconnect`, `callTool`, `getPrompt`, `readResource`, `refresh`, plus `tools` / `prompts` / `resources` / `resourceTemplates` arrays and `counts`. `connect()` calls `disconnect()` first then `listTools` + guarded `listPrompts` / `listResources` / `listResourceTemplates` (capability-absent -> empty list, never error). Used by the V2 MCP Playground (`routes/mcps/playground/`).
 - `useMcpClients()` -- multi-connection manager for chat. `connectAll(mcps)` does connection diffing (only connects/disconnects changed endpoints, preserves stable connections). Returns `allTools` (memoized), `callTool(mcpId, toolName, args)`. Used by `useChat` for tool calling.
 - Both hooks use `credentials: 'include'` on fetch for session cookie forwarding through the proxy endpoint.
 

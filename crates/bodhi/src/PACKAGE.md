@@ -32,7 +32,7 @@ src/routes/
 │   └── files/              # /models/files → model files list
 ├── mcps/                   # /mcps → MCP instances
 │   ├── new/                # /mcps/new → new MCP instance
-│   ├── playground/         # /mcps/playground → MCP playground
+│   ├── playground/         # /mcps/playground → V2 3-pane MCP playground (overview/tools/prompts/resources/templates)
 │   ├── oauth/callback/     # /mcps/oauth/callback → MCP OAuth callback
 │   └── servers/            # /mcps/servers → MCP server allowlist
 │       ├── new/            # /mcps/servers/new
