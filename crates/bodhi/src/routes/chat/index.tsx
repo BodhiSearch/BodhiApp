@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
 import { PanelLeftClose, PanelLeftOpen, Settings2, X } from 'lucide-react';
@@ -7,13 +7,17 @@ import { z } from 'zod';
 import AppInitializer from '@/components/AppInitializer';
 import { useShellChrome } from '@/components/shell/ShellSlotsContext';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useViewTransition } from '@/hooks/useViewTransition';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 import { useChatStore } from '@/stores/chatStore';
 import { hydrateStoresForCurrentChat, initChatStoreSubscriptions } from '@/stores/initStores';
+import { useMcpSelectionStore } from '@/stores/mcpSelectionStore';
 
 import { ChatHistorySidebar } from './-components/ChatHistorySidebar';
+import { ChatRailTabs, type ChatRailTab } from './-components/ChatRailTabs';
 import { ChatUI } from './-components/ChatUI';
-import { SettingsSidebar } from './-components/settings/SettingsSidebar';
+import { McpServersPane } from './-components/settings/McpServersPane';
+import { ParametersPane } from './-components/settings/ParametersPane';
 
 export const Route = createFileRoute('/chat/')({
   validateSearch: z.object({
@@ -68,6 +72,15 @@ function ChatScreen() {
   // can hide/show the panel content without touching the shell's own nav-collapse.
   const [historyOpen, setHistoryOpen] = useLocalStorage('sidebar-history-open', true);
   const [settingsOpen, setSettingsOpen] = useLocalStorage('sidebar-settings-open', true);
+  const [railTab, setRailTab] = useState<ChatRailTab>('parameters');
+  const withViewTransition = useViewTransition();
+
+  // Number of MCP servers with at least one tool enabled in this chat (rail-tab badge).
+  const enabledMcpTools = useMcpSelectionStore((s) => s.enabledTools);
+  const mcpCount = useMemo(
+    () => Object.values(enabledMcpTools).filter((tools) => tools.length > 0).length,
+    [enabledMcpTools]
+  );
 
   useEffect(() => {
     if (model) {
@@ -78,9 +91,27 @@ function ChatScreen() {
   const toggleHistory = useCallback(() => setHistoryOpen((o) => !o), [setHistoryOpen]);
   const toggleSettings = useCallback(() => setSettingsOpen((o) => !o), [setSettingsOpen]);
 
+  // Cross-fade only the rail PANE on tab swap (reduced-motion aware); never the grid columns.
+  const selectRailTab = useCallback(
+    (tab: ChatRailTab) => withViewTransition(() => setRailTab(tab)),
+    [withViewTransition]
+  );
+
   const sidebar = useMemo(() => <ChatHistorySidebar listOpen={historyOpen} />, [historyOpen]);
 
-  const rail = useMemo(() => (settingsOpen ? <SettingsSidebar /> : null), [settingsOpen]);
+  const railHeader = useMemo(
+    () => (settingsOpen ? <ChatRailTabs value={railTab} onChange={selectRailTab} mcpCount={mcpCount} /> : null),
+    [settingsOpen, railTab, selectRailTab, mcpCount]
+  );
+
+  const rail = useMemo(() => {
+    if (!settingsOpen) return null;
+    return (
+      <div className="chat-rail-vt" style={{ viewTransitionName: 'chat-rail-pane' }}>
+        {railTab === 'parameters' ? <ParametersPane /> : <McpServersPane />}
+      </div>
+    );
+  }, [settingsOpen, railTab]);
 
   const headerActions = useMemo(
     () => (
@@ -113,6 +144,7 @@ function ChatScreen() {
     headerActions,
     sidebar,
     rail,
+    railHeader,
     railDefaultOpen: true,
     mainScroll: false,
     railScroll: false,

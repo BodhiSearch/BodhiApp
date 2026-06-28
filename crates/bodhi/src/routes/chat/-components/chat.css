@@ -148,6 +148,129 @@
   }
 }
 
+/* ════════ RIGHT RAIL · tabs + pane ════════ */
+/* Tabs sit on the shell's header gridline (published into railHeader). */
+.chat-rail-tabs {
+  flex: 1;
+  align-self: stretch;
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+}
+.chat-rail-tab {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  transition: color 120ms ease;
+}
+.chat-rail-tab:hover {
+  color: hsl(var(--foreground));
+}
+.chat-rail-tab.active {
+  color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
+  font-weight: 600;
+}
+.chat-rail-badge {
+  font-size: 10px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+.chat-rail-tab.active .chat-rail-badge {
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+}
+
+/* Full-height wrapper carrying the view-transition-name for the tab-swap cross-fade. */
+.chat-rail-vt {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Pane = the scrolling rail body (railScroll is off; the pane owns scroll). */
+.chat-rail-pane {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 16px 24px;
+}
+.chat-rail-pane::-webkit-scrollbar {
+  width: 4px;
+}
+.chat-rail-pane::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 2px;
+}
+
+.chat-rail-reset {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 7px 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+.chat-rail-reset:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.chat-mcp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+  padding: 32px 12px;
+  font-size: 13px;
+}
+.chat-mcp-empty .t {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.chat-mcp-empty .s {
+  font-size: 12px;
+}
+
+/* View-transition: cross-fade only the rail PANE content on tab swap.
+   Never the shell grid columns (Chromium sticks the old width). */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(chat-rail-pane),
+  ::view-transition-new(chat-rail-pane) {
+    animation-duration: 160ms;
+  }
+}
+
 /* ════════ SIDEBAR · chat history ════════ */
 .chat-hist {
   display: flex;

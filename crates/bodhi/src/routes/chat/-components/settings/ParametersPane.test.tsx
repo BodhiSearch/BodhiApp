@@ -1,4 +1,4 @@
-import { SettingsSidebar } from '@/routes/chat/-components/settings/SettingsSidebar';
+import { ParametersPane } from '@/routes/chat/-components/settings/ParametersPane';
 import { ENDPOINT_MODELS } from '@/hooks/models';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -92,9 +92,9 @@ beforeEach(() => {
   );
 });
 
-describe('SettingsSidebar', () => {
+describe('ParametersPane', () => {
   it('renders the settings panel root', () => {
-    render(<SettingsSidebar />, {
+    render(<ParametersPane />, {
       wrapper: createWrapper(),
     });
 
@@ -102,7 +102,7 @@ describe('SettingsSidebar', () => {
   });
 
   it('renders all settings components with loading state', () => {
-    render(<SettingsSidebar />, {
+    render(<ParametersPane />, {
       wrapper: createWrapper(),
     });
 
@@ -159,7 +159,7 @@ describe('SettingsSidebar', () => {
       })
     );
 
-    render(<SettingsSidebar />, {
+    render(<ParametersPane />, {
       wrapper: createWrapper(),
     });
 
@@ -176,7 +176,7 @@ describe('SettingsSidebar', () => {
   it('handles API error gracefully', async () => {
     server.use(...mockModelsInternalError({ message: 'Test error message' }));
 
-    render(<SettingsSidebar />, {
+    render(<ParametersPane />, {
       wrapper: createWrapper(),
     });
 
@@ -191,7 +191,7 @@ describe('SettingsSidebar', () => {
   it('handles empty models response', async () => {
     server.use(...mockModelsEmpty());
 
-    render(<SettingsSidebar />, {
+    render(<ParametersPane />, {
       wrapper: createWrapper(),
     });
 
