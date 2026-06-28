@@ -27,7 +27,7 @@ export class LocalModelFormPage extends BasePage {
     await this.fillTestId('alias-input', alias);
 
     if (repo) {
-      await this.page.fill(this.selectors.repoInput, repo);
+      await this.selectRepo(repo);
     }
 
     if (filename) {
@@ -37,6 +37,19 @@ export class LocalModelFormPage extends BasePage {
     if (snapshot) {
       await this.page.fill(this.selectors.snapshotInput, snapshot);
     }
+  }
+
+  /**
+   * The repo field is a free-text combobox (shadcn Command + Popover), not a plain input: click the
+   * trigger, type the repo into the search box, then pick the matching suggestion (or the free-text
+   * "Use this" row when the repo isn't in the catalog). Either option carries aria-label=<repo>, so
+   * select by accessible name.
+   */
+  async selectRepo(repo) {
+    await this.page.locator(this.selectors.repoInput).click();
+    await this.page.getByPlaceholder('Search HuggingFace repos…').fill(repo);
+    await this.page.getByRole('option', { name: repo }).first().click();
+    await expect(this.page.locator(this.selectors.repoInput)).toContainText(repo);
   }
 
   /**

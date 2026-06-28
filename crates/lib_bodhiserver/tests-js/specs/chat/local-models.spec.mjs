@@ -79,7 +79,7 @@ test.describe('Local GGUF Models - Standalone Smoke Test', () => {
       await modelsPage.clickNewModelAlias();
       await formPage.waitForFormReady();
       await formPage.fillTestId('alias-input', aliasName);
-      await formPage.page.fill(formPage.selectors.repoInput, QWEN_MODEL.repo);
+      await formPage.selectRepo(QWEN_MODEL.repo);
 
       // Pick a quant that isn't on disk: its row shows "Not downloaded" + the download-on-save note.
       const quantName = await formPage.selectFirstRemoteQuant();
