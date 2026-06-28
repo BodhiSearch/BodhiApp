@@ -1,7 +1,6 @@
 import { Trash2 } from 'lucide-react';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction } from '@/components/ui/sidebar';
 import { useChatStore } from '@/stores/chatStore';
 import { cn } from '@/lib/utils';
 import { Chat } from '@/types/chat';
@@ -34,51 +33,59 @@ export function ChatHistory() {
   const previousChats = nonEmptyChats.filter((chat) => chat.createdAt < new Date().setDate(new Date().getDate() - 2));
 
   const renderChat = (chat: Chat, selected: boolean) => (
-    <SidebarMenuItem key={chat.id} data-testid={`chat-history-item-${chat.id}`}>
-      <SidebarMenuButton
+    <div
+      key={chat.id}
+      data-testid={`chat-history-item-${chat.id}`}
+      className="group/menu-item relative flex items-center"
+    >
+      <button
+        type="button"
         onClick={() => setCurrentChatId(chat.id)}
-        isActive={chat.id === currentChatId}
-        className={cn('w-full justify-start truncate text-sm', 'hover:bg-muted/50', selected && 'bg-muted')}
-        tooltip={chat.title || 'Untitled Chat'}
+        title={chat.title || 'Untitled Chat'}
         data-testid={`chat-history-button-${chat.id}`}
+        className={cn(
+          'flex-1 truncate rounded-md px-2 py-1.5 text-left text-sm',
+          'hover:bg-muted/50',
+          selected && 'bg-muted'
+        )}
       >
         {chat.title || 'Untitled Chat'}
-      </SidebarMenuButton>
-      <SidebarMenuAction
+      </button>
+      <button
+        type="button"
         data-testid={`delete-chat-${chat.id}`}
         onClick={(e) => {
           e.stopPropagation();
           deleteChat(chat.id);
         }}
-        className="ml-2 opacity-0 group-hover/menu-item:opacity-100 transition-opacity"
+        className="ml-1 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover/menu-item:opacity-100"
+        aria-label="Delete chat"
       >
         <Trash2 className="h-4 w-4" />
-      </SidebarMenuAction>
-    </SidebarMenuItem>
+      </button>
+    </div>
   );
 
   return (
     <div className="flex h-full flex-col" data-testid="chat-history-container">
       <ScrollArea className="flex-1">
-        <SidebarMenu>
-          <div className="space-y-4 p-2">
-            {todayChats.length > 0 && (
-              <HistoryGroup title="TODAY">
-                {todayChats.map((chat) => renderChat(chat, chat.id === currentChatId))}
-              </HistoryGroup>
-            )}
-            {yesterdayChats.length > 0 && (
-              <HistoryGroup title="YESTERDAY">
-                {yesterdayChats.map((chat) => renderChat(chat, chat.id === currentChatId))}
-              </HistoryGroup>
-            )}
-            {previousChats.length > 0 && (
-              <HistoryGroup title="PREVIOUS 7 DAYS">
-                {previousChats.map((chat) => renderChat(chat, chat.id === currentChatId))}
-              </HistoryGroup>
-            )}
-          </div>
-        </SidebarMenu>
+        <div className="space-y-4 p-2">
+          {todayChats.length > 0 && (
+            <HistoryGroup title="TODAY">
+              {todayChats.map((chat) => renderChat(chat, chat.id === currentChatId))}
+            </HistoryGroup>
+          )}
+          {yesterdayChats.length > 0 && (
+            <HistoryGroup title="YESTERDAY">
+              {yesterdayChats.map((chat) => renderChat(chat, chat.id === currentChatId))}
+            </HistoryGroup>
+          )}
+          {previousChats.length > 0 && (
+            <HistoryGroup title="PREVIOUS 7 DAYS">
+              {previousChats.map((chat) => renderChat(chat, chat.id === currentChatId))}
+            </HistoryGroup>
+          )}
+        </div>
       </ScrollArea>
 
       <div className="border-t p-4">

@@ -1,5 +1,4 @@
 import { NewChatButton } from '@/routes/chat/-components/NewChatButton';
-import { SidebarProvider } from '@/components/ui/sidebar';
 import { useChatStore } from '@/stores/chatStore';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
@@ -15,7 +14,7 @@ vi.mock('@/stores/chatStore', () => {
 });
 
 const renderWithSidebar = (component: React.ReactNode) => {
-  return render(<SidebarProvider>{component}</SidebarProvider>);
+  return render(<>{component}</>);
 };
 
 describe('NewChatButton', () => {

@@ -28,13 +28,6 @@ vi.mock('@/routes/chat/-components/settings/SettingSlider', () => ({
   ),
 }));
 
-vi.mock('@/components/ui/sidebar', () => ({
-  Sidebar: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar">{children}</div>,
-  SidebarHeader: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar-header">{children}</div>,
-  SidebarContent: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar-content">{children}</div>,
-  SidebarGroup: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar-group">{children}</div>,
-}));
-
 vi.mock('@/components/ui/switch', () => ({
   Switch: ({ id }: { id: string }) => <div data-testid={`switch-${id}`} />,
 }));
@@ -100,16 +93,12 @@ beforeEach(() => {
 });
 
 describe('SettingsSidebar', () => {
-  it('renders the sidebar structure correctly', () => {
+  it('renders the settings panel root', () => {
     render(<SettingsSidebar />, {
       wrapper: createWrapper(),
     });
 
-    expect(screen.getByTestId('sidebar')).toBeInTheDocument();
-    expect(screen.getByTestId('sidebar-header')).toBeInTheDocument();
-    expect(screen.getByTestId('sidebar-content')).toBeInTheDocument();
-    expect(screen.getByTestId('sidebar-group')).toBeInTheDocument();
-    expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.getByTestId('settings-sidebar')).toBeInTheDocument();
   });
 
   it('renders all settings components with loading state', () => {

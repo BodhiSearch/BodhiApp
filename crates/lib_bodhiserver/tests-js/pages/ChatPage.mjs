@@ -66,6 +66,8 @@ export class ChatPage extends BasePage {
    * Navigate to chat page
    */
   async navigateToChat() {
+    // Skip view-transitions so the rail/panel swaps don't detach mid-animation under test.
+    await this.page.emulateMedia({ reducedMotion: 'reduce' });
     await this.navigate('/ui/chat/');
     await this.page.waitForSelector(this.selectors.chatContainer);
     await this.waitForSPAReady();

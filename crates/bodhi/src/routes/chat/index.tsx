@@ -1,28 +1,20 @@
-import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
-import { z } from 'zod';
-import React, { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
-import { PanelLeftOpen, PanelLeftClose, Settings2, X } from 'lucide-react';
+import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
+import { PanelLeftClose, PanelLeftOpen, Settings2, X } from 'lucide-react';
+import { z } from 'zod';
+
+import AppInitializer from '@/components/AppInitializer';
+import { useShellChrome } from '@/components/shell/ShellSlotsContext';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useChatSettingsStore } from '@/stores/chatSettingsStore';
+import { useChatStore } from '@/stores/chatStore';
+import { hydrateStoresForCurrentChat, initChatStoreSubscriptions } from '@/stores/initStores';
 
 import { ChatHistory } from './-components/ChatHistory';
 import { ChatUI } from './-components/ChatUI';
 import { NewChatButton } from './-components/NewChatButton';
 import { SettingsSidebar } from './-components/settings/SettingsSidebar';
-import AppInitializer from '@/components/AppInitializer';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarProvider,
-  SidebarSeparator,
-  SidebarTrigger,
-  useSidebar,
-} from '@/components/ui/sidebar';
-import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { cn } from '@/lib/utils';
-import { useChatStore } from '@/stores/chatStore';
-import { useChatSettingsStore } from '@/stores/chatSettingsStore';
-import { initChatStoreSubscriptions, hydrateStoresForCurrentChat } from '@/stores/initStores';
 
 export const Route = createFileRoute('/chat/')({
   validateSearch: z.object({
@@ -32,51 +24,9 @@ export const Route = createFileRoute('/chat/')({
   component: ChatPage,
 });
 
-const sidebarStyles = {
-  '--sidebar-width': '260px',
-  '--sidebar-width-mobile': '90vw',
-} as React.CSSProperties;
+const CHAT_BREADCRUMB = [{ label: 'Chat' }];
 
-const settingsSidebarStyles = {
-  '--sidebar-width': '24rem',
-  '--sidebar-width-mobile': '90vw',
-} as React.CSSProperties;
-
-function ChatWithSettings() {
-  const { open, openMobile, isMobile } = useSidebar();
-  const showSettingsPanel = isMobile ? openMobile : open;
-  const getTestId = useResponsiveTestId();
-
-  return (
-    <>
-      <div
-        className={cn(
-          'flex-1 flex flex-col min-w-0',
-          'transition-[margin] duration-300 ease-in-out',
-          !isMobile && open ? 'mr-[calc(24rem)]' : ''
-        )}
-        data-testid={getTestId('chat-main-content')}
-      >
-        <ChatUI />
-      </div>
-      <SidebarTrigger
-        variant="ghost"
-        size="icon"
-        className={cn(
-          'fixed z-40 transition-all duration-300 right-0 top-20 h-7 w-7 -ml-1 md:right-0',
-          open && 'md:right-[calc(24rem)]',
-          !open && 'md:right-4'
-        )}
-        aria-label="Toggle settings"
-        data-testid={getTestId('settings-toggle-button')}
-      >
-        {showSettingsPanel ? <X className="h-5 w-5" /> : <Settings2 className="h-5 w-5" />}
-      </SidebarTrigger>
-      <SettingsSidebar />
-    </>
-  );
-}
-
+/** Keeps the `?model=&id=` URL in sync with the current chat / model selection. */
 function ChatUrlSync({ chatIdFromUrl, model }: { chatIdFromUrl?: string; model?: string }) {
   const currentChatId = useChatStore((s) => s.currentChatId);
   const isLoaded = useChatStore((s) => s.isLoaded);
@@ -109,14 +59,16 @@ function ChatUrlSync({ chatIdFromUrl, model }: { chatIdFromUrl?: string; model?:
   return null;
 }
 
-function ChatWithHistory() {
-  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage('sidebar-settings-open', true);
-  const { open, openMobile, isMobile } = useSidebar();
-  const showHistoryPanel = isMobile ? openMobile : open;
+function ChatScreen() {
   const search = useSearch({ from: '/chat/' });
   const model = search.model;
   const chatIdFromUrl = search.id;
-  const getTestId = useResponsiveTestId();
+
+  // History / settings panels are published into the shell's sidebar + rail slots. We own their
+  // open state (persisted) so the legacy header toggles below — which the E2E page objects key on —
+  // can hide/show the panel content without touching the shell's own nav-collapse.
+  const [historyOpen, setHistoryOpen] = useLocalStorage('sidebar-history-open', true);
+  const [settingsOpen, setSettingsOpen] = useLocalStorage('sidebar-settings-open', true);
 
   useEffect(() => {
     if (model) {
@@ -124,48 +76,71 @@ function ChatWithHistory() {
     }
   }, [model]);
 
+  const toggleHistory = useCallback(() => setHistoryOpen((o) => !o), [setHistoryOpen]);
+  const toggleSettings = useCallback(() => setSettingsOpen((o) => !o), [setSettingsOpen]);
+
+  const sidebar = useMemo(
+    () => (
+      <div className="flex h-full min-h-0 flex-col">
+        <NewChatButton />
+        {historyOpen && <ChatHistory />}
+      </div>
+    ),
+    [historyOpen]
+  );
+
+  const rail = useMemo(() => (settingsOpen ? <SettingsSidebar /> : null), [settingsOpen]);
+
+  const headerActions = useMemo(
+    () => (
+      <>
+        <button
+          type="button"
+          className="shell-icon-btn"
+          aria-label="Toggle history"
+          data-testid="chat-history-toggle"
+          onClick={toggleHistory}
+        >
+          {historyOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+        </button>
+        <button
+          type="button"
+          className="shell-icon-btn"
+          aria-label="Toggle settings"
+          data-testid="settings-toggle-button"
+          onClick={toggleSettings}
+        >
+          {settingsOpen ? <X className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
+        </button>
+      </>
+    ),
+    [historyOpen, settingsOpen, toggleHistory, toggleSettings]
+  );
+
+  useShellChrome({
+    breadcrumb: CHAT_BREADCRUMB,
+    headerActions,
+    sidebar,
+    rail,
+    railDefaultOpen: true,
+    mainScroll: false,
+    railScroll: false,
+    railWidth: 360,
+    sidebarWidth: 260,
+    contentClass: 'flush',
+    resizeKey: 'chat',
+    section: 'chat',
+  });
+
   return (
     <>
       <ChatUrlSync chatIdFromUrl={chatIdFromUrl} model={model} />
-      <Sidebar side="left" data-testid={getTestId('chat-history-sidebar')}>
-        <SidebarContent data-testid={getTestId('chat-history-content')}>
-          <NewChatButton />
-          <SidebarSeparator />
-          <ChatHistory />
-        </SidebarContent>
-      </Sidebar>
-      <div className="flex flex-1 flex-col w-full" data-testid={getTestId('chat-layout-main')}>
-        <div className="flex flex-1 flex-col h-full" data-testid={getTestId('chat-layout-inner')}>
-          <SidebarTrigger
-            variant="ghost"
-            size="icon"
-            className={cn(
-              'fixed z-40 transition-all duration-300 left-0 top-20 h-7 w-7 -ml-1',
-              open && 'md:left-[262px]',
-              !open && 'md:left-5'
-            )}
-            aria-label="Toggle history"
-            data-testid={getTestId('chat-history-toggle')}
-          >
-            {showHistoryPanel ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
-          </SidebarTrigger>
-          <SidebarProvider
-            inner
-            style={settingsSidebarStyles}
-            className="flex-1 flex flex-col overflow-hidden"
-            open={isSidebarOpen}
-            onOpenChange={setIsSidebarOpen}
-          >
-            <ChatWithSettings />
-          </SidebarProvider>
-        </div>
-      </div>
+      <ChatUI />
     </>
   );
 }
 
 function ChatPageContent() {
-  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage('sidebar-history-open', true);
   const loadChats = useChatStore((s) => s.loadChats);
   const search = useSearch({ from: '/chat/' });
   const urlModel = search.model;
@@ -177,8 +152,8 @@ function ChatPageContent() {
     if (result && typeof result.then === 'function') {
       result.then(() => {
         if (urlModel && !urlChatId) {
-          // URL has ?model=X without ?id=Y — start fresh with that model
-          // Don't hydrate previous chat's settings which would overwrite the URL model
+          // URL has ?model=X without ?id=Y — start fresh with that model; don't hydrate a previous
+          // chat's settings which would overwrite the URL model.
           useChatSettingsStore.getState().setModel(urlModel);
         } else {
           hydrateStoresForCurrentChat();
@@ -187,11 +162,7 @@ function ChatPageContent() {
     }
   }, [loadChats, urlModel, urlChatId]);
 
-  return (
-    <SidebarProvider style={sidebarStyles} open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-      <ChatWithHistory />
-    </SidebarProvider>
-  );
+  return <ChatScreen />;
 }
 
 export default function ChatPage() {

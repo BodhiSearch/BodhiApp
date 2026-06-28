@@ -9,7 +9,6 @@ import { McpsPopover } from './McpsPopover';
 import { ThinkingBlock } from './ThinkingBlock';
 import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
-import { useSidebar } from '@/components/ui/sidebar';
 import { useMcpAgentTools } from '@/hooks/chat/useMcpAgentTools';
 import { useListMcps } from '@/hooks/mcps';
 import type { McpClientTool, McpConnectionStatus } from '@/hooks/mcps/useMcpClient';
@@ -329,7 +328,6 @@ const AgentMessageList = memo(function AgentMessageList({
 export function ChatUI() {
   const { showError } = useToastMessages();
   const model = useChatSettingsStore((s) => s.model);
-  const { open: openSettings, setOpen: setOpenSettings } = useSidebar();
 
   const enabledMcpTools = useMcpSelectionStore((s) => s.enabledTools);
   const toggleMcpTool = useMcpSelectionStore((s) => s.toggleTool);
@@ -424,9 +422,6 @@ export function ChatUI() {
       if (!currentInput.trim() || isStreaming) return;
       if (!currentModel) {
         showError('No Model Selected', 'Please select an Alias/Model from settings before sending a message.');
-        if (!openSettings) {
-          setOpenSettings(true);
-        }
         return;
       }
 
@@ -437,7 +432,7 @@ export function ChatUI() {
         showError,
       });
     },
-    [showError, openSettings, setOpenSettings, agentTools, enabledMcpTools]
+    [showError, agentTools, enabledMcpTools]
   );
 
   const isEmpty = agentMessages.length === 0 && !streamingMessage;

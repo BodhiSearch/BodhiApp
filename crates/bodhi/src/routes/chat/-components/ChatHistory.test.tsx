@@ -1,5 +1,4 @@
 import { ChatHistory } from '@/routes/chat/-components/ChatHistory';
-import { SidebarProvider } from '@/components/ui/sidebar';
 import { useChatStore } from '@/stores/chatStore';
 import { Chat } from '@/types/chat';
 import { render, screen } from '@testing-library/react';
@@ -18,7 +17,7 @@ vi.mock('@/stores/chatStore', () => {
 });
 
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <SidebarProvider>{children}</SidebarProvider>;
+  return <>{children}</>;
 }
 
 describe('ChatHistory', () => {
@@ -112,8 +111,11 @@ describe('ChatHistory', () => {
     const currentChat = screen.getByText('Today Chat').closest('button');
     const otherChat = screen.getByText('Yesterday Chat').closest('button');
 
-    expect(currentChat).toHaveAttribute('data-active', 'true');
-    expect(otherChat).toHaveAttribute('data-active', 'false');
+    // The active row carries the standalone `bg-muted` class (the marker the E2E suite asserts).
+    // Match on a class boundary so the inactive row's `hover:bg-muted/50` doesn't false-positive.
+    const hasActiveClass = (el: Element | null) => /(^|\s)bg-muted(\s|$)/.test(el?.className ?? '');
+    expect(hasActiveClass(currentChat)).toBe(true);
+    expect(hasActiveClass(otherChat)).toBe(false);
   });
 
   it('deletes chat when trash icon is clicked', async () => {
