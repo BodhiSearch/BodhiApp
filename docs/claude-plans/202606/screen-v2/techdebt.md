@@ -99,19 +99,27 @@ re-added:
 ## Migration scaffolding to REMOVE when the whole migration completes (added Batch 1)
 Temporary structures introduced to enable in-place, flag-gated coexistence. **Delete these once
 every screen is migrated** (tracked here so they don't become permanent non-obvious cruft):
-- **`ShellSlotsContext` + `useShellChrome`** (`components/shell/ShellSlotsContext.tsx`) — lets a
-  migrated screen publish breadcrumb/headerActions/**sidebar**/rail up to the single root `<AppShell>`
-  during coexistence (the `sidebar` slot was added in Batch 2 for App Settings' group nav). Once all
-  screens are migrated, screens pass props to a per-route `<AppShell>` directly (or we adopt pathless
-  `_layout` routes) and this context is deleted.
+- **`ShellSlotsContext` + `useShellChrome`** — ~~publish breadcrumb/headerActions/sidebar/rail up to
+  the single root `<AppShell>` during coexistence~~. **DONE (2026-06-28).** Investigated the
+  end-state: a persistent single `<AppShell>` must stay mounted across navigations (it owns
+  collapse/resize state + the localStorage width-restore effect and provides `ShellContext`), and
+  TanStack Router has no named outlets, so a per-route `<AppShell>` is wrong and a child→ancestor
+  publish is structurally required for the dynamic rail/sidebar nodes. So the context was **renamed
+  + leaned**, not deleted: `ShellSlotsContext.tsx`→`ShellChromeContext.tsx` (off the "scaffolding"
+  framing, value/setter split kept as idiomatic re-render discipline); the `section`/`resizeKey`
+  fallback indirection in `__root` was removed; STATIC chrome (section/subPage) now comes from route
+  `staticData` via `useShellSection()` (`useMatches()`); the 17 per-file `SlotsConsumer` test copies
+  collapsed into the shared `test-utils/shell-harness.tsx` (`ShellHarness`/`ChromeProbe`).
 - **Per-screen `useUiV2Flag` machinery** (`lib/uiV2Flags.ts`, `hooks/useUiV2Flag.ts`) — removed when
   the last batch lands and every screen is V2-only.
 
 ## Deferred architectural improvement (planned follow-up, NOT temporary) (added Batch 1)
-- **Scalable route-declared layout seam.** Batch 1 makes the bare review screen work the minimal way:
-  add `/apps/access-requests/review` to `resolveShellRoute.ts`'s `BARE_PREFIXES` + render bare routes
-  through the new reusable `components/shell/BareLayout.tsx`. The **central `BARE_PREFIXES` pathname
-  switch should eventually be replaced** by each route declaring its layout — TanStack Router
-  `staticData.layout: 'shell' | 'bare'` read in `__root` via `useMatches()`, converging to idiomatic
-  pathless `_shell/`/`_bare/` layout routes. Deferred to a dedicated routing step (out of scope for
-  the API-Keys batch); `BareLayout` is built so this lands as a drop-in.
+- **Scalable route-declared layout seam.** PARTIALLY DONE (2026-06-28): `resolveShellRoute.ts`'s
+  **section-resolver** (longest-prefix `SHELL_NAV` matching) is **deleted** — section/subPage are now
+  route-declared via `staticData` + `useShellSection()`. What remains is the **bare/fullscreen
+  layout predicates** (`isBareRoute`/`isFullscreenRoute` + `BARE_PREFIXES`/`FULLSCREEN_PREFIXES`),
+  still a central pathname switch read in `__root`. Folding that into route-declared layout
+  (`staticData.layout: 'app' | 'bare' | 'fullscreen'`, or pathless `_bare` routes) is the remaining
+  optional follow-up; `BareLayout` is built so it lands as a drop-in. A pathless `_app` route was
+  considered and rejected (the router-plugin would rewrite every route id to `/_app/...`, forcing
+  churn across ~20 screens for a marginal gain over keeping the persistent `<AppShell>` in `__root`).

@@ -78,7 +78,21 @@ Routes live in `src/routes/` using TanStack Router file conventions. Each route 
 
 **Layout routes** — `src/routes/setup/route.tsx` wraps child routes with `Outlet`.
 
-**Root layout** — `src/routes/__root.tsx` provides ThemeProvider, ClientProviders, NavigationProvider, AppHeader.
+**Root layout & shell** — `src/routes/__root.tsx` wraps the app in ThemeProvider, ClientProviders,
+NavigationProvider, and `ShellChromeProvider`. Its `RootShell` renders ONE persistent `<AppShell>`
+(`components/shell/AppShell.tsx`) for all app routes — it stays mounted across navigations because it
+owns collapse/resize state, the localStorage column-width restore, and provides `ShellContext`
+(`useShell()`: `openRail`/`closeRail`/…). Bare routes (login/auth/oauth/request-access/review) render
+through `BareLayout`; fullscreen routes (setup) render the bare `<Outlet/>` — the bare/fullscreen
+switch is `components/shell/resolveShellRoute.ts`'s `isBareRoute`/`isFullscreenRoute` predicates.
+
+A screen contributes chrome two ways: **static** (nav highlight) via route
+`staticData: { section, subPage }` read by `useShellSection()` (`useMatches`); **dynamic**
+(breadcrumb / header actions / sidebar / detail rail / layout overrides) by publishing through
+`useShellChrome(...)` (`components/shell/ShellChromeContext.tsx`) — a split value/setter context the
+persistent shell consumes. In tests, mount a publishing screen inside `ShellHarness`
+(`test-utils/shell-harness.tsx`), which renders the published chrome into `harness-*` testids and
+provides a working `ShellContext`.
 
 **Navigation APIs** (replaced Next.js equivalents):
 
