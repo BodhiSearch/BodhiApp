@@ -6,12 +6,12 @@ import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
 import { useShellChrome } from '@/components/shell/ShellSlotsContext';
+import { useChatMcp } from '@/hooks/chat/useChatMcp';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useViewTransition } from '@/hooks/useViewTransition';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 import { useChatStore } from '@/stores/chatStore';
 import { hydrateStoresForCurrentChat, initChatStoreSubscriptions } from '@/stores/initStores';
-import { useMcpSelectionStore } from '@/stores/mcpSelectionStore';
 
 import { ChatHistorySidebar } from './-components/ChatHistorySidebar';
 import { ChatRailTabs, type ChatRailTab } from './-components/ChatRailTabs';
@@ -75,12 +75,9 @@ function ChatScreen() {
   const [railTab, setRailTab] = useState<ChatRailTab>('parameters');
   const withViewTransition = useViewTransition();
 
-  // Number of MCP servers with at least one tool enabled in this chat (rail-tab badge).
-  const enabledMcpTools = useMcpSelectionStore((s) => s.enabledTools);
-  const mcpCount = useMemo(
-    () => Object.values(enabledMcpTools).filter((tools) => tools.length > 0).length,
-    [enabledMcpTools]
-  );
+  // Single MCP connection manager + selection, shared by the composer (agent tool execution) and
+  // the rail's MCP-servers picker.
+  const mcp = useChatMcp();
 
   useEffect(() => {
     if (model) {
@@ -100,18 +97,29 @@ function ChatScreen() {
   const sidebar = useMemo(() => <ChatHistorySidebar listOpen={historyOpen} />, [historyOpen]);
 
   const railHeader = useMemo(
-    () => (settingsOpen ? <ChatRailTabs value={railTab} onChange={selectRailTab} mcpCount={mcpCount} /> : null),
-    [settingsOpen, railTab, selectRailTab, mcpCount]
+    () => (settingsOpen ? <ChatRailTabs value={railTab} onChange={selectRailTab} mcpCount={mcp.mcpCount} /> : null),
+    [settingsOpen, railTab, selectRailTab, mcp.mcpCount]
   );
 
   const rail = useMemo(() => {
     if (!settingsOpen) return null;
     return (
       <div className="chat-rail-vt" style={{ viewTransitionName: 'chat-rail-pane' }}>
-        {railTab === 'parameters' ? <ParametersPane /> : <McpServersPane />}
+        {railTab === 'parameters' ? (
+          <ParametersPane />
+        ) : (
+          <McpServersPane
+            mcps={mcp.mcps}
+            enabledMcpTools={mcp.enabledMcpTools}
+            onToggleTool={mcp.toggleTool}
+            onToggleMcp={mcp.toggleMcp}
+            mcpTools={mcp.mcpTools}
+            mcpConnectionStatus={mcp.mcpConnectionStatus}
+          />
+        )}
       </div>
     );
-  }, [settingsOpen, railTab]);
+  }, [settingsOpen, railTab, mcp]);
 
   const headerActions = useMemo(
     () => (
@@ -158,7 +166,7 @@ function ChatScreen() {
   return (
     <>
       <ChatUrlSync chatIdFromUrl={chatIdFromUrl} model={model} />
-      <ChatUI />
+      <ChatUI agentTools={mcp.agentTools} enabledMcpTools={mcp.enabledMcpTools} />
     </>
   );
 }

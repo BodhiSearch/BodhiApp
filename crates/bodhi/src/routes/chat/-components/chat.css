@@ -262,6 +262,82 @@
   font-size: 12px;
 }
 
+/* MCP servers accordion */
+.chat-mcp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chat-mcp-srv {
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--card));
+  overflow: hidden;
+}
+.chat-mcp-srv-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+.chat-mcp-srv-head:hover {
+  background: hsl(var(--muted) / 0.5);
+}
+.chat-mcp-chev {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  flex: none;
+}
+.chat-mcp-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.chat-mcp-count {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: hsl(var(--muted-foreground));
+  flex: none;
+}
+.chat-mcp-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 10px 10px 34px;
+  border-top: 1px solid hsl(var(--border));
+}
+.chat-mcp-tool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px;
+  border-radius: 6px;
+}
+.chat-mcp-tool:hover {
+  background: hsl(var(--muted) / 0.5);
+}
+.chat-mcp-tool-name {
+  font-size: 12.5px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
 /* View-transition: cross-fade only the rail PANE content on tab swap.
    Never the shell grid columns (Chromium sticks the old width). */
 @media (prefers-reduced-motion: no-preference) {

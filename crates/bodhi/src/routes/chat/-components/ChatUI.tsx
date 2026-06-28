@@ -1,26 +1,21 @@
 import { FormEvent, RefObject, useCallback, useEffect, useRef, memo, useMemo } from 'react';
 
-import type { AgentMessage } from '@mariozechner/pi-agent-core';
+import type { AgentMessage, AgentTool } from '@mariozechner/pi-agent-core';
 import type { AssistantMessage as PiAssistantMessage } from '@mariozechner/pi-ai';
 import { Plus } from 'lucide-react';
 
-import { ChatMessage } from './ChatMessage';
-import { McpsPopover } from './McpsPopover';
-import { ThinkingBlock } from './ThinkingBlock';
 import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
-import { useMcpAgentTools } from '@/hooks/chat/useMcpAgentTools';
-import { useListMcps } from '@/hooks/mcps';
-import type { McpClientTool, McpConnectionStatus } from '@/hooks/mcps/useMcpClient';
-import { useMcpClients } from '@/hooks/mcps/useMcpClients';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { cn } from '@/lib/utils';
 import { useAgentStore } from '@/stores/agentStore';
-import { useChatStore } from '@/stores/chatStore';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';
-import { useMcpSelectionStore } from '@/stores/mcpSelectionStore';
+import { useChatStore } from '@/stores/chatStore';
 import { extractTextFromAgentMessage, extractThinkingFromAgentMessage, Message } from '@/types/chat';
+
+import { ChatMessage } from './ChatMessage';
+import { ThinkingBlock } from './ThinkingBlock';
 
 import './chat.css';
 
@@ -41,11 +36,6 @@ interface ChatInputProps {
   onStop: () => void;
   inputRef: RefObject<HTMLTextAreaElement>;
   isModelSelected: boolean;
-  enabledMcpTools: Record<string, string[]>;
-  onToggleMcpTool: (mcpId: string, toolName: string) => void;
-  onToggleMcp: (mcpId: string, allToolNames: string[]) => void;
-  mcpTools: Map<string, McpClientTool[]>;
-  mcpConnectionStatus: Map<string, McpConnectionStatus>;
 }
 
 const ChatInput = memo(function ChatInput({
@@ -56,11 +46,6 @@ const ChatInput = memo(function ChatInput({
   onStop,
   inputRef,
   isModelSelected,
-  enabledMcpTools,
-  onToggleMcpTool,
-  onToggleMcp,
-  mcpTools,
-  mcpConnectionStatus,
 }: ChatInputProps) {
   const createNewChat = useChatStore((s) => s.createNewChat);
   const getTestId = useResponsiveTestId();
@@ -110,15 +95,6 @@ const ChatInput = memo(function ChatInput({
             <Plus className="h-5 w-5" />
             <span className="sr-only">New chat</span>
           </Button>
-
-          <McpsPopover
-            enabledMcpTools={enabledMcpTools}
-            onToggleTool={onToggleMcpTool}
-            onToggleMcp={onToggleMcp}
-            disabled={streamLoading}
-            mcpTools={mcpTools}
-            mcpConnectionStatus={mcpConnectionStatus}
-          />
 
           <div className="ml-auto">
             {streamLoading ? (
@@ -329,69 +305,15 @@ const AgentMessageList = memo(function AgentMessageList({
   );
 });
 
-export function ChatUI() {
+interface ChatUIProps {
+  /** Agent tools + selection from the chat's shared MCP wiring (see useChatMcp in the route). */
+  agentTools: AgentTool[];
+  enabledMcpTools: Record<string, string[]>;
+}
+
+export function ChatUI({ agentTools, enabledMcpTools }: ChatUIProps) {
   const { showError } = useToastMessages();
   const model = useChatSettingsStore((s) => s.model);
-
-  const enabledMcpTools = useMcpSelectionStore((s) => s.enabledTools);
-  const toggleMcpTool = useMcpSelectionStore((s) => s.toggleTool);
-  const toggleMcp = useMcpSelectionStore((s) => s.toggleMcp);
-  const setEnabledMcpTools = useMcpSelectionStore((s) => s.setEnabledTools);
-
-  const { data: mcpsResponse } = useListMcps();
-  const mcps = useMemo(() => mcpsResponse?.mcps || [], [mcpsResponse?.mcps]);
-
-  const mcpClients = useMcpClients();
-
-  useEffect(() => {
-    const enabledMcps = mcps.filter((m) => m.mcp_server.enabled && m.enabled && m.path);
-    mcpClients.connectAll(enabledMcps);
-    return () => {
-      mcpClients.disconnectAll();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on mcps; mcpClients.connectAll/disconnectAll are stable and intentionally excluded
-  }, [mcps]);
-
-  const mcpSlugs = useMemo(() => {
-    const map = new Map<string, string>();
-    mcps.forEach((m) => map.set(m.id, m.slug));
-    return map;
-  }, [mcps]);
-
-  const mcpConnectionStatus = useMemo(() => {
-    const map = new Map<string, McpConnectionStatus>();
-    for (const [id, state] of mcpClients.clients) {
-      map.set(id, state.status);
-    }
-    return map;
-  }, [mcpClients.clients]);
-
-  useEffect(() => {
-    if (mcps.length === 0) return;
-
-    const availableIds = new Set(mcps.filter((m) => m.mcp_server.enabled && m.enabled).map((m) => m.id));
-
-    const filtered: Record<string, string[]> = {};
-    let hasUnavailable = false;
-    for (const [id, tools] of Object.entries(enabledMcpTools)) {
-      if (availableIds.has(id)) {
-        filtered[id] = tools;
-      } else {
-        hasUnavailable = true;
-      }
-    }
-
-    if (hasUnavailable) {
-      setEnabledMcpTools(filtered);
-    }
-  }, [mcps, enabledMcpTools, setEnabledMcpTools]);
-
-  const agentTools = useMcpAgentTools({
-    enabledMcpTools,
-    allTools: mcpClients.allTools,
-    slugs: mcpSlugs,
-    callTool: mcpClients.callTool,
-  });
 
   const input = useAgentStore((s) => s.input);
   const setInput = useAgentStore((s) => s.setInput);
@@ -399,7 +321,6 @@ export function ChatUI() {
   const agentMessages = useAgentStore((s) => s.messages);
   const streamingMessage = useAgentStore((s) => s.streamingMessage);
   const pendingToolCalls = useAgentStore((s) => s.pendingToolCalls);
-  const append = useAgentStore((s) => s.append);
   const stop = useAgentStore((s) => s.stop);
   const syncAgentSettings = useAgentStore((s) => s.syncAgentSettings);
 
@@ -467,11 +388,6 @@ export function ChatUI() {
         onStop={stop}
         inputRef={inputRef}
         isModelSelected={!!model}
-        enabledMcpTools={enabledMcpTools}
-        onToggleMcpTool={toggleMcpTool}
-        onToggleMcp={toggleMcp}
-        mcpTools={mcpClients.allTools}
-        mcpConnectionStatus={mcpConnectionStatus}
       />
     </div>
   );

@@ -33,7 +33,7 @@ export class ChatPage extends BasePage {
     // Model selection (in settings panel)
     modelSelectorLoaded: '[data-testid="model-selector-loaded"]',
     comboboxTrigger: '[data-testid="model-selector-trigger"]',
-    comboboxOption: (modelName) => `[data-testid="combobox-option-${modelName}"]`,
+    comboboxOption: modelName => `[data-testid="combobox-option-${modelName}"]`,
 
     // Settings
     settingsSidebar: '[data-testid="settings-sidebar"]',
@@ -47,15 +47,17 @@ export class ChatPage extends BasePage {
     toolCallStatus: '[data-testid="tool-call-status"]',
     toolCallContent: '[data-testid="tool-call-content"]',
 
-    // MCPs popover elements
-    mcpsPopoverTrigger: '[data-testid="mcps-popover-trigger"]',
-    mcpsPopoverContent: '[data-testid="mcps-popover-content"]',
-    mcpsBadge: '[data-testid="mcps-badge"]',
+    // MCP tools moved from the composer popover into the rail's "MCP servers" tab (V2).
+    parametersTabTrigger: '[data-testid="chat-rail-tab-parameters"]',
+    mcpsTabTrigger: '[data-testid="chat-rail-tab-mcp"]',
+    mcpsPane: '[data-testid="mcp-servers-pane"]',
+    // The rail-tab badge always renders the enabled-tool count (0 when none enabled).
+    mcpsBadge: '[data-testid="chat-rail-mcp-count"]',
     mcpsEmptyState: '[data-testid="mcps-empty-state"]',
-    mcpRow: (id) => `[data-testid="mcp-row-${id}"]`,
-    mcpExpand: (id) => `[data-testid="mcp-expand-${id}"]`,
-    mcpCheckbox: (id) => `[data-testid="mcp-checkbox-${id}"]`,
-    mcpItem: (id) => `[data-testid="mcp-item-${id}"]`,
+    mcpRow: id => `[data-testid="mcp-row-${id}"]`,
+    mcpExpand: id => `[data-testid="mcp-expand-${id}"]`,
+    mcpCheckbox: id => `[data-testid="mcp-checkbox-${id}"]`,
+    mcpItem: id => `[data-testid="mcp-item-${id}"]`,
     mcpToolRow: (mcpId, toolName) => `[data-testid="mcp-tool-row-${mcpId}-${toolName}"]`,
     mcpToolCheckbox: (mcpId, toolName) => `[data-testid="mcp-tool-checkbox-${mcpId}-${toolName}"]`,
 
@@ -114,9 +116,7 @@ export class ChatPage extends BasePage {
   async waitForResponse(expectedContent) {
     if (expectedContent) {
       // Wait for assistant message with specific content
-      await expect(this.page.locator(this.selectors.assistantMessage).last()).toContainText(
-        expectedContent
-      );
+      await expect(this.page.locator(this.selectors.assistantMessage).last()).toContainText(expectedContent);
     } else {
       // Wait for any assistant message
       await expect(this.page.locator(this.selectors.assistantMessage).last()).toBeVisible();
@@ -282,7 +282,7 @@ export class ChatPage extends BasePage {
   }
 
   async expectChatPage() {
-    await this.page.waitForURL((url) => url.pathname === '/ui/chat/');
+    await this.page.waitForURL(url => url.pathname === '/ui/chat/');
     await this.waitForChatPageLoad();
   }
 
@@ -294,9 +294,7 @@ export class ChatPage extends BasePage {
    */
   async waitForApiFormat(expectedFormatText) {
     await this.openSettingsPanel();
-    await expect(this.page.locator('[data-testid="api-format-label"]')).toContainText(
-      expectedFormatText
-    );
+    await expect(this.page.locator('[data-testid="api-format-label"]')).toContainText(expectedFormatText);
   }
 
   /**
@@ -326,10 +324,7 @@ export class ChatPage extends BasePage {
    */
   async verifyMessageInHistory(role, expectedContent) {
     await expect(
-      this.page
-        .locator(`[data-testid="${role}-message-content"]`)
-        .filter({ hasText: expectedContent })
-        .first()
+      this.page.locator(`[data-testid="${role}-message-content"]`).filter({ hasText: expectedContent }).first()
     ).toBeVisible();
   }
 
@@ -442,7 +437,7 @@ export class ChatPage extends BasePage {
    * Simulate network failure
    */
   async simulateNetworkFailure() {
-    await this.page.route('**/v1/chat/completions', (route) => route.abort());
+    await this.page.route('**/v1/chat/completions', route => route.abort());
   }
 
   /**
@@ -576,32 +571,31 @@ export class ChatPage extends BasePage {
     await this.waitForResponseComplete();
   }
 
-  // MCPs Popover interactions
+  // MCP servers rail-tab interactions (was the composer popover before V2)
 
   async openMcpsPopover() {
-    await this.page.locator(this.selectors.mcpsPopoverTrigger).click();
-    await expect(this.page.locator(this.selectors.mcpsPopoverContent)).toBeVisible();
+    await this.openSettingsPanel();
+    await this.page.locator(this.selectors.mcpsTabTrigger).click();
+    await expect(this.page.locator(this.selectors.mcpsPane)).toBeVisible();
   }
 
   async closeMcpsPopover() {
-    await this.page.locator(this.selectors.mcpsPopoverTrigger).click();
-    await expect(this.page.locator(this.selectors.mcpsPopoverContent)).not.toBeVisible();
+    // Switching back to the Parameters tab hides the MCP pane.
+    await this.page.locator(this.selectors.parametersTabTrigger).click();
+    await expect(this.page.locator(this.selectors.mcpsPane)).not.toBeVisible();
   }
 
   async expectMcpsPopoverTriggerVisible() {
-    const trigger = this.page.locator(this.selectors.mcpsPopoverTrigger);
-    await expect(trigger).toBeVisible();
+    await this.openSettingsPanel();
+    await expect(this.page.locator(this.selectors.mcpsTabTrigger)).toBeVisible();
   }
 
   async expectMcpsPopoverOpen() {
-    const popoverContent = this.page.locator(this.selectors.mcpsPopoverContent);
-    await expect(popoverContent).toBeVisible();
-    await expect(popoverContent.locator('h4')).toContainText('MCPs');
+    await expect(this.page.locator(this.selectors.mcpsPane)).toBeVisible();
   }
 
   async expectMcpInPopover(mcpId) {
-    const popoverContent = this.page.locator(this.selectors.mcpsPopoverContent);
-    const mcpRow = popoverContent.locator(this.selectors.mcpRow(mcpId));
+    const mcpRow = this.page.locator(this.selectors.mcpsPane).locator(this.selectors.mcpRow(mcpId));
     await expect(mcpRow).toBeVisible();
   }
 
@@ -627,19 +621,24 @@ export class ChatPage extends BasePage {
   }
 
   async expectMcpBadgeVisible(count) {
+    await this.openSettingsPanel();
     const badge = this.page.locator(this.selectors.mcpsBadge);
     await expect(badge).toBeVisible();
-    await expect(badge).toContainText(count.toString());
+    await expect(badge).toHaveText(count.toString());
   }
 
+  // The rail badge always renders; "has tools" means the count is > 0.
   async waitForMcpToolsBadge(timeout = McpFixtures.MCP_CONNECTION_TIMEOUT) {
+    await this.openSettingsPanel();
     const badge = this.page.locator(this.selectors.mcpsBadge);
     await expect(badge).toBeVisible({ timeout });
+    await expect(badge).not.toHaveText('0', { timeout });
   }
 
   async expectMcpBadgeNotVisible() {
-    const badge = this.page.locator(this.selectors.mcpsBadge);
-    await expect(badge).not.toBeVisible();
+    await this.openSettingsPanel();
+    // No popover badge anymore; the rail-tab count reads 0 when nothing is enabled.
+    await expect(this.page.locator(this.selectors.mcpsBadge)).toHaveText('0');
   }
 
   async expectMcpsEmptyState() {
