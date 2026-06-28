@@ -5,6 +5,7 @@ import AppInitializer from '@/components/AppInitializer';
 import { SettingGroupConfig, SettingsConfigV2, SettingsPageV2 } from './-components/SettingsPageV2';
 
 export const Route = createFileRoute('/settings/')({
+  staticData: { section: 'settings', subPage: 'app-settings' },
   component: SettingsPage,
 });
 
