@@ -111,3 +111,55 @@
 @container lscroll (max-width: 680px) { .tk-used    { display: none; } }
 @container lscroll (max-width: 560px) { .tk-created { display: none; } }
 @container lscroll (max-width: 440px) { .tk-status  { display: none; } }
+
+/* ═══ Exchanged (invalidated) tokens ═══ */
+.status-exchanged { background: var(--c-indigo-bg); border-color: var(--c-indigo-bd); color: var(--c-indigo-text); }
+.tk-replacement-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 26px; padding: 0 10px; border-radius: 7px;
+  border: 1px solid var(--c-indigo-bd); background: var(--c-indigo-bg); color: var(--c-indigo-text);
+  font-size: 11.5px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap;
+  transition: background 100ms, color 100ms;
+}
+.tk-replacement-link:hover { background: var(--c-indigo-text); color: #fff; }
+.tk-replacement-link svg { width: 12px; height: 12px; }
+
+/* exchange relationship banner (rail) */
+.dp-exchange { display: flex; align-items: flex-start; gap: 9px; padding: 11px 12px; border-radius: 10px; margin-bottom: 14px; }
+.dp-exchange > svg { width: 14px; height: 14px; flex: none; margin-top: 1px; }
+.dp-exchange-old { background: var(--c-indigo-bg); border: 1px solid var(--c-indigo-bd); }
+.dp-exchange-old > svg, .dp-exchange-old .dp-exchange-t { color: var(--c-indigo-text); }
+.dp-exchange-new { background: var(--c-leaf-bg); border: 1px solid var(--c-leaf-bd); }
+.dp-exchange-new > svg, .dp-exchange-new .dp-exchange-t { color: var(--c-leaf-text); }
+.dp-exchange-t { font-size: 12.5px; font-weight: 700; margin-bottom: 2px; }
+.dp-exchange-s { font-size: 11.5px; color: hsl(var(--foreground)); line-height: 1.5; text-wrap: pretty; }
+.dp-exchange-link {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 7px;
+  background: none; border: none; padding: 0; cursor: pointer; font-family: inherit;
+  font-size: 11.5px; font-weight: 700; color: hsl(var(--foreground));
+}
+.dp-exchange-link svg { width: 12px; height: 12px; }
+.dp-exchange-link:hover { text-decoration: underline; }
+
+/* listing permission line + inference/connect sub-label (rail) */
+.dp-perm-row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px; border: 1px solid hsl(var(--border)); border-radius: 8px; background: hsl(var(--muted) / .35); margin-bottom: 4px; }
+.dp-perm-row.on { border-color: var(--c-teal-bd); background: var(--c-teal-bg); }
+.dp-perm-k { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: hsl(var(--foreground)); }
+.dp-perm-k svg { width: 13px; height: 13px; opacity: .7; flex: none; }
+.dp-perm-code { font-family: var(--font-mono); font-size: 10px; font-weight: 500; padding: 1px 5px; border-radius: 4px;
+  background: hsl(var(--card)); border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); }
+.dp-perm-v { font-size: 11px; font-weight: 700; white-space: nowrap; }
+.dp-perm-v.is-on  { color: var(--c-teal-text); }
+.dp-perm-v.is-off { color: hsl(var(--muted-foreground)); opacity: .7; }
+.dp-perm-sub { font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700;
+  color: hsl(var(--muted-foreground)); margin: 11px 0 6px; }
+
+/* per-category (slot) grouping in the rail */
+.dp-cat { margin-bottom: 9px; }
+.dp-cat:last-child { margin-bottom: 0; }
+.dp-cat-lbl { font-size: 11px; font-weight: 700; color: hsl(var(--foreground)); margin-bottom: 5px; }
+
+/* view-full-request link uses dp-btn shape on an <a> */
+a.dp-btn { text-decoration: none; }
+.dp-btn-outline svg { opacity: .8; }

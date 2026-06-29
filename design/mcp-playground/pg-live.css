@@ -1,0 +1,253 @@
+/* ═══════════════════════════════════════════════════════════════
+   BODHI MCP — PLAYGROUND · LIVE INTERACTIONS
+   pg-live.css   (load AFTER pg-app.css)
+
+   Styles unique to the three "alive" moments of a tool call:
+     • Elicitation  — the server asks the user for details (own page)
+     • Sampling     — the server asks to use the AI (own page)
+     • the shared inbox (list + detail) rhythm, status chips, the
+       schema-driven form controls, the chat-style prompt preview, and
+       the Tools "Waiting on you…" hand-off state.
+
+   Everything here is built from the existing playground vocabulary —
+   cards, pills, tone families, 38px controls — so the new pages read as
+   native Bodhi. No new visual language.
+═══════════════════════════════════════════════════════════════ */
+
+/* ════════ NAV — pending badge on the rail link ════════ */
+.pg-cap-pending {
+  font-size: 11px; font-weight: 800; min-width: 20px; text-align: center;
+  padding: 1px 7px; border-radius: 99px; flex: none;
+  background: var(--c-lotus-text); color: #fff;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-lotus-text) 55%, transparent);
+  animation: pgPendingPulse 2.1s ease-out infinite;
+}
+.pg-cap.on .pg-cap-pending { background: var(--c-lotus-text); color: #fff; }
+@keyframes pgPendingPulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-lotus-text) 50%, transparent); }
+  70%  { box-shadow: 0 0 0 6px color-mix(in srgb, var(--c-lotus-text) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-lotus-text) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .pg-cap-pending { animation: none; } }
+
+/* shared tiny dot */
+.pg-livedot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block; flex: none; }
+
+/* rail header — "N waiting" pill for the inbox */
+.pg-listrail-waiting {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px;
+  background: var(--c-lotus-bg); color: var(--c-lotus-text); border: 1px solid var(--c-lotus-bd);
+}
+.pg-listrail-waiting .pg-livedot { width: 6px; height: 6px; }
+
+/* ════════ INBOX ROWS (list side) ════════ */
+.pg-inbox-row { gap: 5px !important; }
+.pg-inbox-top { display: flex; align-items: center; gap: 8px; width: 100%; }
+.pg-inbox-title { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: hsl(var(--foreground));
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-row.on .pg-inbox-title { color: var(--c-lotus-text); }
+.pg-inbox-meta { display: flex; align-items: center; gap: 7px; width: 100%; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.pg-inbox-from { display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-inbox-from svg { flex: none; opacity: .7; }
+.pg-inbox-dot { width: 3px; height: 3px; border-radius: 50%; background: hsl(var(--faint-foreground)); flex: none; }
+.pg-inbox-time { flex: none; font-variant-numeric: tabular-nums; }
+
+/* ════════ STATUS CHIP (Waiting / Provided / Declined / …) ════════ */
+.pg-st { display: inline-flex; align-items: center; gap: 4px; flex: none;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .01em;
+  padding: 2px 8px 2px 7px; border-radius: 99px; border: 1px solid; white-space: nowrap; }
+.pg-st svg { width: 11px; height: 11px; flex: none; }
+.pg-st .pg-livedot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.pg-st.waiting   { background: var(--c-lotus-bg);     border-color: var(--c-lotus-bd);     color: var(--c-lotus-text); }
+.pg-st.provided,
+.pg-st.approved  { background: var(--c-connected-bg);  border-color: var(--c-connected-bd); color: var(--c-connected-text); }
+.pg-st.declined  { background: var(--c-muted-bg);      border-color: var(--c-muted-bd);     color: var(--c-muted-text); }
+.pg-st.cancelled { background: var(--c-saffron-bg);    border-color: var(--c-saffron-bd);   color: var(--c-saffron-text); }
+.pg-st.expired   { background: var(--c-muted-bg);      border-color: var(--c-muted-bd);     color: var(--c-muted-text); opacity: .8; }
+.pg-st.error     { background: var(--c-danger-bg);     border-color: var(--c-danger-bd);    color: var(--c-danger-text); }
+/* pulsing dot on a waiting chip */
+.pg-st.waiting .pg-livedot { animation: pgDotPulse 1.5s ease-in-out infinite; }
+@keyframes pgDotPulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .pg-st.waiting .pg-livedot { animation: none; } }
+
+/* ════════ CENTRE — empty state for an inbox at rest ════════ */
+.pg-live-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; text-align: center; padding: 48px; }
+.pg-live-empty-mark { width: 62px; height: 62px; border-radius: 17px; display: flex; align-items: center; justify-content: center;
+  background: var(--c-lotus-bg); color: var(--c-lotus-text); border: 1px solid var(--c-lotus-bd); }
+.pg-live-empty-t { font-size: 17px; font-weight: 700; letter-spacing: -.01em; color: hsl(var(--foreground)); }
+.pg-live-empty-s { font-size: 13.5px; line-height: 1.6; color: hsl(var(--muted-foreground)); max-width: 360px; }
+
+/* ════════ REQUEST DETAIL ════════ */
+.pg-req-head { display: flex; align-items: flex-start; gap: 13px; padding: 18px 24px 16px;
+  border-bottom: 1px solid hsl(var(--border)); flex: none; }
+.pg-req-head-ico { width: 38px; height: 38px; border-radius: 10px; flex: none;
+  display: flex; align-items: center; justify-content: center; background: var(--c-lotus-bg); color: var(--c-lotus-text); }
+.pg-req-head.sampling .pg-req-head-ico { background: var(--c-indigo-bg); color: var(--c-indigo-text); }
+.pg-req-head-text { flex: 1; min-width: 0; }
+.pg-req-head-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.pg-req-title { font-size: 18px; font-weight: 700; letter-spacing: -.01em; text-wrap: pretty; }
+.pg-req-message { font-size: 13.5px; line-height: 1.55; color: hsl(var(--foreground)); margin-top: 2px; }
+
+/* "which run is asking" note */
+.pg-asking { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 11px;
+  font-size: 12.5px; color: hsl(var(--muted-foreground)); }
+.pg-asking-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 7px; border-radius: 8px;
+  background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); font-weight: 600; color: hsl(var(--foreground)); }
+.pg-asking-chip svg { flex: none; color: hsl(var(--muted-foreground)); }
+.pg-asking-chip .mono { font-size: 11.5px; }
+
+/* safety line */
+.pg-safety { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-radius: 10px;
+  background: var(--c-leaf-bg); border: 1px solid var(--c-leaf-bd); color: var(--c-leaf-text);
+  font-size: 12px; line-height: 1.5; margin-top: 16px; }
+.pg-safety svg { flex: none; margin-top: 1px; }
+
+/* card section title inside the run card */
+.pg-sec-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  color: hsl(var(--muted-foreground)); margin-bottom: 13px; display: flex; align-items: center; gap: 8px; }
+.pg-sec-title .pg-sec-count { font-weight: 700; }
+
+/* ════════ ACTION ROW (Submit · Decline · Cancel  /  Approve · Decline) ════════ */
+.pg-actions { display: flex; align-items: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.pg-btn { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 16px; border-radius: 9px;
+  font-size: 13.5px; font-weight: 650; cursor: pointer; border: 1px solid transparent; transition: filter 120ms, background 120ms, border-color 120ms; }
+.pg-btn svg { flex: none; }
+.pg-btn-primary { background: var(--c-indigo-text); color: #fff; font-weight: 700; }
+.pg-btn-primary:hover { filter: brightness(1.08); }
+.pg-btn-primary:disabled { opacity: .5; cursor: not-allowed; filter: none; }
+.pg-btn-ghost { background: transparent; border-color: hsl(var(--border-strong)); color: hsl(var(--foreground)); }
+.pg-btn-ghost:hover { background: hsl(var(--muted)); }
+.pg-btn-decline { background: transparent; border-color: var(--c-danger-bd); color: var(--c-danger-text); }
+.pg-btn-decline:hover { background: var(--c-danger-bg); }
+.pg-btn-cancel { background: transparent; color: hsl(var(--muted-foreground)); margin-left: auto; }
+.pg-btn-cancel:hover { color: hsl(var(--foreground)); background: hsl(var(--muted)); }
+
+/* ════════ SCHEMA FORM — extra controls beyond the text input ════════ */
+.pg-field-titlerow { display: flex; align-items: center; gap: 7px; }
+.pg-input.pg-select { padding: 0 12px; cursor: pointer; appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center; padding-right: 32px; }
+
+/* toggle / switch (boolean) */
+.pg-switch-field { flex-direction: row; align-items: flex-start; gap: 11px; }
+.pg-switch-field .pg-switch-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.pg-switch { position: relative; width: 38px; height: 22px; border-radius: 99px; flex: none; cursor: pointer;
+  background: hsl(var(--muted-foreground) / .35); border: none; padding: 0; transition: background 140ms; margin-top: 1px; }
+.pg-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: var(--shadow-sm); transition: transform 140ms; }
+.pg-switch.on { background: var(--c-connected-text); }
+.pg-switch.on::after { transform: translateX(16px); }
+
+/* multi-select chip group */
+.pg-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.pg-chip-opt { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 99px;
+  border: 1px solid hsl(var(--border-strong)); background: hsl(var(--card)); color: hsl(var(--foreground));
+  font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 110ms; }
+.pg-chip-opt:hover { border-color: var(--c-lotus-bd); }
+.pg-chip-opt.on { background: var(--c-lotus-bg); border-color: var(--c-lotus-bd); color: var(--c-lotus-text); }
+.pg-chip-opt .pg-chip-check { display: inline-flex; opacity: 0; width: 13px; margin-left: -2px; transition: opacity 110ms; }
+.pg-chip-opt.on .pg-chip-check { opacity: 1; }
+.pg-chip-group.err .pg-chips { outline: 1px solid var(--c-danger-text); outline-offset: 4px; border-radius: 6px; }
+.pg-pickrange { font-size: 11px; font-weight: 600; color: hsl(var(--faint-foreground)); }
+
+/* number with range hint */
+.pg-num-row { display: flex; align-items: center; gap: 10px; }
+.pg-num-row .pg-input { flex: none; width: 130px; }
+.pg-range-hint { font-size: 11.5px; color: hsl(var(--faint-foreground)); font-family: var(--font-mono); }
+
+/* a resolved (read-only) submitted-values summary */
+.pg-answered { border: 1px solid hsl(var(--border)); border-radius: 12px; overflow: hidden; }
+.pg-answered-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 12.5px; font-weight: 650;
+  border-bottom: 1px solid hsl(var(--border)); }
+.pg-answered.provided .pg-answered-head, .pg-answered.approved .pg-answered-head { background: var(--c-connected-bg); color: var(--c-connected-text); }
+.pg-answered.declined .pg-answered-head { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+.pg-answered.cancelled .pg-answered-head { background: var(--c-saffron-bg); color: var(--c-saffron-text); }
+.pg-answered-body { padding: 14px; }
+
+/* ════════ SAMPLING — prompt preview (chat bubbles) ════════ */
+.pg-chatprev { display: flex; flex-direction: column; gap: 10px; }
+.pg-cbub { border: 1px solid hsl(var(--border)); border-radius: 12px; overflow: hidden; }
+.pg-cbub-role { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; padding: 6px 12px; }
+.pg-cbub-role svg { width: 11px; height: 11px; }
+.pg-cbub.system .pg-cbub-role { background: var(--c-saffron-bg); color: var(--c-saffron-text); }
+.pg-cbub.user .pg-cbub-role { background: var(--c-indigo-bg); color: var(--c-indigo-text); }
+.pg-cbub.assistant .pg-cbub-role { background: var(--c-lotus-bg); color: var(--c-lotus-text); }
+.pg-cbub-body { padding: 11px 14px; }
+.pg-sampling-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 12px;
+  font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+.pg-sampling-meta b { font-weight: 600; color: hsl(var(--foreground)); font-family: var(--font-mono); }
+.pg-sampling-meta .pg-meta-ic { display: inline-flex; align-items: center; gap: 5px; }
+
+/* model picker block */
+.pg-model-field { display: flex; flex-direction: column; gap: 6px; }
+.pg-model-label { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; }
+.pg-model-hint { font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+.pg-model-now { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 1px 7px;
+  border-radius: 6px; background: var(--c-indigo-bg); color: var(--c-indigo-text); }
+
+/* empty model list pointer */
+.pg-nomodels { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; padding: 16px; border-radius: 12px;
+  background: var(--c-saffron-bg); border: 1px solid var(--c-saffron-bd); }
+.pg-nomodels-t { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 650; color: var(--c-saffron-text); }
+.pg-nomodels-s { font-size: 12.5px; line-height: 1.55; color: var(--c-saffron-text); opacity: .9; }
+
+/* "Asking the AI…" + answer */
+.pg-asking-ai { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 11px;
+  padding: 34px 20px; text-align: center; }
+.pg-asking-ai-mark { width: 46px; height: 46px; border-radius: 13px; display: flex; align-items: center; justify-content: center;
+  background: var(--c-indigo-bg); color: var(--c-indigo-text); }
+.pg-asking-ai-t { font-size: 14px; font-weight: 650; color: hsl(var(--foreground)); }
+.pg-asking-ai-s { font-size: 12.5px; color: hsl(var(--muted-foreground)); }
+
+.pg-answer { border: 1px solid var(--c-connected-bd); border-radius: 13px; overflow: hidden; }
+.pg-answer-head { display: flex; align-items: center; gap: 8px; padding: 9px 14px; font-size: 12px; font-weight: 700;
+  background: var(--c-connected-bg); color: var(--c-connected-text); }
+.pg-answer-head .pg-answer-model { margin-left: auto; font-family: var(--font-mono); font-size: 11px; font-weight: 600; opacity: .9; }
+.pg-answer-body { padding: 14px; }
+.pg-answer-review { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-top: 1px dashed hsl(var(--border)); }
+.pg-answer-review textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: 1px solid hsl(var(--border)); border-radius: 9px;
+  font-family: inherit; font-size: 13px; line-height: 1.55; background: hsl(var(--background)); color: hsl(var(--foreground)); outline: none; resize: vertical; }
+.pg-answer-review textarea:focus { border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px rgba(255,164,184,.15); }
+[data-theme="dark"] .pg-answer-review textarea { background: hsl(var(--surface-1)); border-color: hsl(var(--border-strong)); }
+
+/* developer "review before send" toggle */
+.pg-dev-toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;
+  color: hsl(var(--muted-foreground)); user-select: none; }
+.pg-dev-toggle .pg-switch { width: 32px; height: 19px; }
+.pg-dev-toggle .pg-switch::after { width: 15px; height: 15px; }
+.pg-dev-toggle .pg-switch.on::after { transform: translateX(13px); }
+
+/* ════════ RAW DISCLOSURE (collapsed wire payload) ════════ */
+.pg-raw { border: 1px solid hsl(var(--border)); border-radius: 11px; overflow: hidden; margin-top: 16px; }
+.pg-raw-sum { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 13px; font-size: 12px; font-weight: 650;
+  color: hsl(var(--muted-foreground)); cursor: pointer; user-select: none; border: none; background: none; text-align: left; }
+.pg-raw-sum:hover { background: hsl(var(--muted)); }
+.pg-raw-sum > svg:first-child { color: hsl(var(--faint-foreground)); }
+.pg-raw-sum .pg-raw-tag { margin-left: auto; font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;
+  padding: 1px 7px; border-radius: 5px; background: var(--c-indigo-bg); color: var(--c-indigo-text); }
+.pg-raw.open .pg-raw-sum { border-bottom: 1px solid hsl(var(--border)); }
+.pg-raw-body { padding: 12px 13px; background: hsl(var(--surface-1)); position: relative; }
+.pg-raw-body .pg-code { max-height: 320px; overflow: auto; }
+.pg-raw-copy { position: absolute; top: 9px; right: 10px; }
+
+/* ════════ TOOLS — "Waiting on you…" hand-off state ════════ */
+.pg-result-waiting { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 13px;
+  padding: 34px 24px; text-align: center; }
+.pg-waiting-mark { position: relative; width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+  background: var(--c-lotus-bg); color: var(--c-lotus-text); }
+.pg-waiting-mark::before { content: ''; position: absolute; inset: 0; border-radius: 14px; border: 2px solid var(--c-lotus-text);
+  opacity: .5; animation: pgWaitRing 1.8s ease-out infinite; }
+@keyframes pgWaitRing { 0% { transform: scale(1); opacity: .5; } 100% { transform: scale(1.35); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pg-waiting-mark::before { animation: none; } }
+.pg-waiting-t { font-size: 15px; font-weight: 700; color: hsl(var(--foreground)); }
+.pg-waiting-s { font-size: 13px; line-height: 1.55; color: hsl(var(--muted-foreground)); max-width: 330px; }
+.pg-waiting-go { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 16px; border-radius: 9px;
+  background: var(--c-lotus-text); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; border: none; margin-top: 2px;
+  text-decoration: none; transition: filter 120ms; }
+.pg-waiting-go:hover { filter: brightness(1.06); }
+
+/* a quiet "switching…" cue used on the originating run right before nav */
+.pg-switching { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--c-lotus-text); font-weight: 600; }

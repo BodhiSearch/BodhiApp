@@ -99,15 +99,45 @@ function ToolDetail({ tool, inst }) {
   const [values, setValues] = useState({});
   const [errors, setErrors] = useState({});
   const [run, exec, setRun] = useRunner();
+  const bump = useLiveBump();                      // re-read the cross-page store on change
 
   useEffect(() => { setValues({}); setErrors({}); setRun(null); }, [tool.name]);
 
   const args = tool.params.map(p => ({ name: p.name, label: prettyKey(p.name), required: p.required, desc: p.desc, placeholder: p.placeholder, type: p.type }));
+  const isInteractive = !!tool.interaction;
+
+  /* a paused / resumed run for an interactive tool, from the store. The
+     ?resume= run wins (auto-return targets it); else the latest for this tool. */
+  let storeRun = null;
+  if (isInteractive) {
+    const resumeId = urlParams().get('resume');
+    const r = resumeId ? liveGetRun(resumeId) : null;
+    storeRun = (r && r.toolName === tool.name) ? r : liveLatestRunForTool(inst.instId, tool.name);
+  }
 
   const runIt = () => {
     const errs = {};
     tool.params.forEach(p => { if (p.required && !String(values[p.name] || '').trim()) errs[p.name] = true; });
     if (Object.keys(errs).length) { setErrors(errs); setTimeout(() => setErrors({}), 2200); return; }
+
+    if (isInteractive) {
+      // start the call; the server "sends back" a request → auto-switch to its page
+      const runId = uid('run');
+      let requestId;
+      if (tool.interaction === 'elicitation') {
+        requestId = liveAddElicitation({ instId: inst.instId, instName: inst.instName, serverId: inst.serverId,
+          fromToolName: tool.name, fromToolTitle: tool.title, runId, message: tool.elicitMessage, requestedSchema: tool.elicitSchema });
+      } else {
+        const params = samplingParamsWithNotes(tool.samplingParams, values.notes);
+        requestId = liveAddSampling({ instId: inst.instId, instName: inst.instName, serverId: inst.serverId,
+          fromToolName: tool.name, fromToolTitle: tool.title, runId, title: truncate(msgText(params.messages[0]), 60), params });
+      }
+      liveAddRun({ runId, instId: inst.instId, toolName: tool.name, interaction: tool.interaction, requestId });
+      setRun({ phase: 'switching' });
+      setTimeout(() => { window.location.href = window.capHref(tool.interaction, inst) + '&focus=' + encodeURIComponent(requestId); }, 850);
+      return;
+    }
+
     const argsOut = {};
     tool.params.forEach(p => { const v = values[p.name]; if (v != null && String(v).trim() !== '') argsOut[p.name] = p.type === 'number' ? Number(v) : v; });
     const request = { method: 'tools/call', params: { name: tool.name, arguments: argsOut } };
@@ -115,19 +145,38 @@ function ToolDetail({ tool, inst }) {
     exec({ request, kind: 'tool', build: () => model, raw: toolResultEnvelope(model) });
   };
 
+  /* what to show beneath the inputs */
+  let resultArea;
+  if (run && run.phase === 'switching') {
+    resultArea = <WaitingPanel switching interaction={tool.interaction} />;
+  } else if (!run && storeRun && storeRun.status === 'waiting') {
+    resultArea = <WaitingPanel interaction={storeRun.interaction} requestId={storeRun.requestId} inst={inst} />;
+  } else {
+    const effective = run || (storeRun && storeRun.status === 'resolved' ? runToDisplay(storeRun) : null);
+    resultArea = <ResultPanel run={effective} title="Result" emptyHint={isInteractive ? 'Run this tool to start the exchange' : 'Run this tool to see what comes back'} />;
+  }
+
   return (
-    <div className="pg-detail">
+    <div className="pg-detail" data-screen-label={'Tool · ' + (tool.title || tool.name)}>
       <ToolHeader tool={tool} inst={inst} />
       <div className="pg-detail-scroll">
         <div className="pg-run-card">
-          {args.length > 0 && <div className="pg-run-head"><span className="pg-run-title">Inputs</span></div>}
-          <ArgForm args={args} values={values} onChange={(n, v) => setValues(p => ({ ...p, [n]: v }))} errors={errors} />
+          {args.length > 0 ? (
+            <>
+              <div className="pg-run-head"><span className="pg-run-title">Inputs</span></div>
+              <ArgForm args={args} values={values} onChange={(n, v) => setValues(p => ({ ...p, [n]: v }))} errors={errors} />
+            </>
+          ) : (
+            <div className="pg-noargs">{isInteractive
+              ? (tool.interaction === 'sampling' ? 'No inputs needed — running this asks you to approve using the AI.' : 'No inputs needed — running this asks you for a few details.')
+              : 'No inputs needed — just run it.'}</div>
+          )}
           <div className="pg-run-row">
             <button className="pg-run-btn" onClick={runIt}><Ic name="play" size={14} /> Run tool</button>
             {(args.length > 0) && <button className="pg-clear-btn" onClick={() => { setValues({}); setRun(null); }}>Reset</button>}
           </div>
         </div>
-        <ResultPanel run={run} title="Result" emptyHint="Run this tool to see what comes back" />
+        {resultArea}
       </div>
     </div>
   );
@@ -347,6 +396,10 @@ const CAP_CONFIG = {
     pick: 'a template',
   },
 };
+
+/* Merge the live-interaction capabilities (Elicitation / Sampling) defined in
+   pg-live.jsx into the same config the chrome renders generically. */
+if (window.LIVE_CONFIG) Object.assign(CAP_CONFIG, window.LIVE_CONFIG);
 
 Object.assign(window, {
   useRunner, chatHref, DetailHead, PickSomething,

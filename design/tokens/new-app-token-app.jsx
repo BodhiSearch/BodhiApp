@@ -161,10 +161,12 @@ function NewAppTokenApp() {
   /* Section 2 — Model Access */
   const [modelMode,      setModelMode]      = React.useState('all'); // 'all' | 'specific'
   const [selectedModels, setSelectedModels] = React.useState([]);
+  const [listAllModels,  setListAllModels]  = React.useState(false);
 
   /* Section 3 — MCP Access */
   const [mcpMode,        setMcpMode]        = React.useState('all'); // 'all' | 'specific'
   const [selectedMcps,   setSelectedMcps]   = React.useState([]);
+  const [listAllMcps,    setListAllMcps]    = React.useState(false);
 
   /* Section 4 — Token Scope */
   const [role, setRole] = React.useState('user');
@@ -194,6 +196,7 @@ function NewAppTokenApp() {
     setGenerated(false); setTokenName('');
     setSelectedModels([]); setSelectedMcps([]);
     setModelMode('all'); setMcpMode('all'); setRole('user');
+    setListAllModels(false); setListAllMcps(false);
   };
 
   const handleGenerate = () => {
@@ -283,6 +286,14 @@ function NewAppTokenApp() {
                 <div className="bf-section">
                   <div className="bf-section-title">Model Access</div>
                   <div className="bf-field">
+                    <ListingToggle
+                      on={listAllModels}
+                      onToggle={() => setListAllModels(v => !v)}
+                      redundant={modelMode === 'all'}
+                      label="List all models"
+                      code="/v1/models"
+                      desc="Let the app enumerate every model via the catalog. Off → it only sees the models you grant for inference below. (Listing is separate from running inference.)"
+                    />
                     <ModelAccessPicker
                       mode={modelMode}
                       onModeChange={setModelMode}
@@ -301,6 +312,14 @@ function NewAppTokenApp() {
                 <div className="bf-section">
                   <div className="bf-section-title">MCP Access</div>
                   <div className="bf-field">
+                    <ListingToggle
+                      on={listAllMcps}
+                      onToggle={() => setListAllMcps(v => !v)}
+                      redundant={mcpMode === 'all'}
+                      label="List all MCPs"
+                      code="/v1/mcps"
+                      desc="Let the app discover every MCP server. Off → it only sees the servers you grant a connection to below. (Listing is separate from connecting.)"
+                    />
                     <ModelAccessPicker
                       mode={mcpMode}
                       onModeChange={setMcpMode}

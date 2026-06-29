@@ -11,7 +11,7 @@ drawer chrome anymore.
 | Access Requests | api-keys / access-requests | list page, pending-count pill in `headerActions` |
 | Manage Users | settings / manage-users | own sidebar tabs (collapse-aware), tables, dialogs, toast |
 | New App Token | api-keys / new-token | form (`bodhi-form.css` flush) |
-| Bodhi Access Request | api-keys / access-requests | form/review; sticky action bar inside flush main |
+| App Access Request | api-keys / access-requests | form/review; sticky action bar inside flush main |
 | Bodhi App Settings | settings / app-settings | React-ified; settings-group nav (collapse-aware), restart banner via `banner`, edit drawer |
 | Bodhi MCP Discover v2 | mcp / discover | React-ified; 3-column list/detail, role switch, config slide-over |
 | Bodhi MCP Playground | mcp / my-instances | React-ified; tool workspace + result area + exec log |
@@ -29,7 +29,7 @@ hover-resizes, and uses overlay drawers under 768px.
   cross-page primitives shared by the API-Keys/Settings batch: `page-header`,
   `toolbar`, `filter-tabs`, `search`, `empty-state`, `section-label`,
   `btn-accent/ghost`, and the `.tag-*` set. Consumed by App Tokens, Access
-  Requests, New App Token, Bodhi Access Request. **Folded (shared).**
+  Requests, New App Token, App Access Request. **Folded (shared).**
 
 - **List-page convergence (App Tokens / Access Requests / Manage Users).**
   The shared *controls* (toolbar, filter-tabs, search, empty-state, tags)
@@ -54,11 +54,11 @@ hover-resizes, and uses overlay drawers under 768px.
   Manage Users needs `--c-red-*` (rejected) — also kept page-local. **Left
   page-local (genuinely page-specific tokens).**
 
-- **`--c-pending` → `--c-warning`.** Bodhi Access Request's `.info-pending`
+- **`--c-pending` → `--c-warning`.** App Access Request's `.info-pending`
   banner was remapped to AppShell's `--c-warning-*` (same intent) instead of
   re-declaring a token. **Folded (uses shared token).**
 
-- **Sticky action bar (Bodhi Access Request).** The old `position:fixed; left:
+- **Sticky action bar (App Access Request).** The old `position:fixed; left:
   var(--side-w)` action bar (which tracked the old resize var) became a normal
   `flex:none` footer inside a flush `ar-main` column — it now respects collapse
   and resize for free. **Fixed via the shell pattern.**

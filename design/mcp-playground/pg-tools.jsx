@@ -75,8 +75,49 @@ function toolResultEnvelope(model) {
   return out;
 }
 
+/* ── interactive demo payloads (shared by the tool trigger + the seeded
+   inbox in pg-live). The elicitation schema exercises every field kind the
+   form-builder supports; the sampling params mirror a real createMessage. ── */
+const CONTACT_ELICIT_SCHEMA = {
+  type: 'object',
+  properties: {
+    name:    { type: 'string',  title: 'Full name',        description: 'Your full name' },
+    agree:   { type: 'boolean', title: 'Agree to terms',   description: 'I accept the playground’s terms of use', default: false },
+    nickname:{ type: 'string',  title: 'Preferred name',   description: 'What should we call you?', default: 'Friend' },
+    email:   { type: 'string',  title: 'Email',            description: 'Where we can reach you', format: 'email' },
+    homepage:{ type: 'string',  title: 'Website',          description: 'Optional — your personal site', format: 'uri' },
+    birthdate:{ type: 'string', title: 'Date of birth',    description: 'Used only to confirm you’re 18+', format: 'date' },
+    satisfaction:{ type: 'integer', title: 'Satisfaction', description: 'How happy are you, 1–100?', minimum: 1, maximum: 100, default: 42 },
+    budget:  { type: 'number',  title: 'Monthly budget',   description: 'Any amount from 0 to 1000', minimum: 0, maximum: 1000, default: 3.14 },
+    plan:    { type: 'string',  title: 'Plan',             description: 'Pick the plan that fits', enum: ['free', 'pro', 'team'], enumNames: ['Free', 'Pro', 'Team'] },
+    topics:  { type: 'array',   title: 'Topics of interest', description: 'Choose a few', items: { enum: ['ai', 'design', 'infra', 'product', 'research'], enumNames: ['AI', 'Design', 'Infrastructure', 'Product', 'Research'] }, minItems: 1, maxItems: 3 },
+    contact: { title: 'Preferred contact', description: 'How should we reach you?', oneOf: [{ const: 'email', title: 'By email' }, { const: 'phone', title: 'By phone' }, { const: 'none', title: 'Don’t contact me' }] },
+  },
+  required: ['name', 'email'],
+};
+const SUMMARIZE_SAMPLING_PARAMS = {
+  messages: [{ role: 'user', content: { type: 'text', text: 'Summarise the notes below into 3 crisp bullet points, then suggest one next step.\n\nNotes:\nKickoff went well. Eng wants the playground interactions behind a flag. Design prefers each interaction on its own page. Completion can ship last.' } }],
+  systemPrompt: 'You are a concise assistant who writes clear, friendly summaries.',
+  modelPreferences: { hints: [{ name: 'claude-3-sonnet' }, { name: 'claude' }], intelligencePriority: 0.8, speedPriority: 0.5, costPriority: 0.3 },
+  maxTokens: 100, temperature: 0.7,
+};
+
 /* ── EVERYTHING reference server — one tool per result kind / annotation ── */
 const EVERYTHING_TOOLS = [
+  /* the two live-interaction demos lead the list so they're easy to find */
+  { name: 'collect_contact_info', title: 'Request your details', icon: 'message-square-dashed',
+    desc: 'Pauses mid-run to ask you for a few details, then continues — a live elicitation round-trip.',
+    params: [], interaction: 'elicitation', elicitMessage: 'Please provide your contact information',
+    elicitSchema: CONTACT_ELICIT_SCHEMA,
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    result: { content: [{ type: 'text', text: 'This tool asks you for details mid-run. Click Run to start the elicitation.' }] } },
+
+  { name: 'summarize_with_ai', title: 'Summarise with AI', icon: 'sparkles',
+    desc: 'Asks to borrow your AI to summarise some notes, then finishes — a live sampling round-trip.',
+    params: [{ name: 'notes', type: 'string', required: false, desc: 'Optional notes to summarise (a sample is used if left blank)', placeholder: 'Paste notes to summarise…' }],
+    interaction: 'sampling', samplingParams: SUMMARIZE_SAMPLING_PARAMS,
+    annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: false } },
+
   { name: 'read_document', title: 'Read a document', desc: 'Read a file from the reference workspace and return it as formatted Markdown.',
     params: [{ name: 'path', type: 'string', required: true, desc: 'Path of the file to read', placeholder: 'guides/getting-started.md' }],
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
@@ -186,4 +227,5 @@ Object.assign(window, {
   HINT_ORDER, hintFor, hintsForTool,
   toolResultModel, toolResultEnvelope, blockToWire,
   EVERYTHING_TOOLS, TOOL_ENRICH, playgroundToolsFor,
+  CONTACT_ELICIT_SCHEMA, SUMMARIZE_SAMPLING_PARAMS,
 });

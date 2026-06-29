@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════
    MODEL ACCESS PICKER — Shared styles
-   Used in: New App Token, Bodhi Access Request
+   Used in: New App Token, App Access Request
    Classes: map-* (radio + summary), panel-* (side panel)
 ═══════════════════════════════════════════════════ */
 
@@ -76,6 +76,80 @@
   color: var(--c-leaf-text);
   white-space: nowrap;
 }
+
+/* ── Upgrade / token-exchange cues ── */
+.map-granted-pill {
+  font-size: 9.5px; font-weight: 700;
+  padding: 1px 6px; border-radius: 3px;
+  background: var(--c-leaf-bg);
+  border: 1px solid var(--c-leaf-bd);
+  color: var(--c-leaf-text);
+  white-space: nowrap; letter-spacing: .01em;
+}
+.map-new-pill {
+  font-size: 9.5px; font-weight: 700;
+  padding: 1px 6px; border-radius: 3px;
+  background: var(--c-saffron-bg);
+  border: 1px solid var(--c-saffron-bd);
+  color: var(--c-saffron-text);
+  white-space: nowrap; letter-spacing: .01em;
+}
+/* a radio tier the previous token already held */
+.map-radio-option.is-granted {
+  border-color: var(--c-leaf-bd);
+  background: var(--c-leaf-bg);
+}
+.map-radio-option.is-granted.selected { box-shadow: inset 3px 0 0 var(--c-leaf-text); }
+/* selected rows that were already granted / newly added */
+.map-selected-row.is-granted { box-shadow: inset 3px 0 0 var(--c-leaf-text); }
+.map-selected-row.is-new     { box-shadow: inset 3px 0 0 var(--c-saffron-text); }
+
+/* ── Read-only (viewing an issued token) ── */
+.map-radio-group.is-readonly .map-radio-option,
+.map-radio-option.is-readonly { cursor: default; }
+.map-radio-group.is-readonly .map-radio-option:hover { background: hsl(var(--background)); }
+.map-radio-group.is-readonly .map-radio-option.selected:hover { background: var(--c-lotus-bg); }
+.map-radio-group.is-readonly .map-radio-option.is-granted:hover { background: var(--c-leaf-bg); }
+/* dim the un-selected tiers in read-only so the granted one reads clearly */
+.map-radio-group.is-readonly .map-radio-option:not(.selected) { opacity: .5; }
+
+/* ── Standalone listing toggle (ListBucket-style permission) ── */
+.map-listing {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 11px 13px; margin-bottom: 10px;
+  border: 1.5px solid hsl(var(--border)); border-radius: 9px;
+  background: hsl(var(--background));
+  cursor: pointer; transition: background 100ms, border-color 100ms;
+  user-select: none;
+}
+.map-listing:hover { background: hsl(var(--muted)); }
+.map-listing.on { border-color: var(--c-teal-bd); background: var(--c-teal-bg); }
+.map-listing.is-locked { cursor: default; }
+.map-listing.is-locked:hover { background: var(--c-teal-bg); }
+.map-listing-main { flex: 1; min-width: 0; }
+.map-listing-title {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  font-size: 13px; font-weight: 600; color: hsl(var(--foreground));
+}
+.map-listing-code {
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
+  padding: 1px 6px; border-radius: 4px;
+  background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+.map-listing-desc { font-size: 11.5px; color: hsl(var(--muted-foreground)); line-height: 1.45; margin-top: 3px; text-wrap: pretty; }
+.map-listing-implied { color: var(--c-teal-text); font-weight: 600; }
+
+.map-listing-check {
+  flex: none; width: 16px; height: 16px; margin-top: 1px;
+  border-radius: 4px; border: 1.5px solid hsl(var(--input));
+  background: hsl(var(--card));
+  display: flex; align-items: center; justify-content: center;
+  transition: background 120ms, border-color 120ms;
+}
+.map-listing-check.on { background: var(--c-teal-text); border-color: var(--c-teal-text); }
+.map-listing-check svg { width: 9px; height: 9px; display: block; }
+.map-listing.is-locked .map-listing-check { opacity: .9; }
 
 /* ── Specific models area (below radios) ── */
 .map-specific-area {
@@ -393,3 +467,69 @@
 @media (max-width: 768px) {
   .panel-sheet { width: 100vw; }
 }
+
+/* ═══════════════════════════════════════════════════
+   SINGLE MODEL COMBO — free-text autocomplete (one model)
+   The "single" tier of model selection: pick an existing
+   model OR type any plain-text value. Mirrors the chat picker.
+═══════════════════════════════════════════════════ */
+.slot-single { display: flex; flex-direction: column; }
+.slot-single-help {
+  display: flex; align-items: flex-start; gap: 6px;
+  font-size: 11.5px; color: hsl(var(--muted-foreground));
+  line-height: 1.45; margin-bottom: 9px; text-wrap: pretty;
+}
+.slot-single-help svg { width: 12px; height: 12px; margin-top: 2px; flex: none; }
+.slot-single-empty { font-size: 11.5px; color: hsl(var(--muted-foreground)); margin-top: 8px; line-height: 1.4; }
+
+.map-combo { position: relative; }
+.map-combo-input {
+  width: 100%; height: 38px; box-sizing: border-box;
+  padding: 0 34px 0 12px;
+  font-family: var(--font-mono); font-size: 12.5px;
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  border: 1.5px solid hsl(var(--input));
+  border-radius: 8px; outline: none;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.map-combo-input::placeholder { font-family: var(--font-sans); color: hsl(var(--muted-foreground)); }
+.map-combo-input:focus { border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px rgba(255, 164, 184, .14); }
+.map-combo.is-readonly .map-combo-input { cursor: default; }
+
+.map-combo-caret {
+  position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
+  color: hsl(var(--muted-foreground)); pointer-events: none;
+  display: flex; transition: transform 150ms ease;
+}
+.map-combo-caret svg { width: 14px; height: 14px; }
+.map-combo.open .map-combo-caret { transform: translateY(-50%) rotate(180deg); }
+
+.map-combo-pop {
+  position: absolute; top: calc(100% + 5px); left: 0; right: 0; z-index: 120;
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border-strong));
+  border-radius: 9px; box-shadow: var(--shadow-lg);
+  padding: 5px; max-height: 272px; overflow-y: auto;
+}
+.map-combo-pop::-webkit-scrollbar { width: 8px; }
+.map-combo-pop::-webkit-scrollbar-thumb { background: hsl(var(--border-strong)); border-radius: 8px; border: 2px solid hsl(var(--popover)); }
+
+.map-combo-opt {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 7px 9px; border-radius: 7px; border: none; background: transparent;
+  font-family: inherit; font-size: 12.5px; color: hsl(var(--foreground));
+  cursor: pointer; text-align: left;
+}
+.map-combo-opt:hover { background: hsl(var(--muted)); }
+.map-combo-opt.sel { background: var(--c-lotus-bg); }
+.map-combo-opt-name { flex: 1; min-width: 0; font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.map-combo-opt-tags { display: flex; align-items: center; gap: 4px; flex: none; }
+.map-combo-opt-check { display: flex; flex: none; }
+.map-combo-opt.is-custom > i, .map-combo-opt.is-custom svg { color: hsl(var(--muted-foreground)); width: 14px; height: 14px; flex: none; }
+.map-combo-opt.is-custom .map-combo-opt-name { font-family: var(--font-sans); font-weight: 500; }
+.map-combo-custom-hint { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: hsl(var(--muted-foreground)); flex: none; }
+.map-combo-div { height: 1px; background: hsl(var(--border)); margin: 5px 6px; }
+.map-combo-empty { padding: 14px; text-align: center; font-size: 12px; color: hsl(var(--muted-foreground)); }
+
+[data-theme="dark"] .map-combo-input { background: hsl(var(--surface-1)); border-color: hsl(var(--border-strong)); }

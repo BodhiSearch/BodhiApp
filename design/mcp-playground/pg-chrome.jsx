@@ -24,6 +24,8 @@ const PG_CAPS = [
   { id: 'prompts',   label: 'Prompts',   icon: 'message-square-quote', file: 'MCP-Playground-Prompts.html',   countKey: 'prompts' },
   { id: 'resources', label: 'Resources', icon: 'folder-open',          file: 'MCP-Playground-Resources.html', countKey: 'resources' },
   { id: 'templates', label: 'Templates', icon: 'layout-template',      file: 'MCP-Playground-Templates.html', countKey: 'templates' },
+  { id: 'elicitation', label: 'Elicitation', icon: 'inbox',    file: 'MCP-Playground-Elicitation.html', countKey: null, pending: true },
+  { id: 'sampling',    label: 'Sampling',    icon: 'sparkles', file: 'MCP-Playground-Sampling.html',    countKey: null, pending: true },
 ];
 const capFile = id => (PG_CAPS.find(c => c.id === id) || PG_CAPS[0]).file;
 function capHref(id, inst) {
@@ -107,12 +109,13 @@ function InstancePicker({ instances, selected, currentCap }) {
 }
 
 /* ══ CAPABILITY NAV (left, cross-page links) ══ */
-function CapabilityNav({ counts, active, inst }) {
+function CapabilityNav({ counts, pending, active, inst }) {
   return (
     <div className="pg-capnav">
       <div className="pg-rail-label">Explore</div>
       {PG_CAPS.map(c => {
         const n = c.countKey ? (counts ? counts[c.countKey] : 0) : null;
+        const pend = (c.pending && pending) ? pending[c.id] : 0;
         const muted = !inst || (c.countKey && n === 0);
         const isActive = active === c.id;
         const cls = 'pg-cap' + (isActive ? ' on' : '') + (muted && !isActive ? ' muted' : '');
@@ -120,7 +123,9 @@ function CapabilityNav({ counts, active, inst }) {
           <>
             <span className="pg-cap-ico"><Ic name={c.icon} size={15} /></span>
             <span className="pg-cap-label">{c.label}</span>
-            {n != null && <span className="pg-cap-count">{!inst ? '—' : n}</span>}
+            {c.pending
+              ? (inst && pend > 0 ? <span className="pg-cap-pending">{pend}</span> : null)
+              : (n != null && <span className="pg-cap-count">{!inst ? '—' : n}</span>)}
           </>
         );
         if (muted && !isActive) return <span key={c.id} className={cls} aria-disabled="true">{inner}</span>;
@@ -198,6 +203,9 @@ function PlaygroundPage({ cap }) {
 
   const counts = useMemo(() => inst ? capabilityCounts(inst.serverId) : null, [inst]);
   const config = cap === 'overview' ? null : CAP_CONFIG[cap];
+  const isLive = !!(config && config.live);
+  const liveBump = useLiveBump();
+  const pending = useMemo(() => inst ? pendingCounts(inst.instId) : null, [inst, liveBump]);
 
   /* resource link opened from a tool (Resources page reads ?open) */
   const openParam = useMemo(() => {
@@ -208,12 +216,19 @@ function PlaygroundPage({ cap }) {
 
   const items = useMemo(() => {
     if (!inst || !config) return [];
-    const base = config.getItems(inst.serverId);
+    const base = config.getItems(inst.serverId, inst.instId);
     if (openParam && !base.find(r => r.uri === openParam.uri)) return [makeTransientResource(openParam), ...base];
     return base;
-  }, [inst, cap]);
+  }, [inst, cap, liveBump]);
 
-  const [activeId, setActiveId] = useState(() => openParam ? openParam.uri : (config && items[0] ? config.getId(items[0]) : null));
+  const [activeId, setActiveId] = useState(() => {
+    if (openParam) return openParam.uri;
+    const p = urlParams();
+    if (isLive && p.get('focus')) return p.get('focus');
+    if (cap === 'tools' && p.get('tool')) return p.get('tool');
+    if (isLive) { const w = items.find(it => it.status === 'waiting'); if (w) return w.id; }
+    return (config && items[0]) ? config.getId(items[0]) : null;
+  });
 
   useEffect(() => {
     if (!inst) { setStatus('idle'); return; }
@@ -256,7 +271,9 @@ function PlaygroundPage({ cap }) {
     ? <BlankState instances={instances} />
     : cap === 'overview'
       ? <OverviewView inst={inst} counts={counts} status={status} capHref={id => capHref(id, inst)} />
-      : (active ? config.renderDetail(active, inst) : <PickSomething what={config.pick} />);
+      : isLive && items.length === 0
+        ? <LiveEmpty cap={cap} />
+        : (active ? config.renderDetail(active, inst) : <PickSomething what={config.pick} />);
 
   const showRail = inst && cap !== 'overview';
 
@@ -272,10 +289,10 @@ function PlaygroundPage({ cap }) {
           sidebar={<div className="pg-rail">
             <InstancePicker instances={instances} selected={inst} currentCap={cap} />
             <div className="pg-rail-div" />
-            <CapabilityNav counts={counts} active={cap} inst={inst} />
+            <CapabilityNav counts={counts} pending={pending} active={cap} inst={inst} />
           </div>}
           rail={showRail ? <ListRail config={config} items={items} activeId={activeId} onSelect={setActiveId} /> : undefined}
-          railHeader={showRail ? <div className="pg-listrail-head"><span>{config.listTitle}</span><span className="pg-listrail-count">{items.length}</span></div> : undefined}
+          railHeader={showRail ? <div className="pg-listrail-head"><span>{config.listTitle}</span>{isLive && pending && pending[cap] > 0 ? <span className="pg-listrail-waiting"><span className="pg-livedot" /> {pending[cap]} waiting</span> : <span className="pg-listrail-count">{items.length}</span>}</div> : undefined}
           contentClass="flush" mainScroll={false}
         >
           {centre}
