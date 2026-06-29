@@ -15,6 +15,7 @@ export class TokenFixtures {
       admin2: 'Admin Token 2',
       user: 'User Token',
       chat: 'Chat Integration Token',
+      scoped: 'Scoped Grants Token',
     };
   }
 

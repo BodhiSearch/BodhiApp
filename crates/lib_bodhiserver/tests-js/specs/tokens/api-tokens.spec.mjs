@@ -1,9 +1,11 @@
 import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
+import { McpFixtures } from '@/fixtures/mcpFixtures.mjs';
 import { TokenFixtures } from '@/fixtures/tokenFixtures.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
+import { McpsPage } from '@/pages/McpsPage.mjs';
 import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
 import { registerApiModelViaUI } from '@/utils/api-model-helpers.mjs';
@@ -26,6 +28,7 @@ test.describe('API Tokens - Complete Integration', () => {
     const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
     const modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     const apiModelFormPage = new ApiModelFormPage(page, sharedServerUrl);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const tokensPage = new TokensPage(page, sharedServerUrl);
     const chatPage = new ChatPage(page, sharedServerUrl);
     const chatSettings = new ChatSettingsPage(page, sharedServerUrl);
@@ -98,6 +101,67 @@ test.describe('API Tokens - Complete Integration', () => {
 
       const tokenCount = await tokensPage.getTokenCount();
       expect(tokenCount).toBeGreaterThanOrEqual(3);
+    });
+
+    await test.step('Scoped grants: specific model + MCP access verified in the rail', async () => {
+      // Register an Everything MCP instance so the MCP access picker has something to grant.
+      const serverData = McpFixtures.createEverythingServerData();
+      const instanceData = McpFixtures.createEverythingInstanceData();
+      await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
+      await mcpsPage.createMcpInstance(serverData.name, instanceData.name, instanceData.slug);
+
+      // Create a token granting specific models + specific MCPs via the slide-in panels.
+      await tokensPage.navigateToTokens();
+      const { grantedModels, grantedMcps } = await tokensPage.createTokenWithGrants({
+        name: tokenNames.scoped,
+        scope: 'scope_token_power_user',
+        listModels: true,
+        specificModels: true,
+        specificMcps: true,
+      });
+      expect(grantedModels.length).toBeGreaterThan(0);
+      expect(grantedMcps.length).toBeGreaterThan(0);
+
+      await tokensPage.copyTokenFromDialog();
+      await tokensPage.closeTokenDialog();
+      await tokensPage.expectTokenInList(tokenNames.scoped, 'active');
+
+      // The detail rail reflects exactly the granted model + MCP as chips.
+      await tokensPage.openTokenRail(tokenNames.scoped);
+      await tokensPage.expectModelGrantChip(grantedModels[0]);
+      await tokensPage.expectMcpGrantChip(grantedMcps[0]);
+    });
+
+    await test.step('List behaviors: URL-driven rail, keyboard nav, Back/Forward', async () => {
+      // Kill view-transition detach races on the rail screen.
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await tokensPage.navigateToTokens();
+
+      // Row select opens the rail and carries the selection in the URL.
+      await tokensPage.openTokenRail(tokenNames.chat);
+      await expect(page).toHaveURL(/\?select=/);
+
+      // Keyboard nav: Home selects the first row, ArrowDown advances to the second — the rail
+      // stays open and ?select changes (deterministic regardless of which row was clicked).
+      const selectParam = () => new URL(page.url()).searchParams.get('select');
+      await page
+        .locator(`${tokensPage.selectors.tokensTable} .l-listrow.active [data-testid="row-link"]`)
+        .focus();
+      await page.keyboard.press('Home');
+      await expect.poll(selectParam).not.toBeNull();
+      const firstSelect = selectParam();
+      await page.keyboard.press('ArrowDown');
+      await expect.poll(selectParam).not.toBe(firstSelect);
+      await expect(page.locator(tokensPage.selectors.detailRail)).toBeVisible();
+      const afterDownUrl = page.url();
+
+      // Browser Back/Forward round-trips the rail: leaving to New Token then Back restores it.
+      await tokensPage.openNewTokenPage();
+      await page.goBack();
+      await expect(page).toHaveURL(afterDownUrl);
+      await expect(page.locator(tokensPage.selectors.detailRail)).toBeVisible();
+      await page.goForward();
+      await page.waitForURL(/\/ui\/tokens\/new\/?$/);
     });
 
     await test.step('Chat Integration: token auth, deactivate, reactivate', async () => {
