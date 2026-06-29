@@ -1,4 +1,4 @@
-use crate::middleware::access_requests::{AccessRequestAuthError, AccessRequestValidator};
+use crate::middleware::access_requests::AccessRequestAuthError;
 use crate::BodhiErrorResponse;
 use axum::{
   body::Body,
@@ -22,13 +22,18 @@ enum AccessRequestAuthFlow {
   },
 }
 
+/// Validate the access-request **lifecycle** for an external app: the request
+/// exists, is Approved, and its app-client / user match the bearer. Per-resource
+/// authorization (which MCP instance / model) is enforced downstream by
+/// `AccessPolicy` in the handler, using the approved grants carried on the
+/// AuthContext — so it is not re-checked here.
 async fn validate_access_request(
   db_service: &Arc<dyn DbService>,
   tenant_id: &str,
   access_request_id: &str,
   app_client_id: &str,
   user_id: &str,
-) -> Result<Option<String>, AccessRequestAuthError> {
+) -> Result<(), AccessRequestAuthError> {
   let access_request = db_service.get(tenant_id, access_request_id).await?.ok_or(
     AccessRequestAuthError::AccessRequestNotFound {
       access_request_id: access_request_id.to_string(),
@@ -65,11 +70,10 @@ async fn validate_access_request(
     });
   }
 
-  Ok(access_request.approved)
+  Ok(())
 }
 
 pub async fn access_request_auth_middleware(
-  validator: Arc<dyn AccessRequestValidator>,
   State(app_service): State<Arc<dyn AppService>>,
   req: Request<Body>,
   next: Next,
@@ -108,9 +112,8 @@ pub async fn access_request_auth_middleware(
     access_request_id,
   } = &auth_flow
   {
-    let entity_id = validator.extract_entity_id(req.uri().path())?;
     let db_service = app_service.db_service();
-    let approved = validate_access_request(
+    validate_access_request(
       &db_service,
       tenant_id,
       access_request_id,
@@ -118,7 +121,6 @@ pub async fn access_request_auth_middleware(
       user_id,
     )
     .await?;
-    validator.validate_approved(&approved, &entity_id)?;
   }
 
   Ok(next.run(req).await)

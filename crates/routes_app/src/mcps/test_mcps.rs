@@ -113,6 +113,59 @@ async fn test_mcps_index_api_token_grant_filters_list(
   Ok(())
 }
 
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_mcps_index_external_app_grant_filters_list(
+  test_mcp_entity: McpWithServerEntity,
+) -> anyhow::Result<()> {
+  // An approved app's grants flow through the SAME AccessPolicy as API tokens —
+  // no bespoke access-request re-fetch. Owner granted only "mcp-uuid-1" (via
+  // mcps_extra), list_mcps off ⇒ only that instance is listed.
+  let granted = test_mcp_entity.clone(); // id "mcp-uuid-1"
+  let mut other = test_mcp_entity.clone();
+  other.id = "mcp-uuid-2".to_string();
+  other.slug = "other".to_string();
+
+  let mut mock = MockMcpService::new();
+  mock
+    .expect_list()
+    .returning(move |_, _| Ok(vec![granted.clone(), other.clone()]));
+  let app = test_router_for_crud(mock).await?;
+
+  let approved = services::ApprovedResources::V1(services::ApprovedResourcesV1 {
+    list_models: false,
+    models: ModelGrant::All,
+    list_mcps: false,
+    mcps: vec![],
+    mcps_extra: McpGrant::Specific {
+      ids: vec!["mcp-uuid-1".to_string()],
+    },
+  });
+  let ctx = AuthContext::test_external_app("user", services::UserScope::User, "app", Some("ar"))
+    .with_external_app_grants(approved);
+
+  let response = app
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri("/mcps")
+        .body(Body::empty())?
+        .with_auth_context(ctx),
+    )
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  let ids: Vec<&str> = body["mcps"]
+    .as_array()
+    .unwrap()
+    .iter()
+    .map(|m| m["id"].as_str().unwrap())
+    .collect();
+  assert_eq!(vec!["mcp-uuid-1"], ids);
+  Ok(())
+}
+
 // ============================================================================
 // POST /mcps - Create MCP instance
 // ============================================================================

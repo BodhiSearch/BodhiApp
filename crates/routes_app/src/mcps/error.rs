@@ -31,10 +31,6 @@ pub enum McpRouteError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidRedirectUri(String),
 
-  #[error("Failed to parse approved resources JSON.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  InvalidApprovedJson,
-
   #[error("MCP server is disabled")]
   #[error_meta(error_type = ErrorType::Forbidden)]
   McpServerDisabled,

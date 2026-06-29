@@ -1,6 +1,4 @@
-use crate::middleware::access_requests::{
-  access_request_auth_middleware, AccessRequestValidator, McpAccessRequestValidator,
-};
+use crate::middleware::access_requests::access_request_auth_middleware;
 use axum::{
   body::Body,
   http::{Request, Response, StatusCode},
@@ -8,7 +6,7 @@ use axum::{
   routing::post,
   Router,
 };
-use rstest::{fixture, rstest};
+use rstest::rstest;
 use services::AppService;
 use services::AuthContext;
 use services::{
@@ -35,15 +33,7 @@ async fn inject_auth_context(
   next.run(req).await
 }
 
-#[fixture]
-fn mcp_validator() -> Arc<dyn AccessRequestValidator> {
-  Arc::new(McpAccessRequestValidator)
-}
-
-async fn test_mcp_router(
-  validator: Arc<dyn AccessRequestValidator>,
-  auth_context: AuthContext,
-) -> Router {
+async fn test_mcp_router(auth_context: AuthContext) -> Router {
   let mock_db_service = MockDbService::new();
 
   let app_service = AppServiceStubBuilder::default()
@@ -57,16 +47,12 @@ async fn test_mcp_router(
   let state: Arc<dyn AppService> = Arc::new(app_service);
 
   let ctx = auth_context.clone();
-  let v = validator.clone();
   Router::new()
     .route(
       "/mcps/{id}/tools/{tool_name}/execute",
       post(test_handler).route_layer(from_fn_with_state(
         state.clone(),
-        move |state, req, next| {
-          let v = v.clone();
-          access_request_auth_middleware(v, state, req, next)
-        },
+        access_request_auth_middleware,
       )),
     )
     .layer(axum::middleware::from_fn(move |req, next| {
@@ -77,7 +63,6 @@ async fn test_mcp_router(
 }
 
 async fn test_mcp_router_with_db(
-  validator: Arc<dyn AccessRequestValidator>,
   db_service: Arc<TestDbService>,
   auth_context: AuthContext,
 ) -> Router {
@@ -90,16 +75,12 @@ async fn test_mcp_router_with_db(
   let state: Arc<dyn AppService> = Arc::new(app_service);
 
   let ctx = auth_context.clone();
-  let v = validator.clone();
   Router::new()
     .route(
       "/mcps/{id}/tools/{tool_name}/execute",
       post(test_handler).route_layer(from_fn_with_state(
         state.clone(),
-        move |state, req, next| {
-          let v = v.clone();
-          access_request_auth_middleware(v, state, req, next)
-        },
+        access_request_auth_middleware,
       )),
     )
     .layer(axum::middleware::from_fn(move |req, next| {
@@ -111,9 +92,9 @@ async fn test_mcp_router_with_db(
 
 #[rstest]
 #[tokio::test]
-async fn test_mcp_session_auth_passes_through(mcp_validator: Arc<dyn AccessRequestValidator>) {
+async fn test_mcp_session_auth_passes_through() {
   let ctx = AuthContext::test_session("user123", "user@test.com", ResourceRole::User);
-  let app = test_mcp_router(mcp_validator, ctx).await;
+  let app = test_mcp_router(ctx).await;
 
   let response = app
     .oneshot(
@@ -131,9 +112,7 @@ async fn test_mcp_session_auth_passes_through(mcp_validator: Arc<dyn AccessReque
 
 #[rstest]
 #[tokio::test]
-async fn test_mcp_multi_tenant_session_passes_through(
-  mcp_validator: Arc<dyn AccessRequestValidator>,
-) {
+async fn test_mcp_multi_tenant_session_passes_through() {
   let ctx = AuthContext::test_multi_tenant_session_full(
     "user123",
     "user@test.com",
@@ -142,7 +121,7 @@ async fn test_mcp_multi_tenant_session_passes_through(
     ResourceRole::User,
     "test-token",
   );
-  let app = test_mcp_router(mcp_validator, ctx).await;
+  let app = test_mcp_router(ctx).await;
 
   let response = app
     .oneshot(
@@ -158,23 +137,16 @@ async fn test_mcp_multi_tenant_session_passes_through(
   assert_eq!(response.status(), StatusCode::OK);
 }
 
+/// The middleware now validates only the access-request **lifecycle** (exists +
+/// Approved + app/user match). Per-instance authorization moved to AccessPolicy in
+/// the handler, so an approved request passes the middleware regardless of which
+/// MCP instance is addressed.
 #[rstest]
-#[case::mcp_approved_instance_in_list(
-  AppAccessRequestStatus::Approved,
-  Some(r#"{"version":"1","mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#.to_string()),
-  StatusCode::OK,
-)]
-#[case::mcp_denied(AppAccessRequestStatus::Denied, None, StatusCode::FORBIDDEN)]
-#[case::mcp_not_in_approved_list(
-  AppAccessRequestStatus::Approved,
-  Some(r#"{"version":"1","mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"different-mcp-id"}}]}"#.to_string()),
-  StatusCode::FORBIDDEN,
-)]
+#[case::approved(AppAccessRequestStatus::Approved, StatusCode::OK)]
+#[case::denied(AppAccessRequestStatus::Denied, StatusCode::FORBIDDEN)]
 #[tokio::test]
-async fn test_mcp_oauth_access_request_validation(
-  mcp_validator: Arc<dyn AccessRequestValidator>,
+async fn test_mcp_oauth_lifecycle_validation(
   #[case] status: AppAccessRequestStatus,
-  #[case] approved: Option<String>,
   #[case] expected_status: StatusCode,
 ) {
   use services::test_utils::temp_dir;
@@ -195,7 +167,10 @@ async fn test_mcp_oauth_access_request_validation(
     status,
     requested: r#"{"version":"1","mcp_servers":[{"url":"https://mcp.deepwiki.com/mcp"}]}"#
       .to_string(),
-    approved,
+    approved: Some(
+      r#"{"version":"1","mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#
+        .to_string(),
+    ),
     user_id: Some("user123".to_string()),
     requested_role: "scope_user_user".to_string(),
     approved_role: None,
@@ -209,7 +184,7 @@ async fn test_mcp_oauth_access_request_validation(
   test_db.create(&access_request_row).await.unwrap();
 
   let ctx = AuthContext::test_external_app("user123", UserScope::User, "app1", Some("ar-uuid"));
-  let app = test_mcp_router_with_db(mcp_validator, Arc::new(test_db), ctx).await;
+  let app = test_mcp_router_with_db(Arc::new(test_db), ctx).await;
 
   let response = app
     .oneshot(
@@ -223,4 +198,55 @@ async fn test_mcp_oauth_access_request_validation(
     .unwrap();
 
   assert_eq!(response.status(), expected_status);
+}
+
+#[rstest]
+#[tokio::test]
+async fn test_mcp_oauth_app_client_mismatch_forbidden() {
+  use services::test_utils::temp_dir;
+  use services::test_utils::test_db_service_with_temp_dir;
+
+  let temp_dir = Arc::new(temp_dir());
+  let test_db = test_db_service_with_temp_dir(temp_dir.clone()).await;
+  let now = test_db.now();
+
+  let access_request_row = services::AppAccessRequest {
+    id: "ar-uuid".to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
+    app_client_id: "a-different-app".to_string(),
+    app_name: None,
+    app_description: None,
+    flow_type: FlowType::Redirect,
+    redirect_uri: Some("http://localhost:3000/callback".to_string()),
+    status: AppAccessRequestStatus::Approved,
+    requested: r#"{"version":"1"}"#.to_string(),
+    approved: Some(r#"{"version":"1"}"#.to_string()),
+    user_id: Some("user123".to_string()),
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
+    access_request_scope: None,
+    error_message: None,
+    expires_at: now + chrono::Duration::hours(1),
+    created_at: now,
+    updated_at: now,
+  };
+
+  test_db.create(&access_request_row).await.unwrap();
+
+  // Bearer's app_client_id ("app1") differs from the record's ("a-different-app").
+  let ctx = AuthContext::test_external_app("user123", UserScope::User, "app1", Some("ar-uuid"));
+  let app = test_mcp_router_with_db(Arc::new(test_db), ctx).await;
+
+  let response = app
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/mcps/01ARZ3NDEKTSV4RRFFQ69G5FAV/tools/read/execute")
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }

@@ -146,6 +146,54 @@ async fn test_chat_completions_scoped_token_forbidden() -> anyhow::Result<()> {
   Ok(())
 }
 
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_chat_completions_external_app_model_forbidden() -> anyhow::Result<()> {
+  use services::{ApprovedResources, ApprovedResourcesV1, McpGrant, ModelGrant, UserScope};
+  let request = CreateChatCompletionRequestArgs::default()
+    .model("testalias-exists:instruct")
+    .messages(vec![ChatCompletionRequestMessage::User(
+      ChatCompletionRequestUserMessageArgs::default()
+        .content("hi")
+        .build()?,
+    )])
+    .build()?;
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .ai_api_client_factory(mock_ai_factory_returning(non_streamed_axum_response))
+    .build()
+    .await?;
+  let app = Router::new()
+    .route("/v1/chat/completions", post(chat_completions_handler))
+    .with_state(Arc::new(app_service) as Arc<dyn services::AppService>);
+
+  // Approved app scoped to a different model → 403, same as an API token.
+  let approved = ApprovedResources::V1(ApprovedResourcesV1 {
+    list_models: false,
+    models: ModelGrant::Specific {
+      ids: vec!["some-other-model".to_string()],
+    },
+    list_mcps: false,
+    mcps: vec![],
+    mcps_extra: McpGrant::Specific { ids: vec![] },
+  });
+  let ctx = AuthContext::test_external_app(TEST_USER_ID, UserScope::User, "app", Some("ar"))
+    .with_tenant_id(TEST_TENANT_ID)
+    .with_external_app_grants(approved);
+  let response = app
+    .oneshot(
+      Request::post("/v1/chat/completions")
+        .json(request)?
+        .with_auth_context(ctx),
+    )
+    .await?;
+  assert_eq!(StatusCode::FORBIDDEN, response.status());
+  Ok(())
+}
+
 fn streamed_axum_response() -> Result<Response, AiApiClientFactoryError> {
   let stream = futures_util::stream::iter([
     " ", " After", " Monday", ",", " the", " next", " day", " is", " T", "ues", "day", ".",

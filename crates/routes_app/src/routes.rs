@@ -1,7 +1,7 @@
 use crate::middleware::{
   access_request_auth_middleware, anthropic_auth_middleware, api_auth_middleware, auth_middleware,
   canonical_url_middleware, gemini_auth_middleware, openai_auth_middleware,
-  optional_auth_middleware, AccessRequestValidator, McpAccessRequestValidator,
+  optional_auth_middleware,
 };
 use crate::{
   anthropic_messages_create_handler, anthropic_models_get_handler, anthropic_models_list_handler,
@@ -403,8 +403,8 @@ pub async fn build_routes(
   // Apps list endpoints
   let apps_list_apis = Router::new().route(ENDPOINT_APPS_MCPS, get(apps_mcps_index));
 
-  // Apps MCP show + exec (with McpAccessRequestValidator)
-  let mcp_validator: Arc<dyn AccessRequestValidator> = Arc::new(McpAccessRequestValidator);
+  // Apps MCP show + exec. The middleware validates the access-request lifecycle;
+  // per-instance authorization is enforced by AccessPolicy in the handlers.
   let apps_mcp_exec = Router::new()
     .route(&format!("{ENDPOINT_APPS_MCPS}/{{id}}"), get(apps_mcps_show))
     .route(
@@ -413,10 +413,7 @@ pub async fn build_routes(
     )
     .route_layer(from_fn_with_state(
       state.clone(),
-      move |state, req, next| {
-        let v = mcp_validator.clone();
-        access_request_auth_middleware(v, state, req, next)
-      },
+      access_request_auth_middleware,
     ));
 
   // Combine all apps APIs with OAuth-accepting auth

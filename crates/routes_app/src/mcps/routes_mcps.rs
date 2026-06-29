@@ -3,9 +3,7 @@ use crate::{
   AuthScope, BodhiErrorResponse, ValidatedJson, API_TAG_APPS, API_TAG_MCPS, ENDPOINT_APPS_MCPS,
 };
 use axum::{extract::Path, http::StatusCode, Json};
-use services::{
-  ApprovalStatus, ApprovedResources, AuthContext, Mcp, McpRequest, McpWithServerEntity,
-};
+use services::{Mcp, McpRequest};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct ListMcpsResponse {
@@ -28,48 +26,14 @@ pub async fn mcps_index(
 ) -> Result<Json<ListMcpsResponse>, BodhiErrorResponse> {
   let entities = auth_scope.mcps().list().await?;
 
-  // Filter MCP list for ExternalApp tokens: only return MCPs approved in the access request
-  let entities: Vec<McpWithServerEntity> = if let AuthContext::ExternalApp {
-    access_request_id: Some(ar_id),
-    ..
-  } = auth_scope.auth_context()
-  {
-    let request = auth_scope
-      .access_request_service()
-      .get_request(ar_id)
-      .await?;
-    let approved_ids: std::collections::HashSet<String> = request
-      .and_then(|r| r.approved)
-      .map(|json| {
-        serde_json::from_str::<ApprovedResources>(&json)
-          .map_err(|_| McpRouteError::InvalidApprovedJson)
-      })
-      .transpose()?
-      .map(|res| match res {
-        ApprovedResources::V1(v1) => v1
-          .mcps
-          .into_iter()
-          .filter(|a| a.status == ApprovalStatus::Approved)
-          .filter_map(|a| a.instance.map(|i| i.id))
-          .collect(),
-      })
-      .unwrap_or_default();
-    entities
-      .into_iter()
-      .filter(|m| approved_ids.contains(&m.id))
-      .collect()
-  } else {
-    entities
-  };
-
-  // API-token grant filter (Unrestricted for session/external-app).
+  // Grant filter — Unrestricted for sessions, grant-bound for API tokens and
+  // approved app tokens alike (the app's approved grants ride on AccessPolicy).
   let policy = auth_scope.access_policy();
-  let entities: Vec<McpWithServerEntity> = entities
+  let mcps: Vec<Mcp> = entities
     .into_iter()
     .filter(|m| policy.mcp_listable(&m.id))
+    .map(|e| e.into())
     .collect();
-
-  let mcps: Vec<Mcp> = entities.into_iter().map(|e| e.into()).collect();
   Ok(Json(ListMcpsResponse { mcps }))
 }
 
