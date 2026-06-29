@@ -70,8 +70,11 @@ Encapsulated, no per-handler grant logic:
 - **Tests:** unit on `AccessPolicy` (Unrestricted passes; Token all/specific/none × list on/off); thin per-surface oneshot (granted 200 / denied 403·404; list filter; Session + ExternalApp unaffected). server_app `#[serial(live)]`: one real-HTTP 403 for a scoped api token.
 - **Gate:** `cargo test -p routes_app -p server_app` green. **Chrome:** `make app.run.live` — filtered `/v1/models`; disallowed model → 403.
 
-### Phase 5 — Hard enforcement: MCP listing + connect/invoke (API tokens)
-- **Files:** `mcps/routes_mcps.rs` `mcps_index` (+`ApiToken{grants}` arm: `list_mcps` ON → all instances, OFF → only granted by `McpGrant`; `None` → empty; parallel to the existing ExternalApp arm); MCP connect/invoke routes (403 if target not granted). Enumerate all MCP action endpoints so none is unguarded. No `access` field — reflection already covers introspection (Phase 4a).
+### Phase 5 — Hard enforcement: MCP via `/apps/mcps` (API tokens)
+API tokens have no MCP surface today (`/bodhi/v1/mcps` is session-only; the proxy is ExternalApp-only). Rather than expose the session endpoint, **admit API tokens to the existing `/bodhi/v1/apps/mcps/*`** (shared handlers with the session path) and grant-enforce them:
+- **Middleware:** `apps_apis` `api_auth_middleware` `None → Some(TokenScope::User)` (admit ApiToken); `access_request_auth_middleware` adds an `ApiToken` pass-through arm (no access-request; enforced in handler).
+- **Handlers (shared `mcps_index`/`mcps_show` + proxy):** `mcps_index` appends the `AccessPolicy` MCP filter (`list_mcps` ON → all, OFF → granted only; `Unrestricted` for session/external-app); `mcps_show` → 404 if not `mcp_listable`; `mcp_proxy_handler` → `ensure_mcp_connect?` (403). ExternalApp still enforced by its access-request middleware (AccessPolicy is `Unrestricted` for it); session unchanged.
+- **Tests:** `mcps_index` with an ApiToken `Specific` grant lists only granted instances (matrix already unit-tested on `AccessPolicy`).
 - **Tests:** routes_app oneshot (api token `Specific` filters; `None` → empty; connect ungranted → 403 `.code()`; ExternalApp parity retained); assert cross-tenant/user instance ids never leak via a grant.
 - **Gate:** `cargo test -p routes_app` green. **Chrome:** `make app.run.live` MCP list + disallowed connect → 403.
 

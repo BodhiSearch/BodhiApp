@@ -62,6 +62,13 @@ pub async fn mcps_index(
     entities
   };
 
+  // API-token grant filter (Unrestricted for session/external-app).
+  let policy = auth_scope.access_policy();
+  let entities: Vec<McpWithServerEntity> = entities
+    .into_iter()
+    .filter(|m| policy.mcp_listable(&m.id))
+    .collect();
+
   let mcps: Vec<Mcp> = entities.into_iter().map(|e| e.into()).collect();
   Ok(Json(ListMcpsResponse { mcps }))
 }
@@ -112,6 +119,10 @@ pub async fn mcps_show(
   auth_scope: AuthScope,
   Path(id): Path<String>,
 ) -> Result<Json<Mcp>, BodhiErrorResponse> {
+  // Not-listable → 404 (don't reveal existence to a scoped token).
+  if !auth_scope.access_policy().mcp_listable(&id) {
+    return Err(services::EntityError::NotFound("MCP".to_string()).into());
+  }
   let entity = auth_scope
     .mcps()
     .get(&id)

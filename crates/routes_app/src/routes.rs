@@ -428,7 +428,7 @@ pub async fn build_routes(
       move |state, req, next| {
         api_auth_middleware(
           ResourceRole::User,
-          None,
+          Some(TokenScope::User),
           Some(UserScope::User),
           state,
           req,

@@ -81,9 +81,11 @@ pub async fn access_request_auth_middleware(
     .clone();
 
   let auth_flow = match &auth_context {
-    AuthContext::Session { .. } | AuthContext::MultiTenantSession { .. } => {
-      AccessRequestAuthFlow::Session
-    }
+    // Session and API tokens skip access-request validation. API tokens are instead
+    // grant-enforced in the handler (AccessPolicy); they have no access request.
+    AuthContext::Session { .. }
+    | AuthContext::MultiTenantSession { .. }
+    | AuthContext::ApiToken { .. } => AccessRequestAuthFlow::Session,
     AuthContext::ExternalApp {
       tenant_id,
       user_id,

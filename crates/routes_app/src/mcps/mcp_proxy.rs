@@ -67,6 +67,8 @@ pub async fn mcp_proxy_handler(
   Path(id): Path<String>,
   request: axum::extract::Request,
 ) -> Result<Response, BodhiErrorResponse> {
+  auth_scope.access_policy().ensure_mcp_connect(&id)?;
+
   let mcp = auth_scope
     .mcps()
     .get(&id)
