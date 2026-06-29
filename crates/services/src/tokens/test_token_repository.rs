@@ -19,6 +19,8 @@ fn make_token(id: &str, user_id: &str, prefix: &str, now: DateTime<Utc>) -> Toke
     token_hash: format!("hash_{prefix}"),
     scopes: "scope_token_user".to_string(),
     status: TokenStatus::Active,
+    grants: crate::tokens::default_grants_json(),
+    last_used_at: None,
     created_at: now,
     updated_at: now,
   }
@@ -151,6 +153,10 @@ async fn test_update_api_token(
   assert_eq!(TokenStatus::Inactive, updated.status);
   assert_eq!(token_id, updated.id);
   assert_eq!(user_id, updated.user_id);
+  // The update ActiveModel uses `..Default::default()`; grants must survive untouched
+  // (guards the SeaORM new-column update trap).
+  assert_eq!(crate::tokens::default_grants_json(), updated.grants);
+  assert_eq!(None, updated.last_used_at);
 
   Ok(())
 }
@@ -247,6 +253,50 @@ async fn test_update_api_token_user_scoped(
     .await?
     .unwrap();
   assert_eq!("Updated Name", updated.name);
+
+  Ok(())
+}
+
+/// A row inserted without the `grants` column gets the migration's all-access DEFAULT.
+/// SQLite-only: a raw insert bypasses the per-tenant txn that PostgreSQL RLS requires.
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_grants_column_default_backfill(_setup_env: ()) -> anyhow::Result<()> {
+  use crate::tokens::{api_token_entity, default_grants_json};
+  use sea_orm::{ActiveValue::NotSet, EntityTrait, Set};
+
+  let ctx = sea_context("sqlite").await;
+  let user_id = new_ulid();
+  let token_id = new_ulid();
+
+  // grants + last_used_at intentionally NotSet → omitted from INSERT → DB DEFAULT applies.
+  let active = api_token_entity::ActiveModel {
+    id: Set(token_id.clone()),
+    tenant_id: Set(TEST_TENANT_ID.to_string()),
+    user_id: Set(user_id.clone()),
+    name: Set("backfill".to_string()),
+    token_prefix: Set("bodhiapp_bf".to_string()),
+    token_hash: Set("hash_bf".to_string()),
+    scopes: Set("scope_token_user".to_string()),
+    status: Set(TokenStatus::Active),
+    grants: NotSet,
+    last_used_at: NotSet,
+    created_at: Set(ctx.now),
+    updated_at: Set(ctx.now),
+  };
+  api_token_entity::Entity::insert(active)
+    .exec(ctx.service.db())
+    .await?;
+
+  let fetched = ctx
+    .service
+    .get_api_token_by_id(TEST_TENANT_ID, &user_id, &token_id)
+    .await?
+    .expect("token exists");
+  assert_eq!(default_grants_json(), fetched.grants);
+  assert_eq!(None, fetched.last_used_at);
 
   Ok(())
 }

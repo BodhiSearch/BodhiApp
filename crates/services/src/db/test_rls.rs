@@ -22,6 +22,8 @@ fn make_token(id: &str, user_id: &str, prefix: &str, tenant_id: &str) -> TokenEn
     token_hash: format!("hash_{prefix}"),
     scopes: "scope_token_user".to_string(),
     status: TokenStatus::Active,
+    grants: crate::tokens::default_grants_json(),
+    last_used_at: None,
     created_at: now,
     updated_at: now,
   }

@@ -20,6 +20,11 @@ pub struct Model {
   pub token_hash: String,
   pub scopes: String,
   pub status: TokenStatus,
+  /// Versioned per-resource grants JSON (`TokenGrants`). Stored as text, parsed at
+  /// the auth/enforcement boundary — mirrors how `scopes` is a parsed string.
+  pub grants: String,
+  #[schema(value_type = Option<String>, format = "date-time")]
+  pub last_used_at: Option<DateTime<Utc>>,
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]

@@ -32,6 +32,8 @@ async fn test_create_and_get_api_token(
     token_prefix: "bt_abc".to_string(),
     scopes: "user".to_string(),
     status: TokenStatus::Active,
+    grants: crate::tokens::default_grants_json(),
+    last_used_at: None,
     created_at: now,
     updated_at: now,
   };
@@ -75,6 +77,8 @@ async fn test_list_api_tokens(
       token_prefix: format!("bt_{i}"),
       scopes: "user".to_string(),
       status: TokenStatus::Active,
+      grants: crate::tokens::default_grants_json(),
+      last_used_at: None,
       created_at: now,
       updated_at: now,
     };
@@ -115,6 +119,8 @@ async fn test_get_api_token_by_prefix(
     token_prefix: "bt_unique".to_string(),
     scopes: "user".to_string(),
     status: TokenStatus::Active,
+    grants: crate::tokens::default_grants_json(),
+    last_used_at: None,
     created_at: now,
     updated_at: now,
   };
@@ -155,6 +161,8 @@ async fn test_update_api_token(
     token_prefix: "bt_upd".to_string(),
     scopes: "user".to_string(),
     status: TokenStatus::Active,
+    grants: crate::tokens::default_grants_json(),
+    last_used_at: None,
     created_at: now,
     updated_at: now,
   };
@@ -252,6 +260,8 @@ async fn test_update_token_with_form(
     token_prefix: "bt_form".to_string(),
     scopes: "user".to_string(),
     status: TokenStatus::Active,
+    grants: crate::tokens::default_grants_json(),
+    last_used_at: None,
     created_at: now,
     updated_at: now,
   };

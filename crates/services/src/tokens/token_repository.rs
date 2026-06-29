@@ -55,6 +55,8 @@ impl TokenRepository for DefaultDbService {
       token_hash: Set(token.token_hash.clone()),
       scopes: Set(token.scopes.clone()),
       status: Set(token.status.clone()),
+      grants: Set(token.grants.clone()),
+      last_used_at: Set(token.last_used_at),
       created_at: Set(token.created_at),
       updated_at: Set(token.updated_at),
     };

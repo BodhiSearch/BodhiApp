@@ -9,8 +9,8 @@ use crate::new_ulid;
 use super::TokenEntity;
 use crate::db::{DbService, TimeService};
 use crate::tokens::{
-  CreateTokenRequest, PaginatedTokenResponse, TokenCreated, TokenDetail, TokenServiceError,
-  UpdateTokenRequest,
+  default_grants_json, CreateTokenRequest, PaginatedTokenResponse, TokenCreated, TokenDetail,
+  TokenServiceError, UpdateTokenRequest,
 };
 use crate::TokenStatus;
 
@@ -127,6 +127,8 @@ impl TokenService for DefaultTokenService {
       token_hash,
       scopes: request.scope.to_string(),
       status: TokenStatus::Active,
+      grants: default_grants_json(),
+      last_used_at: None,
       created_at: now,
       updated_at: now,
     };
