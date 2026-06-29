@@ -300,3 +300,42 @@ async fn test_grants_column_default_backfill(_setup_env: ()) -> anyhow::Result<(
 
   Ok(())
 }
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_delete_api_token(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let user_id = new_ulid();
+  let token_id = new_ulid();
+  let mut token = make_token(&token_id, &user_id, "bodhiapp_del", ctx.now);
+  ctx
+    .service
+    .create_api_token(TEST_TENANT_ID, &mut token)
+    .await?;
+
+  ctx
+    .service
+    .delete_api_token(TEST_TENANT_ID, &user_id, &token_id)
+    .await?;
+
+  let fetched = ctx
+    .service
+    .get_api_token_by_id(TEST_TENANT_ID, &user_id, &token_id)
+    .await?;
+  assert!(fetched.is_none());
+
+  // Deleting a missing row is a typed not-found error.
+  let err = ctx
+    .service
+    .delete_api_token(TEST_TENANT_ID, &user_id, &token_id)
+    .await
+    .unwrap_err();
+  assert!(matches!(err, crate::db::DbError::ItemNotFound { .. }));
+
+  Ok(())
+}

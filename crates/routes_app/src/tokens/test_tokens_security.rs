@@ -60,6 +60,7 @@ async fn test_create_token_privilege_escalation_user(
         .json(&CreateTokenRequest {
           name: Some("Escalation Attempt".to_string()),
           scope: requested_scope,
+          grants: Default::default(),
         })?
         .with_auth_context(AuthContext::test_session_with_token(
           &user_id,

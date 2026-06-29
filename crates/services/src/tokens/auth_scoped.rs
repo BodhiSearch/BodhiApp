@@ -68,4 +68,14 @@ impl AuthScopedTokenService {
       .update_token(tenant_id, user_id, id, request)
       .await
   }
+
+  pub async fn delete_token(&self, id: &str) -> Result<(), TokenServiceError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
+    let user_id = self.auth_context.require_user_id()?;
+    self
+      .app_service
+      .token_service()
+      .delete_token(tenant_id, user_id, id)
+      .await
+  }
 }

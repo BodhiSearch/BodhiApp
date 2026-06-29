@@ -53,6 +53,8 @@ async fn test_validate_bodhiapp_token_scope_variations(
     token_hash,
     scopes: scope_str.to_string(),
     status: TokenStatus::Active,
+    grants: services::default_grants_json(),
+    last_used_at: None,
     created_at: Utc::now(),
     updated_at: Utc::now(),
   };
@@ -119,6 +121,8 @@ async fn test_validate_bodhiapp_token_success(
     token_hash,
     scopes: "scope_token_user".to_string(),
     status: TokenStatus::Active,
+    grants: services::default_grants_json(),
+    last_used_at: None,
     created_at: Utc::now(),
     updated_at: Utc::now(),
   };
@@ -186,6 +190,8 @@ async fn test_validate_bodhiapp_token_inactive(
     token_hash,
     scopes: "scope_token_user".to_string(),
     status: TokenStatus::Inactive,
+    grants: services::default_grants_json(),
+    last_used_at: None,
     created_at: Utc::now(),
     updated_at: Utc::now(),
   };
@@ -242,6 +248,8 @@ async fn test_validate_bodhiapp_token_invalid_hash(
     token_hash,
     scopes: "scope_token_user".to_string(),
     status: TokenStatus::Active,
+    grants: services::default_grants_json(),
+    last_used_at: None,
     created_at: Utc::now(),
     updated_at: Utc::now(),
   };

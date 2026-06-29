@@ -67,6 +67,14 @@ pub trait TokenService: Send + Sync + std::fmt::Debug {
     id: &str,
     request: UpdateTokenRequest,
   ) -> Result<TokenDetail, TokenServiceError>;
+
+  /// Permanently delete a token owned by the user. Errors if it does not exist.
+  async fn delete_token(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<(), TokenServiceError>;
 }
 
 #[derive(Debug, derive_new::new)]
@@ -127,7 +135,7 @@ impl TokenService for DefaultTokenService {
       token_hash,
       scopes: request.scope.to_string(),
       status: TokenStatus::Active,
-      grants: default_grants_json(),
+      grants: serde_json::to_string(&request.grants).unwrap_or_else(|_| default_grants_json()),
       last_used_at: None,
       created_at: now,
       updated_at: now,
@@ -213,6 +221,26 @@ impl TokenService for DefaultTokenService {
       .update_api_token(tenant_id, user_id, &mut token)
       .await?;
     Ok(TokenDetail::from(token))
+  }
+
+  async fn delete_token(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<(), TokenServiceError> {
+    // Existence check yields a 404 consistent with update_token (DbError::ItemNotFound
+    // would otherwise surface as a 500). The repository delete still guards the race.
+    self
+      .db_service
+      .get_api_token_by_id(tenant_id, user_id, id)
+      .await?
+      .ok_or_else(|| crate::EntityError::NotFound("Token".to_string()))?;
+    self
+      .db_service
+      .delete_api_token(tenant_id, user_id, id)
+      .await?;
+    Ok(())
   }
 }
 

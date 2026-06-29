@@ -700,6 +700,8 @@ async fn test_auth_middleware_bodhiapp_token_scope_variations(
     token_hash,
     scopes: scope_str.to_string(),
     status: TokenStatus::Active,
+    grants: services::default_grants_json(),
+    last_used_at: None,
     created_at: now,
     updated_at: now,
   };
@@ -762,6 +764,8 @@ async fn test_auth_middleware_bodhiapp_token_success() -> anyhow::Result<()> {
     token_hash,
     scopes: "scope_token_user".to_string(),
     status: TokenStatus::Active,
+    grants: services::default_grants_json(),
+    last_used_at: None,
     created_at: now,
     updated_at: now,
   };
@@ -823,6 +827,8 @@ async fn test_auth_middleware_bodhiapp_token_inactive() -> anyhow::Result<()> {
     token_hash,
     scopes: "scope_token_user".to_string(),
     status: TokenStatus::Inactive,
+    grants: services::default_grants_json(),
+    last_used_at: None,
     created_at: now,
     updated_at: now,
   };
@@ -894,6 +900,8 @@ async fn test_auth_middleware_bodhiapp_token_invalid_hash() -> anyhow::Result<()
     token_hash,
     scopes: "scope_token_user".to_string(),
     status: TokenStatus::Active,
+    grants: services::default_grants_json(),
+    last_used_at: None,
     created_at: now,
     updated_at: now,
   };

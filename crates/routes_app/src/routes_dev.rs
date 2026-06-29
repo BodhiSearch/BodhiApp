@@ -281,6 +281,8 @@ mod tests {
       token_hash: "hash".to_string(),
       scopes: "scope_token_user".to_string(),
       status: TokenStatus::Active,
+      grants: services::default_grants_json(),
+      last_used_at: None,
       created_at: app_service.time_service().utc_now(),
       updated_at: app_service.time_service().utc_now(),
     };

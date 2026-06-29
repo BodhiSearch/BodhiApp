@@ -490,6 +490,10 @@ export type CreateTokenRequest = {
      * Token scope defining access level
      */
     scope: TokenScope;
+    /**
+     * Per-resource grants for this token. Defaults to all-access when omitted.
+     */
+    grants?: TokenGrants;
 };
 
 /**
@@ -960,6 +964,19 @@ export type McpAuthParamType = 'header' | 'query';
 
 export type McpAuthType = 'public' | 'header' | 'oauth';
 
+/**
+ * MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs),
+ * `None` grants no MCP access, `Specific` lists the user's own instance ids.
+ */
+export type McpGrant = {
+    type: 'all';
+} | {
+    type: 'none';
+} | {
+    ids: Array<string>;
+    type: 'specific';
+};
+
 export type McpInstance = {
     id: string;
     /**
@@ -1111,6 +1128,17 @@ export type ModelCapabilities = {
     audio?: boolean | null;
     thinking?: boolean | null;
     tools: ToolCapabilities;
+};
+
+/**
+ * Model inference grant for an API token. `All` is a wildcard that includes
+ * models added in the future; `Specific` lists alias ids.
+ */
+export type ModelGrant = {
+    type: 'all';
+} | {
+    ids: Array<string>;
+    type: 'specific';
 };
 
 /**
@@ -1579,8 +1607,36 @@ export type TokenDetail = {
     token_prefix: string;
     scopes: string;
     status: TokenStatus;
+    /**
+     * Per-resource grants this token carries.
+     */
+    grants: TokenGrants;
+    last_used_at?: string | null;
     created_at: string;
     updated_at: string;
+};
+
+/**
+ * Versioned envelope; the `version` tag is mandatory (mirrors `ApprovedResources`).
+ */
+export type TokenGrants = TokenGrantsV1 & {
+    version: '1';
+};
+
+/**
+ * Per-resource grants carried by an API token. Listing (`list_models` /
+ * `list_mcps`) is separate from inference/connect: with listing off the
+ * discovery endpoints return an empty set, but inference on an individually
+ * granted resource still succeeds.
+ *
+ * Intentionally standalone — NOT shared with the App-access-request envelope
+ * (`ApprovedResources`); the two may diverge.
+ */
+export type TokenGrantsV1 = {
+    list_models?: boolean;
+    models?: ModelGrant;
+    list_mcps?: boolean;
+    mcps?: McpGrant;
 };
 
 /**
@@ -4980,6 +5036,52 @@ export type CreateApiTokenResponses = {
 };
 
 export type CreateApiTokenResponse = CreateApiTokenResponses[keyof CreateApiTokenResponses];
+
+export type DeleteApiTokenData = {
+    body?: never;
+    path: {
+        /**
+         * Unique identifier of the API token to delete
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/tokens/{id}';
+};
+
+export type DeleteApiTokenErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Token not found
+     */
+    404: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type DeleteApiTokenError = DeleteApiTokenErrors[keyof DeleteApiTokenErrors];
+
+export type DeleteApiTokenResponses = {
+    /**
+     * Token deleted successfully
+     */
+    204: void;
+};
+
+export type DeleteApiTokenResponse = DeleteApiTokenResponses[keyof DeleteApiTokenResponses];
 
 export type UpdateApiTokenData = {
     /**

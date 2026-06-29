@@ -79,6 +79,7 @@ async fn test_cross_tenant_token_list_isolation(
         .json(&CreateTokenRequest {
           name: Some("Tenant A Token".to_string()),
           scope: TokenScope::User,
+          grants: Default::default(),
         })?
         .with_auth_context(auth_a.clone()),
     )
@@ -95,6 +96,7 @@ async fn test_cross_tenant_token_list_isolation(
         .json(&CreateTokenRequest {
           name: Some("Tenant B Token".to_string()),
           scope: TokenScope::User,
+          grants: Default::default(),
         })?
         .with_auth_context(auth_b.clone()),
     )
@@ -158,6 +160,7 @@ async fn test_cross_tenant_token_update_isolation(
         .json(&CreateTokenRequest {
           name: Some("Tenant A Token".to_string()),
           scope: TokenScope::User,
+          grants: Default::default(),
         })?
         .with_auth_context(auth_a.clone()),
     )
@@ -222,6 +225,7 @@ async fn test_intra_tenant_user_token_list_isolation(
         .json(&CreateTokenRequest {
           name: Some("User A Token".to_string()),
           scope: TokenScope::User,
+          grants: Default::default(),
         })?
         .with_auth_context(auth_user_a.clone()),
     )
@@ -238,6 +242,7 @@ async fn test_intra_tenant_user_token_list_isolation(
         .json(&CreateTokenRequest {
           name: Some("User B Token".to_string()),
           scope: TokenScope::User,
+          grants: Default::default(),
         })?
         .with_auth_context(auth_user_b.clone()),
     )
@@ -300,6 +305,7 @@ async fn test_intra_tenant_user_token_update_isolation(
         .json(&CreateTokenRequest {
           name: Some("User A Token".to_string()),
           scope: TokenScope::User,
+          grants: Default::default(),
         })?
         .with_auth_context(auth_user_a.clone()),
     )

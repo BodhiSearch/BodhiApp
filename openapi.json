@@ -6872,6 +6872,88 @@
             ]
           }
         ]
+      },
+      "delete": {
+        "tags": [
+          "api-keys"
+        ],
+        "summary": "Delete API Token",
+        "description": "Permanently deletes an API token owned by the current user, immediately revoking it.\n\n**Security Note:** Session-only authentication required to prevent token-based privilege escalation.",
+        "operationId": "deleteApiToken",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique identifier of the API token to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Token deleted successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Token not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
       }
     },
     "/bodhi/v1/user": {
@@ -8986,6 +9068,10 @@
           "scope": {
             "$ref": "#/components/schemas/TokenScope",
             "description": "Token scope defining access level"
+          },
+          "grants": {
+            "$ref": "#/components/schemas/TokenGrants",
+            "description": "Per-resource grants for this token. Defaults to all-access when omitted."
           }
         },
         "example": {
@@ -10279,6 +10365,60 @@
           "oauth"
         ]
       },
+      "McpGrant": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "none"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "ids",
+              "type"
+            ],
+            "properties": {
+              "ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "specific"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs),\n`None` grants no MCP access, `Specific` lists the user's own instance ids."
+      },
       "McpInstance": {
         "type": "object",
         "required": [
@@ -10683,6 +10823,46 @@
             "$ref": "#/components/schemas/ToolCapabilities"
           }
         }
+      },
+      "ModelGrant": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "ids",
+              "type"
+            ],
+            "properties": {
+              "ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "specific"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Model inference grant for an API token. `All` is a wildcard that includes\nmodels added in the future; `Specific` lists alias ids."
       },
       "ModelMetadata": {
         "type": "object",
@@ -12079,6 +12259,7 @@
           "token_prefix",
           "scopes",
           "status",
+          "grants",
           "created_at",
           "updated_at"
         ],
@@ -12101,6 +12282,17 @@
           "status": {
             "$ref": "#/components/schemas/TokenStatus"
           },
+          "grants": {
+            "$ref": "#/components/schemas/TokenGrants",
+            "description": "Per-resource grants this token carries."
+          },
+          "last_used_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -12108,6 +12300,50 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "TokenGrants": {
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TokenGrantsV1"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "version"
+                ],
+                "properties": {
+                  "version": {
+                    "type": "string",
+                    "enum": [
+                      "1"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "description": "Versioned envelope; the `version` tag is mandatory (mirrors `ApprovedResources`)."
+      },
+      "TokenGrantsV1": {
+        "type": "object",
+        "description": "Per-resource grants carried by an API token. Listing (`list_models` /\n`list_mcps`) is separate from inference/connect: with listing off the\ndiscovery endpoints return an empty set, but inference on an individually\ngranted resource still succeeds.\n\nIntentionally standalone — NOT shared with the App-access-request envelope\n(`ApprovedResources`); the two may diverge.",
+        "properties": {
+          "list_models": {
+            "type": "boolean"
+          },
+          "models": {
+            "$ref": "#/components/schemas/ModelGrant"
+          },
+          "list_mcps": {
+            "type": "boolean"
+          },
+          "mcps": {
+            "$ref": "#/components/schemas/McpGrant"
           }
         }
       },

@@ -143,6 +143,9 @@ pub struct CreateTokenRequest {
   /// Token scope defining access level
   #[schema(example = "scope_token_user")]
   pub scope: TokenScope,
+  /// Per-resource grants for this token. Defaults to all-access when omitted.
+  #[serde(default)]
+  pub grants: TokenGrants,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
@@ -179,6 +182,10 @@ pub struct TokenDetail {
   pub token_prefix: String,
   pub scopes: String,
   pub status: TokenStatus,
+  /// Per-resource grants this token carries.
+  pub grants: TokenGrants,
+  #[schema(value_type = Option<String>, format = "date-time")]
+  pub last_used_at: Option<DateTime<Utc>>,
   #[schema(value_type = String, format = "date-time")]
   pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time")]
@@ -187,6 +194,9 @@ pub struct TokenDetail {
 
 impl From<super::TokenEntity> for TokenDetail {
   fn from(t: super::TokenEntity) -> Self {
+    // Stored grants are written by us and always valid; fall back to all-access
+    // defensively rather than panicking on an unexpected payload.
+    let grants = serde_json::from_str(&t.grants).unwrap_or_default();
     Self {
       id: t.id,
       user_id: t.user_id,
@@ -194,6 +204,8 @@ impl From<super::TokenEntity> for TokenDetail {
       token_prefix: t.token_prefix,
       scopes: t.scopes,
       status: t.status,
+      grants,
+      last_used_at: t.last_used_at,
       created_at: t.created_at,
       updated_at: t.updated_at,
     }

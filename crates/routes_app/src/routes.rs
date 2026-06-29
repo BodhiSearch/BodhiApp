@@ -22,11 +22,11 @@ use crate::{
   model_router_update, modelfiles_index, models_copy, models_create, models_destroy, models_index,
   models_pull_archive, models_pull_create, models_pull_index, models_pull_retry, models_pull_show,
   models_show, models_update, ping_handler, queue_status_handler, refresh_metadata_handler,
-  tenants_activate, tenants_create, tenants_index, tokens_create, tokens_index, tokens_update,
-  users_access_request_approve, users_access_request_reject, users_access_requests_index,
-  users_access_requests_pending, users_change_role, users_destroy, users_index, users_info,
-  users_request_access, users_request_status, BodhiOAIOpenAPIDoc, BodhiOpenAPIDoc,
-  GlobalErrorResponses, OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL,
+  tenants_activate, tenants_create, tenants_index, tokens_create, tokens_delete, tokens_index,
+  tokens_update, users_access_request_approve, users_access_request_reject,
+  users_access_requests_index, users_access_requests_pending, users_change_role, users_destroy,
+  users_index, users_info, users_request_access, users_request_status, BodhiOAIOpenAPIDoc,
+  BodhiOpenAPIDoc, GlobalErrorResponses, OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL,
   ENDPOINT_ACCESS_REQUESTS_APPROVE, ENDPOINT_ACCESS_REQUESTS_DENY,
   ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVIEW,
   ENDPOINT_APPS_ACCESS_REQUESTS_ID, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO,
@@ -482,7 +482,7 @@ pub async fn build_routes(
     .route(ENDPOINT_TOKENS, get(tokens_index))
     .route(
       &format!("{ENDPOINT_TOKENS}/{{token_id}}"),
-      put(tokens_update),
+      put(tokens_update).delete(tokens_delete),
     )
     .route(ENDPOINT_MODELS_REFRESH, post(refresh_metadata_handler))
     .route(ENDPOINT_QUEUE, get(queue_status_handler))

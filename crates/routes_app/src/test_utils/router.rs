@@ -220,6 +220,8 @@ pub async fn create_test_api_token(db_service: &dyn DbService) -> anyhow::Result
     token_hash,
     scopes: "scope_token_user".to_string(),
     status: TokenStatus::Active,
+    grants: services::default_grants_json(),
+    last_used_at: None,
     created_at: now,
     updated_at: now,
   };

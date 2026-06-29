@@ -202,6 +202,7 @@ async fn test_create_token_generates_valid_token(
   let form = CreateTokenRequest {
     name: Some("my-token".to_string()),
     scope: TokenScope::User,
+    grants: Default::default(),
   };
   let token_created = token_service
     .create_token(TEST_TENANT_ID, "user1", form)

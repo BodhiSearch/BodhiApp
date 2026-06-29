@@ -9,6 +9,7 @@ use tower::ServiceExt;
 #[case::list_tokens("GET", "/bodhi/v1/tokens")]
 #[case::create_token("POST", "/bodhi/v1/tokens")]
 #[case::update_token("PUT", "/bodhi/v1/tokens/some_token_id")]
+#[case::delete_token("DELETE", "/bodhi/v1/tokens/some_token_id")]
 #[tokio::test]
 async fn test_token_endpoints_reject_unauthenticated(
   #[case] method: &str,
@@ -29,7 +30,8 @@ async fn test_token_endpoints_reject_insufficient_role(
   #[values(
     ("GET", "/bodhi/v1/tokens"),
     ("POST", "/bodhi/v1/tokens"),
-    ("PUT", "/bodhi/v1/tokens/some_token_id")
+    ("PUT", "/bodhi/v1/tokens/some_token_id"),
+    ("DELETE", "/bodhi/v1/tokens/some_token_id")
   )]
   endpoint: (&str, &str),
 ) -> anyhow::Result<()> {

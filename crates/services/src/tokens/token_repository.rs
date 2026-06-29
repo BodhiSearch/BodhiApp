@@ -32,6 +32,9 @@ pub trait TokenRepository: Send + Sync {
     user_id: &str,
     token: &mut TokenEntity,
   ) -> Result<(), DbError>;
+
+  async fn delete_api_token(&self, tenant_id: &str, user_id: &str, id: &str)
+    -> Result<(), DbError>;
 }
 
 #[async_trait::async_trait]
@@ -187,6 +190,38 @@ impl TokenRepository for DefaultDbService {
             .await
             .map_err(DbError::from)?;
 
+          Ok(())
+        })
+      })
+      .await
+  }
+
+  async fn delete_api_token(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<(), DbError> {
+    let tenant_id_owned = tenant_id.to_string();
+    let user_id_owned = user_id.to_string();
+    let id_owned = id.to_string();
+
+    self
+      .with_tenant_txn(tenant_id, |txn| {
+        Box::pin(async move {
+          let res = api_token_entity::Entity::delete_many()
+            .filter(api_token_entity::Column::TenantId.eq(&tenant_id_owned))
+            .filter(api_token_entity::Column::UserId.eq(&user_id_owned))
+            .filter(api_token_entity::Column::Id.eq(&id_owned))
+            .exec(txn)
+            .await
+            .map_err(DbError::from)?;
+          if res.rows_affected == 0 {
+            return Err(DbError::ItemNotFound {
+              id: id_owned,
+              item_type: "api_token".to_string(),
+            });
+          }
           Ok(())
         })
       })

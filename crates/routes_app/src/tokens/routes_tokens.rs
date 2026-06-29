@@ -76,6 +76,7 @@ pub async fn tokens_create(
   let validated = CreateTokenRequest {
     name: request.name,
     scope: token_scope,
+    grants: request.grants,
   };
   let token_created = auth_scope.tokens().create_token(validated).await?;
 
@@ -145,6 +146,40 @@ pub async fn tokens_update(
 ) -> Result<Json<TokenDetail>, BodhiErrorResponse> {
   let token = auth_scope.tokens().update_token(&id, request).await?;
   Ok(Json(token))
+}
+
+/// Delete an API token
+///
+/// **Security Note:** Session-only authentication required for token management.
+/// API tokens cannot delete other tokens to prevent privilege escalation. Deleting
+/// a token permanently revokes it (its grants are immutable, so re-mint to change them).
+#[utoipa::path(
+    delete,
+    path = ENDPOINT_TOKENS.to_owned() + "/{id}",
+    tag = API_TAG_API_KEYS,
+    operation_id = "deleteApiToken",
+    summary = "Delete API Token",
+    description = "Permanently deletes an API token owned by the current user, immediately revoking it.\n\n**Security Note:** Session-only authentication required to prevent token-based privilege escalation.",
+    params(
+        ("id" = String, Path,
+         description = "Unique identifier of the API token to delete",
+         example = "550e8400-e29b-41d4-a716-446655440000")
+    ),
+    responses(
+        (status = 204, description = "Token deleted successfully"),
+        (status = 404, description = "Token not found", body = BodhiErrorResponse),
+        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot manage tokens)", body = BodhiErrorResponse),
+    ),
+    security(
+        ("session_auth" = ["resource_power_user"])
+    )
+)]
+pub async fn tokens_delete(
+  auth_scope: AuthScope,
+  Path(id): Path<String>,
+) -> Result<StatusCode, BodhiErrorResponse> {
+  auth_scope.tokens().delete_token(&id).await?;
+  Ok(StatusCode::NO_CONTENT)
 }
 
 /// List all API tokens for the current user

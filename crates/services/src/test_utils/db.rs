@@ -623,6 +623,19 @@ impl TokenRepository for TestDbService {
       .await
       .tap(|_| self.notify("update_api_token"))
   }
+
+  async fn delete_api_token(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_api_token(tenant_id, user_id, id)
+      .await
+      .tap(|_| self.notify("delete_api_token"))
+  }
 }
 
 #[async_trait::async_trait]
@@ -1582,6 +1595,7 @@ mockall::mock! {
     async fn get_api_token_by_id(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<Option<TokenEntity>, DbError>;
     async fn get_api_token_by_prefix(&self, prefix: &str) -> Result<Option<TokenEntity>, DbError>;
     async fn update_api_token(&self, tenant_id: &str, user_id: &str, token: &mut TokenEntity) -> Result<(), DbError>;
+    async fn delete_api_token(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<(), DbError>;
   }
 
   #[async_trait::async_trait]

@@ -141,3 +141,42 @@ async fn test_intra_tenant_user_token_isolation(
 
   Ok(())
 }
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_cross_tenant_token_delete_blocked(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let mut token_b = make_token(
+    &crate::new_ulid(),
+    TEST_USER_ID,
+    "bodhiapp_db",
+    TEST_TENANT_B_ID,
+    ctx.now,
+  );
+  ctx
+    .service
+    .create_api_token(TEST_TENANT_B_ID, &mut token_b)
+    .await?;
+
+  // Tenant A cannot delete tenant B's token.
+  let err = ctx
+    .service
+    .delete_api_token(TEST_TENANT_ID, TEST_USER_ID, &token_b.id)
+    .await
+    .unwrap_err();
+  assert!(matches!(err, crate::db::DbError::ItemNotFound { .. }));
+
+  // The token is still present in tenant B.
+  let still_there = ctx
+    .service
+    .get_api_token_by_id(TEST_TENANT_B_ID, TEST_USER_ID, &token_b.id)
+    .await?;
+  assert!(still_there.is_some());
+
+  Ok(())
+}

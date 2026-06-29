@@ -1106,7 +1106,13 @@ export interface paths {
          */
         put: operations["updateApiToken"];
         post?: never;
-        delete?: never;
+        /**
+         * Delete API Token
+         * @description Permanently deletes an API token owned by the current user, immediately revoking it.
+         *
+         *     **Security Note:** Session-only authentication required to prevent token-based privilege escalation.
+         */
+        delete: operations["deleteApiToken"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1813,6 +1819,8 @@ export interface components {
             name?: string | null;
             /** @description Token scope defining access level */
             scope: components["schemas"]["TokenScope"];
+            /** @description Per-resource grants for this token. Defaults to all-access when omitted. */
+            grants?: components["schemas"]["TokenGrants"];
         };
         /** @description Dashboard user information from a validated dashboard session token */
         DashboardUser: {
@@ -2212,6 +2220,19 @@ export interface components {
         McpAuthParamType: "header" | "query";
         /** @enum {string} */
         McpAuthType: "public" | "header" | "oauth";
+        /** @description MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs),
+         *     `None` grants no MCP access, `Specific` lists the user's own instance ids. */
+        McpGrant: {
+            /** @enum {string} */
+            type: "all";
+        } | {
+            /** @enum {string} */
+            type: "none";
+        } | {
+            ids: string[];
+            /** @enum {string} */
+            type: "specific";
+        };
         McpInstance: {
             id: string;
             /** @description MCP proxy path for this instance (e.g. `/bodhi/v1/apps/mcps/{id}/mcp`) */
@@ -2330,6 +2351,16 @@ export interface components {
             audio?: boolean | null;
             thinking?: boolean | null;
             tools: components["schemas"]["ToolCapabilities"];
+        };
+        /** @description Model inference grant for an API token. `All` is a wildcard that includes
+         *     models added in the future; `Specific` lists alias ids. */
+        ModelGrant: {
+            /** @enum {string} */
+            type: "all";
+        } | {
+            ids: string[];
+            /** @enum {string} */
+            type: "specific";
         };
         /** @description Model metadata for API responses */
         ModelMetadata: {
@@ -2790,10 +2821,32 @@ export interface components {
             token_prefix: string;
             scopes: string;
             status: components["schemas"]["TokenStatus"];
+            /** @description Per-resource grants this token carries. */
+            grants: components["schemas"]["TokenGrants"];
+            /** Format: date-time */
+            last_used_at?: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        /** @description Versioned envelope; the `version` tag is mandatory (mirrors `ApprovedResources`). */
+        TokenGrants: components["schemas"]["TokenGrantsV1"] & {
+            /** @enum {string} */
+            version: "1";
+        };
+        /** @description Per-resource grants carried by an API token. Listing (`list_models` /
+         *     `list_mcps`) is separate from inference/connect: with listing off the
+         *     discovery endpoints return an empty set, but inference on an individually
+         *     granted resource still succeeds.
+         *
+         *     Intentionally standalone — NOT shared with the App-access-request envelope
+         *     (`ApprovedResources`); the two may diverge. */
+        TokenGrantsV1: {
+            list_models?: boolean;
+            models?: components["schemas"]["ModelGrant"];
+            list_mcps?: boolean;
+            mcps?: components["schemas"]["McpGrant"];
         };
         /** @description API Token information response */
         TokenInfo: {
@@ -8156,6 +8209,75 @@ export interface operations {
                      *         "type": "not_found_error"
                      *       }
                      *     } */
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteApiToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Unique identifier of the API token to delete
+                 * @example 550e8400-e29b-41d4-a716-446655440000
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Token deleted successfully */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Token not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };

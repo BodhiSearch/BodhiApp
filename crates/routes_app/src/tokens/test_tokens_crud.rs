@@ -2,7 +2,7 @@ use crate::test_utils::{make_auth_no_role, make_auth_with_role, RequestAuthConte
 use crate::tokens::tokens_api_schemas::{
   CreateTokenRequest, PaginatedTokenResponse, TokenCreated, TokenDetail, UpdateTokenRequest,
 };
-use crate::{tokens_create, tokens_index, tokens_update};
+use crate::{tokens_create, tokens_delete, tokens_index, tokens_update};
 use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
@@ -22,7 +22,7 @@ use services::{
   },
   AppService, {TokenEntity, TokenRepository, TokenStatus},
 };
-use services::{ResourceRole, TokenScope};
+use services::{McpGrant, ModelGrant, ResourceRole, TokenGrants, TokenGrantsV1, TokenScope};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -33,7 +33,10 @@ async fn app(app_service_stub: AppServiceStub) -> Router {
   Router::new()
     .route("/api/tokens", post(tokens_create))
     .route("/api/tokens", get(tokens_index))
-    .route("/api/tokens/{token_id}", put(tokens_update))
+    .route(
+      "/api/tokens/{token_id}",
+      put(tokens_update).delete(tokens_delete),
+    )
     .with_state(app_service)
 }
 
@@ -65,6 +68,8 @@ async fn test_list_tokens_pagination(
       token_hash: "token_hash".to_string(),
       scopes: "scope_token_user".to_string(),
       status: TokenStatus::Active,
+      grants: services::default_grants_json(),
+      last_used_at: None,
       created_at: app_service.time_service().utc_now(),
       updated_at: app_service.time_service().utc_now(),
     };
@@ -218,6 +223,7 @@ async fn test_create_token_handler_role_scope_mapping(
         .json(&CreateTokenRequest {
           name: Some(format!("Test Token for {:?}", role)),
           scope: requested_scope,
+          grants: Default::default(),
         })?
         .with_auth_context(make_auth_with_role(
           auth_variant,
@@ -279,6 +285,7 @@ async fn test_create_token_handler_success(
         .json(&CreateTokenRequest {
           name: Some(token_name.to_string()),
           scope: TokenScope::User,
+          grants: Default::default(),
         })?
         .with_auth_context(make_auth_with_role(
           auth_variant,
@@ -359,6 +366,7 @@ async fn test_create_token_handler_without_name(
         .json(&CreateTokenRequest {
           name: None,
           scope: TokenScope::User,
+          grants: Default::default(),
         })?
         .with_auth_context(make_auth_with_role(
           auth_variant,
@@ -408,6 +416,7 @@ async fn test_create_token_handler_missing_auth(
         .json(&CreateTokenRequest {
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
+          grants: Default::default(),
         })?
         .with_auth_context(AuthContext::Anonymous {
           deployment: services::DeploymentMode::Standalone,
@@ -445,6 +454,7 @@ async fn test_create_token_handler_invalid_role(
         .json(&CreateTokenRequest {
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
+          grants: Default::default(),
         })?
         .with_auth_context(AuthContext::test_session(
           &user_id,
@@ -485,6 +495,7 @@ async fn test_create_token_handler_missing_role(
         .json(&CreateTokenRequest {
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
+          grants: Default::default(),
         })?
         .with_auth_context(make_auth_no_role(auth_variant, &user_id, "user@test.com")),
     )
@@ -522,6 +533,8 @@ async fn test_update_token_handler_success(
     token_hash: "token_hash".to_string(),
     scopes: "scope_token_user".to_string(),
     status: TokenStatus::Active,
+    grants: services::default_grants_json(),
+    last_used_at: None,
     created_at: now,
     updated_at: now,
   };
@@ -601,5 +614,152 @@ async fn test_update_token_handler_not_found(
     .await?;
 
   assert_eq!(response.status(), StatusCode::NOT_FOUND);
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_token_persists_and_returns_grants(
+  #[future] test_db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let claims = access_token_claims();
+  let user_id = claims["sub"].as_str().unwrap().to_string();
+  let (token, _) = build_token(claims)?;
+  let app_service = AppServiceStubBuilder::default()
+    .db_service(Arc::new(test_db_service))
+    .build()
+    .await?;
+  let app = app(app_service).await;
+  let auth = AuthContext::test_session_with_token(
+    &user_id,
+    "user@test.com",
+    ResourceRole::PowerUser,
+    &token,
+  );
+
+  let grants = TokenGrants::V1(TokenGrantsV1 {
+    list_models: false,
+    models: ModelGrant::Specific {
+      ids: vec!["my-model".to_string()],
+    },
+    list_mcps: true,
+    mcps: McpGrant::None,
+  });
+
+  let create = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method(Method::POST)
+        .uri("/api/tokens")
+        .json(&CreateTokenRequest {
+          name: Some("granted".to_string()),
+          scope: TokenScope::User,
+          grants: grants.clone(),
+        })?
+        .with_auth_context(auth.clone()),
+    )
+    .await?;
+  assert_eq!(StatusCode::CREATED, create.status());
+
+  // Grants are not returned on create (token-only payload); verify they round-trip via list.
+  let list = app
+    .oneshot(
+      Request::builder()
+        .method(Method::GET)
+        .uri("/api/tokens?page=1&page_size=10")
+        .body(Body::empty())?
+        .with_auth_context(auth),
+    )
+    .await?;
+  assert_eq!(StatusCode::OK, list.status());
+  let listed = list.json::<PaginatedTokenResponse>().await?;
+  let detail = listed
+    .data
+    .iter()
+    .find(|t| t.name == "granted")
+    .expect("created token present in list");
+  assert_eq!(grants, detail.grants);
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_delete_token_handler(#[future] test_db_service: TestDbService) -> anyhow::Result<()> {
+  let claims = access_token_claims();
+  let user_id = claims["sub"].as_str().unwrap().to_string();
+  let (token, _) = build_token(claims)?;
+  let app_service = AppServiceStubBuilder::default()
+    .db_service(Arc::new(test_db_service))
+    .build()
+    .await?;
+  let app = app(app_service).await;
+  let auth =
+    AuthContext::test_session_with_token(&user_id, "user@test.com", ResourceRole::Admin, &token);
+
+  let create = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method(Method::POST)
+        .uri("/api/tokens")
+        .json(&CreateTokenRequest {
+          name: Some("to-delete".to_string()),
+          scope: TokenScope::User,
+          grants: Default::default(),
+        })?
+        .with_auth_context(auth.clone()),
+    )
+    .await?;
+  assert_eq!(StatusCode::CREATED, create.status());
+
+  let list = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method(Method::GET)
+        .uri("/api/tokens?page=1&page_size=10")
+        .body(Body::empty())?
+        .with_auth_context(auth.clone()),
+    )
+    .await?;
+  let listed = list.json::<PaginatedTokenResponse>().await?;
+  let id = listed
+    .data
+    .iter()
+    .find(|t| t.name == "to-delete")
+    .expect("created token present")
+    .id
+    .clone();
+
+  let del = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method(Method::DELETE)
+        .uri(format!("/api/tokens/{id}"))
+        .body(Body::empty())?
+        .with_auth_context(auth.clone()),
+    )
+    .await?;
+  assert_eq!(StatusCode::NO_CONTENT, del.status());
+
+  // Deleting again is a 404 — the row is gone.
+  let del_again = app
+    .oneshot(
+      Request::builder()
+        .method(Method::DELETE)
+        .uri(format!("/api/tokens/{id}"))
+        .body(Body::empty())?
+        .with_auth_context(auth),
+    )
+    .await?;
+  assert_eq!(StatusCode::NOT_FOUND, del_again.status());
+
   Ok(())
 }
