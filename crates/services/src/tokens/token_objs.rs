@@ -67,6 +67,37 @@ pub struct TokenGrantsV1 {
   pub mcps: McpGrant,
 }
 
+impl TokenGrantsV1 {
+  /// Whether the token may run inference on `model_id`.
+  pub fn allows_model_inference(&self, model_id: &str) -> bool {
+    match &self.models {
+      ModelGrant::All => true,
+      ModelGrant::Specific { ids } => ids.iter().any(|m| m == model_id),
+    }
+  }
+
+  /// Whether `model_id` is visible in listings: everything when `list_models` is on,
+  /// otherwise only inference-granted models.
+  pub fn model_listable(&self, model_id: &str) -> bool {
+    self.list_models || self.allows_model_inference(model_id)
+  }
+
+  /// Whether the token may connect to MCP instance `mcp_id`.
+  pub fn allows_mcp_connect(&self, mcp_id: &str) -> bool {
+    match &self.mcps {
+      McpGrant::All => true,
+      McpGrant::None => false,
+      McpGrant::Specific { ids } => ids.iter().any(|m| m == mcp_id),
+    }
+  }
+
+  /// Whether `mcp_id` is visible in listings: everything when `list_mcps` is on,
+  /// otherwise only connect-granted instances.
+  pub fn mcp_listable(&self, mcp_id: &str) -> bool {
+    self.list_mcps || self.allows_mcp_connect(mcp_id)
+  }
+}
+
 /// Versioned envelope; the `version` tag is mandatory (mirrors `ApprovedResources`).
 #[derive(Debug, Clone, PartialEq, Serialize, ToSchema)]
 #[serde(tag = "version")]

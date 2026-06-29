@@ -142,6 +142,10 @@ pub async fn models_index(
     }
   }
 
+  // Prune to grant-listable models (Unrestricted for session/external-app).
+  let policy = auth_scope.access_policy();
+  aliases.retain_mut(|alias| alias.retain_listable_models(|id| policy.model_listable(id)));
+
   sort_aliases(&mut aliases, &sort, &sort_order);
 
   let total = aliases.len();

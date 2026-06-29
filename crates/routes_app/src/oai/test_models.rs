@@ -13,8 +13,28 @@ use server_core::test_utils::ResponseTestExt;
 use services::test_utils::{anthropic_model, gemini_model, openai_model, TEST_TENANT_ID};
 use services::{test_utils::AppServiceStubBuilder, AppService};
 use services::{ApiAlias, ApiFormat, ApiModel, AuthContext, ResourceRole};
+use services::{McpGrant, ModelGrant, TokenGrants, TokenGrantsV1, TokenScope};
 use std::sync::Arc;
 use tower::ServiceExt;
+
+/// API-token auth context granting only `models` for inference, with `list_models`.
+fn scoped_token(models: &[&str], list_models: bool) -> AuthContext {
+  AuthContext::ApiToken {
+    client_id: "test-client".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
+    user_id: "test-user".to_string(),
+    role: TokenScope::User,
+    token: "test-token".to_string(),
+    grants: TokenGrants::V1(TokenGrantsV1 {
+      list_models,
+      models: ModelGrant::Specific {
+        ids: models.iter().map(|s| s.to_string()).collect(),
+      },
+      list_mcps: false,
+      mcps: McpGrant::None,
+    }),
+  }
+}
 
 fn create_router(service: Arc<dyn services::AppService>) -> Router {
   Router::new()
@@ -77,6 +97,78 @@ async fn test_oai_models_handler_list_all(#[future] app: Router) -> anyhow::Resu
     assert_eq!("model", model["object"].as_str().unwrap());
     assert_eq!("system", model["owned_by"].as_str().unwrap());
   }
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_oai_models_scoped_token_filters_listing(#[future] app: Router) -> anyhow::Result<()> {
+  // list_models off → only the granted model is listed.
+  let response = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/v1/models")
+        .body(Body::empty())?
+        .with_auth_context(scoped_token(&["llama3:instruct"], false)),
+    )
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+  let body = response.json::<Value>().await?;
+  let ids: Vec<&str> = body["data"]
+    .as_array()
+    .unwrap()
+    .iter()
+    .map(|m| m["id"].as_str().unwrap())
+    .collect();
+  assert_eq!(vec!["llama3:instruct"], ids);
+
+  // list_models on → full catalog despite the narrow inference grant.
+  let response = app
+    .oneshot(
+      Request::builder()
+        .uri("/v1/models")
+        .body(Body::empty())?
+        .with_auth_context(scoped_token(&["llama3:instruct"], true)),
+    )
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+  let body = response.json::<Value>().await?;
+  assert_eq!(8, body["data"].as_array().unwrap().len());
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_oai_model_handler_scoped_token_hides_ungranted(
+  #[future] app: Router,
+) -> anyhow::Result<()> {
+  // Granted model → 200.
+  let response = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/v1/models/llama3:instruct")
+        .body(Body::empty())?
+        .with_auth_context(scoped_token(&["llama3:instruct"], false)),
+    )
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  // Existing-but-ungranted model with list off → 404 (existence not revealed).
+  let response = app
+    .oneshot(
+      Request::builder()
+        .uri("/v1/models/tinyllama:instruct")
+        .body(Body::empty())?
+        .with_auth_context(scoped_token(&["llama3:instruct"], false)),
+    )
+    .await?;
+  assert_eq!(StatusCode::NOT_FOUND, response.status());
   Ok(())
 }
 

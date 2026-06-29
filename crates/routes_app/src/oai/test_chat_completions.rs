@@ -95,6 +95,57 @@ async fn test_chat_completions_handler_non_stream() -> anyhow::Result<()> {
   Ok(())
 }
 
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_chat_completions_scoped_token_forbidden() -> anyhow::Result<()> {
+  use services::{McpGrant, ModelGrant, TokenGrants, TokenGrantsV1, TokenScope};
+  let request = CreateChatCompletionRequestArgs::default()
+    .model("testalias-exists:instruct")
+    .messages(vec![ChatCompletionRequestMessage::User(
+      ChatCompletionRequestUserMessageArgs::default()
+        .content("hi")
+        .build()?,
+    )])
+    .build()?;
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .ai_api_client_factory(mock_ai_factory_returning(non_streamed_axum_response))
+    .build()
+    .await?;
+  let app = Router::new()
+    .route("/v1/chat/completions", post(chat_completions_handler))
+    .with_state(Arc::new(app_service) as Arc<dyn services::AppService>);
+
+  // Token grants a different model → 403 before the request is ever forwarded.
+  let token = AuthContext::ApiToken {
+    client_id: "c".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
+    user_id: TEST_USER_ID.to_string(),
+    role: TokenScope::User,
+    token: "tok".to_string(),
+    grants: TokenGrants::V1(TokenGrantsV1 {
+      list_models: false,
+      models: ModelGrant::Specific {
+        ids: vec!["some-other-model".to_string()],
+      },
+      list_mcps: false,
+      mcps: McpGrant::None,
+    }),
+  };
+  let response = app
+    .oneshot(
+      Request::post("/v1/chat/completions")
+        .json(request)?
+        .with_auth_context(token),
+    )
+    .await?;
+  assert_eq!(StatusCode::FORBIDDEN, response.status());
+  Ok(())
+}
+
 fn streamed_axum_response() -> Result<Response, AiApiClientFactoryError> {
   let stream = futures_util::stream::iter([
     " ", " After", " Monday", ",", " the", " next", " day", " is", " T", "ues", "day", ".",

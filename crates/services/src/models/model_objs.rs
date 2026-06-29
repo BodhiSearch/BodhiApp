@@ -993,6 +993,27 @@ impl Alias {
   pub fn is_model_router(&self) -> bool {
     matches!(self, Alias::ModelRouter(_))
   }
+
+  /// Retain only models for which `keep` (called with each request-facing model id)
+  /// returns true, pruning a multi-model API alias's inner list in place. Returns
+  /// false when nothing remains, so the caller drops the alias. A
+  /// `forward_all_with_prefix` API alias matches an unbounded set and is judged by
+  /// `keep(prefix)` as a whole.
+  pub fn retain_listable_models(&mut self, keep: impl Fn(&str) -> bool) -> bool {
+    match self {
+      Alias::User(a) => keep(&a.alias),
+      Alias::Model(a) => keep(&a.alias),
+      Alias::ModelRouter(r) => keep(&r.alias),
+      Alias::Api(a) => {
+        if a.forward_all_with_prefix {
+          return keep(a.prefix.as_deref().unwrap_or(""));
+        }
+        let prefix = a.prefix.clone().unwrap_or_default();
+        a.models.retain(|m| keep(&format!("{}{}", prefix, m.id())));
+        !a.models.is_empty()
+      }
+    }
+  }
 }
 
 // =============================================================================

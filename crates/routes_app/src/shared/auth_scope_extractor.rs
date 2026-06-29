@@ -26,6 +26,14 @@ impl Deref for AuthScope {
   }
 }
 
+impl AuthScope {
+  /// Per-resource access policy for the current principal — the single entry point
+  /// handlers use to filter listings and guard inference/connect.
+  pub fn access_policy(&self) -> crate::AccessPolicy<'_> {
+    crate::AccessPolicy::of(self.auth_context())
+  }
+}
+
 impl<S> FromRequestParts<S> for AuthScope
 where
   S: Send + Sync,

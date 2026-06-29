@@ -145,6 +145,8 @@ pub async fn anthropic_messages_create_handler(
     .ok_or_else(AnthropicApiError::missing_model)?
     .to_string();
 
+  auth_scope.access_policy().ensure_model_inference(&model)?;
+
   let resolution = resolve_anthropic_alias(&auth_scope, &model).await?;
   let client_headers = extract_anthropic_headers(&headers);
   let params: Vec<(String, String)> = query_params.into_iter().collect();

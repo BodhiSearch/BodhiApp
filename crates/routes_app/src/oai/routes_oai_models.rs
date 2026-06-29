@@ -86,6 +86,9 @@ pub async fn oai_models_handler(
     }
   }
 
+  let policy = auth_scope.access_policy();
+  models.retain(|m| policy.model_listable(&m.id));
+
   Ok(Json(ListModelResponse {
     object: "list".to_string(),
     data: models,
@@ -134,6 +137,10 @@ pub async fn oai_model_handler(
 ) -> Result<Json<Model>, OaiApiError> {
   let setting_service = auth_scope.setting_service();
   let time_service = auth_scope.time_service();
+  // Not-listable → 404 (don't reveal existence to a scoped token).
+  if !auth_scope.access_policy().model_listable(&id) {
+    return Err(OaiApiError::from(DataServiceError::AliasNotFound(id)));
+  }
   if let Some(alias) = auth_scope.data().find_alias(&id).await {
     match alias {
       Alias::User(user_alias) => Ok(Json(user_alias_to_oai_model(user_alias))),

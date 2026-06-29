@@ -210,6 +210,8 @@ pub async fn gemini_action_handler(
 
   validate_model_id(model)?;
 
+  auth_scope.access_policy().ensure_model_inference(model)?;
+
   let (api_alias, api_key) = resolve_gemini_alias(&auth_scope, model).await?;
   let stripped_model = strip_alias_prefix(model, &api_alias);
 

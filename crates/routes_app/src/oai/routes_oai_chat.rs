@@ -130,6 +130,9 @@ pub async fn chat_completions_handler(
     .unwrap_or("")
     .to_string();
 
+  // Check before resolution: a non-granted model must 403, not leak existence via 404.
+  auth_scope.access_policy().ensure_model_inference(&model)?;
+
   let alias = auth_scope
     .data()
     .find_alias(&model)
