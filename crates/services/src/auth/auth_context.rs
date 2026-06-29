@@ -1,4 +1,7 @@
-use crate::{AppRole, DeploymentMode, ErrorType, ResourceRole, TokenGrants, TokenScope, UserScope};
+use crate::{
+  AppRole, ApprovedResources, DeploymentMode, ErrorType, ResourceRole, TokenGrants, TokenScope,
+  UserScope,
+};
 use errmeta::AppError;
 use serde::Serialize;
 
@@ -43,6 +46,10 @@ pub enum AuthContext {
     external_app_token: String,
     app_client_id: String,
     access_request_id: Option<String>,
+    /// Approved per-resource grants from the bound access request, resolved at
+    /// token-exchange. `None` when no access request is bound (treated as
+    /// unrestricted, preserving the pre-grants behavior).
+    grants: Option<ApprovedResources>,
   },
 }
 
@@ -110,6 +117,16 @@ impl AuthContext {
       AuthContext::MultiTenantSession { token, .. } => token.as_deref(),
       AuthContext::ApiToken { token, .. } => Some(token),
       AuthContext::ExternalApp { token, .. } => Some(token), // Returns exchanged token
+    }
+  }
+
+  /// Approved app grants, when this principal is an `ExternalApp` with a bound
+  /// access request. `None` for every other principal and for app tokens with no
+  /// access request.
+  pub fn external_app_grants(&self) -> Option<&ApprovedResources> {
+    match self {
+      AuthContext::ExternalApp { grants, .. } => grants.as_ref(),
+      _ => None,
     }
   }
 
@@ -204,6 +221,7 @@ mod tests {
       external_app_token: "test-external-app-token".to_string(),
       app_client_id: "app1".to_string(),
       access_request_id: None,
+      grants: None,
     };
     assert_eq!(true, ctx.is_authenticated());
     assert_eq!(None, ctx.app_role());

@@ -4,27 +4,33 @@
 //! decisions. Handlers obtain it via [`crate::AuthScope::access_policy`] and ask
 //! uniform questions — they never match on `AuthContext` or grant internals.
 //!
-//! Only `AuthContext::ApiToken` is grant-restricted. Sessions are `Unrestricted`,
-//! and `ExternalApp` keeps its own access-request enforcement (`mcps_index`) — so
-//! it is `Unrestricted` here too. The actual grant logic lives on
-//! `TokenGrantsV1` (the domain owns it); this type only resolves the principal
-//! and turns a denial into the right HTTP error.
+//! Sessions are `Unrestricted`. Both grant-bearing principals — `AuthContext::ApiToken`
+//! (its `TokenGrantsV1`) and `AuthContext::ExternalApp` with a bound access request
+//! (its `ApprovedResourcesV1`) — flow through the same `Grants` arm: the policy holds
+//! a `&dyn ResourceGrants`, so handlers ask identical allow/deny questions of either.
+//! An `ExternalApp` without a bound access request stays `Unrestricted` (pre-grants
+//! behavior). The grant logic lives on the domain types; this type only resolves the
+//! principal and turns a denial into the right HTTP error.
 
-use services::{AppError, AuthContext, ErrorType, ResourceGrants, TokenGrantsV1};
+use services::{AppError, AuthContext, ErrorType, ResourceGrants};
 
 /// Effective resource-access policy for the current principal.
 pub enum AccessPolicy<'a> {
-  /// No grant restrictions (session / external-app).
+  /// No grant restrictions (session / unbound external-app).
   Unrestricted,
-  /// API token restricted to its grants.
-  Token(&'a TokenGrantsV1),
+  /// Restricted to a grant envelope (API token or approved app).
+  Grants(&'a dyn ResourceGrants),
 }
 
 impl<'a> AccessPolicy<'a> {
   /// Resolve the policy from the request's auth context.
   pub fn of(ctx: &'a AuthContext) -> Self {
     match ctx {
-      AuthContext::ApiToken { grants, .. } => AccessPolicy::Token(grants.v1()),
+      AuthContext::ApiToken { grants, .. } => AccessPolicy::Grants(grants.v1()),
+      AuthContext::ExternalApp {
+        grants: Some(grants),
+        ..
+      } => AccessPolicy::Grants(grants.v1()),
       _ => AccessPolicy::Unrestricted,
     }
   }
@@ -33,7 +39,7 @@ impl<'a> AccessPolicy<'a> {
   pub fn model_listable(&self, model_id: &str) -> bool {
     match self {
       AccessPolicy::Unrestricted => true,
-      AccessPolicy::Token(grants) => grants.model_listable(model_id),
+      AccessPolicy::Grants(grants) => grants.model_listable(model_id),
     }
   }
 
@@ -41,7 +47,7 @@ impl<'a> AccessPolicy<'a> {
   pub fn mcp_listable(&self, mcp_id: &str) -> bool {
     match self {
       AccessPolicy::Unrestricted => true,
-      AccessPolicy::Token(grants) => grants.mcp_listable(mcp_id),
+      AccessPolicy::Grants(grants) => grants.mcp_listable(mcp_id),
     }
   }
 
@@ -49,8 +55,8 @@ impl<'a> AccessPolicy<'a> {
   pub fn ensure_model_inference(&self, model_id: &str) -> Result<(), TokenGrantError> {
     match self {
       AccessPolicy::Unrestricted => Ok(()),
-      AccessPolicy::Token(grants) if grants.allows_model_inference(model_id) => Ok(()),
-      AccessPolicy::Token(_) => Err(TokenGrantError::ModelForbidden(model_id.to_string())),
+      AccessPolicy::Grants(grants) if grants.allows_model_inference(model_id) => Ok(()),
+      AccessPolicy::Grants(_) => Err(TokenGrantError::ModelForbidden(model_id.to_string())),
     }
   }
 
@@ -58,8 +64,8 @@ impl<'a> AccessPolicy<'a> {
   pub fn ensure_mcp_connect(&self, mcp_id: &str) -> Result<(), TokenGrantError> {
     match self {
       AccessPolicy::Unrestricted => Ok(()),
-      AccessPolicy::Token(grants) if grants.allows_mcp_connect(mcp_id) => Ok(()),
-      AccessPolicy::Token(_) => Err(TokenGrantError::McpForbidden(mcp_id.to_string())),
+      AccessPolicy::Grants(grants) if grants.allows_mcp_connect(mcp_id) => Ok(()),
+      AccessPolicy::Grants(_) => Err(TokenGrantError::McpForbidden(mcp_id.to_string())),
     }
   }
 }
@@ -69,10 +75,10 @@ impl<'a> AccessPolicy<'a> {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum TokenGrantError {
-  #[error("API token does not have access to model '{0}'.")]
+  #[error("This token does not have access to model '{0}'.")]
   #[error_meta(error_type = ErrorType::Forbidden)]
   ModelForbidden(String),
-  #[error("API token does not have access to MCP '{0}'.")]
+  #[error("This token does not have access to MCP '{0}'.")]
   #[error_meta(error_type = ErrorType::Forbidden)]
   McpForbidden(String),
 }

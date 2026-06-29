@@ -4,8 +4,9 @@ use services::AuthContext;
 use services::{access_token_key, refresh_token_key};
 use services::{
   db::{DbService, TimeService},
-  extract_claims, AuthService, CacheService, Claims, ConcurrencyService, ExpClaims, ScopeClaims,
-  SettingService, Tenant, TenantError, TenantService, TokenError, TokenStatus,
+  extract_claims, ApprovedResources, AuthService, CacheService, Claims, ConcurrencyService,
+  ExpClaims, ScopeClaims, SettingService, Tenant, TenantError, TenantService, TokenError,
+  TokenStatus,
 };
 use services::{ResourceRole, TokenGrants, TokenScope, UserScope};
 use sha2::{Digest, Sha256};
@@ -26,6 +27,9 @@ pub struct CachedExchangeResult {
   pub app_client_id: String,
   pub role: Option<String>,
   pub access_request_id: Option<String>,
+  /// Approved per-resource grants resolved from the bound access request.
+  #[serde(default)]
+  pub grants: Option<ApprovedResources>,
   /// Unix timestamp when this entry was cached
   #[serde(default)]
   pub cached_at: i64,
@@ -179,6 +183,7 @@ impl DefaultTokenService {
               external_app_token: bearer_token.to_string(),
               app_client_id: cached_result.app_client_id,
               access_request_id: cached_result.access_request_id,
+              grants: cached_result.grants,
             })
           }
         }
@@ -386,6 +391,15 @@ impl DefaultTokenService {
 
     let role_str = role.map(|r| r.to_string());
 
+    // Resolve the approved grant envelope so model + MCP enforcement flows through
+    // the same AccessPolicy as API tokens. Fail closed on corrupt approved JSON.
+    let grants: Option<ApprovedResources> = validated_record
+      .as_ref()
+      .and_then(|r| r.approved.as_deref())
+      .map(serde_json::from_str::<ApprovedResources>)
+      .transpose()
+      .map_err(|e| TokenError::InvalidToken(format!("Invalid approved grants: {}", e)))?;
+
     let cached_result = CachedExchangeResult {
       token: access_token.clone(),
       client_id: instance.client_id.clone(),
@@ -393,6 +407,7 @@ impl DefaultTokenService {
       app_client_id: original_azp.clone(),
       role: role_str,
       access_request_id: scope_claims.access_request_id.clone(),
+      grants: grants.clone(),
       cached_at: self.time_service.utc_now().timestamp(),
     };
 
@@ -405,6 +420,7 @@ impl DefaultTokenService {
       external_app_token: external_token.to_string(),
       app_client_id: original_azp,
       access_request_id: scope_claims.access_request_id,
+      grants,
     };
 
     Ok((auth_context, cached_result))

@@ -52,7 +52,7 @@ impl McpGrant {
 /// Listing (`*_listable`) is separate from inference/connect: with listing off the
 /// discovery endpoints return only the individually granted resources, but
 /// inference/connect on a granted resource still succeeds.
-pub trait ResourceGrants {
+pub trait ResourceGrants: Send + Sync {
   /// Whether inference on `model_id` is permitted.
   fn allows_model_inference(&self, model_id: &str) -> bool;
   /// Whether `model_id` is visible in listings.

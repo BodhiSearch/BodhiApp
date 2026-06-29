@@ -224,6 +224,7 @@ async fn test_user_info_handler_bearer_token_with_user_scope(
     external_app_token: token.clone(),
     app_client_id: "test-azp".to_string(),
     access_request_id: None,
+    grants: None,
   };
   let response = router
     .oneshot(
@@ -386,6 +387,7 @@ async fn test_user_info_handler_external_app_without_scope(
     external_app_token: token.clone(),
     app_client_id: "test-azp".to_string(),
     access_request_id: None,
+    grants: None,
   };
 
   let response = router

@@ -104,6 +104,7 @@ impl AuthContext {
       external_app_token: "test-external-app-token".to_string(),
       app_client_id: app_client_id.to_string(),
       access_request_id: access_request_id.map(|s| s.to_string()),
+      grants: None,
     }
   }
 
@@ -121,6 +122,35 @@ impl AuthContext {
       external_app_token: "test-external-app-token".to_string(),
       app_client_id: app_client_id.to_string(),
       access_request_id: access_request_id.map(|s| s.to_string()),
+      grants: None,
+    }
+  }
+
+  /// Attach approved app grants to an `ExternalApp` context (no-op otherwise).
+  pub fn with_external_app_grants(self, grants: crate::ApprovedResources) -> Self {
+    match self {
+      AuthContext::ExternalApp {
+        client_id,
+        tenant_id,
+        user_id,
+        role,
+        token,
+        external_app_token,
+        app_client_id,
+        access_request_id,
+        ..
+      } => AuthContext::ExternalApp {
+        client_id,
+        tenant_id,
+        user_id,
+        role,
+        token,
+        external_app_token,
+        app_client_id,
+        access_request_id,
+        grants: Some(grants),
+      },
+      other => other,
     }
   }
 
@@ -212,6 +242,7 @@ impl AuthContext {
         external_app_token,
         app_client_id,
         access_request_id,
+        grants,
         ..
       } => AuthContext::ExternalApp {
         client_id,
@@ -222,6 +253,7 @@ impl AuthContext {
         external_app_token,
         app_client_id,
         access_request_id,
+        grants,
       },
     }
   }
@@ -284,6 +316,7 @@ impl AuthContext {
         external_app_token,
         app_client_id,
         access_request_id,
+        grants,
         ..
       } => AuthContext::ExternalApp {
         client_id,
@@ -294,6 +327,7 @@ impl AuthContext {
         external_app_token,
         app_client_id,
         access_request_id,
+        grants,
       },
     }
   }
