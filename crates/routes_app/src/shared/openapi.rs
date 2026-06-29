@@ -5,7 +5,7 @@ use crate::{
 };
 use crate::{
   AppInfo, DashboardUser, ListUsersParams, PaginatedLocalModelResponse, QueueStatusResponse,
-  RedirectResponse, ResourceAccess, TokenInfo, UserInfoEnvelope, UserResponse,
+  RedirectResponse, ResourceAccess, ResourceAccessInfo, TokenInfo, UserInfoEnvelope, UserResponse,
   __path_api_models_create, __path_api_models_destroy, __path_api_models_fetch_models,
   __path_api_models_formats, __path_api_models_show, __path_api_models_sync,
   __path_api_models_test, __path_api_models_update, __path_apps_approve_access_request,
@@ -281,6 +281,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             UserInfoEnvelope,
             TokenInfo,
             ResourceAccess,
+            ResourceAccessInfo,
             DashboardUser,
             AppRole,
             ResourceRole,

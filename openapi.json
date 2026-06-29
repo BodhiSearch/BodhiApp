@@ -8581,12 +8581,26 @@
       },
       "ApprovedResourcesV1": {
         "type": "object",
+        "description": "What the owner granted at consent. Model grants mirror API tokens\n(`list_models` + `models`). MCP grants combine the existing by-url instance\napprovals (`mcps`) with an owner-granted-beyond-requested set (`mcps_extra`).",
         "properties": {
+          "list_models": {
+            "type": "boolean"
+          },
+          "models": {
+            "$ref": "#/components/schemas/ModelGrant"
+          },
+          "list_mcps": {
+            "type": "boolean"
+          },
           "mcps": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/McpApproval"
             }
+          },
+          "mcps_extra": {
+            "$ref": "#/components/schemas/McpGrant",
+            "description": "Owner-granted MCP instances beyond the by-url requests. Defaults to none\n(empty `Specific`) — unlike a token's all-access default."
           }
         }
       },
@@ -10403,7 +10417,7 @@
             }
           }
         ],
-        "description": "MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs);\n`Specific` lists the user's own instance ids (empty ⇒ no MCP access)."
+        "description": "MCP connect grant. `All` is a wildcard (incl. future MCPs); `Specific` lists\nthe user's own instance ids (empty ⇒ no MCP access)."
       },
       "McpInstance": {
         "type": "object",
@@ -10848,7 +10862,7 @@
             }
           }
         ],
-        "description": "Model inference grant for an API token. `All` is a wildcard that includes\nmodels added in the future; `Specific` lists alias ids."
+        "description": "Model inference grant. `All` is a wildcard that includes models added in the\nfuture; `Specific` lists alias ids (empty ⇒ no model access)."
       },
       "ModelMetadata": {
         "type": "object",
@@ -11659,7 +11673,24 @@
       },
       "RequestedResourcesV1": {
         "type": "object",
+        "description": "What the external app asks for. The four booleans are **UI drivers**: they tell\nthe consent screen which controls to render (the owner decides the actual grant).\n`mcp_servers` is the existing by-url MCP request and is unchanged.",
         "properties": {
+          "models_list": {
+            "type": "boolean",
+            "description": "Render the \"list all models\" toggle."
+          },
+          "models_access": {
+            "type": "boolean",
+            "description": "Render the model All/Specific access selector."
+          },
+          "mcps_list": {
+            "type": "boolean",
+            "description": "Render the \"list all MCPs\" toggle."
+          },
+          "mcps_access": {
+            "type": "boolean",
+            "description": "Render the owner-extra MCP All/Specific access selector."
+          },
           "mcp_servers": {
             "type": "array",
             "items": {
@@ -11715,6 +11746,24 @@
           }
         ],
         "description": "Effective access to a class of resources (models or MCPs) for an API token,\nreflected from its grants. Discriminated on `type`: `all` ⇒ every current and\nfuture resource; `specific` ⇒ the listed `ids` (empty ⇒ no access).\n`list` is the `list_*` toggle (whether the token may enumerate the full catalog)."
+      },
+      "ResourceAccessInfo": {
+        "type": "object",
+        "description": "Effective resource access for an external app, reflected from its approved grants.",
+        "required": [
+          "models",
+          "mcps"
+        ],
+        "properties": {
+          "models": {
+            "$ref": "#/components/schemas/ResourceAccess",
+            "description": "Effective model access for this app."
+          },
+          "mcps": {
+            "$ref": "#/components/schemas/ResourceAccess",
+            "description": "Effective MCP access for this app."
+          }
+        }
       },
       "ResourceRole": {
         "type": "string",
@@ -12808,6 +12857,17 @@
                   {
                     "$ref": "#/components/schemas/DashboardUser",
                     "description": "Dashboard user info when a validated dashboard session exists"
+                  }
+                ]
+              },
+              "access": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ResourceAccessInfo",
+                    "description": "Effective resource access — present only for external-app principals."
                   }
                 ]
               }

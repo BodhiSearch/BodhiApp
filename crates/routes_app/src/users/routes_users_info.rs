@@ -152,7 +152,30 @@ pub async fn users_info(
     }
   };
 
-  Ok(Json(UserInfoEnvelope { user, dashboard }))
+  // Reflect effective resource access for external apps (parity with API tokens).
+  let access = match auth_scope.auth_context() {
+    AuthContext::ExternalApp { grants, .. } => Some(match grants {
+      Some(g) => {
+        let v1 = g.v1();
+        crate::ResourceAccessInfo {
+          models: crate::ResourceAccess::app_models(v1),
+          mcps: crate::ResourceAccess::app_mcps(v1),
+        }
+      }
+      // No bound access request ⇒ unrestricted (pre-grants behavior).
+      None => crate::ResourceAccessInfo {
+        models: crate::ResourceAccess::All { list: true },
+        mcps: crate::ResourceAccess::All { list: true },
+      },
+    }),
+    _ => None,
+  };
+
+  Ok(Json(UserInfoEnvelope {
+    user,
+    dashboard,
+    access,
+  }))
 }
 
 #[cfg(test)]

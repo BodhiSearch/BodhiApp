@@ -313,8 +313,21 @@ export type ApprovedResources = ApprovedResourcesV1 & {
     version: '1';
 };
 
+/**
+ * What the owner granted at consent. Model grants mirror API tokens
+ * (`list_models` + `models`). MCP grants combine the existing by-url instance
+ * approvals (`mcps`) with an owner-granted-beyond-requested set (`mcps_extra`).
+ */
 export type ApprovedResourcesV1 = {
+    list_models?: boolean;
+    models?: ModelGrant;
+    list_mcps?: boolean;
     mcps?: Array<McpApproval>;
+    /**
+     * Owner-granted MCP instances beyond the by-url requests. Defaults to none
+     * (empty `Specific`) — unlike a token's all-access default.
+     */
+    mcps_extra?: McpGrant;
 };
 
 export type AuthCallbackRequest = {
@@ -965,8 +978,8 @@ export type McpAuthParamType = 'header' | 'query';
 export type McpAuthType = 'public' | 'header' | 'oauth';
 
 /**
- * MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs);
- * `Specific` lists the user's own instance ids (empty ⇒ no MCP access).
+ * MCP connect grant. `All` is a wildcard (incl. future MCPs); `Specific` lists
+ * the user's own instance ids (empty ⇒ no MCP access).
  */
 export type McpGrant = {
     type: 'all';
@@ -1129,8 +1142,8 @@ export type ModelCapabilities = {
 };
 
 /**
- * Model inference grant for an API token. `All` is a wildcard that includes
- * models added in the future; `Specific` lists alias ids.
+ * Model inference grant. `All` is a wildcard that includes models added in the
+ * future; `Specific` lists alias ids (empty ⇒ no model access).
  */
 export type ModelGrant = {
     type: 'all';
@@ -1435,7 +1448,28 @@ export type RequestedResources = RequestedResourcesV1 & {
     version: '1';
 };
 
+/**
+ * What the external app asks for. The four booleans are **UI drivers**: they tell
+ * the consent screen which controls to render (the owner decides the actual grant).
+ * `mcp_servers` is the existing by-url MCP request and is unchanged.
+ */
 export type RequestedResourcesV1 = {
+    /**
+     * Render the "list all models" toggle.
+     */
+    models_list?: boolean;
+    /**
+     * Render the model All/Specific access selector.
+     */
+    models_access?: boolean;
+    /**
+     * Render the "list all MCPs" toggle.
+     */
+    mcps_list?: boolean;
+    /**
+     * Render the owner-extra MCP All/Specific access selector.
+     */
+    mcps_access?: boolean;
     mcp_servers?: Array<RequestedMcpServer>;
 };
 
@@ -1452,6 +1486,20 @@ export type ResourceAccess = {
     list: boolean;
     ids: Array<string>;
     type: 'specific';
+};
+
+/**
+ * Effective resource access for an external app, reflected from its approved grants.
+ */
+export type ResourceAccessInfo = {
+    /**
+     * Effective model access for this app.
+     */
+    models: ResourceAccess;
+    /**
+     * Effective MCP access for this app.
+     */
+    mcps: ResourceAccess;
 };
 
 export type ResourceRole = 'resource_anonymous' | 'resource_guest' | 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
@@ -1810,6 +1858,7 @@ export type UserInfo = {
  */
 export type UserInfoEnvelope = UserResponse & {
     dashboard?: null | DashboardUser;
+    access?: null | ResourceAccessInfo;
 };
 
 export type UserListResponse = {

@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use services::UserInfo;
-use services::{McpGrant, ModelGrant, TokenGrantsV1, TokenScope};
+use services::{
+  ApprovalStatus, ApprovedResourcesV1, McpGrant, ModelGrant, TokenGrantsV1, TokenScope,
+};
 use utoipa::ToSchema;
 
 /// Token Type
@@ -60,6 +62,55 @@ impl ResourceAccess {
       },
     }
   }
+
+  /// Effective model access reflected from an approved app grant.
+  pub fn app_models(grants: &ApprovedResourcesV1) -> Self {
+    match &grants.models {
+      ModelGrant::All => Self::All {
+        list: grants.list_models,
+      },
+      ModelGrant::Specific { ids } => Self::Specific {
+        list: grants.list_models,
+        ids: ids.clone(),
+      },
+    }
+  }
+
+  /// Effective MCP access reflected from an approved app grant: the union of the
+  /// by-url approved instances and the owner-extra grant.
+  pub fn app_mcps(grants: &ApprovedResourcesV1) -> Self {
+    match &grants.mcps_extra {
+      McpGrant::All => Self::All {
+        list: grants.list_mcps,
+      },
+      McpGrant::Specific { ids } => {
+        let mut all_ids: Vec<String> = grants
+          .mcps
+          .iter()
+          .filter(|a| a.status == ApprovalStatus::Approved)
+          .filter_map(|a| a.instance.as_ref().map(|i| i.id.clone()))
+          .collect();
+        for id in ids {
+          if !all_ids.contains(id) {
+            all_ids.push(id.clone());
+          }
+        }
+        Self::Specific {
+          list: grants.list_mcps,
+          ids: all_ids,
+        }
+      }
+    }
+  }
+}
+
+/// Effective resource access for an external app, reflected from its approved grants.
+#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+pub struct ResourceAccessInfo {
+  /// Effective model access for this app.
+  pub models: ResourceAccess,
+  /// Effective MCP access for this app.
+  pub mcps: ResourceAccess,
 }
 
 /// API Token information response
@@ -111,6 +162,9 @@ pub struct UserInfoEnvelope {
   /// Dashboard user info when a validated dashboard session exists
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub dashboard: Option<DashboardUser>,
+  /// Effective resource access — present only for external-app principals.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub access: Option<ResourceAccessInfo>,
 }
 
 /// List users query parameters. Intentionally omits sort fields (unlike PaginationSortParams)

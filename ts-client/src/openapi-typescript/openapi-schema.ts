@@ -1613,8 +1613,17 @@ export interface components {
             /** @enum {string} */
             version: "1";
         };
+        /** @description What the owner granted at consent. Model grants mirror API tokens
+         *     (`list_models` + `models`). MCP grants combine the existing by-url instance
+         *     approvals (`mcps`) with an owner-granted-beyond-requested set (`mcps_extra`). */
         ApprovedResourcesV1: {
+            list_models?: boolean;
+            models?: components["schemas"]["ModelGrant"];
+            list_mcps?: boolean;
             mcps?: components["schemas"]["McpApproval"][];
+            /** @description Owner-granted MCP instances beyond the by-url requests. Defaults to none
+             *     (empty `Specific`) — unlike a token's all-access default. */
+            mcps_extra?: components["schemas"]["McpGrant"];
         };
         /** @example {
          *       "code": "auth_code_123",
@@ -2220,8 +2229,8 @@ export interface components {
         McpAuthParamType: "header" | "query";
         /** @enum {string} */
         McpAuthType: "public" | "header" | "oauth";
-        /** @description MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs);
-         *     `Specific` lists the user's own instance ids (empty ⇒ no MCP access). */
+        /** @description MCP connect grant. `All` is a wildcard (incl. future MCPs); `Specific` lists
+         *     the user's own instance ids (empty ⇒ no MCP access). */
         McpGrant: {
             /** @enum {string} */
             type: "all";
@@ -2349,8 +2358,8 @@ export interface components {
             thinking?: boolean | null;
             tools: components["schemas"]["ToolCapabilities"];
         };
-        /** @description Model inference grant for an API token. `All` is a wildcard that includes
-         *     models added in the future; `Specific` lists alias ids. */
+        /** @description Model inference grant. `All` is a wildcard that includes models added in the
+         *     future; `Specific` lists alias ids (empty ⇒ no model access). */
         ModelGrant: {
             /** @enum {string} */
             type: "all";
@@ -2637,7 +2646,18 @@ export interface components {
             /** @enum {string} */
             version: "1";
         };
+        /** @description What the external app asks for. The four booleans are **UI drivers**: they tell
+         *     the consent screen which controls to render (the owner decides the actual grant).
+         *     `mcp_servers` is the existing by-url MCP request and is unchanged. */
         RequestedResourcesV1: {
+            /** @description Render the "list all models" toggle. */
+            models_list?: boolean;
+            /** @description Render the model All/Specific access selector. */
+            models_access?: boolean;
+            /** @description Render the "list all MCPs" toggle. */
+            mcps_list?: boolean;
+            /** @description Render the owner-extra MCP All/Specific access selector. */
+            mcps_access?: boolean;
             mcp_servers?: components["schemas"]["RequestedMcpServer"][];
         };
         /** @description Effective access to a class of resources (models or MCPs) for an API token,
@@ -2653,6 +2673,13 @@ export interface components {
             ids: string[];
             /** @enum {string} */
             type: "specific";
+        };
+        /** @description Effective resource access for an external app, reflected from its approved grants. */
+        ResourceAccessInfo: {
+            /** @description Effective model access for this app. */
+            models: components["schemas"]["ResourceAccess"];
+            /** @description Effective MCP access for this app. */
+            mcps: components["schemas"]["ResourceAccess"];
         };
         /** @enum {string} */
         ResourceRole: "resource_anonymous" | "resource_guest" | "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
@@ -3016,6 +3043,7 @@ export interface components {
         /** @description Envelope wrapping UserResponse with additional session info */
         UserInfoEnvelope: components["schemas"]["UserResponse"] & {
             dashboard?: null | components["schemas"]["DashboardUser"];
+            access?: null | components["schemas"]["ResourceAccessInfo"];
         };
         UserListResponse: {
             /** @example resource-abc123def456 */

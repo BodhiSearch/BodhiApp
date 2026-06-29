@@ -1,5 +1,8 @@
 use crate::test_utils::RequestAuthContextExt;
-use crate::{users_info, DashboardUser, ResourceAccess, TokenInfo, UserInfoEnvelope, UserResponse};
+use crate::{
+  users_info, DashboardUser, ResourceAccess, ResourceAccessInfo, TokenInfo, UserInfoEnvelope,
+  UserResponse,
+};
 use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
@@ -50,6 +53,7 @@ async fn test_user_info_handler_anonymous() -> anyhow::Result<()> {
     UserInfoEnvelope {
       user: UserResponse::LoggedOut,
       dashboard: None,
+      access: None,
     },
     response_json
   );
@@ -98,6 +102,7 @@ async fn test_user_info_handler_session_token_with_role(
         id_token: None,
       }),
       dashboard: None,
+      access: None,
     },
     response_json
   );
@@ -137,6 +142,7 @@ async fn test_user_info_handler_api_token_with_token_scope(
         mcps: ResourceAccess::All { list: true },
       }),
       dashboard: None,
+      access: None,
     },
     response_json
   );
@@ -193,6 +199,7 @@ async fn test_user_info_handler_api_token_reflects_specific_grants() -> anyhow::
         },
       }),
       dashboard: None,
+      access: None,
     },
     response_json
   );
@@ -248,6 +255,10 @@ async fn test_user_info_handler_bearer_token_with_user_scope(
         id_token: None,
       }),
       dashboard: None,
+      access: Some(ResourceAccessInfo {
+        models: ResourceAccess::All { list: true },
+        mcps: ResourceAccess::All { list: true },
+      }),
     },
     response_json
   );
@@ -297,6 +308,7 @@ async fn test_user_info_handler_session_without_role(
         id_token: None,
       }),
       dashboard: None,
+      access: None,
     },
     response_json
   );
@@ -412,6 +424,10 @@ async fn test_user_info_handler_external_app_without_scope(
         id_token: None,
       }),
       dashboard: None,
+      access: Some(ResourceAccessInfo {
+        models: ResourceAccess::All { list: true },
+        mcps: ResourceAccess::All { list: true },
+      }),
     },
     response_json
   );
@@ -511,8 +527,71 @@ async fn test_user_info_handler_with_dashboard_session_and_resource_token(
         first_name: Some("Test".to_string()),
         last_name: Some("User".to_string()),
       }),
+      access: None,
     },
     response_json
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_user_info_handler_external_app_reflects_grants(
+  token: (String, String),
+) -> anyhow::Result<()> {
+  use services::{ApprovedResources, ApprovedResourcesV1, McpGrant, ModelGrant};
+  let (token, _) = token;
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
+  let router = test_router(app_service);
+  let claims = services::extract_claims::<services::Claims>(&token)?;
+
+  // Owner approved: list models on + specific model; list mcps off + owner-extra mcp.
+  let approved = ApprovedResources::V1(ApprovedResourcesV1 {
+    list_models: true,
+    models: ModelGrant::Specific {
+      ids: vec!["alias-x".to_string()],
+    },
+    list_mcps: false,
+    mcps: vec![],
+    mcps_extra: McpGrant::Specific {
+      ids: vec!["mcp-1".to_string()],
+    },
+  });
+  let auth_context = AuthContext::ExternalApp {
+    client_id: "test-client-id".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
+    user_id: claims.sub.clone(),
+    role: Some(UserScope::User),
+    token: token.clone(),
+    external_app_token: token.clone(),
+    app_client_id: "test-azp".to_string(),
+    access_request_id: Some("ar-1".to_string()),
+    grants: Some(approved),
+  };
+
+  let response = router
+    .oneshot(
+      Request::get("/app/user")
+        .body(Body::empty())?
+        .with_auth_context(auth_context),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  let envelope = response.json::<UserInfoEnvelope>().await?;
+  assert_eq!(
+    Some(ResourceAccessInfo {
+      models: ResourceAccess::Specific {
+        list: true,
+        ids: vec!["alias-x".to_string()],
+      },
+      mcps: ResourceAccess::Specific {
+        list: false,
+        ids: vec!["mcp-1".to_string()],
+      },
+    }),
+    envelope.access
   );
   Ok(())
 }
