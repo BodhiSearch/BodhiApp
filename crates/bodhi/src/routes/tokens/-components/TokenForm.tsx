@@ -26,7 +26,7 @@ export const createTokenSchema = z.object({
   modelMode: z.enum(['all', 'specific']),
   models: z.array(z.string()),
   listMcps: z.boolean(),
-  mcpMode: z.enum(['all', 'none', 'specific']),
+  mcpMode: z.enum(['all', 'specific']),
   mcps: z.array(z.string()),
 });
 
@@ -59,12 +59,7 @@ function grantableModelIds(aliases: AliasResponse[]): string[] {
 
 export function toCreateTokenRequest(data: TokenFormData): CreateTokenRequest {
   const models = data.modelMode === 'all' ? { type: 'all' as const } : { type: 'specific' as const, ids: data.models };
-  const mcps =
-    data.mcpMode === 'all'
-      ? { type: 'all' as const }
-      : data.mcpMode === 'none'
-        ? { type: 'none' as const }
-        : { type: 'specific' as const, ids: data.mcps };
+  const mcps = data.mcpMode === 'all' ? { type: 'all' as const } : { type: 'specific' as const, ids: data.mcps };
   return {
     name: data.name || undefined,
     scope: data.scope,
@@ -267,9 +262,6 @@ export function TokenForm({ onTokenCreated }: TokenFormProps) {
                   <SelectContent>
                     <SelectItem value="all" data-testid="mcp-mode-all">
                       All MCPs
-                    </SelectItem>
-                    <SelectItem value="none" data-testid="mcp-mode-none">
-                      No MCPs
                     </SelectItem>
                     <SelectItem value="specific" data-testid="mcp-mode-specific">
                       Specific MCPs

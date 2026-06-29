@@ -27,14 +27,13 @@ pub enum RoleSource {
 
 /// Effective access to a class of resources (models or MCPs) for an API token,
 /// reflected from its grants. Discriminated on `type`: `all` ⇒ every current and
-/// future resource; `specific` ⇒ the listed `ids`; `none` ⇒ no access (MCPs only).
+/// future resource; `specific` ⇒ the listed `ids` (empty ⇒ no access).
 /// `list` is the `list_*` toggle (whether the token may enumerate the full catalog).
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ResourceAccess {
   All { list: bool },
   Specific { list: bool, ids: Vec<String> },
-  None { list: bool },
 }
 
 impl ResourceAccess {
@@ -53,9 +52,6 @@ impl ResourceAccess {
   pub fn mcps(grants: &TokenGrantsV1) -> Self {
     match &grants.mcps {
       McpGrant::All => Self::All {
-        list: grants.list_mcps,
-      },
-      McpGrant::None => Self::None {
         list: grants.list_mcps,
       },
       McpGrant::Specific { ids } => Self::Specific {

@@ -35,14 +35,13 @@ pub enum ModelGrant {
   },
 }
 
-/// MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs),
-/// `None` grants no MCP access, `Specific` lists the user's own instance ids.
+/// MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs);
+/// `Specific` lists the user's own instance ids (empty ⇒ no MCP access).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema, Default)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum McpGrant {
   #[default]
   All,
-  None,
   Specific {
     ids: Vec<String>,
   },
@@ -86,7 +85,6 @@ impl TokenGrantsV1 {
   pub fn allows_mcp_connect(&self, mcp_id: &str) -> bool {
     match &self.mcps {
       McpGrant::All => true,
-      McpGrant::None => false,
       McpGrant::Specific { ids } => ids.iter().any(|m| m == mcp_id),
     }
   }
@@ -265,7 +263,7 @@ mod tests {
     list_models: false,
     models: ModelGrant::Specific { ids: vec!["m1".into(), "m2".into()] },
     list_mcps: true,
-    mcps: McpGrant::None,
+    mcps: McpGrant::Specific { ids: vec![] },
   }))]
   #[case(TokenGrants::V1(TokenGrantsV1 {
     list_models: true,

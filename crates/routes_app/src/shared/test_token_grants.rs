@@ -75,9 +75,9 @@ fn model_forbidden_has_forbidden_code() {
 
 #[rstest]
 #[case(McpGrant::All, false, "x", true, true)]
-#[case(McpGrant::None, false, "x", false, false)]
+#[case(McpGrant::Specific { ids: vec![] }, false, "x", false, false)]
 // list_mcps on: non-granted mcp is listable but NOT connectable.
-#[case(McpGrant::None, true, "x", true, false)]
+#[case(McpGrant::Specific { ids: vec![] }, true, "x", true, false)]
 #[case(McpGrant::Specific { ids: vec!["x".to_string()] }, false, "x", true, true)]
 #[case(McpGrant::Specific { ids: vec!["x".to_string()] }, false, "y", false, false)]
 fn mcp_policy_matrix(

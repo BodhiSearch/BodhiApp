@@ -132,7 +132,7 @@ async fn test_chat_completions_scoped_token_forbidden() -> anyhow::Result<()> {
         ids: vec!["some-other-model".to_string()],
       },
       list_mcps: false,
-      mcps: McpGrant::None,
+      mcps: McpGrant::Specific { ids: vec![] },
     }),
   };
   let response = app

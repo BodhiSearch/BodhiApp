@@ -157,7 +157,7 @@ async fn test_user_info_handler_api_token_reflects_specific_grants() -> anyhow::
       ids: vec!["llama2:chat".to_string()],
     },
     list_mcps: true,
-    mcps: McpGrant::None,
+    mcps: McpGrant::Specific { ids: vec![] },
   });
   let auth_context = AuthContext::ApiToken {
     client_id: "test-client".to_string(),
@@ -186,8 +186,11 @@ async fn test_user_info_handler_api_token_reflects_specific_grants() -> anyhow::
           list: false,
           ids: vec!["llama2:chat".to_string()],
         },
-        // McpGrant::None reflects as the `none` variant.
-        mcps: ResourceAccess::None { list: true },
+        // Empty Specific reflects as an empty `specific` list (no MCP access).
+        mcps: ResourceAccess::Specific {
+          list: true,
+          ids: vec![],
+        },
       }),
       dashboard: None,
     },

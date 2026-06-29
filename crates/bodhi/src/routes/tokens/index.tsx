@@ -313,7 +313,6 @@ function modelGrantLabel(grants: TokenGrants): string {
 
 function mcpGrantLabel(grants: TokenGrants): string {
   if (grants.mcps.type === 'all') return 'All MCPs';
-  if (grants.mcps.type === 'none') return 'No MCPs';
   const n = grants.mcps.ids.length;
   return n ? `${n} MCP${n === 1 ? '' : 's'}` : 'No MCPs';
 }

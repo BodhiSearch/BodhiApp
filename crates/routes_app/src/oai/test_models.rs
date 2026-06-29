@@ -31,7 +31,7 @@ fn scoped_token(models: &[&str], list_models: bool) -> AuthContext {
         ids: models.iter().map(|s| s.to_string()).collect(),
       },
       list_mcps: false,
-      mcps: McpGrant::None,
+      mcps: McpGrant::Specific { ids: vec![] },
     }),
   }
 }

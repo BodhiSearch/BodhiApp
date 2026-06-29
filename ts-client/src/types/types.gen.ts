@@ -965,13 +965,11 @@ export type McpAuthParamType = 'header' | 'query';
 export type McpAuthType = 'public' | 'header' | 'oauth';
 
 /**
- * MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs),
- * `None` grants no MCP access, `Specific` lists the user's own instance ids.
+ * MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs);
+ * `Specific` lists the user's own instance ids (empty ⇒ no MCP access).
  */
 export type McpGrant = {
     type: 'all';
-} | {
-    type: 'none';
 } | {
     ids: Array<string>;
     type: 'specific';
@@ -1444,7 +1442,7 @@ export type RequestedResourcesV1 = {
 /**
  * Effective access to a class of resources (models or MCPs) for an API token,
  * reflected from its grants. Discriminated on `type`: `all` ⇒ every current and
- * future resource; `specific` ⇒ the listed `ids`; `none` ⇒ no access (MCPs only).
+ * future resource; `specific` ⇒ the listed `ids` (empty ⇒ no access).
  * `list` is the `list_*` toggle (whether the token may enumerate the full catalog).
  */
 export type ResourceAccess = {
@@ -1454,9 +1452,6 @@ export type ResourceAccess = {
     list: boolean;
     ids: Array<string>;
     type: 'specific';
-} | {
-    list: boolean;
-    type: 'none';
 };
 
 export type ResourceRole = 'resource_anonymous' | 'resource_guest' | 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';

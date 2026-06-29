@@ -2220,14 +2220,11 @@ export interface components {
         McpAuthParamType: "header" | "query";
         /** @enum {string} */
         McpAuthType: "public" | "header" | "oauth";
-        /** @description MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs),
-         *     `None` grants no MCP access, `Specific` lists the user's own instance ids. */
+        /** @description MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs);
+         *     `Specific` lists the user's own instance ids (empty ⇒ no MCP access). */
         McpGrant: {
             /** @enum {string} */
             type: "all";
-        } | {
-            /** @enum {string} */
-            type: "none";
         } | {
             ids: string[];
             /** @enum {string} */
@@ -2645,7 +2642,7 @@ export interface components {
         };
         /** @description Effective access to a class of resources (models or MCPs) for an API token,
          *     reflected from its grants. Discriminated on `type`: `all` ⇒ every current and
-         *     future resource; `specific` ⇒ the listed `ids`; `none` ⇒ no access (MCPs only).
+         *     future resource; `specific` ⇒ the listed `ids` (empty ⇒ no access).
          *     `list` is the `list_*` toggle (whether the token may enumerate the full catalog). */
         ResourceAccess: {
             list: boolean;
@@ -2656,10 +2653,6 @@ export interface components {
             ids: string[];
             /** @enum {string} */
             type: "specific";
-        } | {
-            list: boolean;
-            /** @enum {string} */
-            type: "none";
         };
         /** @enum {string} */
         ResourceRole: "resource_anonymous" | "resource_guest" | "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";

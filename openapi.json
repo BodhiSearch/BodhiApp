@@ -10384,20 +10384,6 @@
           {
             "type": "object",
             "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "none"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "required": [
               "ids",
               "type"
             ],
@@ -10417,7 +10403,7 @@
             }
           }
         ],
-        "description": "MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs),\n`None` grants no MCP access, `Specific` lists the user's own instance ids."
+        "description": "MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs);\n`Specific` lists the user's own instance ids (empty ⇒ no MCP access)."
       },
       "McpInstance": {
         "type": "object",
@@ -11726,27 +11712,9 @@
                 ]
               }
             }
-          },
-          {
-            "type": "object",
-            "required": [
-              "list",
-              "type"
-            ],
-            "properties": {
-              "list": {
-                "type": "boolean"
-              },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "none"
-                ]
-              }
-            }
           }
         ],
-        "description": "Effective access to a class of resources (models or MCPs) for an API token,\nreflected from its grants. Discriminated on `type`: `all` ⇒ every current and\nfuture resource; `specific` ⇒ the listed `ids`; `none` ⇒ no access (MCPs only).\n`list` is the `list_*` toggle (whether the token may enumerate the full catalog)."
+        "description": "Effective access to a class of resources (models or MCPs) for an API token,\nreflected from its grants. Discriminated on `type`: `all` ⇒ every current and\nfuture resource; `specific` ⇒ the listed `ids` (empty ⇒ no access).\n`list` is the `list_*` toggle (whether the token may enumerate the full catalog)."
       },
       "ResourceRole": {
         "type": "string",

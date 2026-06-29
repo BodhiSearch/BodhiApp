@@ -117,7 +117,7 @@ async fn test_validate_bodhiapp_token_parses_grants(
       ids: vec!["m1".to_string()],
     },
     list_mcps: true,
-    mcps: McpGrant::None,
+    mcps: McpGrant::Specific { ids: vec![] },
   });
 
   let mut api_token = TokenEntity {

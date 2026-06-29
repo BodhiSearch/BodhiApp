@@ -46,7 +46,7 @@ describe('toCreateTokenRequest', () => {
     });
   });
 
-  it('builds specific models + none mcps (and drops empty name)', () => {
+  it('builds specific models + empty mcps (and drops empty name)', () => {
     expect(
       toCreateTokenRequest({
         name: '',
@@ -55,7 +55,7 @@ describe('toCreateTokenRequest', () => {
         modelMode: 'specific',
         models: ['a', 'b'],
         listMcps: false,
-        mcpMode: 'none',
+        mcpMode: 'specific',
         mcps: [],
       })
     ).toEqual({
@@ -66,7 +66,7 @@ describe('toCreateTokenRequest', () => {
         list_models: false,
         models: { type: 'specific', ids: ['a', 'b'] },
         list_mcps: false,
-        mcps: { type: 'none' },
+        mcps: { type: 'specific', ids: [] },
       },
     });
   });

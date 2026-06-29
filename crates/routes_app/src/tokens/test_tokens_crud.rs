@@ -645,7 +645,7 @@ async fn test_create_token_persists_and_returns_grants(
       ids: vec!["my-model".to_string()],
     },
     list_mcps: true,
-    mcps: McpGrant::None,
+    mcps: McpGrant::Specific { ids: vec![] },
   });
 
   let create = app

@@ -59,7 +59,7 @@ const TOKENS = [
       list_models: false,
       models: { type: 'specific' as const, ids: ['llama3:instruct'] },
       list_mcps: false,
-      mcps: { type: 'none' as const },
+      mcps: { type: 'specific' as const, ids: [] },
     },
     created_at: '2024-01-01T08:00:00Z',
     updated_at: '2024-01-02T09:00:00Z',
