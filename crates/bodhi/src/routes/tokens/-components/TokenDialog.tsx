@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { TokenCreated } from '@bodhiapp/ts-client';
-import { Shield } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
 import { CopyButton } from '@/components/CopyButton';
 import { ShowHideInput } from '@/components/ShowHideInput';
@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import '@/components/shell/new-token.css';
 
 interface TokenDialogProps {
   token: TokenCreated;
@@ -25,39 +26,32 @@ interface TokenDialogProps {
 export function TokenDialog({ token, open, onClose }: TokenDialogProps) {
   const [showToken, setShowToken] = useState(false);
 
-  const toggleShowToken = () => {
-    setShowToken(!showToken);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl" data-testid="token-dialog">
         <DialogHeader>
-          <DialogTitle>API Token Generated</DialogTitle>
+          <DialogTitle>
+            <span className="nt-reveal-header">
+              <CheckCircle2 />
+              API Token Generated
+            </span>
+          </DialogTitle>
           <DialogDescription>Copy your API token now. You won&apos;t be able to see it again.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
+          <ShowHideInput
+            value={token.token}
+            shown={showToken}
+            onToggle={() => setShowToken((v) => !v)}
+            data-testid="token-value-input"
+            actions={<CopyButton text={token.token} showToast={false} />}
+          />
           <Alert variant="destructive">
-            <Shield className="h-4 w-4" />
             <AlertDescription>
-              Make sure to copy your token now and store it securely. For security reasons, it cannot be displayed
-              again.
+              This token will not be shown again. Store it securely — for security reasons it cannot be displayed again.
             </AlertDescription>
           </Alert>
-
-          <div className="space-y-3">
-            <ShowHideInput
-              value={token.token}
-              shown={showToken}
-              onToggle={toggleShowToken}
-              data-testid="token-value-input"
-              containerClassName="mb-3"
-            />
-            <div className="flex justify-end">
-              <CopyButton text={token.token} showToast={false} />
-            </div>
-          </div>
         </div>
 
         <DialogFooter className="sm:justify-start">

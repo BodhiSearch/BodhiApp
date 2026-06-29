@@ -1,5 +1,4 @@
-/* Reusable model/MCP access picker — ported from design/models/model-access-picker.css (.map-*/
-.panel-*).
+/* Reusable model/MCP access picker — ported from design/models/model-access-picker.css (map- and panel- classes).
    Scoped under .access-picker (inline radio + selected list) and .access-picker-panel (the slide-in
    Sheet body, which the radix portal renders outside the .access-picker wrapper). The brand accent
    tokens mirror model-selector.css so the picker is self-contained. Drag-reorder / rank badges /

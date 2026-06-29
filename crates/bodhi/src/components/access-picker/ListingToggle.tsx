@@ -29,31 +29,33 @@ export function ListingToggle({
   testId,
 }: ListingToggleProps) {
   return (
-    <div
-      className={cn('ap-listing', checked && 'on', disabled && 'is-disabled')}
-      role="checkbox"
-      aria-checked={checked}
-      aria-disabled={disabled}
-      tabIndex={disabled ? -1 : 0}
-      data-testid={testId}
-      onClick={() => !disabled && onToggle()}
-      onKeyDown={(e) => {
-        if (disabled) return;
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          onToggle();
-        }
-      }}
-    >
-      <div className={cn('ap-listing-check', checked && 'on')}>{checked && <Check strokeWidth={3} />}</div>
-      <div className="ap-listing-main">
-        <div className="ap-listing-title">
-          {label}
-          {code && <span className="ap-listing-code">{code}</span>}
-        </div>
-        <div className="ap-listing-desc">
-          {description}
-          {redundant && <span className="ap-listing-implied"> · “All” already lists everything</span>}
+    <div className="access-picker">
+      <div
+        className={cn('ap-listing', checked && 'on', disabled && 'is-disabled')}
+        role="checkbox"
+        aria-checked={checked}
+        aria-disabled={disabled}
+        tabIndex={disabled ? -1 : 0}
+        data-testid={testId}
+        onClick={() => !disabled && onToggle()}
+        onKeyDown={(e) => {
+          if (disabled) return;
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+      >
+        <div className={cn('ap-listing-check', checked && 'on')}>{checked && <Check strokeWidth={3} />}</div>
+        <div className="ap-listing-main">
+          <div className="ap-listing-title">
+            {label}
+            {code && <span className="ap-listing-code">{code}</span>}
+          </div>
+          <div className="ap-listing-desc">
+            {description}
+            {redundant && <span className="ap-listing-implied"> · “All” already lists everything</span>}
+          </div>
         </div>
       </div>
     </div>

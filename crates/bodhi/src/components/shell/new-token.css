@@ -1,0 +1,181 @@
+/* New API Token form — ported from design/tokens/new-app-token.css (bf- and nat- classes).
+   Scoped under .new-token; the generic section/divider/footer/role-card/reveal styles plus the
+   self-contained brand accent tokens (mirrors model-selector.css). The All/Specific + slide-in
+   picker and "List all …" toggle come from the shared components/access-picker. */
+
+.new-token {
+  --c-lotus-bg: rgba(255, 164, 184, 0.13);
+  --c-lotus-bd: rgba(255, 164, 184, 0.32);
+  --c-lotus-text: #b02a52;
+  --c-leaf-bg: rgba(40, 158, 110, 0.1);
+  --c-leaf-bd: rgba(40, 158, 110, 0.26);
+  --c-leaf-text: #1f7a55;
+  --c-indigo-bg: rgba(62, 74, 168, 0.09);
+  --c-indigo-bd: rgba(62, 74, 168, 0.2);
+  --c-indigo-text: #3e4aa8;
+  --c-saffron-bg: rgba(180, 80, 10, 0.1);
+  --c-saffron-bd: rgba(180, 80, 10, 0.26);
+  --c-saffron-text: #b4500a;
+}
+.dark .new-token,
+[data-theme='dark'] .new-token {
+  --c-lotus-bg: rgba(255, 164, 184, 0.14);
+  --c-lotus-bd: rgba(255, 164, 184, 0.26);
+  --c-lotus-text: #ffa4b8;
+  --c-leaf-bg: rgba(52, 199, 140, 0.14);
+  --c-leaf-bd: rgba(52, 199, 140, 0.28);
+  --c-leaf-text: #5fdca8;
+  --c-indigo-bg: rgba(110, 123, 204, 0.16);
+  --c-indigo-bd: rgba(110, 123, 204, 0.28);
+  --c-indigo-text: #a5aee6;
+  --c-saffron-bg: rgba(255, 171, 92, 0.14);
+  --c-saffron-bd: rgba(255, 171, 92, 0.28);
+  --c-saffron-text: #ffab5c;
+}
+
+/* ── Sections ── */
+.new-token .nt-section + .nt-section {
+  border-top: 1px solid hsl(var(--border));
+  margin-top: 22px;
+  padding-top: 22px;
+}
+.new-token .nt-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-bottom: 12px;
+}
+.new-token .nt-hint {
+  font-size: 11.5px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.45;
+  margin-top: 6px;
+  text-wrap: pretty;
+}
+.new-token .nt-optional {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  margin-left: 6px;
+}
+
+/* ── Footer ── */
+.new-token .nt-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid hsl(var(--border));
+  margin-top: 22px;
+  padding-top: 18px;
+}
+
+/* ── Role cards (Token Scope) ── */
+.new-token .nt-role-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.new-token .nt-role-card {
+  padding: 12px 14px 14px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid hsl(var(--border));
+  cursor: pointer;
+  transition:
+    background 120ms,
+    border-color 120ms;
+  background: hsl(var(--card));
+  text-align: left;
+}
+.new-token .nt-role-card:hover {
+  border-color: hsl(var(--primary) / 0.5);
+}
+.new-token .nt-role-card.selected {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.07);
+}
+.new-token .nt-role-card.is-disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.new-token .nt-role-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.new-token .nt-role-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+.new-token .nt-role-dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.5px solid hsl(var(--border));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.new-token .nt-role-card.selected .nt-role-dot {
+  border-color: hsl(var(--primary));
+}
+.new-token .nt-role-dot-inner {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  transform: scale(0);
+  transition: transform 150ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.new-token .nt-role-card.selected .nt-role-dot-inner {
+  transform: scale(1);
+}
+.new-token .nt-role-desc {
+  font-size: 11.5px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+.new-token .nt-role-badge {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  border: 1px solid;
+}
+.new-token .nt-role-badge.user {
+  background: var(--c-indigo-bg);
+  border-color: var(--c-indigo-bd);
+  color: var(--c-indigo-text);
+}
+.new-token .nt-role-badge.power {
+  background: var(--c-saffron-bg);
+  border-color: var(--c-saffron-bd);
+  color: var(--c-saffron-text);
+}
+
+@media (max-width: 640px) {
+  .new-token .nt-role-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Generated-token reveal (themed dialog header/body) ── */
+.nt-reveal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-leaf-text, #1f7a55);
+}
+.nt-reveal-header svg {
+  width: 16px;
+  height: 16px;
+}

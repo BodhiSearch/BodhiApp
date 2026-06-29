@@ -2,22 +2,20 @@ import { useMemo } from 'react';
 
 import { AliasResponse, CreateTokenRequest, TokenCreated } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShieldPlus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { AccessItem, AccessMode, AccessPicker, ListingToggle } from '@/components/access-picker';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { useListMcps } from '@/hooks/mcps';
 import { useListModels } from '@/hooks/models';
 import { useCreateToken } from '@/hooks/tokens';
 import { useGetUser } from '@/hooks/users';
 import { useToastMessages } from '@/hooks/useToastMessages';
+import { cn } from '@/lib/utils';
 
 export const createTokenSchema = z.object({
   name: z.string().optional(),
@@ -43,18 +41,22 @@ const DEFAULTS: TokenFormData = {
   mcps: [],
 };
 
-/** Resolve each alias to the model ids usable in inference (the grant id space). */
-function grantableModelIds(aliases: AliasResponse[]): string[] {
-  const ids: string[] = [];
+/** Resolve each alias to grantable model items (the inference grant id space), tagged
+ *  local/api so the picker can group + filter. */
+function grantableModelItems(aliases: AliasResponse[]): AccessItem[] {
+  const items = new Map<string, AccessItem>();
   for (const alias of aliases) {
     if (alias.source === 'api') {
       const prefix = alias.prefix ?? '';
-      for (const model of alias.models) ids.push(`${prefix}${model.id}`);
+      for (const model of alias.models) {
+        const id = `${prefix}${model.id}`;
+        if (!items.has(id)) items.set(id, { id, label: id, type: 'api' });
+      }
     } else if ('alias' in alias) {
-      ids.push(alias.alias);
+      if (!items.has(alias.alias)) items.set(alias.alias, { id: alias.alias, label: alias.alias, type: 'local' });
     }
   }
-  return Array.from(new Set(ids));
+  return Array.from(items.values());
 }
 
 export function toCreateTokenRequest(data: TokenFormData): CreateTokenRequest {
@@ -67,65 +69,41 @@ export function toCreateTokenRequest(data: TokenFormData): CreateTokenRequest {
   };
 }
 
+const ROLE_CARDS = [
+  {
+    scope: 'scope_token_user' as const,
+    name: 'User',
+    desc: 'Standard access. Can make inference requests and list the models and MCPs permitted by this token.',
+    badge: 'scope_token_user',
+    badgeClass: 'user',
+  },
+  {
+    scope: 'scope_token_power_user' as const,
+    name: 'Power User',
+    desc: 'Elevated access. Can manage models, configure MCP servers, and perform admin-level API operations.',
+    badge: 'scope_token_power_user',
+    badgeClass: 'power',
+  },
+];
+
 interface TokenFormProps {
   onTokenCreated: (token: TokenCreated) => void;
+  onCancel: () => void;
 }
 
-function MultiSelect({
-  items,
-  selected,
-  onToggle,
-  testIdPrefix,
-  emptyText,
-}: {
-  items: { id: string; label: string }[];
-  selected: string[];
-  onToggle: (id: string) => void;
-  testIdPrefix: string;
-  emptyText: string;
-}) {
-  if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground">{emptyText}</p>;
-  }
-  return (
-    <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3" data-testid={`${testIdPrefix}-list`}>
-      {items.map((item) => (
-        <label key={item.id} className="flex items-center gap-2 text-sm" htmlFor={`${testIdPrefix}-${item.id}`}>
-          <Checkbox
-            id={`${testIdPrefix}-${item.id}`}
-            checked={selected.includes(item.id)}
-            onCheckedChange={() => onToggle(item.id)}
-            data-testid={`${testIdPrefix}-${item.id}`}
-          />
-          <span>{item.label}</span>
-        </label>
-      ))}
-    </div>
-  );
-}
-
-export function TokenForm({ onTokenCreated }: TokenFormProps) {
+export function TokenForm({ onTokenCreated, onCancel }: TokenFormProps) {
   const { showSuccess, showError } = useToastMessages();
   const { data: userInfo } = useGetUser();
   const { data: modelsData } = useListModels(1, 100, 'alias', 'asc');
   const { data: mcpsData } = useListMcps();
 
-  const scopeOptions = useMemo(() => {
-    const userRole = userInfo?.auth_status === 'logged_in' ? userInfo.role : undefined;
-    if (userRole === 'resource_user') {
-      return [{ value: 'scope_token_user', label: 'User' }];
-    }
-    return [
-      { value: 'scope_token_user', label: 'User' },
-      { value: 'scope_token_power_user', label: 'PowerUser' },
-    ];
-  }, [userInfo]);
+  const canPowerUser = userInfo?.auth_status === 'logged_in' && userInfo.role !== 'resource_user';
 
-  const modelItems = useMemo(
-    () => grantableModelIds(modelsData?.data ?? []).map((id) => ({ id, label: id })),
-    [modelsData]
+  const modelItems = useMemo(() => grantableModelItems(modelsData?.data ?? []), [modelsData]);
+  const mcpItems = useMemo<AccessItem[]>(
+    () => (mcpsData?.mcps ?? []).map((m) => ({ id: m.id, label: m.name })),
+    [mcpsData]
   );
-  const mcpItems = useMemo(() => (mcpsData?.mcps ?? []).map((m) => ({ id: m.id, label: m.name })), [mcpsData]);
 
   const form = useForm<TokenFormData>({
     resolver: zodResolver(createTokenSchema),
@@ -144,10 +122,13 @@ export function TokenForm({ onTokenCreated }: TokenFormProps) {
 
   const onSubmit = (data: TokenFormData) => createToken(toCreateTokenRequest(data));
 
+  const listModels = form.watch('listModels');
   const modelMode = form.watch('modelMode');
-  const mcpMode = form.watch('mcpMode');
   const selectedModels = form.watch('models');
+  const listMcps = form.watch('listMcps');
+  const mcpMode = form.watch('mcpMode');
   const selectedMcps = form.watch('mcps');
+  const scope = form.watch('scope');
 
   const toggle = (field: 'models' | 'mcps', id: string) => {
     const current = form.getValues(field);
@@ -156,167 +137,147 @@ export function TokenForm({ onTokenCreated }: TokenFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" data-testid="token-form">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Token Name (Optional)</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Enter a name for your token"
-                  disabled={isLoading}
-                  data-testid="token-name-input"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Model Access */}
-        <div className="space-y-3 rounded-md border p-4" data-testid="model-access-section">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="list-models-switch">List all models (/v1/models)</Label>
-            <FormField
-              control={form.control}
-              name="listModels"
-              render={({ field }) => (
-                <Switch
-                  id="list-models-switch"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  disabled={isLoading}
-                  data-testid="list-models-switch"
-                />
-              )}
-            />
-          </div>
+      <form onSubmit={form.handleSubmit(onSubmit)} data-testid="token-form">
+        {/* §1 Token Identity */}
+        <div className="nt-section">
+          <div className="nt-section-title">Token Identity</div>
           <FormField
             control={form.control}
-            name="modelMode"
+            name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Model inference</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
-                  <FormControl>
-                    <SelectTrigger data-testid="model-mode-select">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="all" data-testid="model-mode-all">
-                      All models
-                    </SelectItem>
-                    <SelectItem value="specific" data-testid="model-mode-specific">
-                      Specific models
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )}
-          />
-          {modelMode === 'specific' && (
-            <MultiSelect
-              items={modelItems}
-              selected={selectedModels}
-              onToggle={(id) => toggle('models', id)}
-              testIdPrefix="model-option"
-              emptyText="No models available to grant."
-            />
-          )}
-        </div>
-
-        {/* MCP Access */}
-        <div className="space-y-3 rounded-md border p-4" data-testid="mcp-access-section">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="list-mcps-switch">List all MCPs (/v1/mcps)</Label>
-            <FormField
-              control={form.control}
-              name="listMcps"
-              render={({ field }) => (
-                <Switch
-                  id="list-mcps-switch"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  disabled={isLoading}
-                  data-testid="list-mcps-switch"
-                />
-              )}
-            />
-          </div>
-          <FormField
-            control={form.control}
-            name="mcpMode"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>MCP connect</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
-                  <FormControl>
-                    <SelectTrigger data-testid="mcp-mode-select">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="all" data-testid="mcp-mode-all">
-                      All MCPs
-                    </SelectItem>
-                    <SelectItem value="specific" data-testid="mcp-mode-specific">
-                      Specific MCPs
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )}
-          />
-          {mcpMode === 'specific' && (
-            <MultiSelect
-              items={mcpItems}
-              selected={selectedMcps}
-              onToggle={(id) => toggle('mcps', id)}
-              testIdPrefix="mcp-option"
-              emptyText="No MCP instances available to grant."
-            />
-          )}
-        </div>
-
-        <FormField
-          control={form.control}
-          name="scope"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Token Scope</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
                 <FormControl>
-                  <SelectTrigger data-testid="token-scope-select">
-                    <SelectValue placeholder="Select scope" />
-                  </SelectTrigger>
+                  <Input
+                    placeholder="e.g. my-app-token"
+                    disabled={isLoading}
+                    data-testid="token-name-input"
+                    {...field}
+                  />
                 </FormControl>
-                <SelectContent>
-                  {scopeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value} data-testid={`scope-option-${option.value}`}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <div className="nt-hint">
+                  Token Name<span className="nt-optional">Optional</span> — a human-readable label to identify this
+                  token in the token list.
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
-        <Button type="submit" disabled={isLoading} data-testid="generate-token-button">
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating...
-            </>
-          ) : (
-            'Generate Token'
-          )}
-        </Button>
+        {/* §2 Model Access */}
+        <div className="nt-section">
+          <div className="nt-section-title">Model Access</div>
+          <ListingToggle
+            checked={listModels}
+            onToggle={() => form.setValue('listModels', !listModels)}
+            label="List all models"
+            code="/v1/models"
+            description="Let the token enumerate every model via the catalog. Off → it only sees the models you grant for inference below. (Listing is separate from running inference.)"
+            redundant={modelMode === 'all'}
+            disabled={isLoading}
+            testId="list-models-switch"
+          />
+          <AccessPicker
+            mode={modelMode}
+            onModeChange={(m: AccessMode) => form.setValue('modelMode', m)}
+            items={modelItems}
+            selectedIds={selectedModels}
+            onToggle={(id) => toggle('models', id)}
+            noun="model"
+            panelTitle="Select Models"
+            panelSubtitle="Choose which models this token can access"
+            disabled={isLoading}
+            testIdPrefix="model-access"
+          />
+        </div>
+
+        {/* §3 MCP Access */}
+        <div className="nt-section">
+          <div className="nt-section-title">MCP Access</div>
+          <ListingToggle
+            checked={listMcps}
+            onToggle={() => form.setValue('listMcps', !listMcps)}
+            label="List all MCPs"
+            code="/v1/mcps"
+            description="Let the token discover every MCP server. Off → it only sees the servers you grant a connection to below. (Listing is separate from connecting.)"
+            redundant={mcpMode === 'all'}
+            disabled={isLoading}
+            testId="list-mcps-switch"
+          />
+          <AccessPicker
+            mode={mcpMode}
+            onModeChange={(m: AccessMode) => form.setValue('mcpMode', m)}
+            items={mcpItems}
+            selectedIds={selectedMcps}
+            onToggle={(id) => toggle('mcps', id)}
+            noun="MCP"
+            panelTitle="Select MCPs"
+            panelSubtitle="Choose which MCP servers this token can invoke"
+            allLabel="All MCPs"
+            allDesc="Access all currently registered MCP servers and any added in the future."
+            specificLabel="Specific MCPs"
+            specificDesc="Choose exactly which MCP servers this token can invoke."
+            disabled={isLoading}
+            testIdPrefix="mcp-access"
+          />
+        </div>
+
+        {/* §4 Token Scope */}
+        <div className="nt-section">
+          <div className="nt-section-title">Token Scope</div>
+          <div className="nt-role-grid">
+            {ROLE_CARDS.map((card) => {
+              const disabledCard = card.scope === 'scope_token_power_user' && !canPowerUser;
+              const selected = scope === card.scope;
+              return (
+                <button
+                  type="button"
+                  key={card.scope}
+                  className={cn('nt-role-card', selected && 'selected', disabledCard && 'is-disabled')}
+                  onClick={() => !disabledCard && !isLoading && form.setValue('scope', card.scope)}
+                  aria-pressed={selected}
+                  disabled={disabledCard}
+                  data-testid={`scope-card-${card.scope}`}
+                >
+                  <div className="nt-role-head">
+                    <span className="nt-role-name">{card.name}</span>
+                    <span className="nt-role-dot">
+                      <span className="nt-role-dot-inner" />
+                    </span>
+                  </div>
+                  <div className="nt-role-desc">{card.desc}</div>
+                  <span className={cn('nt-role-badge', card.badgeClass)}>{card.badge}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="nt-footer">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onCancel}
+            disabled={isLoading}
+            data-testid="cancel-token-button"
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isLoading} data-testid="generate-token-button">
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <ShieldPlus className="mr-2 h-4 w-4" />
+                Generate Token
+              </>
+            )}
+          </Button>
+        </div>
       </form>
     </Form>
   );

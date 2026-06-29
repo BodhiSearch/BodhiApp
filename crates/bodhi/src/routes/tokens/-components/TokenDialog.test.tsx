@@ -83,7 +83,7 @@ describe('TokenDialog', () => {
     });
 
     expect(screen.getByText(/Copy your API token now/)).toBeInTheDocument();
-    expect(screen.getByText(/Make sure to copy your token now/)).toBeInTheDocument();
-    expect(screen.getByText(/For security reasons/)).toBeInTheDocument();
+    expect(screen.getByText(/This token will not be shown again/)).toBeInTheDocument();
+    expect(screen.getByText(/it cannot be displayed/)).toBeInTheDocument();
   });
 });
