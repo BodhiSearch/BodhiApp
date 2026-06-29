@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { TokenDetail } from '@bodhiapp/ts-client';
+import { TokenDetail, TokenGrants } from '@bodhiapp/ts-client';
 import { createFileRoute } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
@@ -20,7 +20,7 @@ import '@/components/shell/api-keys.css';
 import '@/components/shell/list.css';
 import '@/components/shell/tokens.css';
 import { useGetAppInfo } from '@/hooks/info';
-import { useListTokens, useUpdateToken } from '@/hooks/tokens';
+import { useDeleteToken, useListTokens, useUpdateToken } from '@/hooks/tokens';
 import { useToastMessages } from '@/hooks/useToastMessages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 
@@ -46,10 +46,6 @@ const FILTER_TABS: { id: TokenFilter; label: string }[] = [
 const scopeLabel = (scopes: string) => (scopes.includes('power') ? 'Power User' : 'User');
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-
-/* Presentation matches the App Tokens design, bound to real data only: no per-token
-   model/MCP-access chips and no "last used" (the backend has neither). The status
-   toggle drives the real active/inactive update; there is no revoke/delete endpoint. */
 
 export function TokenPageContent() {
   useListKeyNav();
@@ -91,6 +87,15 @@ export function TokenPageContent() {
     [withViewTransition]
   );
 
+  const { mutate: deleteToken } = useDeleteToken({
+    onSuccess: () => {
+      showSuccess('Token Deleted', 'The token has been permanently revoked.');
+      setSelectedId(null);
+    },
+    onError: (message) => showError('Error', message),
+  });
+  const onDelete = useCallback((token: TokenDetail) => deleteToken(token.id), [deleteToken]);
+
   const tokens = tokensData?.data ?? [];
   const total = tokensData?.total ?? 0;
   const effPageSize = tokensData?.page_size ?? pageSize;
@@ -124,8 +129,8 @@ export function TokenPageContent() {
     [selected, selectToken]
   );
   const rail = useMemo(
-    () => (selected ? <TokenDetailPanel token={selected} onStatusChange={onStatusChange} /> : null),
-    [selected, onStatusChange]
+    () => (selected ? <TokenDetailPanel token={selected} onStatusChange={onStatusChange} onDelete={onDelete} /> : null),
+    [selected, onStatusChange, onDelete]
   );
 
   useShellChrome({
@@ -289,14 +294,44 @@ function TokenRailHeader({ token, onClose }: { token: TokenDetail; onClose: () =
   );
 }
 
+function DetailRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <div className="dp-row">
+      <span className="dp-row-k">
+        <ShellIcon name={icon} size={13} /> {label}
+      </span>
+      <span className="dp-row-v">{value}</span>
+    </div>
+  );
+}
+
+function modelGrantLabel(grants: TokenGrants): string {
+  if (grants.models.type === 'all') return 'All models';
+  const n = grants.models.ids.length;
+  return n ? `${n} model${n === 1 ? '' : 's'}` : 'No models';
+}
+
+function mcpGrantLabel(grants: TokenGrants): string {
+  if (grants.mcps.type === 'all') return 'All MCPs';
+  if (grants.mcps.type === 'none') return 'No MCPs';
+  const n = grants.mcps.ids.length;
+  return n ? `${n} MCP${n === 1 ? '' : 's'}` : 'No MCPs';
+}
+
 function TokenDetailPanel({
   token,
   onStatusChange,
+  onDelete,
 }: {
   token: TokenDetail;
   onStatusChange: (token: TokenDetail, checked: boolean) => void;
+  onDelete: (token: TokenDetail) => void;
 }) {
   const isActive = token.status === 'active';
+  const grants = token.grants;
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  useEffect(() => setConfirmDelete(false), [token.id]);
+
   return (
     <div className="dp-panel" data-testid="token-detail-rail">
       <div className="dp-status-row">
@@ -305,32 +340,44 @@ function TokenDetailPanel({
       </div>
       <div className="dp-body">
         <div className="dp-section">
+          <div className="dp-sec-lbl">Models</div>
+          <div className="dp-rows">
+            {grants.list_models && <DetailRow icon="list" label="List all models" value="/v1/models" />}
+            <DetailRow icon="cpu" label="Inference" value={modelGrantLabel(grants)} />
+          </div>
+          {grants.models.type === 'specific' && grants.models.ids.length > 0 && (
+            <div className="dp-chips">
+              {grants.models.ids.map((m) => (
+                <span key={m} className="dp-chip" data-testid={`token-model-grant-${m}`}>
+                  {m}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="dp-section">
+          <div className="dp-sec-lbl">MCP servers</div>
+          <div className="dp-rows">
+            {grants.list_mcps && <DetailRow icon="list" label="List all MCPs" value="/v1/mcps" />}
+            <DetailRow icon="plug" label="Connect" value={mcpGrantLabel(grants)} />
+          </div>
+          {grants.mcps.type === 'specific' && grants.mcps.ids.length > 0 && (
+            <div className="dp-chips">
+              {grants.mcps.ids.map((m) => (
+                <span key={m} className="dp-chip" data-testid={`token-mcp-grant-${m}`}>
+                  {m}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="dp-section">
           <div className="dp-sec-lbl">Details</div>
           <div className="dp-rows">
-            <div className="dp-row">
-              <span className="dp-row-k">
-                <ShellIcon name="hash" size={13} /> Token ID
-              </span>
-              <span className="dp-row-v mono">{token.token_prefix}</span>
-            </div>
-            <div className="dp-row">
-              <span className="dp-row-k">
-                <ShellIcon name="shield" size={13} /> Scope
-              </span>
-              <span className="dp-row-v">{scopeLabel(token.scopes)}</span>
-            </div>
-            <div className="dp-row">
-              <span className="dp-row-k">
-                <ShellIcon name="calendar" size={13} /> Created
-              </span>
-              <span className="dp-row-v">{fmtDate(token.created_at)}</span>
-            </div>
-            <div className="dp-row">
-              <span className="dp-row-k">
-                <ShellIcon name="activity" size={13} /> Updated
-              </span>
-              <span className="dp-row-v">{fmtDate(token.updated_at)}</span>
-            </div>
+            <DetailRow icon="hash" label="Token ID" value={token.token_prefix} />
+            <DetailRow icon="shield" label="Scope" value={scopeLabel(token.scopes)} />
+            <DetailRow icon="calendar" label="Created" value={fmtDate(token.created_at)} />
+            <DetailRow icon="activity" label="Updated" value={fmtDate(token.updated_at)} />
           </div>
         </div>
       </div>
@@ -344,6 +391,19 @@ function TokenDetailPanel({
             data-testid="token-detail-status-switch"
           />
         </div>
+        {confirmDelete ? (
+          <button
+            className="dp-btn dp-btn-danger is-confirm"
+            onClick={() => onDelete(token)}
+            data-testid="token-delete-confirm"
+          >
+            Confirm delete
+          </button>
+        ) : (
+          <button className="dp-btn dp-btn-danger" onClick={() => setConfirmDelete(true)} data-testid="token-delete">
+            Delete token
+          </button>
+        )}
       </div>
     </div>
   );

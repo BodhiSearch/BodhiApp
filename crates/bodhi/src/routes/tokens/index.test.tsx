@@ -1,7 +1,7 @@
 import { TokenPage } from '@/routes/tokens/index';
 import { ShellHarness } from '@/test-utils/shell-harness';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
-import { mockTokens, mockUpdateTokenStatus } from '@/test-utils/msw-v2/handlers/tokens';
+import { mockDeleteToken, mockTokens, mockUpdateTokenStatus } from '@/test-utils/msw-v2/handlers/tokens';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
@@ -37,6 +37,13 @@ const TOKENS = [
     scopes: 'scope_token_power_user',
     user_id: 'user-1',
     status: 'active' as const,
+    grants: {
+      version: '1' as const,
+      list_models: true,
+      models: { type: 'all' as const },
+      list_mcps: true,
+      mcps: { type: 'all' as const },
+    },
     created_at: '2024-01-03T10:00:00Z',
     updated_at: '2024-01-04T12:00:00Z',
   },
@@ -47,6 +54,13 @@ const TOKENS = [
     scopes: 'scope_token_user',
     user_id: 'user-1',
     status: 'inactive' as const,
+    grants: {
+      version: '1' as const,
+      list_models: false,
+      models: { type: 'specific' as const, ids: ['llama3:instruct'] },
+      list_mcps: false,
+      mcps: { type: 'none' as const },
+    },
     created_at: '2024-01-01T08:00:00Z',
     updated_at: '2024-01-02T09:00:00Z',
   },
@@ -175,6 +189,27 @@ describe('TokenPage V2', () => {
     // prefix (Token ID) + scope + the created date are shown in the rail Details
     expect(within(rail).getByText('bodhiapp_prod001')).toBeInTheDocument();
     expect(within(rail).getByText('scope_token_power_user')).toBeInTheDocument();
+  });
+
+  it('shows the grant summary and deletes a token from the rail (confirm step)', async () => {
+    server.use(...mockDeleteToken('token-2'));
+    const user = userEvent.setup();
+    await renderReady();
+
+    await user.click(screen.getByTestId('token-row-token-2'));
+    const rail = await screen.findByTestId('token-detail-rail');
+    // token-2 grants one specific model and no MCPs
+    expect(within(rail).getByTestId('token-model-grant-llama3:instruct')).toBeInTheDocument();
+    expect(within(rail).getByText('No MCPs')).toBeInTheDocument();
+
+    // delete needs an explicit confirm click
+    await user.click(within(rail).getByTestId('token-delete'));
+    await user.click(within(rail).getByTestId('token-delete-confirm'));
+
+    // on success the selection clears and the rail closes
+    await waitFor(() => {
+      expect(screen.queryByTestId('token-detail-rail')).not.toBeInTheDocument();
+    });
   });
 
   it('renders each row as an accessible link and activating it opens the rail', async () => {

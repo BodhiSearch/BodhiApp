@@ -3,11 +3,12 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { useCreateToken, useListTokens, useUpdateToken } from '@/hooks/tokens';
+import { useCreateToken, useDeleteToken, useListTokens, useUpdateToken } from '@/hooks/tokens';
 import {
   mockTokens,
   mockCreateToken,
   mockUpdateToken,
+  mockDeleteToken,
   mockTokensError,
   mockCreateTokenError,
   mockUpdateTokenError,
@@ -44,6 +45,13 @@ const mockUpdatedToken = {
   token_prefix: 'bodhiapp_test01',
   scopes: 'scope_token_user',
   user_id: 'user-123',
+  grants: {
+    version: '1' as const,
+    list_models: true,
+    models: { type: 'all' as const },
+    list_mcps: true,
+    mcps: { type: 'all' as const },
+  },
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:01Z',
 };
@@ -278,5 +286,21 @@ describe('useUpdateToken', () => {
 
     const error = result.current.error as AxiosError<BodhiErrorResponse>;
     expect(error.response?.data.error?.message).toBe('Invalid token status');
+  });
+
+  it('deletes a token successfully', async () => {
+    server.use(...mockDeleteToken('token-1'));
+
+    const { result } = renderHook(() => useDeleteToken(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      result.current.mutate('token-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
   });
 });

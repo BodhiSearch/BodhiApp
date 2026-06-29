@@ -13,6 +13,13 @@ export function createMockToken(overrides?: Partial<TokenDetail>): TokenDetail {
     token_prefix: 'bodhiapp_test01',
     scopes: 'scope_token_user',
     user_id: 'user-123',
+    grants: {
+      version: '1',
+      list_models: true,
+      models: { type: 'all' },
+      list_mcps: true,
+      mcps: { type: 'all' },
+    },
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
     ...overrides,

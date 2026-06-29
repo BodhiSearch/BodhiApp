@@ -40,6 +40,23 @@ export function useCreateToken(options?: {
   });
 }
 
+export function useDeleteToken(options?: {
+  onSuccess?: () => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, string> {
+  const queryClient = useQueryClient();
+
+  return useMutationQuery<void, string>((id) => `${API_TOKENS_ENDPOINT}/${id}`, 'delete', {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tokenKeys.all });
+      options?.onSuccess?.();
+    },
+    onError: (error: AxiosError<BodhiErrorResponse>) => {
+      options?.onError?.(extractErrorMessage(error, 'Failed to delete token'));
+    },
+  });
+}
+
 interface UpdateTokenRequestWithId extends UpdateTokenRequest {
   id: string;
 }

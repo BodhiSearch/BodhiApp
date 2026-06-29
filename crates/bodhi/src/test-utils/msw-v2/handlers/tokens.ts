@@ -68,6 +68,7 @@ export function mockUpdateToken(
     token_prefix = createMockToken().token_prefix,
     scopes = createMockToken().scopes,
     user_id = createMockToken().user_id,
+    grants = createMockToken().grants,
     created_at = createMockToken().created_at,
     updated_at = '2024-01-01T00:00:01Z',
     ...rest
@@ -91,12 +92,27 @@ export function mockUpdateToken(
         token_prefix,
         scopes,
         user_id,
+        grants,
         created_at,
         updated_at,
         ...rest,
       };
 
       return response(200 as const).json(responseData);
+    }),
+  ];
+}
+
+export function mockDeleteToken(tokenId: string, { stub }: { stub?: boolean } = {}) {
+  let hasBeenCalled = false;
+  return [
+    typedHttp.delete(ENDPOINT_TOKEN_ID, async ({ params, response }) => {
+      if (params.id !== tokenId) {
+        return;
+      }
+      if (hasBeenCalled && !stub) return;
+      hasBeenCalled = true;
+      return response(204 as const).empty();
     }),
   ];
 }
