@@ -9,29 +9,43 @@ const { useState, useEffect } = React;
 const Ic = ShellIcon;
 
 const SAMPLE_TOKENS = [
-  { id:'tok_1', name:'prod-inference',     scope:'user',  models:'all',      mcps:'all',      created:'Nov 15, 2025', lastUsed:'2 hours ago',   status:'active' },
-  { id:'tok_2', name:'research-copilot',   scope:'user',  models:'specific', modelCount:3,    mcps:'specific', mcpCount:2, created:'Oct 22, 2025', lastUsed:'Yesterday',     status:'active' },
-  { id:'tok_3', name:'automation-pipeline',scope:'power', models:'all',      mcps:'all',      created:'Sep 5, 2025',  lastUsed:'3 weeks ago',   status:'active' },
-  { id:'tok_4', name:'dev-test',           scope:'user',  models:'specific', modelCount:1,    mcps:'none',     mcpCount:0, created:'Aug 12, 2025', lastUsed:'Never',         status:'inactive' },
-  { id:'tok_5', name:null,                 scope:'user',  models:'all',      mcps:'specific', mcpCount:1,      created:'Dec 1, 2025',  lastUsed:'5 min ago',     status:'active' },
+  { id:'tok_1', name:'prod-inference',      scope:'user',
+    listModels:true,  models:'all',
+    listMcps:true,    mcps:'all',
+    created:'Nov 15, 2025', lastUsed:'2 hours ago', status:'active' },
+
+  { id:'tok_2', name:'research-copilot',    scope:'user',
+    listModels:true,  models:'specific', modelNames:['llama3.1:70b','qwen2.5:7b','nomic-embed-text'],
+    listMcps:false,   mcps:'specific',   mcpNames:['brave-search','github'],
+    created:'Oct 22, 2025', lastUsed:'Yesterday', status:'active' },
+
+  { id:'tok_3', name:'automation-pipeline', scope:'power',
+    listModels:true,  models:'all',
+    listMcps:true,    mcps:'all',
+    created:'Sep 5, 2025', lastUsed:'3 weeks ago', status:'active' },
+
+  { id:'tok_4', name:'dev-test',            scope:'user',
+    listModels:false, models:'specific', modelNames:['llama3.2:3b'],
+    listMcps:false,   mcps:'none',       mcpNames:[],
+    created:'Aug 12, 2025', lastUsed:'Never', status:'inactive' },
+
+  { id:'tok_5', name:null,                  scope:'user',
+    listModels:false, models:'all',
+    listMcps:false,   mcps:'specific',   mcpNames:['filesystem'],
+    created:'Dec 1, 2025', lastUsed:'5 min ago', status:'active' },
 ];
 
-function ModelsSummary({ models, modelCount }) {
-  if (models === 'all') return <span className="access-pill"><Ic name="cpu" size={11} /> All models</span>;
-  if (models === 'specific') return <span className="access-pill"><Ic name="cpu" size={11} /> {modelCount} model{modelCount !== 1 ? 's' : ''}</span>;
-  return null;
-}
-
-function McpSummary({ mcps, mcpCount }) {
-  if (mcps === 'all')      return <span className="access-pill"><Ic name="plug" size={11} /> All MCPs</span>;
-  if (mcps === 'none')     return <span className="access-pill" style={{opacity:.5}}><Ic name="plug" size={11} /> No MCPs</span>;
-  if (mcps === 'specific') return <span className="access-pill"><Ic name="plug" size={11} /> {mcpCount} MCP{mcpCount !== 1 ? 's' : ''}</span>;
-  return null;
-}
-
 function scopeLabel(scope) { return scope === 'power' ? 'scope_token_power_user' : 'scope_token_user'; }
-function modelsText(t) { return t.models === 'all' ? 'All models' : `${t.modelCount} model${t.modelCount !== 1 ? 's' : ''}`; }
-function mcpsText(t) { return t.mcps === 'all' ? 'All MCPs' : t.mcps === 'none' ? 'No MCPs' : `${t.mcpCount} MCP${t.mcpCount !== 1 ? 's' : ''}`; }
+
+/* ── Listing permission line — mirrors the New Token form's "List all…" toggle ── */
+function ListingLine({ on, label, code }) {
+  if (!on) return null;
+  return (
+    <div className="dp-perm-row on">
+      <span className="dp-perm-k"><Ic name="list" size={13} /> {label} <code className="dp-perm-code">{code}</code></span>
+    </div>
+  );
+}
 
 function TokenToggle({ token, onToggle, size = 'sm' }) {
   const on = token.status === 'active';
@@ -58,14 +72,11 @@ function TokenRow({ token, selected, onSelect, onToggle }) {
       </div>
 
       <div className="tk-id">
-        <div className={`token-name${!token.name ? ' unnamed' : ''}`}>{token.name || 'Unnamed token'}</div>
-        <div className="token-meta">
-          <span className={token.scope === 'power' ? 'scope-power' : 'scope-user'}>{scopeLabel(token.scope)}</span>
-          <span className="tk-dot">·</span>
-          <ModelsSummary models={token.models} modelCount={token.modelCount} />
-          <span className="tk-dot">·</span>
-          <McpSummary mcps={token.mcps} mcpCount={token.mcpCount} />
-        </div>
+        <span className={`token-name${!token.name ? ' unnamed' : ''}`}>{token.name || 'Unnamed token'}</span>
+      </div>
+
+      <div className="tk-role">
+        <span className={token.scope === 'power' ? 'scope-power' : 'scope-user'}>{scopeLabel(token.scope)}</span>
       </div>
 
       <div className="tk-created"><span className="tk-date-lbl">Created</span><span className="tk-date-val">{token.created}</span></div>
@@ -102,17 +113,38 @@ function TokenDetailPanel({ token, onToggle, onDelete }) {
   return (
     <div className="dp-panel">
       <div className="dp-status-row">
-        <span className={`status-chip ${active ? 'status-active' : 'status-revoked'}`}>{active ? '● active' : '○ inactive'}</span>
+        <span className={`status-chip ${active ? 'status-active' : 'status-revoked'}`}><i className="status-dot" />{active ? 'Active' : 'Inactive'}</span>
         <span className={token.scope === 'power' ? 'scope-power' : 'scope-user'}>{scopeLabel(token.scope)}</span>
       </div>
 
       <div className="dp-body">
+        {/* MODELS — listing permission + inference grant (mirrors New Token form) */}
         <div className="dp-section">
-          <div className="dp-sec-lbl">Access</div>
-          <div className="dp-resource"><Ic name="cpu" size={14} /> {modelsText(token)}</div>
-          <div className="dp-resource" style={{ opacity: token.mcps === 'none' ? .55 : 1 }}><Ic name="plug" size={14} /> {mcpsText(token)}</div>
+          <div className="dp-sec-lbl">Models</div>
+          <ListingLine on={token.listModels} label="List all models" code="/v1/models" />
+          <div className="dp-perm-sub">Inference</div>
+          {token.models === 'all' ?
+            <div className="dp-resource"><Ic name="cpu" size={14} /> All models</div> :
+            (token.modelNames || []).length ?
+            <div className="dp-chips">{token.modelNames.map(m => <span key={m} className="dp-chip"><Ic name="cpu" size={12} /> {m}</span>)}</div> :
+            <div className="dp-resource" style={{ opacity: .55 }}><Ic name="cpu" size={14} /> No inference access</div>
+          }
         </div>
 
+        {/* MCP SERVERS — listing permission + connect grant */}
+        <div className="dp-section">
+          <div className="dp-sec-lbl">MCP servers</div>
+          <ListingLine on={token.listMcps} label="List all MCPs" code="/v1/mcps" />
+          <div className="dp-perm-sub">Connect</div>
+          {token.mcps === 'all' ?
+            <div className="dp-resource"><Ic name="plug" size={14} /> All MCPs</div> :
+            (token.mcpNames || []).length ?
+            <div className="dp-chips">{token.mcpNames.map(m => <span key={m} className="dp-chip"><Ic name="plug" size={12} /> {m}</span>)}</div> :
+            <div className="dp-resource" style={{ opacity: .55 }}><Ic name="plug" size={14} /> No connections</div>
+          }
+        </div>
+
+        {/* DETAILS */}
         <div className="dp-section">
           <div className="dp-sec-lbl">Details</div>
           <div className="dp-rows">
@@ -125,16 +157,8 @@ function TokenDetailPanel({ token, onToggle, onDelete }) {
       </div>
 
       <div className="dp-foot">
-        <div className="dp-toggle-row">
-          <div className="dp-toggle-copy">
-            <div className="dp-toggle-title">{active ? 'Token active' : 'Token inactive'}</div>
-            <div className="dp-toggle-sub">{active ? 'Accepting API requests.' : 'Requests are rejected while disabled.'}</div>
-          </div>
-          <TokenToggle token={token} onToggle={onToggle} size="lg" />
-        </div>
         {confirmDelete ? (
-          <button className="dp-btn dp-btn-danger" style={{ borderColor: 'hsl(var(--destructive))', background: 'rgba(220,38,38,.05)', color: 'hsl(var(--destructive))' }}
-                  onClick={() => onDelete(token.id)}><Ic name="trash-2" size={14} /> Confirm delete</button>
+          <button className="dp-btn dp-btn-danger is-confirm" onClick={() => onDelete(token.id)}><Ic name="trash-2" size={14} /> Confirm delete</button>
         ) : (
           <button className="dp-btn dp-btn-danger" onClick={() => setConfirmDelete(true)}><Ic name="trash-2" size={14} /> Delete token</button>
         )}
@@ -178,10 +202,11 @@ function AppTokensMain({ tokens, filter, setFilter, search, setSearch, counts, s
             <div className="l-empty-s">{search ? 'Try a different search term.' : 'Create your first token to get started.'}</div>
           </div>
         ) : (
-          <ListView head={
+          <ListView className="tk-listview" head={
             <>
               <div className="tk-icon"></div>
               <div className="tk-id l-lh">Token</div>
+              <div className="tk-role l-lh">Role</div>
               <div className="tk-created l-lh">Created</div>
               <div className="tk-used l-lh">Last used</div>
               <div className="tk-act"></div>
@@ -224,8 +249,8 @@ function AppTokensApp() {
       section="api-keys" subPage="api-tokens" resizeKey="api-keys"
       contentClass="flush" mainScroll={false} railScroll={false}
       breadcrumb={[
-        { label: 'Bodhi', href: 'Bodhi Chat.html' },
-        { label: 'Access Tokens', href: 'API Tokens.html' },
+        { label: 'Bodhi', href: 'Chat.html' },
+        { label: 'Access Tokens', href: 'Tokens-API.html' },
         { label: 'API Tokens', current: true },
       ]}
       rail={selected ? <TokenDetailPanel token={selected} onToggle={handleToggle} onDelete={handleDelete} /> : null}

@@ -222,8 +222,8 @@ function NewAppTokenApp() {
     <AppShell
       section="api-keys" subPage="new-token" resizeKey="api-keys"
       breadcrumb={[
-        { label: 'Bodhi', href: 'Bodhi Chat.html' },
-        { label: 'Access Tokens', href: 'API Tokens.html' },
+        { label: 'Bodhi', href: 'Chat.html' },
+        { label: 'Access Tokens', href: 'Tokens-API.html' },
         { label: 'New App Token', current: true },
       ]}
       contentClass="flush" mainScroll={false}

@@ -207,7 +207,7 @@ function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable,
 function ShellBrand({ collapsed }) {
   const { navBase = '' } = useShell();
   return (
-    <a href={navBase + 'Bodhi Chat.html'} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <a href={navBase + 'Chat.html'} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <img src={navBase + 'assets/bodhi-logo-60.svg'} alt="Bodhi" onError={(e) => {e.target.style.display = 'none';}} />
       {!collapsed &&
       <span>

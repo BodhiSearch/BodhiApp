@@ -126,7 +126,7 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar, onPickOrg }) {
           } />
         </div>
         <div className="panel-foot">
-          <a href="Create Fallback Model.html" className="btn-add" style={{ background: 'var(--c-teal-text)', color: '#fff' }}><Ic name="pencil" size={14} /> Edit model router</a>
+          <a href="Models-New-Router.html" className="btn-add" style={{ background: 'var(--c-teal-text)', color: '#fff' }}><Ic name="pencil" size={14} /> Edit model router</a>
         </div>
       </>;
     }
@@ -272,7 +272,7 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar, onPickOrg }) {
           <div className="p-sec-lbl">Served by ({m.providers.length})</div>
           <div className="served-list">
             {m.providers.map((p) =>
-            <a className="served-row" key={p.slug} href={'Bodhi Models API.html?select=' + p.slug} title={'Open ' + p.name + ' in API Providers'}>
+            <a className="served-row" key={p.slug} href={'Models-Explore-API-Providers.html?select=' + p.slug} title={'Open ' + p.name + ' in API Providers'}>
                 <ProviderLogo slug={p.slug} provider={p.name} size={26} radius={7} />
                 <div className="served-meta">
                   <div className="served-name">{p.name}</div>
@@ -288,7 +288,7 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar, onPickOrg }) {
           {usedBy.length ?
           <div className="prov-linklist">
             {usedBy.map((am) =>
-            <a className="prov-linkrow" key={am.id} href={'Bodhi Models.html?select=' + am.id} title={'Open ' + am.name + ' in My Models'}>
+            <a className="prov-linkrow" key={am.id} href={'Models-My-Models.html?select=' + am.id} title={'Open ' + am.name + ' in My Models'}>
                 <span className="my-icon-box my-icon-api-model" style={{ width: 26, height: 26, borderRadius: 7, flex: 'none' }}><Ic name="at-sign" size={13} /></span>
                 <span className="prov-linkname">{am.name}</span>
                 {am.keyStatus === 'connected' ?
@@ -298,7 +298,7 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar, onPickOrg }) {
               </a>
             )}
           </div> :
-          <a className="prov-crosslink" href={'Create API Model.html?provider=' + primary.slug + '&model=' + m.id}>
+          <a className="prov-crosslink" href={'Models-New-API.html?provider=' + primary.slug + '&model=' + m.id}>
             <Ic name="plus" size={14} />
             <span className="prov-crosslink-txt">Add an API model for {m.name}</span>
             <Ic name="arrow-right" size={14} />
@@ -306,7 +306,7 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar, onPickOrg }) {
         </div>
       </div>
       <div className="panel-foot">
-        <a className="btn-add" href={'Create API Model.html?provider=' + primary.slug + '&model=' + m.id}><Ic name="plug-zap" size={14} /> Configure in Bodhi</a>
+        <a className="btn-add" href={'Models-New-API.html?provider=' + primary.slug + '&model=' + m.id}><Ic name="plug-zap" size={14} /> Configure in Bodhi</a>
       </div>
     </>;
   }
@@ -339,7 +339,7 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar, onPickOrg }) {
       {item.apiModels.length ?
       <div className="prov-linklist" style={{ marginBottom: 18 }}>
           {item.apiModels.map((m) =>
-        <a className="prov-linkrow" key={m.id} href={'Bodhi Models.html?select=' + m.id}>
+        <a className="prov-linkrow" key={m.id} href={'Models-My-Models.html?select=' + m.id}>
               <span className="my-icon-box my-icon-api-model" style={{ width: 26, height: 26, borderRadius: 7, flex: 'none' }}><Ic name="at-sign" size={13} /></span>
               <span className="prov-linkname">{m.name}</span>
               {m.keyStatus === 'connected' ?
@@ -370,7 +370,7 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar, onPickOrg }) {
         )}
       </div>
 
-      <a className="prov-crosslink" href={'Bodhi Models API Catalog.html?provider=' + item.slug}>
+      <a className="prov-crosslink" href={'Models-Explore-API.html?provider=' + item.slug}>
         <Ic name="sparkles" size={14} />
         <span className="prov-crosslink-txt">View all models from {item.provider}</span>
         <Ic name="arrow-right" size={14} />

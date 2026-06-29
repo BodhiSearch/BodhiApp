@@ -303,8 +303,8 @@ function LocalModelApp() {
     <AppShell
       section="models" subPage="new-local-model" resizeKey="createmodel"
       breadcrumb={[
-        { label: 'Bodhi', href: 'Bodhi Chat.html' },
-        { label: 'Models', href: 'Bodhi Models.html' },
+        { label: 'Bodhi', href: 'Chat.html' },
+        { label: 'Models', href: 'Models-My-Models.html' },
         { label: 'New Local Model', current: true },
       ]}
       contentClass="flush" mainScroll={false}

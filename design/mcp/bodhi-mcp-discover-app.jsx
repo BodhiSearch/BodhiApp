@@ -62,7 +62,7 @@ function DiscoverApp() {
     <AppShell
       section="mcp" subPage={mode === 'my-mcps' ? 'my-mcps' : 'explore'} resizeKey="mcp"
       railWidth={380} railMin={320} railMax={540}
-      breadcrumb={[{ label: 'Bodhi', href: 'Bodhi Chat.html' }, { label: 'MCP', href: 'Bodhi MCP My MCPs.html' }, { label: mode === 'my-mcps' ? 'My MCPs' : 'Explore', current: true }]}
+      breadcrumb={[{ label: 'Bodhi', href: 'Chat.html' }, { label: 'MCP', href: 'MCP-My-MCPs.html' }, { label: mode === 'my-mcps' ? 'My MCPs' : 'Explore', current: true }]}
       headerActions={headerActions}
       sidebar={<DiscoverSidebar mode={mode} stab={stab} setStab={setStab} myScope={myScope} setMyScope={setMyScope} role={role} />}
       contentClass="flush" mainScroll={false} railScroll={false}

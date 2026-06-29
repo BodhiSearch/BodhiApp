@@ -65,6 +65,10 @@
 }
 .ua-reject:hover { border-color: hsl(var(--destructive)); background: rgba(220,38,38,.06); }
 
+/* rail footer: Approve + Reject side by side on one line */
+.dp-foot-row { display: flex; gap: 10px; }
+.dp-foot-row .dp-btn { flex: 1; width: auto; }
+
 /* rail: approve button (green) + role select full-width */
 .dp-btn-approve { background: var(--c-leaf-text); color: #fff; }
 .dp-btn-approve:hover { opacity: .88; }

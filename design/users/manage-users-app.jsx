@@ -31,7 +31,7 @@ const INITIAL_REQUESTS = [
   { id: 104, username: 'intern@email.com',     requestedDate: '01/05/2026', status: 'Pending',  role: 'Power User' },
 ];
 
-const ROLES = ['Admin', 'Power User', 'User'];
+const ROLES = ['Admin', 'Manager', 'Power User', 'User'];
 
 const TABS = [
   { id: 'requests', label: 'Access Requests', icon: 'shield-check' },
@@ -85,7 +85,7 @@ function StatusBadge({ status }) {
   return <span className="mu-badge mu-badge-user">{status}</span>;
 }
 function RoleBadge({ role }) {
-  const cls = role === 'Admin' ? 'mu-badge-admin' : role === 'Power User' ? 'mu-badge-power' : 'mu-badge-user';
+  const cls = role === 'Admin' ? 'mu-badge-admin' : role === 'Manager' ? 'mu-badge-manager' : role === 'Power User' ? 'mu-badge-power' : 'mu-badge-user';
   return <span className={`mu-badge ${cls}`}>{role}</span>;
 }
 
@@ -238,7 +238,7 @@ function AllUsersView({ users, search, setSearch, selId, onSelect }) {
 
   const q = search.trim().toLowerCase();
   const byRole = role => users.filter(u => u.role === role).length;
-  const counts = { all: users.length, Admin: byRole('Admin'), 'Power User': byRole('Power User'), User: byRole('User') };
+  const counts = { all: users.length, Admin: byRole('Admin'), Manager: byRole('Manager'), 'Power User': byRole('Power User'), User: byRole('User') };
   const visible = users.filter(u =>
     (cat === 'all' || u.role === cat) && (!q || u.username.toLowerCase().includes(q)));
 
@@ -248,6 +248,7 @@ function AllUsersView({ users, search, setSearch, selId, onSelect }) {
         categories={[
           { id: 'all',        label: 'All',        badge: counts.all },
           { id: 'Admin',      label: 'Admin',      badge: counts.Admin },
+          { id: 'Manager',    label: 'Manager',    badge: counts.Manager },
           { id: 'Power User', label: 'Power User', badge: counts['Power User'] },
           { id: 'User',       label: 'User',       badge: counts.User },
         ]}
@@ -411,8 +412,8 @@ function ManageUsersApp() {
         }}
         contentClass="flush" mainScroll={false} railScroll={false}
         breadcrumb={[
-          { label: 'Bodhi', href: 'Bodhi Chat.html' },
-          { label: 'Users', href: 'User Access Requests.html' },
+          { label: 'Bodhi', href: 'Chat.html' },
+          { label: 'Users', href: 'Users-Access-Requests.html' },
           { label: 'All Users', current: true },
         ]}
         headerActions={<GitHubBtn />}

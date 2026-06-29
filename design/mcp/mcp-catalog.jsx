@@ -274,18 +274,18 @@ function goToPlayground(instId, instName, serverId) {
   window.location.href = `MCP-Playground-Overview.html?instance=${instId}&name=${encodeURIComponent(instName)}&server=${serverId}`;
 }
 function goToNewInstance(serverId, authName) {
-  window.location.href = `Bodhi MCP New Instance.html?server=${serverId}&auth=${encodeURIComponent(authName || 'public')}`;
+  window.location.href = `MCP-New-Instance.html?server=${serverId}&auth=${encodeURIComponent(authName || 'public')}`;
 }
 function goToEditInstance(inst, serverId) {
   const p = new URLSearchParams({ instance: inst.id, edit: '1', server: serverId, name: inst.name, auth: inst.authName || 'public' });
-  window.location.href = 'Bodhi MCP New Instance.html?' + p.toString();
+  window.location.href = 'MCP-New-Instance.html?' + p.toString();
 }
 function goToNewServer(params) {
   const q = new URLSearchParams(params || {}).toString();
-  window.location.href = 'Bodhi MCP New Server.html' + (q ? '?' + q : '');
+  window.location.href = 'MCP-New-Server.html' + (q ? '?' + q : '');
 }
 function goToViewServer(serverId) {
-  window.location.href = 'Bodhi MCP Server.html?server=' + serverId;
+  window.location.href = 'MCP-Server.html?server=' + serverId;
 }
 
 Object.assign(window, {

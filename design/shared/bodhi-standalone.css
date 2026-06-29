@@ -28,14 +28,18 @@
   border-bottom: 1px solid hsl(var(--border));
   background: hsl(var(--card));
 }
-.std-brand { display: flex; align-items: center; gap: 11px; text-decoration: none; }
+.std-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
 .std-brand-mark {
-  width: 30px; height: 30px; flex: none;
-  background: url("assets/bodhi-logo-60.svg") center/contain no-repeat;
+  width: 26px; height: 26px; flex: none;
+  background: url("../assets/bodhi-logo-60.svg") center/contain no-repeat;
 }
-.std-brand-text { display: flex; flex-direction: column; line-height: 1.05; }
-.std-brand-word { font-size: 15px; font-weight: 700; letter-spacing: .01em; color: hsl(var(--foreground)); }
-.std-brand-sub  { font-size: 10.5px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: hsl(var(--faint-foreground)); }
+.std-brand-text { display: flex; flex-direction: column; line-height: 1; }
+.std-brand-word { font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: hsl(var(--foreground)); }
+.std-brand-sub  {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 500;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: hsl(var(--muted-foreground)); margin-top: 3px;
+}
 
 .std-theme-toggle {
   display: inline-flex; align-items: center; gap: 8px;
@@ -112,7 +116,7 @@
 .std-workspace-mark {
   width: 38px; height: 38px; flex: none;
   border-radius: var(--radius-md);
-  background: url("assets/bodhi-logo-60.svg") center/contain no-repeat, hsl(var(--primary) / .12);
+  background: url("../assets/bodhi-logo-60.svg") center/contain no-repeat, hsl(var(--primary) / .12);
   background-size: 26px, cover;
 }
 .std-workspace-body { min-width: 0; }

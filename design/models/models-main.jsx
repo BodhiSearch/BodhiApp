@@ -69,7 +69,7 @@ function ModelsMain({ mode, sel, onSelect, density, showTags, showScore, onShowD
   const catResetKey = mode === 'api-catalog' ? [catProviderSlug, (catProv || []).join(','), (catCap || []).join(','), q, sort.key, sort.order].join('|') : '';
   const catPg = usePagination(catRows, 8, catResetKey);
 
-  /* Deep-link (Bodhi Models.html?select=<id>): jump to the page holding it. */
+  /* Deep-link (Models-My-Models.html?select=<id>): jump to the page holding it. */
   React.useEffect(() => {
     if (mode === 'my-models' && initialMyIdx >= 0) myPg.setPage(Math.floor(initialMyIdx / myPg.pageSize) + 1);
   }, [initialMyIdx]);

@@ -25,6 +25,12 @@
 
   const TIER_RANK = { list: 1, specific: 2, all: 3 };
 
+  /* Plain-language labels — shown instead of raw capability codes / model
+     types when a host passes plainLanguage (for non-technical reviewers). */
+  const CAP_LABELS  = { 'text2text': 'Text', 'tool-use': 'Tools', 'image2text': 'Images', 'embedding': 'Search' };
+  const TYPE_LABELS = { local: 'On device', api: 'Cloud' };
+  const capLabel    = (c, plain) => plain ? (CAP_LABELS[c] || c) : c;
+
   /* ── Internal checkmark SVG ── */
   function MAPCheck({ size = 9, color = '#12142B' }) {
     return (
@@ -50,6 +56,7 @@
     requiredCaps  = [],
     grantedIds = [],
     itemNoun = 'model',
+    plainLanguage = false,
   }) {
     const [search,     setSearch]     = useState('');
     const [typeFilter, setTypeFilter] = useState('all');
@@ -151,12 +158,12 @@
                         {isGranted       && <span className="tag tag-leaf">✓ granted</span>}
                         {isSuggested     && <span className="tag tag-lotus">★ best</span>}
                         {missingCaps.length > 0 && (
-                          <span className="tag tag-saffron">missing: {missingCaps.join(', ')}</span>
+                          <span className="tag tag-saffron">missing: {missingCaps.map(c => capLabel(c, plainLanguage)).join(', ')}</span>
                         )}
-                        {m.ctx  && <span className="tag tag-muted">{m.ctx}</span>}
+                        {m.ctx  && !plainLanguage && <span className="tag tag-muted">{m.ctx}</span>}
                         {m.cost && <span className="tag tag-muted">{m.cost}</span>}
-                        {m.type === 'local' && <span className="model-type-local">local</span>}
-                        {m.type === 'api'   && <span className="model-type-api">api</span>}
+                        {m.type === 'local' && <span className="model-type-local">{plainLanguage ? TYPE_LABELS.local : 'local'}</span>}
+                        {m.type === 'api'   && <span className="model-type-api">{plainLanguage ? TYPE_LABELS.api : 'api'}</span>}
                       </div>
                     </div>
                   );
@@ -230,6 +237,8 @@
     grantedIds = [],
     /* read-only (view a token) */
     readOnly = false,
+    /* plain-language mode — hide technical chips for non-technical reviewers */
+    plainLanguage = false,
   }) {
     const [panelOpen, setPanelOpen] = useState(false);
     const dragItem = useRef(null);
@@ -304,8 +313,8 @@
                     {m.meta && <span className="map-selected-meta">{m.meta}</span>}
                     {granted && <span className="map-granted-pill">✓ granted</span>}
                     {isNew   && <span className="map-new-pill">new</span>}
-                    {m.type === 'local' && <span className="model-type-local">local</span>}
-                    {m.type === 'api'   && <span className="model-type-api">api</span>}
+                    {m.type === 'local' && <span className="model-type-local">{plainLanguage ? TYPE_LABELS.local : 'local'}</span>}
+                    {m.type === 'api'   && <span className="model-type-api">{plainLanguage ? TYPE_LABELS.api : 'api'}</span>}
                     {!readOnly && (
                       <button
                         className="map-remove-btn"
@@ -344,6 +353,7 @@
             requiredCaps={requiredCaps}
             grantedIds={grantedIds}
             itemNoun={itemNoun}
+            plainLanguage={plainLanguage}
           />
         )}
       </>
@@ -375,6 +385,7 @@
     requiredCaps = [],
     placeholder = 'Select a model or type a name…',
     readOnly = false,
+    plainLanguage = false,
   }) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
@@ -440,9 +451,9 @@
           <span className="map-combo-opt-name">{name}</span>
           <span className="map-combo-opt-tags">
             {suggested         && <span className="tag tag-lotus">★ best</span>}
-            {missing.length > 0 && <span className="tag tag-saffron">missing: {missing.join(', ')}</span>}
-            {m.type === 'local' && <span className="model-type-local">local</span>}
-            {m.type === 'api'   && <span className="model-type-api">api</span>}
+            {missing.length > 0 && <span className="tag tag-saffron">missing: {missing.map(c => capLabel(c, plainLanguage)).join(', ')}</span>}
+            {m.type === 'local' && <span className="model-type-local">{plainLanguage ? TYPE_LABELS.local : 'local'}</span>}
+            {m.type === 'api'   && <span className="model-type-api">{plainLanguage ? TYPE_LABELS.api : 'api'}</span>}
           </span>
           {sel && <span className="map-combo-opt-check"><MAPCheck size={13} color="var(--c-lotus-text)" /></span>}
         </button>

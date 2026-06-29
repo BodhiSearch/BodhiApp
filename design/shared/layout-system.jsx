@@ -127,7 +127,7 @@ function LayoutSystem(){
             <p className="ls-cap">Try it: drag your window narrower. The current viewport collapses columns automatically.</p>
           </div>
 
-          <div className="ls-foot">Applied so far · <a href="Bodhi App Settings.html">App Settings</a> · <a href="Bodhi Models.html">Models</a> — review, then roll out to all pages.</div>
+          <div className="ls-foot">Applied so far · <a href="Settings.html">App Settings</a> · <a href="Models-My-Models.html">Models</a> — review, then roll out to all pages.</div>
         </div>
       </AppShell>
     </>

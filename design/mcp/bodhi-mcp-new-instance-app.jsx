@@ -274,9 +274,9 @@ function NewInstanceApp() {
     <AppShell
       section="mcp" subPage="new-mcp" resizeKey="mcp"
       breadcrumb={[
-        { label: 'Bodhi', href: 'Bodhi Chat.html' },
-        { label: 'MCP', href: 'Bodhi MCP My MCPs.html' },
-        { label: 'My MCPs', href: 'Bodhi MCP My MCPs.html' },
+        { label: 'Bodhi', href: 'Chat.html' },
+        { label: 'MCP', href: 'MCP-My-MCPs.html' },
+        { label: 'My MCPs', href: 'MCP-My-MCPs.html' },
         { label: isEdit ? 'Edit Instance' : 'New Instance', current: true },
       ]}
       contentClass="flush" mainScroll={false}

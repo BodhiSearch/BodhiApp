@@ -127,7 +127,7 @@ function ModelsApp() {
     <AppShell
       section="models" subPage={cfg.subPage}
       resizeKey="models"
-      breadcrumb={[{ label: 'Bodhi', href: 'Bodhi Chat.html' }, { label: 'Models', href: 'Bodhi Models.html' }, { label: cfg.label, current: true }]}
+      breadcrumb={[{ label: 'Bodhi', href: 'Chat.html' }, { label: 'Models', href: 'Models-My-Models.html' }, { label: cfg.label, current: true }]}
       sidebar={<ModelsSidebar mode={mode} orgFilters={orgFilters} onPickOrg={onPickOrg} onRemoveOrg={onRemoveOrg} onClearOrgs={onClearOrgs} sort={sort} onBrowse={onBrowse} apiConnectedOnly={apiConnectedOnly} onToggleApiConnected={() => setApiConnectedOnly((v) => !v)}
         catProv={catProv} onToggleCatProv={onToggleCatProv} onClearCatProv={onClearCatProv} catCap={catCap} onToggleCatCap={onToggleCatCap} onClearCatCap={onClearCatCap} />}
       contentClass="flush" mainScroll={false} railScroll={false}

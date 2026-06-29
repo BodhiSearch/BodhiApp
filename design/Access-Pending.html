@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bodhi · Request Access</title>
+<title>Bodhi · Access Request Pending</title>
 <link rel="stylesheet" href="shared/colors_and_type.css">
 <script src="shared/bodhi-theme.js"></script>
 <link rel="stylesheet" href="shared/bodhi-standalone.css">
@@ -13,11 +13,11 @@
 <body>
 <div class="std-page">
   <div class="std-topbar">
-    <a class="std-brand" href="Bodhi Chat.html">
+    <a class="std-brand" href="Chat.html">
       <span class="std-brand-mark"></span>
       <span class="std-brand-text">
         <span class="std-brand-word">Bodhi</span>
-        <span class="std-brand-sub">AI Gateway</span>
+        <span class="std-brand-sub">AI Operating System</span>
       </span>
     </a>
     <button class="std-theme-toggle" id="std-theme" aria-label="Toggle light or dark theme">
@@ -27,21 +27,21 @@
 
   <div class="std-main is-center">
     <div class="std-card">
-      <div class="std-status-icon is-primary"><i data-lucide="shield-plus"></i></div>
-      <h1 class="std-title">Request Access</h1>
-      <p class="std-sub">You're signed in, but you don't have access to this workspace yet. Request access and an administrator will review it.</p>
+      <div class="std-status-icon is-pending"><i data-lucide="clock"></i></div>
+      <h1 class="std-title">Access Request Pending</h1>
+      <p class="std-sub">Your access request is in the queue. An administrator will review it shortly — you'll be notified by email once they respond.</p>
 
       <div class="std-workspace">
         <span class="std-workspace-mark"></span>
         <div class="std-workspace-body">
           <div class="std-workspace-name">Acme Corp</div>
-          <div class="std-workspace-meta"><code>cloud.getbodhi.app</code> · Bodhi AI Gateway</div>
+          <div class="std-workspace-meta"><code>cloud.getbodhi.app</code> · Bodhi AI Operating System</div>
         </div>
       </div>
 
-      <button class="std-btn std-btn-primary" id="request-btn">
-        <i data-lucide="send"></i> Request Access
-      </button>
+      <div class="std-pending-meta">
+        <i data-lucide="clock"></i> Submitted 17 Jun 2026
+      </div>
 
       <div class="std-foot">
         Signed in as <strong>yogesh@email.com</strong> · <a href="login.html">Sign out</a>
@@ -54,7 +54,6 @@
   (function () {
     function icons() { if (window.lucide) lucide.createIcons(); }
     icons();
-    // Theme toggle
     var t = document.getElementById('std-theme');
     if (t && window.bodhiTheme) {
       var sync = function () {
@@ -67,11 +66,6 @@
       window.bodhiTheme.subscribe(sync);
       sync();
     }
-    // Submit → go to pending (mock flow)
-    var btn = document.getElementById('request-btn');
-    if (btn) btn.addEventListener('click', function () {
-      window.location.href = 'Bodhi Access Request Pending.html';
-    });
   })();
 </script>
   <script src="shared/bodhi-select.js"></script>

@@ -8,7 +8,7 @@
 const { useState } = React;
 const Ic = ShellIcon;
 
-const ROLES = ['User', 'Power User', 'Admin'];
+const ROLES = ['User', 'Power User', 'Manager', 'Admin'];
 
 const AVATAR_COLORS = ['#3E4AA8', '#0F6F67', '#B02A52', '#2F7D1F', '#5E6AD2', '#9A5B12'];
 function avatarColor(seed) {
@@ -259,8 +259,8 @@ function UserRequestsApp() {
       section="users" subPage="user-access-requests" resizeKey="users"
       contentClass="flush" mainScroll={false} railScroll={false}
       breadcrumb={[
-        { label: 'Bodhi', href: 'Bodhi Chat.html' },
-        { label: 'Users', href: 'User Access Requests.html' },
+        { label: 'Bodhi', href: 'Chat.html' },
+        { label: 'Users', href: 'Users-Access-Requests.html' },
         { label: 'User Access Requests', current: true },
       ]}
       headerActions={

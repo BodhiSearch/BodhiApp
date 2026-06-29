@@ -15,46 +15,46 @@
 ═══════════════════════════════════════════════════════════════ */
 
 const SHELL_NAV = (typeof window !== 'undefined' && window.BSB_NAV) || [
-  { id: 'chat', label: 'Chat', icon: 'message-circle', href: 'Bodhi Chat.html', subPages: [] },
+  { id: 'chat', label: 'Chat', icon: 'message-circle', href: 'Chat.html', subPages: [] },
   {
-    id: 'models', label: 'Models', icon: 'cpu', href: 'Bodhi Models.html', badge: '14',
+    id: 'models', label: 'Models', icon: 'cpu', href: 'Models-My-Models.html', badge: '14',
     subPages: [
-      { id: 'my-models',          label: 'My Models',            icon: 'layers',      href: 'Bodhi Models.html' },
-      { id: 'explore-local',      label: 'Explore · Local Models', icon: 'hard-drive', href: 'Bodhi Models Local.html' },
-      { id: 'explore-api',        label: 'Explore · API Providers', icon: 'at-sign',    href: 'Bodhi Models API.html' },
-      { id: 'explore-api-catalog', label: 'Explore · API Models',   icon: 'sparkles',   href: 'Bodhi Models API Catalog.html' },
-      { id: 'new-local-model',    label: 'New Local Model',    icon: 'plus-circle', href: 'Create New Local Model v4.html' },
-      { id: 'new-api-model',      label: 'New API Model',      icon: 'plug-zap',    href: 'Create API Model.html' },
-      { id: 'new-fallback-model', label: 'New Model Router', icon: 'route',       href: 'Create Fallback Model.html' },
+      { id: 'my-models',          label: 'My Models',            icon: 'layers',      href: 'Models-My-Models.html' },
+      { id: 'explore-local',      label: 'Explore · Local Models', icon: 'hard-drive', href: 'Models-Explore-Local.html' },
+      { id: 'explore-api',        label: 'Explore · API Providers', icon: 'at-sign',    href: 'Models-Explore-API-Providers.html' },
+      { id: 'explore-api-catalog', label: 'Explore · API Models',   icon: 'sparkles',   href: 'Models-Explore-API.html' },
+      { id: 'new-local-model',    label: 'New Local Model',    icon: 'plus-circle', href: 'Models-New-Local.html' },
+      { id: 'new-api-model',      label: 'New API Model',      icon: 'plug-zap',    href: 'Models-New-API.html' },
+      { id: 'new-fallback-model', label: 'New Model Router', icon: 'route',       href: 'Models-New-Router.html' },
     ],
   },
   {
-    id: 'mcp', label: 'MCP', icon: 'plug', href: 'Bodhi MCP My MCPs.html',
+    id: 'mcp', label: 'MCP', icon: 'plug', href: 'MCP-My-MCPs.html',
     subPages: [
-      { id: 'my-mcps',      label: 'My MCPs',      icon: 'layers',      href: 'Bodhi MCP My MCPs.html' },
-      { id: 'explore',      label: 'Explore MCPs',      icon: 'compass',     href: 'Bodhi MCP Discover v2.html' },
+      { id: 'my-mcps',      label: 'My MCPs',      icon: 'layers',      href: 'MCP-My-MCPs.html' },
+      { id: 'explore',      label: 'Explore MCPs',      icon: 'compass',     href: 'MCP-Explore.html' },
       { id: 'playground',   label: 'Playground',   icon: 'flask-conical', href: 'MCP-Playground-Overview.html' },
-      { id: 'new-server',   label: 'New MCP Server',   icon: 'server-cog',  href: 'Bodhi MCP New Server.html' },
-      { id: 'new-mcp',      label: 'New MCP Instance', icon: 'plus-circle', href: 'Bodhi MCP New Instance.html' },
+      { id: 'new-server',   label: 'New MCP Server',   icon: 'server-cog',  href: 'MCP-New-Server.html' },
+      { id: 'new-mcp',      label: 'New MCP Instance', icon: 'plus-circle', href: 'MCP-New-Instance.html' },
     ],
   },
   {
-    id: 'api-keys', label: 'Access Tokens', icon: 'key-round', href: 'API Tokens.html',
+    id: 'api-keys', label: 'Access Tokens', icon: 'key-round', href: 'Tokens-API.html',
     subPages: [
-      { id: 'api-tokens',          label: 'API Tokens',          icon: 'key-round',    href: 'API Tokens.html' },
-      { id: 'new-token',           label: 'New API Token',       icon: 'plus-circle',  href: 'New App Token.html' },
-      { id: 'app-tokens',          label: 'App Tokens',          icon: 'layout-grid',  href: 'App Tokens.html' },
+      { id: 'api-tokens',          label: 'API Tokens',          icon: 'key-round',    href: 'Tokens-API.html' },
+      { id: 'new-token',           label: 'New API Token',       icon: 'plus-circle',  href: 'Tokens-New-API.html' },
+      { id: 'app-tokens',          label: 'App Tokens',          icon: 'layout-grid',  href: 'Tokens-App.html' },
     ],
   },
   {
-    id: 'users', label: 'Users', icon: 'users', href: 'User Access Requests.html',
+    id: 'users', label: 'Users', icon: 'users', href: 'Users-Access-Requests.html',
     subPages: [
-      { id: 'user-access-requests', label: 'User Access Requests', icon: 'user-check', href: 'User Access Requests.html' },
-      { id: 'all-users',            label: 'All Users',            icon: 'users',       href: 'Manage Users.html' },
+      { id: 'user-access-requests', label: 'User Access Requests', icon: 'user-check', href: 'Users-Access-Requests.html' },
+      { id: 'all-users',            label: 'All Users',            icon: 'users',       href: 'Users-Manage.html' },
     ],
   },
   {
-    id: 'settings', label: 'Settings', icon: 'settings', href: 'Bodhi App Settings.html',
+    id: 'settings', label: 'Settings', icon: 'settings', href: 'Settings.html',
     subPages: [],
   },
 ];

@@ -1,7 +1,7 @@
 # App-Access-Request — Allow Listing of All Models & MCPs
 
 ## Goal
-Add two standalone **listing permissions** to the **`App-Access-Request.html`** consent screen:
+Add two standalone **listing permissions** to the **`App-Access-Review.html`** consent screen:
 
 - **Allow to List All Models**
 - **Allow to List All MCPs**
@@ -48,7 +48,7 @@ The exact same relationship applies to **List MCPs** vs **MCP (connect) access**
 A ready-made checkbox component is already in the codebase and is used by **New App Token** for exactly this — reuse it for visual + behavioral consistency:
 
 - Component: **`ListingToggle`** in `models/model-access-picker.jsx` (exported to `window`).
-- Styles: `.map-listing` / `.map-listing-check` in `models/model-access-picker.css` (already loaded by `App-Access-Request.html`).
+- Styles: `.map-listing` / `.map-listing-check` in `models/model-access-picker.css` (already loaded by `App-Access-Review.html`).
 - Props: `on`, `onToggle`, `readOnly`, `redundant` (soft "All already lists" hint), `label`, `desc`, `code`, `granted`, `isNew`. For this task only `on`, `onToggle`, `label`, `desc`, `code` are needed.
 
 ---
@@ -58,7 +58,7 @@ A ready-made checkbox component is already in the codebase and is used by **New 
   - Add `listModels` / `listMcps` boolean state (default `false`).
   - Render `<ListingToggle …>` as the first child inside the **Model access** section (right after its `section-label`) and inside the **MCP access** section.
 - No new CSS is required if `ListingToggle` is reused (its styles already ship in `models/model-access-picker.css`).
-- **Do not modify** `App-Access-Request.html` (markup is script-driven).
+- **Do not modify** `App-Access-Review.html` (markup is script-driven).
 
 ---
 

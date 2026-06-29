@@ -72,7 +72,7 @@ hover-resizes, and uses overlay drawers under 768px.
 `bodhi-app-shell.jsx` references `window.BSB_NAV` only as an optional fallback
 (`|| [default]`); with the file gone it cleanly uses its own built-in
 `SHELL_NAV`. No page loads the deleted scripts. `bodhi-form.css` and
-`Layout System.html` are retained as intended.
+`Layout-System.html` are retained as intended.
 
 ## Result
 One layout system (`bodhi-app-shell.{jsx,css}`), one form primitive sheet

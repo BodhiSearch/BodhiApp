@@ -70,7 +70,7 @@ function Step6() {
         </section>
 
         <div className="su-nav">
-          <a className="su-btn su-btn-primary is-block" href="Bodhi Chat.html">
+          <a className="su-btn su-btn-primary is-block" href="Chat.html">
             Start Using Bodhi App <Icon name="arrow-right" size={17} />
           </a>
         </div>

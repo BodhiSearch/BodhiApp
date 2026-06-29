@@ -6,7 +6,7 @@
    validation, and the live rail (chain preview + how-it-works + tips),
    then assembles it all inside the shell.
 
-   Module load order (set in Create Fallback Model.html):
+   Module load order (set in Models-New-Router.html):
      create-fallback-data · create-fallback-fields ·
      create-fallback-steps · create-fallback-model-app
 ═══════════════════════════════════════════════════ */
@@ -152,8 +152,8 @@ function CreateFallbackModelApp() {
     <AppShell
       section="models" subPage="new-fallback-model" resizeKey="createmodel"
       breadcrumb={[
-        { label: 'Bodhi', href: 'Bodhi Chat.html' },
-        { label: 'Models', href: 'Bodhi Models.html' },
+        { label: 'Bodhi', href: 'Chat.html' },
+        { label: 'Models', href: 'Models-My-Models.html' },
         { label: 'New Model Router', current: true },
       ]}
       rail={railContent}

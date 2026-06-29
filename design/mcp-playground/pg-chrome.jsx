@@ -101,7 +101,7 @@ function InstancePicker({ instances, selected, currentCap }) {
             {pending.length > 0 && <div className="pg-inst-grouplabel">Authorizing</div>}
             {pending.map(renderOpt)}
           </div>
-          <a className="pg-inst-foot" href="Bodhi MCP New Instance.html"><Ic name="plus" size={13} /> Connect a new MCP</a>
+          <a className="pg-inst-foot" href="MCP-New-Instance.html"><Ic name="plus" size={13} /> Connect a new MCP</a>
         </div>
       )}
     </div>
@@ -188,7 +188,7 @@ function BlankState({ instances }) {
               <Ic name="arrow-right" size={15} />
             </a>
           ))}
-          <a className="pg-blank-new" href="Bodhi MCP New Instance.html"><Ic name="plus" size={14} /> Connect a new MCP</a>
+          <a className="pg-blank-new" href="MCP-New-Instance.html"><Ic name="plus" size={14} /> Connect a new MCP</a>
         </div>
       </div>
     </div>
@@ -262,7 +262,7 @@ function PlaygroundPage({ cap }) {
     </>
   );
 
-  const breadcrumb = [{ label: 'MCP', href: 'Bodhi MCP My MCPs.html' }];
+  const breadcrumb = [{ label: 'MCP', href: 'MCP-My-MCPs.html' }];
   if (cap === 'overview') breadcrumb.push({ label: 'Playground', current: true });
   else breadcrumb.push({ label: 'Playground', href: capHref('overview', inst) }, { label: PG_CAPS.find(c => c.id === cap).label, current: true });
 

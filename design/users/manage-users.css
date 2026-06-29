@@ -70,6 +70,7 @@
 }
 .mu-badge-admin { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); border-color: hsl(var(--accent)); }
 .mu-badge-power { background: hsl(var(--background)); color: hsl(var(--foreground)); border-color: hsl(var(--border)); }
+.mu-badge-manager { background: hsl(var(--background)); color: hsl(var(--foreground)); border-color: hsl(var(--border)); }
 .mu-badge-user  { background: hsl(var(--background)); color: hsl(var(--foreground)); border-color: hsl(var(--border)); }
 .mu-badge-pending  { background: var(--c-warning-bg); color: var(--c-warning-text); border-color: var(--c-warning-bd); gap: 5px; }
 .mu-badge-approved { background: var(--c-leaf-bg);    color: var(--c-leaf-text);    border-color: var(--c-leaf-bd);    gap: 5px; }

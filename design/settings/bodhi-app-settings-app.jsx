@@ -413,7 +413,7 @@ function AppSettingsApp() {
       <AppShell
         section="settings" subPage={null} resizeKey="settings"
         breadcrumb={[
-          { label: 'Bodhi', href: 'Bodhi Chat.html' },
+          { label: 'Bodhi', href: 'Chat.html' },
           { label: 'App Settings', current: true },
         ]}
         sidebar={<SettingsSidebar counts={counts} active={activeSection} onNavigate={navigate} />}

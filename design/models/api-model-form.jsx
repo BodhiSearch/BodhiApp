@@ -3,7 +3,7 @@
    api-model-form.jsx
 
    ONE source of truth for the "Create API Model" form, reused by:
-     • Create API Model.html      (inside AppShell)
+     • Models-New-API.html      (inside AppShell)
      • setup-4-api-models.html    (inside the setup wizard)
 
    Renders the bf-card (.bf-* primitives + .cam-* model selection).

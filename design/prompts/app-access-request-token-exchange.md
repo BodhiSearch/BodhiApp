@@ -1,7 +1,7 @@
 # App-Access-Request — Token Exchange (Permission Elevation)
 
 ## Goal
-Support **token exchange to elevate permissions**. A 3rd-party app submits its **existing token** and requests **additional** permissions. The consent screen (`App-Access-Request.html`) must:
+Support **token exchange to elevate permissions**. A 3rd-party app submits its **existing token** and requests **additional** permissions. The consent screen (`App-Access-Review.html`) must:
 - highlight permissions **already granted** (and still allow **downgrading** them),
 - show **newly requested** permissions that can be **approved, denied, or partially approved** (by selecting which specific permissions to grant),
 - and — because app tokens are **immutable** — **issue a new token and invalidate the submitted one** on approval.
@@ -61,7 +61,7 @@ This page doesn't use Tweaks. Provide a lightweight way to view both states for 
 - `users/access-request-app.jsx` — add upgrade mode + `PREV_GRANT` + granted/new derivation + exchange banner + action-bar variants + scenario switcher.
 - `users/access-request.css` — exchange-banner style + scenario-switch style.
 - Reuse `models/model-access-picker.jsx` / `.css` as-is (already capable).
-- **Do not modify** `App-Access-Request.html`.
+- **Do not modify** `App-Access-Review.html`.
 
 ---
 

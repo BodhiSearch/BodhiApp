@@ -28,10 +28,10 @@ const ALL_MODELS = [
   { id: 'text-embed-3',   name: 'openai/text-embedding-3-small',  type:'api',   ctx:'8k',   caps:['embedding'],                         suggested:['embedding-model'], failFor:{}, cost:'$0.02/M' },
 ];
 const MCP_SERVERS = [
-  { id:'exa',    name:'Exa Search', url:'https://mcp.exa.ai/mcp',       icon:'E', iconBg:'#1A1A2E', state:'ready',          instances:[{id:'exa',name:'exa'},{id:'exa-work',name:'exa-work'}], selectedInst:'exa' },
-  { id:'notion', name:'Notion',     url:'https://mcp.notion.com/mcp',   icon:'N', iconBg:'#000',    state:'reauth',         instances:[{id:'notion-personal',name:'notion-personal'}],         selectedInst:'notion-personal' },
-  { id:'linear', name:'Linear',     url:'https://mcp.linear.app/mcp',   icon:'L', iconBg:'#5E6AD2', state:'needs-instance', instances:[], selectedInst:null },
-  { id:'gmail',  name:'Gmail',      url:'https://mcp.google.com/gmail', icon:'G', iconBg:'#EA4335', state:IS_ADMIN?'not-configured':'pending-admin', instances:[], selectedInst:null },
+  { id:'exa',    name:'Exa Search', url:'https://mcp.exa.ai/mcp',       desc:'Search the web',            icon:'E', iconBg:'#1A1A2E', state:'ready',          instances:[{id:'exa',name:'exa'},{id:'exa-work',name:'exa-work'}], selectedInst:'exa' },
+  { id:'notion', name:'Notion',     url:'https://mcp.notion.com/mcp',   desc:'Your Notion workspace',     icon:'N', iconBg:'#000',    state:'reauth',         instances:[{id:'notion-personal',name:'notion-personal'}],         selectedInst:'notion-personal' },
+  { id:'linear', name:'Linear',     url:'https://mcp.linear.app/mcp',   desc:'Issues & project tracking', icon:'L', iconBg:'#5E6AD2', state:'needs-instance', instances:[], selectedInst:null },
+  { id:'gmail',  name:'Gmail',      url:'https://mcp.google.com/gmail', desc:'Your Gmail inbox',          icon:'G', iconBg:'#EA4335', state:IS_ADMIN?'not-configured':'pending-admin', instances:[], selectedInst:null },
 ];
 /* Registered MCP servers the OWNER can additionally grant — the app did NOT
    request these. User-driven privilege: the approver proactively connects them.
@@ -47,6 +47,7 @@ const EXTRA_MCPS = [
   { id:'sqlite',       label:'sqlite',       meta:'Query SQLite databases' },
 ];
 const CAP_COLORS = { 'text2text':'indigo','tool-use':'teal','image2text':'saffron','embedding':'leaf' };
+const CAP_LABELS = { 'text2text':'Text','tool-use':'Tools','image2text':'Images','embedding':'Search' };
 
 /* ── Token-exchange scenario: what the SUBMITTED token already holds ──
    In upgrade mode the form initialises to the requested (elevated) state and
@@ -126,23 +127,22 @@ function ModelSlot({ slot, enabled, onToggle, slotMode, onSlotModeChange, select
         <div className="slot-head-body">
           <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
             <span className="slot-name">{slot.label}</span>
-            <span className="slot-id">{slot.id}</span>
             {granted && <span className="map-granted-pill">✓ previously granted</span>}
             {isNew && <span className="map-new-pill">new access</span>}
           </div>
           <div className="slot-desc">{slot.desc}</div>
-          <div className="slot-caps">{slot.caps.map(c => <span key={c} className={`tag tag-${CAP_COLORS[c]||'muted'}`}>{c}</span>)}</div>
+          <div className="slot-caps">{slot.caps.map(c => <span key={c} className={`tag tag-${CAP_COLORS[c]||'muted'}`}>{CAP_LABELS[c]||c}</span>)}</div>
         </div>
       </div>
       {enabled
         ? <div className="slot-body">
             {isSingle
               ? <div className="slot-single">
-                  <div className="slot-single-help"><Icon name="info" size={12} /><span>Choose one model — pick an installed or API model, or type any name your upstream provider serves. Any value is accepted.</span></div>
-                  <SingleModelCombo value={singleValue} onChange={onSingleChange} allModels={ALL_MODELS} suggestedIds={suggested} requiredCaps={slot.caps} placeholder="Select a model or type a name…" />
-                  {!singleValue && <div className="slot-single-empty">No model selected — this slot will grant no access.</div>}
+                  <div className="slot-single-help"><Icon name="info" size={12} /><span>Choose one model — pick one of yours or type the name of any model your provider offers.</span></div>
+                  <SingleModelCombo value={singleValue} onChange={onSingleChange} allModels={ALL_MODELS} suggestedIds={suggested} requiredCaps={slot.caps} placeholder="Select a model or type a name…" plainLanguage={true} />
+                  {!singleValue && <div className="slot-single-empty">No model selected — this won't be granted.</div>}
                 </div>
-              : <ModelAccessPicker mode={slotMode} onModeChange={onSlotModeChange} allModels={ALL_MODELS} selectedIds={selectedIds} onToggle={onToggleModel} panelTitle={`Models — ${slot.label}`} panelSubtitle="Select models to grant for this slot" suggestedIds={suggested} requiredCaps={slot.caps} showRanks={true} onReorder={onReorder} grantedMode={grantedMode} grantedIds={grantedIds} />}
+              : <ModelAccessPicker mode={slotMode} onModeChange={onSlotModeChange} allModels={ALL_MODELS} selectedIds={selectedIds} onToggle={onToggleModel} panelTitle={`Models — ${slot.label}`} panelSubtitle="Select models to grant for this slot" suggestedIds={suggested} requiredCaps={slot.caps} showRanks={true} onReorder={onReorder} grantedMode={grantedMode} grantedIds={grantedIds} plainLanguage={true} />}
           </div>
         : <div className="slot-denied">This model slot will be denied for the app.</div>
       }
@@ -165,16 +165,16 @@ function McpRow({ server, enabled, onToggle, onStateChange, onInstanceSelect, is
             {granted && <span className="map-granted-pill">✓ previously granted</span>}
             {isNew && <span className="map-new-pill">new connection</span>}
           </div>
-          <div className="mcp-url">{server.url}</div>
+          <div className="mcp-desc">{server.desc}</div>
         </div>
       </div>
       {enabled && (
         <div className="mcp-row-body">
-          {(server.state === 'ready' || server.state === 'reauth') && <select className="inst-select" value={server.selectedInst||''} onChange={e=>onInstanceSelect(server.id,e.target.value)}><option value="">Select an instance…</option>{server.instances.map(i=><option key={i.id} value={i.id}>{i.name}</option>)}</select>}
-          {server.state === 'needs-instance' && (<><div style={{fontSize:12.5,color:'hsl(var(--muted-foreground))',marginBottom:10}}>No instances yet. Create one to connect this server.</div><button className="btn-sm btn-sm-indigo" onClick={()=>onShowPlaceholder({icon:'plus-circle',title:`Connect ${server.name} instance`,subtitle:'Create a new MCP instance',message:'Opens New MCP Instance form in new window'})}><Icon name="plus-circle" size={12}/> Connect instance</button></>)}
-          {server.state === 'not-configured' && isAdmin  && (<><div style={{fontSize:12.5,color:'hsl(var(--muted-foreground))',marginBottom:10}}>This server hasn't been configured yet.</div><button className="btn-sm btn-sm-saffron" onClick={()=>onShowPlaceholder({icon:'settings-2',title:`Configure ${server.name}`,subtitle:'Set up the MCP server',message:'Opens New MCP Server form in new window'})}><Icon name="settings-2" size={12}/> Configure MCP server</button></>)}
-          {server.state === 'not-configured' && !isAdmin && (<><div style={{fontSize:12.5,color:'hsl(var(--muted-foreground))',marginBottom:10}}>This server hasn't been configured by your admin.</div><button className="btn-sm btn-sm-saffron" onClick={()=>onStateChange(server.id,'pending-admin')}><Icon name="send" size={12}/> Request admin to configure</button></>)}
-          {server.state === 'pending-admin' && <div className="info-banner info-pending"><Icon name="clock" size={14}/><span>Request sent to your admin. You'll be notified once configured.</span></div>}
+          {(server.state === 'ready' || server.state === 'reauth') && <select className="inst-select" value={server.selectedInst||''} onChange={e=>onInstanceSelect(server.id,e.target.value)}><option value="">Select a connection…</option>{server.instances.map(i=><option key={i.id} value={i.id}>{i.name}</option>)}</select>}
+          {server.state === 'needs-instance' && (<><div style={{fontSize:12.5,color:'hsl(var(--muted-foreground))',marginBottom:10}}>No connection yet. Set one up to use this tool.</div><button className="btn-sm btn-sm-indigo" onClick={()=>onShowPlaceholder({icon:'plus-circle',title:`Set up ${server.name}`,subtitle:'Add a new connection',message:'Opens the setup form in a new window'})}><Icon name="plus-circle" size={12}/> Set up connection</button></>)}
+          {server.state === 'not-configured' && isAdmin  && (<><div style={{fontSize:12.5,color:'hsl(var(--muted-foreground))',marginBottom:10}}>This tool hasn't been set up yet.</div><button className="btn-sm btn-sm-saffron" onClick={()=>onShowPlaceholder({icon:'settings-2',title:`Set up ${server.name}`,subtitle:'Set up this tool',message:'Opens the setup form in a new window'})}><Icon name="settings-2" size={12}/> Set up tool</button></>)}
+          {server.state === 'not-configured' && !isAdmin && (<><div style={{fontSize:12.5,color:'hsl(var(--muted-foreground))',marginBottom:10}}>This tool hasn't been set up by your admin.</div><button className="btn-sm btn-sm-saffron" onClick={()=>onStateChange(server.id,'pending-admin')}><Icon name="send" size={12}/> Ask your admin to set it up</button></>)}
+          {server.state === 'pending-admin' && <div className="info-banner info-pending"><Icon name="clock" size={14}/><span>Request sent to your admin. You'll be notified once it's ready.</span></div>}
         </div>
       )}
     </div>
@@ -235,6 +235,12 @@ function AccessRequestForm({ scenario }) {
   const mcpIsNew        = id => isUpgrade && mcpEnabled[id] && !PREV_GRANT.mcps[id];
   const roleIsNew       = isUpgrade && role !== PREV_GRANT.role;
 
+  /* Plain-language summary of what the submitted token already holds — shown
+     in the exchange banner instead of its raw id. */
+  const prevRoleLabel  = PREV_GRANT.role === 'user' ? 'User' : 'Power User';
+  const prevModelCount = Object.values(PREV_GRANT.slots).filter(s => s.granted).length;
+  const prevToolCount  = Object.values(PREV_GRANT.mcps).filter(Boolean).length + PREV_GRANT.extraMcps.length;
+
   return (
     <div className="ar-main">
     <div className="ar-scroll">
@@ -242,21 +248,21 @@ function AccessRequestForm({ scenario }) {
       <div className="page-header" style={{display:'block',marginBottom:24}}>
         <div className="page-title">{isUpgrade ? 'Review Permission Upgrade' : 'Review Access Request'}</div>
         <div className="page-subtitle">{isUpgrade
-          ? 'This app submitted an existing token and is requesting additional access.'
-          : 'Decide which of your resources this 3rd-party app can use.'}</div>
+          ? 'This app already has access and is asking for more.'
+          : 'Decide which of your resources this app can use.'}</div>
       </div>
     <div className="form-card">
       {isUpgrade && (
         <div className="ar-exchange-banner">
           <div className="ar-xchg-icon"><Icon name="repeat" size={16} /></div>
           <div className="ar-xchg-body">
-            <div className="ar-xchg-title">Token exchange · permission elevation</div>
+            <div className="ar-xchg-title">Existing app requesting more access</div>
             <div className="ar-xchg-text">
-              <b>{REQUEST.appName}</b> submitted an existing app token and is requesting <b>additional</b> permissions. App tokens are immutable, so approving <b>issues a new token and invalidates the submitted one</b>. You can approve, deny, or partially approve — switch off any <span className="ar-xchg-amber">new</span> item you don't want, and you may still downgrade <span className="ar-xchg-green">previously-granted</span> access.
+              <b>{REQUEST.appName}</b> already has access to your account and is asking for <b>more permissions</b>. An app's access can't be changed once granted, so approving <b>creates new access and cancels the old one</b>. You can approve everything, switch off any <span className="ar-xchg-amber">new</span> item you don't want, or reduce <span className="ar-xchg-green">access it already has</span>.
             </div>
             <div className="ar-xchg-token">
-              <span className="ar-xchg-token-label">Invalidates on approval</span>
-              <span className="ar-xchg-token-id">{PREV_GRANT.prevTokenId}</span>
+              <span className="ar-xchg-token-label">Currently has</span>
+              <span className="ar-xchg-token-note">{prevRoleLabel} access · {prevModelCount} {prevModelCount===1?'model':'models'} · {prevToolCount} {prevToolCount===1?'tool':'tools'}</span>
             </div>
           </div>
         </div>
@@ -270,7 +276,6 @@ function AccessRequestForm({ scenario }) {
             <span className="tag tag-muted">3rd-party app</span>
           </div>
           <div className="app-subtitle">is requesting access to your resources.</div>
-          <div className="app-id">{REQUEST.appId}</div>
           <div className="app-desc">{REQUEST.appDesc}</div>
         </div>
         <span className="tag tag-muted">Role: {IS_ADMIN?'Admin':'User'}</span>
@@ -279,17 +284,16 @@ function AccessRequestForm({ scenario }) {
       <div className="form-divider"></div>
 
       <div className="section-label">
-        <span>Model access</span>
-        <span className="section-label-count">{MODEL_SLOTS.filter(s=>slotEnabled[s.id]).length} of {MODEL_SLOTS.length} slots enabled</span>
+        <span>AI models</span>
+        <span className="section-label-count">{MODEL_SLOTS.filter(s=>slotEnabled[s.id]).length} of {MODEL_SLOTS.length} allowed</span>
       </div>
       <ListingToggle
         on={listModels}
         onToggle={() => setListModels(v => !v)}
         granted={isUpgrade && PREV_GRANT.listModels}
         isNew={isUpgrade && listModels && !PREV_GRANT.listModels}
-        label="Allow to List All Models"
-        code="/v1/models"
-        desc="Standalone permission — the app can enumerate every model in the catalog. Off → it only sees the models granted for inference below."
+        label="Let the app see your full model list"
+        desc="The app can see the names of all your models. It still can't use a model unless you allow it below."
       />
       {MODEL_SLOTS.map(slot => (
         <ModelSlot key={slot.id} slot={slot} enabled={slotEnabled[slot.id]} onToggle={toggleSlot}
@@ -303,25 +307,25 @@ function AccessRequestForm({ scenario }) {
       <div className="form-divider"></div>
 
       <div className="section-label">
-        <span>MCP access</span>
-        <span className="section-label-count">{enabledMcps.length} of {mcpServers.length} selected · {readyMcps.filter(s=>s.selectedInst).length} ready</span>
+        <span>Connected tools</span>
+        <span className="section-label-count">{enabledMcps.length} of {mcpServers.length} allowed · {readyMcps.filter(s=>s.selectedInst).length} ready</span>
       </div>
       <ListingToggle
         on={listMcps}
         onToggle={() => setListMcps(v => !v)}
         granted={isUpgrade && PREV_GRANT.listMcps}
         isNew={isUpgrade && listMcps && !PREV_GRANT.listMcps}
-        label="Allow to List All MCPs"
-        code="/v1/mcps"
-        desc="Standalone permission — the app can discover every MCP server. Off → it only sees the servers granted a connection below."
+        label="Let the app see your full list of tools"
+        desc="The app can see the names of all your connected tools. It still can't use a tool unless you allow it below."
       />
 
       <div className="mcp-extra">
         <div className="mcp-extra-head">
           <div className="mcp-extra-heading">
             <Icon name="plus-circle" size={15} />
-            <span>Allow Access to MCPs</span>
+            <span>Give the app extra tools</span>
           </div>
+          <div className="mcp-extra-sub">Tools the app didn't ask for, but you can add. Grant only what you're comfortable sharing.</div>
         </div>
         <ModelAccessPicker
           mode={extraMcpMode}
@@ -329,15 +333,16 @@ function AccessRequestForm({ scenario }) {
           allModels={EXTRA_MCPS}
           selectedIds={extraMcps}
           onToggle={toggleExtraMcp}
-          panelTitle="Grant MCPs"
-          panelSubtitle="Select MCP servers to grant this app"
-          itemNoun="MCP"
-          allLabel="All MCPs"
-          allDesc="Grant access to every registered MCP server, including ones added later."
-          specificLabel="Specific MCPs"
-          specificDesc="Choose exactly which additional MCP servers to grant."
+          panelTitle="Add tools"
+          panelSubtitle="Choose which tools to give this app"
+          itemNoun="tool"
+          allLabel="All tools"
+          allDesc="Give access to every connected tool, including ones added later."
+          specificLabel="Specific tools"
+          specificDesc="Choose exactly which tools to add."
           grantedMode={isUpgrade ? 'specific' : null}
           grantedIds={isUpgrade ? PREV_GRANT.extraMcps : []}
+          plainLanguage={true}
         />
       </div>
 
@@ -368,17 +373,17 @@ function AccessRequestForm({ scenario }) {
     <div className="action-bar">
       <div>
         {isBlocked
-          ? <div className="action-warn"><Icon name="alert-triangle" size={14}/>{blockedMcps.length} MCP {blockedMcps.length===1?'server needs':'servers need'} setup before approving</div>
+          ? <div className="action-warn"><Icon name="alert-triangle" size={14}/>{blockedMcps.length} {blockedMcps.length===1?'tool needs':'tools need'} setup before approving</div>
           : isUpgrade
-            ? <div className="action-ok"><Icon name="key-round" size={14}/>Approving mints a new token &amp; invalidates&nbsp;<span style={{fontFamily:'var(--font-mono)',opacity:.85}}>{PREV_GRANT.prevTokenId.slice(0,20)}…</span></div>
-            : <div className="action-ok"><Icon name="check-circle-2" size={14}/>All resources ready to approve</div>
+            ? <div className="action-ok"><Icon name="key-round" size={14}/>Approving replaces the app's current access with a new one</div>
+            : <div className="action-ok"><Icon name="check-circle-2" size={14}/>Everything's ready to approve</div>
         }
       </div>
       <div className="action-btns">
         <button className="btn-deny">{isUpgrade ? 'Deny upgrade' : 'Deny & return to app'}</button>
         <button className="btn-approve" disabled={isBlocked}>
           <Icon name={isUpgrade ? 'key-round' : 'check'} size={15}/>
-          {isUpgrade ? 'Approve & issue new token' : `Approve ${approveCount} resource${approveCount!==1?'s':''}`}
+          {isUpgrade ? 'Approve & issue new access' : `Approve ${approveCount} item${approveCount!==1?'s':''}`}
         </button>
       </div>
     </div>
@@ -432,11 +437,11 @@ function AccessRequestApp() {
   return (
     <div className="std-page">
       <div className="std-topbar">
-        <a className="std-brand" href="Bodhi Chat.html">
+        <a className="std-brand" href="Chat.html">
           <span className="std-brand-mark"></span>
           <span className="std-brand-text">
             <span className="std-brand-word">Bodhi</span>
-            <span className="std-brand-sub">AI Gateway</span>
+            <span className="std-brand-sub">AI Operating System</span>
           </span>
         </a>
         <div className="std-topbar-right">

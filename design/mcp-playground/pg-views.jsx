@@ -31,7 +31,7 @@ function useRunner() {
   return [run, exec, setRun];
 }
 function chatHref(inst, kind, name) {
-  return 'Bodhi Chat.html?mcp=' + encodeURIComponent(inst ? inst.instId : '') + '&' + kind + '=' + encodeURIComponent(name);
+  return 'Chat.html?mcp=' + encodeURIComponent(inst ? inst.instId : '') + '&' + kind + '=' + encodeURIComponent(name);
 }
 
 /* ── detail header (icon · name · desc · actions) ────────────── */

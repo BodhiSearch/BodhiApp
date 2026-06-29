@@ -4,12 +4,12 @@
 
    TWO separate pages (each HTML sets window.MCP_SERVER_PAGE):
      • create — New MCP Server. Register a server + one OPTIONAL inline
-                auth mechanism. (Bodhi MCP New Server.html)
+                auth mechanism. (MCP-New-Server.html)
      • view   — Configure server hub. Per-section editing: basic info
                 (edit → save), and auth mechanisms — add INLINE (the
                 "Add auth mechanism" button becomes a form in place; Cancel
                 restores the button) and delete (with confirmation).
-                (Bodhi MCP Server.html?server=<id>)
+                (MCP-Server.html?server=<id>)
 
    Auth Type order: Header / Query Key first (no auto-discovery), then
    OAuth. Selecting OAuth runs dynamic client registration (DCR); on
@@ -186,9 +186,9 @@ function FormPage({ crumb, children }) {
     <AppShell
       section="mcp" subPage={PAGE === 'create' ? 'new-server' : 'my-mcps'} resizeKey="mcp"
       breadcrumb={[
-        { label: 'Bodhi', href: 'Bodhi Chat.html' },
-        { label: 'MCP', href: 'Bodhi MCP My MCPs.html' },
-        { label: PAGE === 'create' ? 'Explore' : 'My MCPs', href: PAGE === 'create' ? 'Bodhi MCP Discover v2.html' : 'Bodhi MCP My MCPs.html' },
+        { label: 'Bodhi', href: 'Chat.html' },
+        { label: 'MCP', href: 'MCP-My-MCPs.html' },
+        { label: PAGE === 'create' ? 'Explore' : 'My MCPs', href: PAGE === 'create' ? 'MCP-Explore.html' : 'MCP-My-MCPs.html' },
         ...crumb,
       ]}
       contentClass="flush" mainScroll={false}
@@ -211,7 +211,7 @@ function CreateServerApp() {
 
   const save = () => {
     if (!url.trim() || !name.trim()) { setErr(true); return; }
-    setSaving(true); setTimeout(() => { window.location.href = 'Bodhi MCP Discover v2.html'; }, 1000);
+    setSaving(true); setTimeout(() => { window.location.href = 'MCP-Explore.html'; }, 1000);
   };
 
   return (
@@ -374,7 +374,7 @@ function ViewServerApp() {
 
         <div className="bf-footer">
           <div className="bf-footer-spacer"></div>
-          <button className="bf-btn bf-btn-secondary" onClick={() => { window.location.href = 'Bodhi MCP My MCPs.html'; }}><Ic name="arrow-left" size={14} /> Back to My MCPs</button>
+          <button className="bf-btn bf-btn-secondary" onClick={() => { window.location.href = 'MCP-My-MCPs.html'; }}><Ic name="arrow-left" size={14} /> Back to My MCPs</button>
         </div>
       </div>
 

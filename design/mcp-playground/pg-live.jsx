@@ -721,7 +721,7 @@ function SamplingDetail({ req, inst }) {
                   <div className="pg-nomodels">
                     <span className="pg-nomodels-t"><Ic name="plug" size={15} /> No models connected</span>
                     <span className="pg-nomodels-s">To let a server use the AI, add a model first. You can connect a local or API model from the Models page, then come back to approve this request.</span>
-                    <a className="pg-btn pg-btn-ghost" href="Bodhi Models.html"><Ic name="arrow-up-right" size={14} /> Connect a model</a>
+                    <a className="pg-btn pg-btn-ghost" href="Models-My-Models.html"><Ic name="arrow-up-right" size={14} /> Connect a model</a>
                   </div>
                 ) : (
                   <>
