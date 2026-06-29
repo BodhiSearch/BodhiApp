@@ -16,6 +16,7 @@ mod macros;
 // -- Authentication & security
 mod app_access_requests;
 mod auth;
+mod grants;
 mod tenants;
 mod tokens;
 
@@ -50,6 +51,7 @@ pub use env_wrapper::*;
 // -- Re-exports: authentication & security
 pub use app_access_requests::*;
 pub use auth::*;
+pub use grants::*;
 pub use tenants::*;
 pub use tokens::*;
 

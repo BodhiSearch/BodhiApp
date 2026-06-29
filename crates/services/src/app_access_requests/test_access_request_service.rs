@@ -40,6 +40,7 @@ async fn test_create_draft_popup_valid(
       None,
       RequestedResources::V1(RequestedResourcesV1 {
         mcp_servers: vec![],
+        ..Default::default()
       }),
       UserScope::User,
     )
@@ -262,7 +263,10 @@ async fn test_approve_request_threads_approved_role(
       "user-1",
       TEST_TENANT_ID,
       "fake-token",
-      ApprovedResources::V1(ApprovedResourcesV1 { mcps: vec![] }),
+      ApprovedResources::V1(ApprovedResourcesV1 {
+        mcps: vec![],
+        ..Default::default()
+      }),
       UserScope::PowerUser,
     )
     .await?;

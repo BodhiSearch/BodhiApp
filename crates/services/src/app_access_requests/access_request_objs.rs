@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::mcp_proxy_path;
+use crate::{mcp_proxy_path, McpGrant, ModelGrant, ResourceGrants};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppAccessRequest {
@@ -210,6 +210,12 @@ impl ApprovedResources {
       Self::V1(_) => "1",
     }
   }
+
+  pub fn v1(&self) -> &ApprovedResourcesV1 {
+    match self {
+      Self::V1(v1) => v1,
+    }
+  }
 }
 
 impl Default for ApprovedResources {
@@ -218,16 +224,82 @@ impl Default for ApprovedResources {
   }
 }
 
+/// What the external app asks for. The four booleans are **UI drivers**: they tell
+/// the consent screen which controls to render (the owner decides the actual grant).
+/// `mcp_servers` is the existing by-url MCP request and is unchanged.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Default)]
 pub struct RequestedResourcesV1 {
+  /// Render the "list all models" toggle.
+  #[serde(default)]
+  pub models_list: bool,
+  /// Render the model All/Specific access selector.
+  #[serde(default)]
+  pub models_access: bool,
+  /// Render the "list all MCPs" toggle.
+  #[serde(default)]
+  pub mcps_list: bool,
+  /// Render the owner-extra MCP All/Specific access selector.
+  #[serde(default)]
+  pub mcps_access: bool,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub mcp_servers: Vec<RequestedMcpServer>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Default)]
+/// What the owner granted at consent. Model grants mirror API tokens
+/// (`list_models` + `models`). MCP grants combine the existing by-url instance
+/// approvals (`mcps`) with an owner-granted-beyond-requested set (`mcps_extra`).
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ApprovedResourcesV1 {
+  #[serde(default)]
+  pub list_models: bool,
+  #[serde(default)]
+  pub models: ModelGrant,
+  #[serde(default)]
+  pub list_mcps: bool,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub mcps: Vec<McpApproval>,
+  /// Owner-granted MCP instances beyond the by-url requests. Defaults to none
+  /// (empty `Specific`) — unlike a token's all-access default.
+  #[serde(default = "no_extra_mcps")]
+  pub mcps_extra: McpGrant,
+}
+
+/// Default for `mcps_extra`: no extra MCPs (empty `Specific`), not the
+/// all-access `McpGrant::default()`.
+fn no_extra_mcps() -> McpGrant {
+  McpGrant::Specific { ids: Vec::new() }
+}
+
+impl Default for ApprovedResourcesV1 {
+  fn default() -> Self {
+    Self {
+      list_models: false,
+      models: ModelGrant::default(),
+      list_mcps: false,
+      mcps: Vec::new(),
+      mcps_extra: no_extra_mcps(),
+    }
+  }
+}
+
+impl ResourceGrants for ApprovedResourcesV1 {
+  fn allows_model_inference(&self, model_id: &str) -> bool {
+    self.models.allows(model_id)
+  }
+
+  fn model_listable(&self, model_id: &str) -> bool {
+    self.list_models || self.allows_model_inference(model_id)
+  }
+
+  fn allows_mcp_connect(&self, mcp_id: &str) -> bool {
+    self.mcps.iter().any(|a| {
+      a.status == ApprovalStatus::Approved && a.instance.as_ref().is_some_and(|i| i.id == mcp_id)
+    }) || self.mcps_extra.allows(mcp_id)
+  }
+
+  fn mcp_listable(&self, mcp_id: &str) -> bool {
+    self.list_mcps || self.allows_mcp_connect(mcp_id)
+  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, validator::Validate, ToSchema)]

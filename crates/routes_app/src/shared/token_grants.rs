@@ -10,7 +10,7 @@
 //! `TokenGrantsV1` (the domain owns it); this type only resolves the principal
 //! and turns a denial into the right HTTP error.
 
-use services::{AppError, AuthContext, ErrorType, TokenGrantsV1};
+use services::{AppError, AuthContext, ErrorType, ResourceGrants, TokenGrantsV1};
 
 /// Effective resource-access policy for the current principal.
 pub enum AccessPolicy<'a> {

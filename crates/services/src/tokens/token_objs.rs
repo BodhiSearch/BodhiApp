@@ -1,4 +1,4 @@
-use crate::TokenScope;
+use crate::{McpGrant, ModelGrant, ResourceGrants, TokenScope};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -23,30 +23,6 @@ pub enum TokenStatus {
   Inactive,
 }
 
-/// Model inference grant for an API token. `All` is a wildcard that includes
-/// models added in the future; `Specific` lists alias ids.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema, Default)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum ModelGrant {
-  #[default]
-  All,
-  Specific {
-    ids: Vec<String>,
-  },
-}
-
-/// MCP connect grant for an API token. `All` is a wildcard (incl. future MCPs);
-/// `Specific` lists the user's own instance ids (empty ⇒ no MCP access).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema, Default)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum McpGrant {
-  #[default]
-  All,
-  Specific {
-    ids: Vec<String>,
-  },
-}
-
 /// Per-resource grants carried by an API token. Listing (`list_models` /
 /// `list_mcps`) is separate from inference/connect: with listing off the
 /// discovery endpoints return an empty set, but inference on an individually
@@ -66,32 +42,20 @@ pub struct TokenGrantsV1 {
   pub mcps: McpGrant,
 }
 
-impl TokenGrantsV1 {
-  /// Whether the token may run inference on `model_id`.
-  pub fn allows_model_inference(&self, model_id: &str) -> bool {
-    match &self.models {
-      ModelGrant::All => true,
-      ModelGrant::Specific { ids } => ids.iter().any(|m| m == model_id),
-    }
+impl ResourceGrants for TokenGrantsV1 {
+  fn allows_model_inference(&self, model_id: &str) -> bool {
+    self.models.allows(model_id)
   }
 
-  /// Whether `model_id` is visible in listings: everything when `list_models` is on,
-  /// otherwise only inference-granted models.
-  pub fn model_listable(&self, model_id: &str) -> bool {
+  fn model_listable(&self, model_id: &str) -> bool {
     self.list_models || self.allows_model_inference(model_id)
   }
 
-  /// Whether the token may connect to MCP instance `mcp_id`.
-  pub fn allows_mcp_connect(&self, mcp_id: &str) -> bool {
-    match &self.mcps {
-      McpGrant::All => true,
-      McpGrant::Specific { ids } => ids.iter().any(|m| m == mcp_id),
-    }
+  fn allows_mcp_connect(&self, mcp_id: &str) -> bool {
+    self.mcps.allows(mcp_id)
   }
 
-  /// Whether `mcp_id` is visible in listings: everything when `list_mcps` is on,
-  /// otherwise only connect-granted instances.
-  pub fn mcp_listable(&self, mcp_id: &str) -> bool {
+  fn mcp_listable(&self, mcp_id: &str) -> bool {
     self.list_mcps || self.allows_mcp_connect(mcp_id)
   }
 }
