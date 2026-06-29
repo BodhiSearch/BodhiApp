@@ -1,4 +1,4 @@
-import { TokenForm } from '@/routes/tokens/-components/TokenForm';
+import { TokenForm, toCreateTokenRequest } from '@/routes/tokens/-components/TokenForm';
 import { TokenCreated } from '@bodhiapp/ts-client';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
@@ -6,6 +6,9 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import { mockCreateToken, mockCreateTokenError } from '@/test-utils/msw-v2/handlers/tokens';
+import { mockModelsDefault } from '@/test-utils/msw-v2/handlers/models';
+import { mockListMcps } from '@/test-utils/msw-v2/handlers/mcps';
+import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { describe, expect, it, vi } from 'vitest';
 
 const mockToken: TokenCreated = {
@@ -23,9 +26,80 @@ afterEach(() => {
   mockToast.mockClear();
 });
 
+describe('toCreateTokenRequest', () => {
+  it('builds all-access grants', () => {
+    expect(
+      toCreateTokenRequest({
+        name: 'x',
+        scope: 'scope_token_user',
+        listModels: true,
+        modelMode: 'all',
+        models: [],
+        listMcps: false,
+        mcpMode: 'all',
+        mcps: [],
+      })
+    ).toEqual({
+      name: 'x',
+      scope: 'scope_token_user',
+      grants: { version: '1', list_models: true, models: { type: 'all' }, list_mcps: false, mcps: { type: 'all' } },
+    });
+  });
+
+  it('builds specific models + none mcps (and drops empty name)', () => {
+    expect(
+      toCreateTokenRequest({
+        name: '',
+        scope: 'scope_token_user',
+        listModels: false,
+        modelMode: 'specific',
+        models: ['a', 'b'],
+        listMcps: false,
+        mcpMode: 'none',
+        mcps: [],
+      })
+    ).toEqual({
+      name: undefined,
+      scope: 'scope_token_user',
+      grants: {
+        version: '1',
+        list_models: false,
+        models: { type: 'specific', ids: ['a', 'b'] },
+        list_mcps: false,
+        mcps: { type: 'none' },
+      },
+    });
+  });
+
+  it('builds specific mcps', () => {
+    const req = toCreateTokenRequest({
+      name: 'k',
+      scope: 'scope_token_power_user',
+      listModels: false,
+      modelMode: 'all',
+      models: [],
+      listMcps: true,
+      mcpMode: 'specific',
+      mcps: ['mcp-1'],
+    });
+    expect(req.grants).toEqual({
+      version: '1',
+      list_models: false,
+      models: { type: 'all' },
+      list_mcps: true,
+      mcps: { type: 'specific', ids: ['mcp-1'] },
+    });
+  });
+});
+
 describe('TokenForm', () => {
   beforeEach(() => {
-    server.use(...mockCreateToken({ token: mockToken.token }));
+    server.use(
+      ...mockCreateToken({ token: mockToken.token }),
+      ...mockUserLoggedIn({}, { stub: true }),
+      ...mockModelsDefault(),
+      mockListMcps()
+    );
   });
 
   it('renders form fields correctly', () => {
