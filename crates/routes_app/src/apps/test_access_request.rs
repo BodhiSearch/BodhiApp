@@ -293,6 +293,144 @@ async fn test_approve_access_request_mcp_instance_not_owned() -> anyhow::Result<
 }
 
 // ============================================================================
+// apps_approve_access_request - extended grants (models + owner-extra MCPs)
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_approve_access_request_with_model_and_extra_mcp_grants() -> anyhow::Result<()> {
+  let request_id = "ar-extended";
+  let user_id = "test-user-extended";
+
+  let mut mock_auth = MockAuthService::default();
+  mock_auth
+    .expect_register_access_request_consent()
+    .times(1)
+    .returning(move |_, _, _, _| {
+      Ok(RegisterAccessRequestConsentResponse {
+        access_request_id: "ar-extended".to_string(),
+        access_request_scope: "scope_access_request:ar-extended".to_string(),
+      })
+    });
+
+  let harness = build_test_harness(mock_auth).await?;
+  // Owner-extra MCP must reference an owned + enabled instance.
+  let extra_id = seed_mcp_instance(
+    harness.state.as_ref(),
+    user_id,
+    "https://extra.example.com/mcp",
+    "extra-tool",
+    true,
+  )
+  .await?;
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    FlowType::Popup,
+    None,
+    "scope_user_user",
+  )
+  .await?;
+
+  let router = Router::new()
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_APPROVE,
+      put(apps_approve_access_request),
+    )
+    .with_state(harness.state);
+
+  let body = json!({
+    "approved_role": "scope_user_user",
+    "approved": {
+      "version": "1",
+      "list_models": true,
+      "models": {"type": "specific", "ids": ["alias-x"]},
+      "list_mcps": false,
+      "mcps": [],
+      "mcps_extra": {"type": "specific", "ids": [extra_id]}
+    }
+  });
+
+  let request = axum::http::Request::builder()
+    .method("PUT")
+    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
+    .header("Content-Type", "application/json")
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      user_id,
+      "user@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::OK, response.status());
+  let result = response.json::<AccessRequestActionResponse>().await?;
+  assert_eq!(AppAccessRequestStatus::Approved, result.status);
+
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_approve_access_request_extra_mcp_not_owned() -> anyhow::Result<()> {
+  let request_id = "ar-extra-not-owned";
+  let user_id = "test-user-extra-no";
+
+  let mock_auth = MockAuthService::default();
+  let harness = build_test_harness(mock_auth).await?;
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    FlowType::Popup,
+    None,
+    "scope_user_user",
+  )
+  .await?;
+
+  let router = Router::new()
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_APPROVE,
+      put(apps_approve_access_request),
+    )
+    .with_state(harness.state);
+
+  // Owner-extra grant references an instance the user does not own → 403.
+  let body = json!({
+    "approved_role": "scope_user_user",
+    "approved": {
+      "version": "1",
+      "mcps": [],
+      "mcps_extra": {"type": "specific", "ids": ["nonexistent-extra"]}
+    }
+  });
+
+  let request = axum::http::Request::builder()
+    .method("PUT")
+    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
+    .header("Content-Type", "application/json")
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      user_id,
+      "user@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::FORBIDDEN, response.status());
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "apps_route_error-mcp_instance_not_owned",
+    body["error"]["code"].as_str().unwrap()
+  );
+
+  Ok(())
+}
+
+// ============================================================================
 // apps_approve_access_request - cross-URL instance (no URL-match restriction)
 // ============================================================================
 

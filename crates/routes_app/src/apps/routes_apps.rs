@@ -11,7 +11,7 @@ use axum::{
 use serde::Deserialize;
 use services::{
   AppAccessRequestStatus, ApprovalStatus, ApproveAccessRequest, ApprovedResources,
-  CreateAccessRequest, FlowType, RequestedResources,
+  CreateAccessRequest, FlowType, McpGrant, RequestedResources,
 };
 use services::{ResourceRole, UserScope};
 use tracing::{debug, info};
@@ -327,6 +327,23 @@ pub async fn apps_approve_access_request(
             return Err(AppsRouteError::McpInstanceNotConfigured(format!(
               "MCP instance {} is not enabled",
               instance.id
+            )))?;
+          }
+        }
+      }
+
+      // Owner-extra MCP grants must reference the owner's own enabled instances too.
+      if let McpGrant::Specific { ids } = &v1.mcps_extra {
+        for id in ids {
+          let mcp_entity = auth_scope
+            .mcps()
+            .get(id)
+            .await?
+            .ok_or_else(|| AppsRouteError::McpInstanceNotOwned(id.clone()))?;
+          if !mcp_entity.enabled {
+            return Err(AppsRouteError::McpInstanceNotConfigured(format!(
+              "MCP instance {} is not enabled",
+              id
             )))?;
           }
         }
