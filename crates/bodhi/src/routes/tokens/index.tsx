@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { TokenDetail, TokenGrants } from '@bodhiapp/ts-client';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
 import { EmptyState } from '@/components/EmptyState';
 import {
-  LinkRow,
   ShellFilterTabs,
   ShellIcon,
   ShellPagination,
@@ -23,9 +23,17 @@ import { useGetAppInfo } from '@/hooks/info';
 import { useDeleteToken, useListTokens, useUpdateToken } from '@/hooks/tokens';
 import { useToastMessages } from '@/hooks/useToastMessages';
 import { useViewTransition } from '@/hooks/useViewTransition';
+import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';
+
+// `select` carries the open detail rail (the token id). Written with replace (no history entries);
+// browser Back/Forward restores the rail from whatever the target URL holds.
+const tokensSearchSchema = z.object({
+  select: z.string().optional(),
+});
 
 export const Route = createFileRoute('/tokens/')({
   staticData: { section: 'api-keys', subPage: 'api-tokens' },
+  validateSearch: tokensSearchSchema,
   component: TokenPage,
 });
 
@@ -47,12 +55,15 @@ const scopeLabel = (scopes: string) => (scopes.includes('power') ? 'Power User' 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
+const readSelectFromUrl = () => new URLSearchParams(window.location.search).get('select');
+
 export function TokenPageContent() {
   useListKeyNav();
   const { isLoading: appLoading } = useGetAppInfo();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const { showSuccess, showError } = useToastMessages();
+  const navigate = useNavigate();
 
   const { mutate: updateToken } = useUpdateToken({
     onSuccess: (token) => showSuccess('Token Updated', `Token status changed to ${token.status}`),
@@ -72,7 +83,23 @@ export function TokenPageContent() {
   const withViewTransition = useViewTransition();
   const [filter, setFilter] = useState<TokenFilter>('all');
   const [search, setSearch] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Render source of truth is local; the URL is mirrored so links are shareable and browser
+  // Back/Forward works (the popstate listener pulls the id back out of the URL).
+  const [selectedId, setSelectedId] = useState<string | null>(() => readSelectFromUrl());
+
+  useEffect(() => {
+    const onPop = () => setSelectedId(readSelectFromUrl());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  const selectToken = useCallback(
+    (id: string | null) => {
+      withViewTransition(() => setSelectedId(id));
+      navigate({ to: '/tokens/', search: (prev) => ({ ...prev, select: id ?? undefined }), replace: true });
+    },
+    [withViewTransition, navigate]
+  );
 
   const searchNode = useCollapsibleSearch({
     value: search,
@@ -82,15 +109,10 @@ export function TokenPageContent() {
     closeTestId: 'tokens-search-close',
   });
 
-  const selectToken = useCallback(
-    (id: string | null) => withViewTransition(() => setSelectedId(id)),
-    [withViewTransition]
-  );
-
   const { mutate: deleteToken } = useDeleteToken({
     onSuccess: () => {
       showSuccess('Token Deleted', 'The token has been permanently revoked.');
-      setSelectedId(null);
+      selectToken(null);
     },
     onError: (message) => showError('Error', message),
   });
@@ -124,6 +146,71 @@ export function TokenPageContent() {
 
   const selected = useMemo(() => tokens.find((t) => t.id === selectedId) ?? null, [tokens, selectedId]);
 
+  const columns = useMemo<CatalogColumn<TokenDetail>[]>(
+    () => [
+      { key: 'num', label: '', width: '52px', cell: () => null },
+      {
+        key: 'token',
+        label: 'Token',
+        width: '',
+        cell: (t) => (
+          <div className="tk-id-cell">
+            <div className={'token-name' + (t.name ? '' : ' unnamed')} data-testid={`token-name-${t.id}`}>
+              {t.name || 'Unnamed token'}
+            </div>
+            <div className="token-meta" data-testid={`token-scope-${t.id}`}>
+              <ScopeChip scopes={t.scopes} />
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'models',
+        label: 'Models',
+        width: '112px',
+        cell: (t) => <span className="tk-grant">{modelGrantLabel(t.grants)}</span>,
+      },
+      {
+        key: 'mcps',
+        label: 'MCPs',
+        width: '100px',
+        cell: (t) => <span className="tk-grant">{mcpGrantLabel(t.grants)}</span>,
+      },
+      {
+        key: 'created',
+        label: 'Created',
+        width: '116px',
+        cell: (t) => <span className="tk-date-val">{fmtDate(t.created_at)}</span>,
+      },
+      {
+        key: 'updated',
+        label: 'Updated',
+        width: '116px',
+        cell: (t) => <span className="tk-date-val">{fmtDate(t.updated_at)}</span>,
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        width: '140px',
+        cell: (t) => {
+          const isActive = t.status === 'active';
+          return (
+            <span className="tk-status-cell" onClick={(e) => e.stopPropagation()}>
+              <Switch
+                checked={isActive}
+                onCheckedChange={(checked) => onStatusChange(t, checked)}
+                aria-label="Toggle token status"
+                data-testid={`token-status-switch-${t.id}`}
+              />
+              <span className={'status-chip ' + (isActive ? 'status-active' : 'status-inactive')}>{t.status}</span>
+            </span>
+          );
+        },
+      },
+    ],
+    [onStatusChange]
+  );
+
   const railHeader = useMemo(
     () => (selected ? <TokenRailHeader token={selected} onClose={() => selectToken(null)} /> : null),
     [selected, selectToken]
@@ -142,7 +229,7 @@ export function TokenPageContent() {
 
   if (appLoading) {
     return (
-      <div className="api-keys-screen l-page" data-testid="tokens-page" data-pagestatus="loading">
+      <div className="api-keys-screen cat-screen l-page" data-testid="tokens-page" data-pagestatus="loading">
         <div className="space-y-4 p-4">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-1/4" />
@@ -153,7 +240,7 @@ export function TokenPageContent() {
 
   return (
     <div
-      className="api-keys-screen l-page"
+      className="api-keys-screen cat-screen l-page"
       data-testid="tokens-page"
       data-pagestatus={tokensLoading ? 'loading' : 'ready'}
     >
@@ -187,24 +274,17 @@ export function TokenPageContent() {
             testId="tokens-empty"
           />
         ) : (
-          <div className="l-listview">
-            <div className="l-listhead">
-              <div className="l-lh tk-icon" />
-              <div className="l-lh tk-id">Token</div>
-              <div className="l-lh tk-created">Created</div>
-              <div className="l-lh tk-used">Updated</div>
-              <div className="l-lh tk-status">Status</div>
-            </div>
-            {visible.map((token) => (
-              <TokenRow
-                key={token.id}
-                token={token}
-                active={token.id === selectedId}
-                onSelect={() => selectToken(token.id)}
-                onStatusChange={onStatusChange}
-              />
-            ))}
-          </div>
+          <CatalogTable<TokenDetail, never>
+            columns={columns}
+            rows={visible}
+            rowKey={(t) => t.id}
+            rowTestId={(t) => `token-row-${t.id}`}
+            rowLabel={(t) => `Open token ${t.name || 'Unnamed token'}`}
+            activeKey={selectedId}
+            onSelect={(t) => selectToken(t.id)}
+            onSort={() => {}}
+            testIdPrefix="tokens"
+          />
         )}
         {total > effPageSize && (
           <ShellPagination minimal total={total} page={page} onPage={setPage} pageSize={effPageSize} />
@@ -214,67 +294,9 @@ export function TokenPageContent() {
   );
 }
 
-function TokenKeyIcon() {
-  return (
-    <span className="token-key-icon">
-      <ShellIcon name="key-round" size={16} />
-    </span>
-  );
-}
-
 function ScopeChip({ scopes }: { scopes: string }) {
   const power = scopes.includes('power');
   return <span className={power ? 'scope-power' : 'scope-user'}>{scopes}</span>;
-}
-
-interface TokenRowProps {
-  token: TokenDetail;
-  active: boolean;
-  onSelect: () => void;
-  onStatusChange: (token: TokenDetail, checked: boolean) => void;
-}
-
-function TokenRow({ token, active, onSelect, onStatusChange }: TokenRowProps) {
-  const isActive = token.status === 'active';
-  return (
-    <div
-      className={'l-listrow tk-row' + (active ? ' active' : '')}
-      onClick={onSelect}
-      role="option"
-      aria-selected={active}
-      data-testid={`token-row-${token.id}`}
-    >
-      <LinkRow onActivate={onSelect} label={`Open token ${token.name || 'Unnamed token'}`} />
-      <div className="tk-icon">
-        <TokenKeyIcon />
-      </div>
-      <div className="tk-id">
-        <div className={'token-name' + (token.name ? '' : ' unnamed')} data-testid={`token-name-${token.id}`}>
-          {token.name || 'Unnamed token'}
-        </div>
-        <div className="token-meta" data-testid={`token-scope-${token.id}`}>
-          <ScopeChip scopes={token.scopes} />
-        </div>
-      </div>
-      <div className="tk-created">
-        <span className="tk-date-lbl">Created</span>
-        <span className="tk-date-val">{fmtDate(token.created_at)}</span>
-      </div>
-      <div className="tk-used">
-        <span className="tk-date-lbl">Updated</span>
-        <span className="tk-date-val">{fmtDate(token.updated_at)}</span>
-      </div>
-      <div className="tk-status" onClick={(e) => e.stopPropagation()}>
-        <Switch
-          checked={isActive}
-          onCheckedChange={(checked) => onStatusChange(token, checked)}
-          aria-label="Toggle token status"
-          data-testid={`token-status-switch-${token.id}`}
-        />
-        <span className={'status-chip ' + (isActive ? 'status-active' : 'status-inactive')}>{token.status}</span>
-      </div>
-    </div>
-  );
 }
 
 function TokenRailHeader({ token, onClose }: { token: TokenDetail; onClose: () => void }) {

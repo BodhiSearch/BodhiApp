@@ -1,11 +1,24 @@
-/* App Tokens — token-row cell layout + token-specific chips.
-   Ported from design/app-tokens.css. The list frame (rows, sticky head, toolbar,
-   search, filter pills) comes from list.css; this holds only the token-row cells.
-   Real-data subset: no model/MCP access pills, no Revoke/Delete buttons (the status
-   toggle drives the real active/inactive update). */
+/* App Tokens — token-row cell content + token-specific chips.
+   The list now renders through the shared CatalogTable (semantic <table>, cat-* layout from
+   catalog.css); this holds only the per-cell content classes + the status/scope chips and the
+   detail-rail footer toggle. */
 
 .tk-row {
   cursor: pointer;
+}
+
+/* CatalogTable cell content */
+.tk-id-cell {
+  min-width: 0;
+}
+.tk-grant {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+.tk-status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .tk-icon {

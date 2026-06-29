@@ -77,6 +77,7 @@ beforeEach(() => {
 
 afterEach(() => {
   localStorage.clear();
+  window.history.replaceState({}, '', '/');
   vi.clearAllMocks();
 });
 
@@ -232,6 +233,25 @@ describe('TokenPage V2', () => {
 
     await user.click(screen.getByTestId('token-status-switch-token-1'));
     expect(screen.queryByTestId('token-detail-rail')).not.toBeInTheDocument();
+  });
+
+  it('mirrors the selected token id to the url (replace) so links share + Back/Forward work', async () => {
+    const user = userEvent.setup();
+    await renderReady();
+
+    await user.click(screen.getByTestId('token-row-token-1'));
+    await screen.findByTestId('token-detail-rail');
+
+    const lastCall = navigateMock.mock.calls.at(-1)?.[0];
+    expect(lastCall.replace).toBe(true);
+    expect(lastCall.search({})).toMatchObject({ select: 'token-1' });
+  });
+
+  it('opens the rail from an initial ?select= url', async () => {
+    window.history.replaceState({}, '', '/?select=token-2');
+    await renderReady();
+    const rail = await screen.findByTestId('token-detail-rail');
+    expect(within(rail).getByText('bodhiapp_dev002')).toBeInTheDocument();
   });
 });
 
