@@ -115,9 +115,21 @@ pub async fn users_info(
       };
       (user, Some(dashboard))
     }
-    AuthContext::ApiToken { ref role, .. } => {
+    AuthContext::ApiToken {
+      ref role,
+      ref grants,
+      ..
+    } => {
       debug!("api token auth");
-      (UserResponse::Token(TokenInfo { role: *role }), None)
+      let g = grants.v1();
+      (
+        UserResponse::Token(TokenInfo {
+          role: *role,
+          models: crate::ResourceAccess::models(g),
+          mcps: crate::ResourceAccess::mcps(g),
+        }),
+        None,
+      )
     }
     AuthContext::ExternalApp {
       ref token,

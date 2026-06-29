@@ -1441,6 +1441,24 @@ export type RequestedResourcesV1 = {
     mcp_servers?: Array<RequestedMcpServer>;
 };
 
+/**
+ * Effective access to a class of resources (models or MCPs) for an API token,
+ * reflected from its grants. Discriminated on `type`: `all` ⇒ every current and
+ * future resource; `specific` ⇒ the listed `ids`; `none` ⇒ no access (MCPs only).
+ * `list` is the `list_*` toggle (whether the token may enumerate the full catalog).
+ */
+export type ResourceAccess = {
+    list: boolean;
+    type: 'all';
+} | {
+    list: boolean;
+    ids: Array<string>;
+    type: 'specific';
+} | {
+    list: boolean;
+    type: 'none';
+};
+
 export type ResourceRole = 'resource_anonymous' | 'resource_guest' | 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
 
 /**
@@ -1644,6 +1662,14 @@ export type TokenGrantsV1 = {
  */
 export type TokenInfo = {
     role: TokenScope;
+    /**
+     * Effective model access for this token.
+     */
+    models: ResourceAccess;
+    /**
+     * Effective MCP access for this token.
+     */
+    mcps: ResourceAccess;
 };
 
 export type TokenScope = 'scope_token_user' | 'scope_token_power_user';

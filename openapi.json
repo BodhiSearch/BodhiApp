@@ -11682,6 +11682,72 @@
           }
         }
       },
+      "ResourceAccess": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "list",
+              "type"
+            ],
+            "properties": {
+              "list": {
+                "type": "boolean"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "list",
+              "ids",
+              "type"
+            ],
+            "properties": {
+              "list": {
+                "type": "boolean"
+              },
+              "ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "specific"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "list",
+              "type"
+            ],
+            "properties": {
+              "list": {
+                "type": "boolean"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "none"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Effective access to a class of resources (models or MCPs) for an API token,\nreflected from its grants. Discriminated on `type`: `all` ⇒ every current and\nfuture resource; `specific` ⇒ the listed `ids`; `none` ⇒ no access (MCPs only).\n`list` is the `list_*` toggle (whether the token may enumerate the full catalog)."
+      },
       "ResourceRole": {
         "type": "string",
         "enum": [
@@ -12351,11 +12417,21 @@
         "type": "object",
         "description": "API Token information response",
         "required": [
-          "role"
+          "role",
+          "models",
+          "mcps"
         ],
         "properties": {
           "role": {
             "$ref": "#/components/schemas/TokenScope"
+          },
+          "models": {
+            "$ref": "#/components/schemas/ResourceAccess",
+            "description": "Effective model access for this token."
+          },
+          "mcps": {
+            "$ref": "#/components/schemas/ResourceAccess",
+            "description": "Effective MCP access for this token."
           }
         }
       },

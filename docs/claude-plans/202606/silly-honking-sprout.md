@@ -16,8 +16,10 @@ Not in production → **no backwards-compatibility or data-migration requirement
 2. **Hard-enforce** grants in the request path for `ApiToken` (filtered listings; 403 on a disallowed model in chat/anthropic/gemini/router entry, or disallowed MCP connect). `ExternalApp` path unchanged.
 3. **API-token grants are immutable after creation.** `PUT` edits name/status only; changing grants = delete + re-mint. Add a hard **Delete** endpoint.
 4. **Standalone, self-contained envelope type** (`TokenGrants`). Even though App Tokens will later get a structurally-similar envelope, we **do not** share code between them — they may diverge. This plan builds only the API-token type.
-5. **Listing toggle off ⇒ empty list** (discovery hidden), *not* 403 — inference on an individually-granted model still succeeds. Listing is separate from inference/connect.
+5. **Listing filter (revised):** for an `ApiToken`, `list_*` OFF ⇒ listings return **only the granted resources** (empty when grant is `Specific{[]}`/`None`; everything when grant is `All`); `list_*` ON ⇒ **all** resources (granted + not). Session/ExternalApp listings are unfiltered. Listing is separate from inference.
 6. **"All" means all-including-future** (wildcard), for both models and MCPs.
+7. **No `access` field on listings.** Instead, the existing `/bodhi/v1/user` reflection endpoint is extended so a caller (API token) sees its effective grants: `{ scope, models: {list, access_all} | {list, access_all:false, ids:[...]}, mcps: {…} }` (`access_all:true` ⇒ no `ids`). No new endpoint.
+8. **`/v1/models*` stays OpenAI-shaped, filtered only** (no `access` field). If convenient we may replace `async_openai::Model` with our own equivalently-shaped struct, but no shape change is required for filtering.
 
 ## Envelope design — `crates/services/src/tokens/token_objs.rs`
 
@@ -55,13 +57,18 @@ TokenGrantsV1 {
 - **Tests:** services `auth_context` inline; routes_app `test_token_service.rs` (opaque path yields parsed grants; malformed → `.code()`; ExternalApp unchanged).
 - **Gate:** `cargo check -p services` first (enum-field fan-out), then `cargo test -p services -p routes_app`. **Chrome:** none.
 
-### Phase 4 — Hard enforcement: model listing + inference (API tokens)
-- **Files:** new `routes_app/src/.../grant_filter.rs` with an `ApiToken` resolver reading `grants` inline (Session unfiltered; `ExternalApp` untouched). Apply in `oai/routes_oai_models.rs` (filter list; empty when `list_models` off; single-model → 404/403), `oai/routes_oai_chat.rs` (403 after `find_alias` if entry alias not granted), `models/routes_models.rs` (`models_index`), `anthropic/*` + `gemini` handlers (provider-shaped 403). Enforce at the **entry alias only** for model-router.
-- **Tests:** routes_app oneshot (Specific → only granted; `list_models:false` → empty; granted chat 200 / ungranted 403 `.code()`; anthropic/gemini/router equivalents; Session + ExternalApp unaffected). server_app `#[serial(live)]`: one real-HTTP 403 for a scoped api token.
+### Phase 4a — Reflection on `/bodhi/v1/user`
+- **Files:** `users/users_api_schemas.rs` — extend `TokenInfo` with `models`/`mcps: ResourceAccess { list, access_all, ids? }`; `users/routes_users_info.rs` — build it from `AuthContext::ApiToken.grants`; register `ResourceAccess` in `openapi.rs`; regenerate ts-client.
+- **Tests:** routes_app `test_user_info.rs` (api token reflects All → `access_all:true,no ids`; Specific → ids; `None` mcps → empty ids; list flags). Reads grants only, no enforcement.
+- **Gate:** `cargo test -p routes_app` + ts-client build green.
+
+### Phase 4 — Hard enforcement: model listing filter + inference (API tokens)
+- **Files:** new `routes_app/src/shared/token_grants.rs` helpers — `api_token_grants(&AuthContext) -> Option<&TokenGrantsV1>` (Some only for ApiToken; Session/ExternalApp → None = unfiltered/untouched) and `model_inference_allowed(g, id)`. Apply in `oai/routes_oai_models.rs` (list: `list_models` ON → all, OFF → only granted; single GET: 200 if `list_models` OR granted, else 404 — may swap `async_openai::Model` for our own struct), `oai/routes_oai_chat.rs` (403 after `find_alias` if entry model not granted), `models/routes_models.rs` (`models_index` same filter), `anthropic/*` + `gemini` handlers (provider-shaped 403). Enforce at the **entry alias only** for model-router. Add a `Forbidden` variant to `OaiApiError` if absent.
+- **Tests:** routes_app oneshot (Specific + list off → only granted; `All` → all; list on → all; granted chat 200 / ungranted 403 `.code()`; anthropic/gemini/router equivalents; Session + ExternalApp unaffected). server_app `#[serial(live)]`: one real-HTTP 403 for a scoped api token.
 - **Gate:** `cargo test -p routes_app -p server_app` green. **Chrome:** `make app.run.live` — filtered `/v1/models`; disallowed model → 403.
 
 ### Phase 5 — Hard enforcement: MCP listing + connect/invoke (API tokens)
-- **Files:** `mcps/routes_mcps.rs` `mcps_index` (+`ApiToken{grants}` arm filtering user instances by `McpGrant` + `list_mcps`, parallel to the existing ExternalApp arm); MCP connect/invoke routes (403 if target not granted). Enumerate all MCP action endpoints so none is unguarded.
+- **Files:** `mcps/routes_mcps.rs` `mcps_index` (+`ApiToken{grants}` arm: `list_mcps` ON → all instances, OFF → only granted by `McpGrant`; `None` → empty; parallel to the existing ExternalApp arm); MCP connect/invoke routes (403 if target not granted). Enumerate all MCP action endpoints so none is unguarded. No `access` field — reflection already covers introspection (Phase 4a).
 - **Tests:** routes_app oneshot (api token `Specific` filters; `None` → empty; connect ungranted → 403 `.code()`; ExternalApp parity retained); assert cross-tenant/user instance ids never leak via a grant.
 - **Gate:** `cargo test -p routes_app` green. **Chrome:** `make app.run.live` MCP list + disallowed connect → 403.
 

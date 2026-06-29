@@ -2643,6 +2643,24 @@ export interface components {
         RequestedResourcesV1: {
             mcp_servers?: components["schemas"]["RequestedMcpServer"][];
         };
+        /** @description Effective access to a class of resources (models or MCPs) for an API token,
+         *     reflected from its grants. Discriminated on `type`: `all` ⇒ every current and
+         *     future resource; `specific` ⇒ the listed `ids`; `none` ⇒ no access (MCPs only).
+         *     `list` is the `list_*` toggle (whether the token may enumerate the full catalog). */
+        ResourceAccess: {
+            list: boolean;
+            /** @enum {string} */
+            type: "all";
+        } | {
+            list: boolean;
+            ids: string[];
+            /** @enum {string} */
+            type: "specific";
+        } | {
+            list: boolean;
+            /** @enum {string} */
+            type: "none";
+        };
         /** @enum {string} */
         ResourceRole: "resource_anonymous" | "resource_guest" | "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
         /** @description One target in a model-router: a reference to an existing alias plus a pinned model. */
@@ -2851,6 +2869,10 @@ export interface components {
         /** @description API Token information response */
         TokenInfo: {
             role: components["schemas"]["TokenScope"];
+            /** @description Effective model access for this token. */
+            models: components["schemas"]["ResourceAccess"];
+            /** @description Effective MCP access for this token. */
+            mcps: components["schemas"]["ResourceAccess"];
         };
         /** @enum {string} */
         TokenScope: "scope_token_user" | "scope_token_power_user";

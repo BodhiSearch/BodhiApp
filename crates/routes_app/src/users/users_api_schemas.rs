@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use services::TokenScope;
 use services::UserInfo;
+use services::{McpGrant, ModelGrant, TokenGrantsV1, TokenScope};
 use utoipa::ToSchema;
 
 /// Token Type
@@ -25,10 +25,55 @@ pub enum RoleSource {
   ScopeUser,
 }
 
+/// Effective access to a class of resources (models or MCPs) for an API token,
+/// reflected from its grants. Discriminated on `type`: `all` ⇒ every current and
+/// future resource; `specific` ⇒ the listed `ids`; `none` ⇒ no access (MCPs only).
+/// `list` is the `list_*` toggle (whether the token may enumerate the full catalog).
+#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ResourceAccess {
+  All { list: bool },
+  Specific { list: bool, ids: Vec<String> },
+  None { list: bool },
+}
+
+impl ResourceAccess {
+  pub fn models(grants: &TokenGrantsV1) -> Self {
+    match &grants.models {
+      ModelGrant::All => Self::All {
+        list: grants.list_models,
+      },
+      ModelGrant::Specific { ids } => Self::Specific {
+        list: grants.list_models,
+        ids: ids.clone(),
+      },
+    }
+  }
+
+  pub fn mcps(grants: &TokenGrantsV1) -> Self {
+    match &grants.mcps {
+      McpGrant::All => Self::All {
+        list: grants.list_mcps,
+      },
+      McpGrant::None => Self::None {
+        list: grants.list_mcps,
+      },
+      McpGrant::Specific { ids } => Self::Specific {
+        list: grants.list_mcps,
+        ids: ids.clone(),
+      },
+    }
+  }
+}
+
 /// API Token information response
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct TokenInfo {
   pub role: TokenScope,
+  /// Effective model access for this token.
+  pub models: ResourceAccess,
+  /// Effective MCP access for this token.
+  pub mcps: ResourceAccess,
 }
 
 /// User authentication response with discriminated union

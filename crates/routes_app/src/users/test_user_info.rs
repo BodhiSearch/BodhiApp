@@ -1,5 +1,5 @@
 use crate::test_utils::RequestAuthContextExt;
-use crate::{users_info, DashboardUser, TokenInfo, UserInfoEnvelope, UserResponse};
+use crate::{users_info, DashboardUser, ResourceAccess, TokenInfo, UserInfoEnvelope, UserResponse};
 use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
@@ -127,10 +127,68 @@ async fn test_user_info_handler_api_token_with_token_scope(
   assert_eq!(StatusCode::OK, response.status());
   let response_json = response.json::<UserInfoEnvelope>().await?;
 
-  // API tokens should return TokenInfo, not UserInfo
+  // API tokens should return TokenInfo, not UserInfo. test_api_token uses default
+  // (all-access) grants, so both resources reflect access_all with no ids.
   assert_eq!(
     UserInfoEnvelope {
-      user: UserResponse::Token(TokenInfo { role: token_scope }),
+      user: UserResponse::Token(TokenInfo {
+        role: token_scope,
+        models: ResourceAccess::All { list: true },
+        mcps: ResourceAccess::All { list: true },
+      }),
+      dashboard: None,
+    },
+    response_json
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_user_info_handler_api_token_reflects_specific_grants() -> anyhow::Result<()> {
+  use services::{McpGrant, ModelGrant, TokenGrants, TokenGrantsV1};
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
+  let router = test_router(app_service);
+
+  let grants = TokenGrants::V1(TokenGrantsV1 {
+    list_models: false,
+    models: ModelGrant::Specific {
+      ids: vec!["llama2:chat".to_string()],
+    },
+    list_mcps: true,
+    mcps: McpGrant::None,
+  });
+  let auth_context = AuthContext::ApiToken {
+    client_id: "test-client".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
+    user_id: "test-user-id".to_string(),
+    role: TokenScope::User,
+    token: "test-token".to_string(),
+    grants,
+  };
+
+  let response = router
+    .oneshot(
+      Request::get("/app/user")
+        .body(Body::empty())?
+        .with_auth_context(auth_context),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  let response_json = response.json::<UserInfoEnvelope>().await?;
+  assert_eq!(
+    UserInfoEnvelope {
+      user: UserResponse::Token(TokenInfo {
+        role: TokenScope::User,
+        models: ResourceAccess::Specific {
+          list: false,
+          ids: vec!["llama2:chat".to_string()],
+        },
+        // McpGrant::None reflects as the `none` variant.
+        mcps: ResourceAccess::None { list: true },
+      }),
       dashboard: None,
     },
     response_json
