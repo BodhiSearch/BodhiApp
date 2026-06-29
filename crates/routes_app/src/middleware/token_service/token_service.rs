@@ -7,7 +7,7 @@ use services::{
   extract_claims, AuthService, CacheService, Claims, ConcurrencyService, ExpClaims, ScopeClaims,
   SettingService, Tenant, TenantError, TenantService, TokenError, TokenStatus,
 };
-use services::{ResourceRole, TokenScope, UserScope};
+use services::{ResourceRole, TokenGrants, TokenScope, UserScope};
 use sha2::{Digest, Sha256};
 use std::{str::FromStr, sync::Arc};
 use tower_sessions::Session;
@@ -117,6 +117,11 @@ impl DefaultTokenService {
       let token_scope = TokenScope::from_str(&api_token.scopes)
         .map_err(|e| TokenError::InvalidToken(format!("Invalid scope: {}", e)))?;
 
+      // Fail closed: a corrupt grants payload rejects the token rather than silently
+      // granting all-access.
+      let grants = serde_json::from_str::<TokenGrants>(&api_token.grants)
+        .map_err(|e| TokenError::InvalidToken(format!("Invalid grants: {}", e)))?;
+
       let user_id = api_token.user_id.clone();
 
       let tenant = self
@@ -133,6 +138,7 @@ impl DefaultTokenService {
         user_id,
         role: token_scope,
         token: bearer_token.to_string(),
+        grants,
       });
     }
 

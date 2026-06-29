@@ -85,6 +85,7 @@ impl AuthContext {
       user_id: user_id.to_string(),
       role,
       token: "test-api-token".to_string(),
+      grants: crate::TokenGrants::default(),
     }
   }
 
@@ -193,6 +194,7 @@ impl AuthContext {
         user_id,
         role,
         token,
+        grants,
         ..
       } => AuthContext::ApiToken {
         client_id,
@@ -200,6 +202,7 @@ impl AuthContext {
         user_id,
         role,
         token,
+        grants,
       },
       AuthContext::ExternalApp {
         client_id,
@@ -263,6 +266,7 @@ impl AuthContext {
         tenant_id,
         role,
         token,
+        grants,
         ..
       } => AuthContext::ApiToken {
         client_id,
@@ -270,6 +274,7 @@ impl AuthContext {
         user_id: user_id.to_string(),
         role,
         token,
+        grants,
       },
       AuthContext::ExternalApp {
         client_id,

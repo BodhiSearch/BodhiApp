@@ -16,7 +16,7 @@ use services::{
   TenantRepository, TenantService, TokenError, TOKEN_TYPE_OFFLINE,
   {AppAccessRequestStatus, TokenEntity, TokenRepository, TokenStatus},
 };
-use services::{TokenScope, UserScope};
+use services::{McpGrant, ModelGrant, TokenGrants, TokenGrantsV1, TokenScope, UserScope};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use uuid::Uuid;
@@ -95,6 +95,128 @@ async fn test_validate_bodhiapp_token_scope_variations(
     }
     _ => panic!("Expected ApiToken"),
   }
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_validate_bodhiapp_token_parses_grants(
+  #[future] test_db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let token_str = "bodhiapp_grant123.test-client";
+  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let mut hasher = Sha256::new();
+  hasher.update(token_str.as_bytes());
+  let token_hash = format!("{:x}", hasher.finalize());
+
+  let grants = TokenGrants::V1(TokenGrantsV1 {
+    list_models: false,
+    models: ModelGrant::Specific {
+      ids: vec!["m1".to_string()],
+    },
+    list_mcps: true,
+    mcps: McpGrant::None,
+  });
+
+  let mut api_token = TokenEntity {
+    id: Uuid::new_v4().to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
+    user_id: "test-user".to_string(),
+    name: "Test Token".to_string(),
+    token_prefix: token_prefix.to_string(),
+    token_hash,
+    scopes: "scope_token_user".to_string(),
+    status: TokenStatus::Active,
+    grants: serde_json::to_string(&grants)?,
+    last_used_at: None,
+    created_at: Utc::now(),
+    updated_at: Utc::now(),
+  };
+  test_db_service
+    .create_api_token(TEST_TENANT_ID, &mut api_token)
+    .await?;
+
+  let tenant_svc = AppServiceStubBuilder::default()
+    .with_tenant(Tenant::test_default())
+    .await
+    .build()
+    .await?
+    .tenant_service();
+  let token_service = DefaultTokenService::new(
+    Arc::new(MockAuthService::default()),
+    tenant_svc,
+    Arc::new(MokaCacheService::default()),
+    Arc::new(test_db_service),
+    Arc::new(MockSettingService::default()),
+    Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::DefaultTimeService),
+  );
+
+  let result = token_service
+    .validate_bearer_token(&format!("Bearer {}", token_str))
+    .await?;
+  match result {
+    AuthContext::ApiToken { grants: parsed, .. } => assert_eq!(grants, parsed),
+    _ => panic!("Expected ApiToken"),
+  }
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_validate_bodhiapp_token_rejects_malformed_grants(
+  #[future] test_db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let token_str = "bodhiapp_badgrnt.test-client";
+  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let mut hasher = Sha256::new();
+  hasher.update(token_str.as_bytes());
+  let token_hash = format!("{:x}", hasher.finalize());
+
+  let mut api_token = TokenEntity {
+    id: Uuid::new_v4().to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
+    user_id: "test-user".to_string(),
+    name: "Test Token".to_string(),
+    token_prefix: token_prefix.to_string(),
+    token_hash,
+    scopes: "scope_token_user".to_string(),
+    status: TokenStatus::Active,
+    grants: "{ not valid json".to_string(),
+    last_used_at: None,
+    created_at: Utc::now(),
+    updated_at: Utc::now(),
+  };
+  test_db_service
+    .create_api_token(TEST_TENANT_ID, &mut api_token)
+    .await?;
+
+  let tenant_svc = AppServiceStubBuilder::default()
+    .with_tenant(Tenant::test_default())
+    .await
+    .build()
+    .await?
+    .tenant_service();
+  let token_service = DefaultTokenService::new(
+    Arc::new(MockAuthService::default()),
+    tenant_svc,
+    Arc::new(MokaCacheService::default()),
+    Arc::new(test_db_service),
+    Arc::new(MockSettingService::default()),
+    Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::DefaultTimeService),
+  );
+
+  // Fail closed: a corrupt grants payload rejects the token.
+  let err = token_service
+    .validate_bearer_token(&format!("Bearer {}", token_str))
+    .await
+    .unwrap_err();
+  assert!(matches!(err, AuthError::Token(TokenError::InvalidToken(_))));
   Ok(())
 }
 

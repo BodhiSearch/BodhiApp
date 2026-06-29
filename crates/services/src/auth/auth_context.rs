@@ -1,4 +1,4 @@
-use crate::{AppRole, DeploymentMode, ErrorType, ResourceRole, TokenScope, UserScope};
+use crate::{AppRole, DeploymentMode, ErrorType, ResourceRole, TokenGrants, TokenScope, UserScope};
 use errmeta::AppError;
 use serde::Serialize;
 
@@ -31,6 +31,8 @@ pub enum AuthContext {
     user_id: String,
     role: TokenScope,
     token: String,
+    /// Per-resource grants parsed from the token's stored `grants` JSON.
+    grants: TokenGrants,
   },
   ExternalApp {
     client_id: String,
@@ -328,6 +330,7 @@ mod tests {
       user_id: "user1".to_string(),
       role: crate::TokenScope::User,
       token: "test-token".to_string(),
+      grants: TokenGrants::default(),
     };
     let result = ctx.require_tenant_id();
     assert!(result.is_ok());
