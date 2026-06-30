@@ -196,6 +196,25 @@ export class TokensPage extends BasePage {
     await this.page.waitForSelector(this.selectors.detailRail);
   }
 
+  /** The testid of the currently-selected list row, read from `aria-selected`
+   *  (the semantic current-row marker) rather than the `.active` CSS class. */
+  async activeRowTestId() {
+    return this.page
+      .locator(`${this.selectors.tokensTable} [aria-selected="true"]`)
+      .first()
+      .getAttribute('data-testid');
+  }
+
+  /** Focus the selected row's link (so the list arrow-key handler is active) and press a
+   *  navigation key (Home / ArrowDown / ArrowUp). The caller asserts the resulting
+   *  selection via {@link activeRowTestId} — keyed on aria-selected + the row testid. */
+  async selectRowByKeyboard(key) {
+    await this.page
+      .locator(`${this.selectors.tokensTable} [aria-selected="true"] [data-testid="row-link"]`)
+      .focus();
+    await this.page.keyboard.press(key);
+  }
+
   async expectModelGrantChip(id) {
     await expect(this.page.locator(this.selectors.modelGrantChip(id))).toBeVisible();
   }

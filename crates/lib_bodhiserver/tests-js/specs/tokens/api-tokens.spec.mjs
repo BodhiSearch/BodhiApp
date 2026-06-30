@@ -132,6 +132,26 @@ test.describe('API Tokens - Complete Integration', () => {
       await tokensPage.expectMcpGrantChip(grantedMcps[0]);
     });
 
+    await test.step('All-access grant: list-all + All models/MCPs reflected in the rail', async () => {
+      // No Specific selection ⇒ the form's default All mode for both dimensions.
+      await tokensPage.navigateToTokens();
+      await tokensPage.createTokenWithGrants({
+        name: 'all-access-grant',
+        scope: 'scope_token_power_user',
+        listModels: true,
+        listMcps: true,
+      });
+      await tokensPage.copyTokenFromDialog();
+      await tokensPage.closeTokenDialog();
+      await tokensPage.expectTokenInList('all-access-grant', 'active');
+
+      await tokensPage.openTokenRail('all-access-grant');
+      await tokensPage.expectRailContains('All models');
+      await tokensPage.expectRailContains('All MCPs');
+      await tokensPage.expectRailContains('List all models');
+      await tokensPage.expectRailContains('List all MCPs');
+    });
+
     await test.step('List behaviors: URL-driven rail, keyboard nav, Back/Forward', async () => {
       // Kill view-transition detach races on the rail screen.
       await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -142,16 +162,13 @@ test.describe('API Tokens - Complete Integration', () => {
       await expect(page).toHaveURL(/\?select=/);
 
       // Keyboard nav: Home selects the first row, ArrowDown advances to the second — the rail
-      // stays open and ?select changes (deterministic regardless of which row was clicked).
-      const selectParam = () => new URL(page.url()).searchParams.get('select');
-      await page
-        .locator(`${tokensPage.selectors.tokensTable} .l-listrow.active [data-testid="row-link"]`)
-        .focus();
-      await page.keyboard.press('Home');
-      await expect.poll(selectParam).not.toBeNull();
-      const firstSelect = selectParam();
-      await page.keyboard.press('ArrowDown');
-      await expect.poll(selectParam).not.toBe(firstSelect);
+      // stays open and the active row changes. Asserted via aria-selected + the row testid
+      // (through a page-object method), not the `.l-listrow.active` CSS class.
+      await tokensPage.selectRowByKeyboard('Home');
+      await expect.poll(() => tokensPage.activeRowTestId()).not.toBeNull();
+      const firstRow = await tokensPage.activeRowTestId();
+      await tokensPage.selectRowByKeyboard('ArrowDown');
+      await expect.poll(() => tokensPage.activeRowTestId()).not.toBe(firstRow);
       await expect(page.locator(tokensPage.selectors.detailRail)).toBeVisible();
       const afterDownUrl = page.url();
 
