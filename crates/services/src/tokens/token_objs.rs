@@ -1,4 +1,4 @@
-use crate::{McpGrant, ModelGrant, ResourceGrants, TokenScope};
+use crate::{deserialize_versioned, McpGrant, ModelGrant, ResourceGrants, TokenScope};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -47,16 +47,16 @@ impl ResourceGrants for TokenGrantsV1 {
     self.models.allows(model_id)
   }
 
-  fn model_listable(&self, model_id: &str) -> bool {
-    self.models_list || self.allows_model_inference(model_id)
-  }
-
   fn allows_mcp_connect(&self, mcp_id: &str) -> bool {
     self.mcps.allows(mcp_id)
   }
 
-  fn mcp_listable(&self, mcp_id: &str) -> bool {
-    self.mcps_list || self.allows_mcp_connect(mcp_id)
+  fn models_list(&self) -> bool {
+    self.models_list
+  }
+
+  fn mcps_list(&self) -> bool {
+    self.mcps_list
   }
 }
 
@@ -73,31 +73,14 @@ impl<'de> Deserialize<'de> for TokenGrants {
   where
     D: serde::Deserializer<'de>,
   {
-    let value = serde_json::Value::deserialize(deserializer)?;
-    let version = value
-      .get("version")
-      .and_then(|v| v.as_str())
-      .ok_or_else(|| serde::de::Error::missing_field("version"))?;
-    match version {
-      "1" => {
-        let v1: TokenGrantsV1 = serde_json::from_value(value).map_err(serde::de::Error::custom)?;
-        Ok(Self::V1(v1))
-      }
-      unknown => Err(serde::de::Error::custom(format!(
-        "Unsupported token grants version '{}'. Supported versions: [1]",
-        unknown
-      ))),
-    }
+    Ok(Self::V1(deserialize_versioned(
+      deserializer,
+      "token grants",
+    )?))
   }
 }
 
 impl TokenGrants {
-  pub fn version(&self) -> &str {
-    match self {
-      Self::V1(_) => "1",
-    }
-  }
-
   pub fn v1(&self) -> &TokenGrantsV1 {
     match self {
       Self::V1(v1) => v1,
@@ -106,19 +89,16 @@ impl TokenGrants {
 }
 
 impl Default for TokenGrants {
-  /// All-access (parity with the pre-grants behavior): list + use every model and MCP.
+  /// Fail-closed (least-privilege): list nothing, use nothing. A token created
+  /// without explicit grants — or a grants payload omitting fields — grants no
+  /// access until the owner scopes it. All-access must be requested explicitly.
   fn default() -> Self {
-    Self::V1(TokenGrantsV1 {
-      models_list: true,
-      models: ModelGrant::All,
-      mcps_list: true,
-      mcps: McpGrant::All,
-    })
+    Self::V1(TokenGrantsV1::default())
   }
 }
 
-/// Canonical all-access grants JSON — the `api_tokens.grants` column default and the
-/// value stamped on tokens created without explicit grants.
+/// Canonical deny-everything grants JSON — the `api_tokens.grants` column default and
+/// the value stamped on tokens created without explicit grants (fail-closed).
 pub fn default_grants_json() -> String {
   serde_json::to_string(&TokenGrants::default()).expect("TokenGrants serializes")
 }
@@ -136,7 +116,8 @@ pub struct CreateTokenRequest {
   /// Token scope defining access level
   #[schema(example = "scope_token_user")]
   pub scope: TokenScope,
-  /// Per-resource grants for this token. Defaults to all-access when omitted.
+  /// Per-resource grants for this token. Defaults to deny (least-privilege) when
+  /// omitted — specify grants to widen access.
   #[serde(default)]
   pub grants: TokenGrants,
 }
@@ -228,6 +209,7 @@ mod tests {
     default_grants_json, McpGrant, ModelGrant, TokenDetail, TokenGrants, TokenGrantsV1, TokenStatus,
   };
   use crate::tokens::TokenEntity;
+  use crate::ResourceGrants;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
@@ -252,24 +234,40 @@ mod tests {
   }
 
   #[test]
-  fn default_grants_json_is_all_access() {
+  fn default_grants_json_is_deny() {
+    // Fail-closed default: list nothing, use nothing (empty Specific on both).
     assert_eq!(
-      r#"{"version":"1","models_list":true,"models":{"type":"all"},"mcps_list":true,"mcps":{"type":"all"}}"#,
+      r#"{"version":"1","models_list":false,"models":{"type":"specific","ids":[]},"mcps_list":false,"mcps":{"type":"specific","ids":[]}}"#,
       default_grants_json()
     );
   }
 
+  #[rstest]
+  // Only the mandatory version tag → every field falls back to its serde default,
+  // which is now least-privilege deny on BOTH models and mcps (no fail-open hole).
+  #[case::version_only(r#"{"version":"1"}"#)]
+  // A valid-but-partial payload that omits only `mcps` must still deny MCP access
+  // (the field's serde default is now empty-Specific, not All).
+  #[case::omits_mcps(
+    r#"{"version":"1","models_list":true,"models":{"type":"all"},"mcps_list":true}"#
+  )]
+  fn token_grants_missing_mcps_fails_closed(#[case] json: &str) {
+    let parsed: TokenGrants = serde_json::from_str(json).unwrap();
+    assert_eq!(McpGrant::Specific { ids: vec![] }, parsed.v1().mcps);
+    assert!(!parsed.v1().allows_mcp_connect("any-mcp"));
+  }
+
   #[test]
   fn token_grants_defaults_missing_fields() {
-    // Only the mandatory version tag → every field falls back to its serde default.
-    // `models` defaults to least-privilege (empty Specific) now; `mcps` is still All.
+    // Only the mandatory version tag → every field falls back to its serde default;
+    // both `models` and `mcps` are now least-privilege (empty Specific) — fail-closed.
     let parsed: TokenGrants = serde_json::from_str(r#"{"version":"1"}"#).unwrap();
     assert_eq!(
       TokenGrants::V1(TokenGrantsV1 {
         models_list: false,
         models: ModelGrant::Specific { ids: vec![] },
         mcps_list: false,
-        mcps: McpGrant::All,
+        mcps: McpGrant::Specific { ids: vec![] },
       }),
       parsed
     );

@@ -32,14 +32,22 @@ impl ModelGrant {
 
 /// MCP connect grant. `All` is a wildcard (incl. future MCPs); `Specific` lists
 /// the user's own instance ids (empty ⇒ no MCP access).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema, Default)]
+///
+/// Defaults to **least-privilege** (empty `Specific` ⇒ deny), symmetric with
+/// `ModelGrant`: an unspecified or legacy grant grants nothing, so a stored
+/// payload that omits `mcps` cannot silently grant every MCP. All-access must be
+/// requested explicitly via `McpGrant::All`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum McpGrant {
-  #[default]
   All,
-  Specific {
-    ids: Vec<String>,
-  },
+  Specific { ids: Vec<String> },
+}
+
+impl Default for McpGrant {
+  fn default() -> Self {
+    McpGrant::Specific { ids: Vec::new() }
+  }
 }
 
 impl McpGrant {
@@ -62,10 +70,20 @@ impl McpGrant {
 pub trait ResourceGrants: Send + Sync {
   /// Whether inference on `model_id` is permitted.
   fn allows_model_inference(&self, model_id: &str) -> bool;
-  /// Whether `model_id` is visible in listings.
-  fn model_listable(&self, model_id: &str) -> bool;
   /// Whether connecting to / invoking MCP instance `mcp_id` is permitted.
   fn allows_mcp_connect(&self, mcp_id: &str) -> bool;
-  /// Whether `mcp_id` is visible in listings.
-  fn mcp_listable(&self, mcp_id: &str) -> bool;
+  /// Whether the "list all models" toggle is on.
+  fn models_list(&self) -> bool;
+  /// Whether the "list all MCPs" toggle is on.
+  fn mcps_list(&self) -> bool;
+
+  /// Whether `model_id` is visible in listings. Listing = list-toggle ∪
+  /// inference-granted; the invariant lives here, once, for every envelope.
+  fn model_listable(&self, model_id: &str) -> bool {
+    self.models_list() || self.allows_model_inference(model_id)
+  }
+  /// Whether `mcp_id` is visible in listings (see `model_listable`).
+  fn mcp_listable(&self, mcp_id: &str) -> bool {
+    self.mcps_list() || self.allows_mcp_connect(mcp_id)
+  }
 }

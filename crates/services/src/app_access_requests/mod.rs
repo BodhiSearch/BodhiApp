@@ -4,6 +4,9 @@ mod access_request_service;
 mod app_access_request_entity;
 mod error;
 #[cfg(test)]
+#[path = "test_access_request_builders.rs"]
+mod test_access_request_builders;
+#[cfg(test)]
 #[path = "test_access_request_objs.rs"]
 mod test_access_request_objs;
 #[cfg(test)]

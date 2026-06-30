@@ -89,6 +89,16 @@ impl AuthContext {
     }
   }
 
+  /// `test_api_token` scoped to specific grants in one call (deny by default
+  /// otherwise). Mirror of `test_external_app` + `with_external_app_grants`.
+  pub fn test_api_token_with_grants(
+    user_id: &str,
+    role: TokenScope,
+    grants: crate::TokenGrants,
+  ) -> Self {
+    AuthContext::test_api_token(user_id, role).with_api_token_grants(grants)
+  }
+
   pub fn test_external_app(
     user_id: &str,
     role: UserScope,
@@ -123,6 +133,28 @@ impl AuthContext {
       app_client_id: app_client_id.to_string(),
       access_request_id: access_request_id.map(|s| s.to_string()),
       grants: None,
+    }
+  }
+
+  /// Attach per-resource grants to an `ApiToken` context (no-op otherwise).
+  pub fn with_api_token_grants(self, grants: crate::TokenGrants) -> Self {
+    match self {
+      AuthContext::ApiToken {
+        client_id,
+        tenant_id,
+        user_id,
+        role,
+        token,
+        ..
+      } => AuthContext::ApiToken {
+        client_id,
+        tenant_id,
+        user_id,
+        role,
+        token,
+        grants,
+      },
+      other => other,
     }
   }
 

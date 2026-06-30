@@ -314,3 +314,55 @@ fn test_alias_response_model_router_untagged_roundtrip() {
 fn test_api_format_supports_chat_completions(#[case] format: ApiFormat, #[case] expected: bool) {
   assert_eq!(expected, format.supports_chat_completions());
 }
+
+#[rstest]
+// A Specific grant naming one inner model of a multi-model API alias keeps exactly
+// that model (judged per `prefix + model.id`) and the alias survives.
+#[case::api_keeps_one(Some("openai/"), vec!["gpt-4", "gpt-4o-mini"], false, vec!["openai/gpt-4"], true, vec!["gpt-4"])]
+// Grant matches none of the inner models → the alias is dropped (returns false).
+#[case::api_drops_when_none(Some("openai/"), vec!["gpt-4", "gpt-4o-mini"], false, vec!["openai/o3"], false, vec![])]
+// `forward_all_with_prefix` still enumerates seed models per-model: a Specific grant on
+// one seed keeps that seed (the wildcard governs request routing, not the catalog).
+#[case::forward_all_keeps_seed(Some("azure/"), vec!["gpt-4", "gpt-4o"], true, vec!["azure/gpt-4"], true, vec!["gpt-4"])]
+// No prefix: the request-facing id is just the model id.
+#[case::api_no_prefix(None, vec!["gpt-4", "gpt-4o"], false, vec!["gpt-4o"], true, vec!["gpt-4o"])]
+fn test_retain_listable_models_api_alias(
+  #[case] prefix: Option<&str>,
+  #[case] model_ids: Vec<&str>,
+  #[case] forward_all: bool,
+  #[case] allowed: Vec<&str>,
+  #[case] expected_retained: bool,
+  #[case] expected_models: Vec<&str>,
+) {
+  let api_alias = ApiAlias::new(
+    "openai-api",
+    "test-name",
+    ApiFormat::OpenAI,
+    "https://api.example.com/v1",
+    model_ids.into_iter().map(openai_model).collect::<Vec<_>>(),
+    prefix.map(|s| s.to_string()),
+    forward_all,
+    fixed_dt(),
+    None,
+    None,
+  );
+  let mut alias = Alias::Api(api_alias);
+  let allowed: std::collections::HashSet<&str> = allowed.into_iter().collect();
+  let retained = alias.retain_listable_models(|id| allowed.contains(id));
+  assert_eq!(expected_retained, retained);
+  let Alias::Api(a) = &alias else {
+    panic!("expected Api alias");
+  };
+  let got: Vec<&str> = a.models.iter().map(|m| m.id()).collect();
+  assert_eq!(expected_models, got);
+}
+
+#[rstest]
+// Non-API aliases are judged as a whole by their request-facing name.
+#[case::user_kept("testalias:instruct", true)]
+#[case::user_dropped("other:model", false)]
+fn test_retain_listable_models_user_alias(#[case] allowed: &str, #[case] expected: bool) {
+  let mut alias = Alias::User(UserAliasBuilder::testalias().build_test().unwrap());
+  let retained = alias.retain_listable_models(|id| id == allowed);
+  assert_eq!(expected, retained);
+}

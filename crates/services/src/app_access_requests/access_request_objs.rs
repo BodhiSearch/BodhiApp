@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::{mcp_proxy_path, McpGrant, ModelGrant, ResourceGrants};
+use crate::{deserialize_versioned, mcp_proxy_path, McpGrant, ModelGrant, ResourceGrants};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppAccessRequest {
@@ -141,22 +141,7 @@ impl<'de> Deserialize<'de> for RequestedResources {
   where
     D: serde::Deserializer<'de>,
   {
-    let value = serde_json::Value::deserialize(deserializer)?;
-    let version = value
-      .get("version")
-      .and_then(|v| v.as_str())
-      .ok_or_else(|| serde::de::Error::missing_field("version"))?;
-    match version {
-      "1" => {
-        let v1: RequestedResourcesV1 =
-          serde_json::from_value(value).map_err(serde::de::Error::custom)?;
-        Ok(Self::V1(v1))
-      }
-      unknown => Err(serde::de::Error::custom(format!(
-        "Unsupported resources version '{}'. Supported versions: [1]",
-        unknown
-      ))),
-    }
+    Ok(Self::V1(deserialize_versioned(deserializer, "resources")?))
   }
 }
 
@@ -187,22 +172,7 @@ impl<'de> Deserialize<'de> for ApprovedResources {
   where
     D: serde::Deserializer<'de>,
   {
-    let value = serde_json::Value::deserialize(deserializer)?;
-    let version = value
-      .get("version")
-      .and_then(|v| v.as_str())
-      .ok_or_else(|| serde::de::Error::missing_field("version"))?;
-    match version {
-      "1" => {
-        let v1: ApprovedResourcesV1 =
-          serde_json::from_value(value).map_err(serde::de::Error::custom)?;
-        Ok(Self::V1(v1))
-      }
-      unknown => Err(serde::de::Error::custom(format!(
-        "Unsupported resources version '{}'. Supported versions: [1]",
-        unknown
-      ))),
-    }
+    Ok(Self::V1(deserialize_versioned(deserializer, "resources")?))
   }
 }
 
@@ -312,18 +282,18 @@ impl ResourceGrants for ApprovedResourcesV1 {
     self.models_access.allows(model_id)
   }
 
-  fn model_listable(&self, model_id: &str) -> bool {
-    self.models_list || self.allows_model_inference(model_id)
-  }
-
   fn allows_mcp_connect(&self, mcp_id: &str) -> bool {
     self.mcps.iter().any(|a| {
       a.status == ApprovalStatus::Approved && a.instance.as_ref().is_some_and(|i| i.id == mcp_id)
     }) || self.mcps_access.allows(mcp_id)
   }
 
-  fn mcp_listable(&self, mcp_id: &str) -> bool {
-    self.mcps_list || self.allows_mcp_connect(mcp_id)
+  fn models_list(&self) -> bool {
+    self.models_list
+  }
+
+  fn mcps_list(&self) -> bool {
+    self.mcps_list
   }
 }
 

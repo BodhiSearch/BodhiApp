@@ -120,16 +120,6 @@ impl AuthContext {
     }
   }
 
-  /// Approved app grants, when this principal is an `ExternalApp` with a bound
-  /// access request. `None` for every other principal and for app tokens with no
-  /// access request.
-  pub fn external_app_grants(&self) -> Option<&ApprovedResources> {
-    match self {
-      AuthContext::ExternalApp { grants, .. } => grants.as_ref(),
-      _ => None,
-    }
-  }
-
   pub fn external_app_token(&self) -> Option<&str> {
     match self {
       AuthContext::ExternalApp {
@@ -206,9 +196,78 @@ pub enum AuthContextError {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use super::{AuthContext, AuthContextError};
+  use crate::{AppRole, DeploymentMode, ResourceRole, TokenGrants, TokenScope};
   use errmeta::AppError;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
+
+  fn anonymous() -> AuthContext {
+    AuthContext::Anonymous {
+      deployment: DeploymentMode::Standalone,
+    }
+  }
+
+  fn session() -> AuthContext {
+    AuthContext::Session {
+      client_id: "test-client-id".to_string(),
+      tenant_id: "test-tenant".to_string(),
+      user_id: "user1".to_string(),
+      username: "testuser".to_string(),
+      role: ResourceRole::Guest,
+      token: "test-token".to_string(),
+    }
+  }
+
+  fn api_token() -> AuthContext {
+    AuthContext::ApiToken {
+      client_id: "test-client".to_string(),
+      tenant_id: "tenant-123".to_string(),
+      user_id: "user1".to_string(),
+      role: TokenScope::User,
+      token: "test-token".to_string(),
+      grants: TokenGrants::default(),
+    }
+  }
+
+  /// The three `require_*` accessors share one signature, so the success and
+  /// failure matrices collapse into two parameterized tests.
+  #[rstest]
+  #[case::user_id_anonymous(anonymous(), AuthContext::require_user_id as fn(&AuthContext) -> Result<&str, AuthContextError>, 403, "auth_context_error-anonymous_not_allowed")]
+  #[case::client_id_anonymous(
+    anonymous(),
+    AuthContext::require_client_id,
+    403,
+    "auth_context_error-missing_client_id"
+  )]
+  #[case::tenant_id_missing(
+    anonymous(),
+    AuthContext::require_tenant_id,
+    500,
+    "auth_context_error-missing_tenant_id"
+  )]
+  fn require_accessor_errors(
+    #[case] ctx: AuthContext,
+    #[case] accessor: fn(&AuthContext) -> Result<&str, AuthContextError>,
+    #[case] status: u16,
+    #[case] code: &str,
+  ) {
+    let err = accessor(&ctx).unwrap_err();
+    assert_eq!(status, err.status());
+    assert_eq!(code, err.code());
+  }
+
+  #[rstest]
+  #[case::user_id_session(session(), AuthContext::require_user_id as fn(&AuthContext) -> Result<&str, AuthContextError>, "user1")]
+  #[case::client_id_session(session(), AuthContext::require_client_id, "test-client-id")]
+  #[case::tenant_id_api_token(api_token(), AuthContext::require_tenant_id, "tenant-123")]
+  fn require_accessor_ok(
+    #[case] ctx: AuthContext,
+    #[case] accessor: fn(&AuthContext) -> Result<&str, AuthContextError>,
+    #[case] expected: &str,
+  ) {
+    assert_eq!(expected, accessor(&ctx).unwrap());
+  }
 
   #[test]
   fn test_external_app_no_role_is_authenticated() {
@@ -254,60 +313,6 @@ mod tests {
   }
 
   #[test]
-  fn test_require_user_id_anonymous_returns_403() {
-    let ctx = AuthContext::Anonymous {
-      deployment: DeploymentMode::Standalone,
-    };
-    let result = ctx.require_user_id();
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert_eq!(403, err.status());
-    assert_eq!("auth_context_error-anonymous_not_allowed", err.code());
-  }
-
-  #[test]
-  fn test_require_client_id_anonymous_returns_403() {
-    let ctx = AuthContext::Anonymous {
-      deployment: DeploymentMode::Standalone,
-    };
-    let result = ctx.require_client_id();
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert_eq!(403, err.status());
-    assert_eq!("auth_context_error-missing_client_id", err.code());
-  }
-
-  #[test]
-  fn test_require_user_id_session_returns_ok() {
-    let ctx = AuthContext::Session {
-      client_id: "test-client-id".to_string(),
-      tenant_id: "test-tenant".to_string(),
-      user_id: "user1".to_string(),
-      username: "testuser".to_string(),
-      role: ResourceRole::Guest,
-      token: "test-token".to_string(),
-    };
-    let result = ctx.require_user_id();
-    assert!(result.is_ok());
-    assert_eq!("user1", result.unwrap());
-  }
-
-  #[test]
-  fn test_require_client_id_session_returns_ok() {
-    let ctx = AuthContext::Session {
-      client_id: "test-client-id".to_string(),
-      tenant_id: "test-tenant".to_string(),
-      user_id: "user1".to_string(),
-      username: "testuser".to_string(),
-      role: ResourceRole::Guest,
-      token: "test-token".to_string(),
-    };
-    let result = ctx.require_client_id();
-    assert!(result.is_ok());
-    assert_eq!("test-client-id", result.unwrap());
-  }
-
-  #[test]
   fn test_tenant_id_returns_none_when_not_set() {
     let ctx = AuthContext::Anonymous {
       deployment: DeploymentMode::Standalone,
@@ -326,33 +331,6 @@ mod tests {
       token: "test-token".to_string(),
     };
     assert_eq!(Some("test-tenant"), ctx.tenant_id());
-  }
-
-  #[test]
-  fn test_require_tenant_id_missing_returns_500() {
-    let ctx = AuthContext::Anonymous {
-      deployment: DeploymentMode::Standalone,
-    };
-    let result = ctx.require_tenant_id();
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert_eq!(500, err.status());
-    assert_eq!("auth_context_error-missing_tenant_id", err.code());
-  }
-
-  #[test]
-  fn test_require_tenant_id_present_returns_ok() {
-    let ctx = AuthContext::ApiToken {
-      client_id: "test-client".to_string(),
-      tenant_id: "tenant-123".to_string(),
-      user_id: "user1".to_string(),
-      role: crate::TokenScope::User,
-      token: "test-token".to_string(),
-      grants: TokenGrants::default(),
-    };
-    let result = ctx.require_tenant_id();
-    assert!(result.is_ok());
-    assert_eq!("tenant-123", result.unwrap());
   }
 
   #[test]

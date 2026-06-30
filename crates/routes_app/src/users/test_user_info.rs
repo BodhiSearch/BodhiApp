@@ -117,10 +117,20 @@ async fn test_user_info_handler_session_token_with_role(
 async fn test_user_info_handler_api_token_with_token_scope(
   #[case] token_scope: TokenScope,
 ) -> anyhow::Result<()> {
+  use services::{McpGrant, ModelGrant, TokenGrants, TokenGrantsV1};
   let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
-  let auth_context = AuthContext::test_api_token("test-user-id", token_scope);
+  // Explicit all-access grants (the default is now fail-closed deny) so this case
+  // exercises the access-all reflection path.
+  let all_access = TokenGrants::V1(TokenGrantsV1 {
+    models_list: true,
+    models: ModelGrant::All,
+    mcps_list: true,
+    mcps: McpGrant::All,
+  });
+  let auth_context =
+    AuthContext::test_api_token_with_grants("test-user-id", token_scope, all_access);
   let response = router
     .oneshot(
       Request::get("/app/user")
@@ -133,8 +143,7 @@ async fn test_user_info_handler_api_token_with_token_scope(
   let response_json = response.json::<UserInfoEnvelope>().await?;
 
   // API tokens return TokenInfo (role only). Effective access is reported via the
-  // `access` envelope (parity with external apps). test_api_token uses default
-  // (all-access) grants, so both resources reflect access_all.
+  // `access` envelope (parity with external apps); all-access grants reflect access_all.
   assert_eq!(
     UserInfoEnvelope {
       user: UserResponse::Token(TokenInfo { role: token_scope }),

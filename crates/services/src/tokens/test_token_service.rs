@@ -1,42 +1,31 @@
 use super::{DefaultTokenService, TokenService};
-use crate::test_utils::{test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID};
-use crate::tokens::TokenEntity;
+use crate::test_utils::{
+  fixed_dt, test_db_service, token_entity, FrozenTimeService, TestDbService, TEST_TENANT_ID,
+};
 use crate::TokenScope;
 use crate::TokenStatus;
 use crate::{CreateTokenRequest, UpdateTokenRequest};
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
-use rstest::rstest;
+use rstest::{fixture, rstest};
 use std::sync::Arc;
+
+#[fixture]
+#[awt]
+async fn token_service(#[future] test_db_service: TestDbService) -> DefaultTokenService {
+  let time_service = Arc::new(FrozenTimeService::default());
+  DefaultTokenService::new(Arc::new(test_db_service), time_service)
+}
 
 #[rstest]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_create_and_get_api_token(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
+  #[future] token_service: DefaultTokenService,
 ) -> anyhow::Result<()> {
-  let now = db_service.now();
-  let db_service = Arc::new(db_service);
-  let time_service = Arc::new(FrozenTimeService::default());
-  let token_service = DefaultTokenService::new(db_service.clone(), time_service);
-
-  let mut token = TokenEntity {
-    id: "tok_test1".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
-    user_id: "user1".to_string(),
-    name: "test-token".to_string(),
-    token_hash: "hash123".to_string(),
-    token_prefix: "bt_abc".to_string(),
-    scopes: "user".to_string(),
-    status: TokenStatus::Active,
-    grants: crate::tokens::default_grants_json(),
-    last_used_at: None,
-    created_at: now,
-    updated_at: now,
-  };
+  let mut token = token_entity("tok_test1", "user1", "bt_abc", fixed_dt());
+  token.name = "test-token".to_string();
 
   token_service
     .create_api_token(TEST_TENANT_ID, &mut token)
@@ -57,31 +46,9 @@ async fn test_create_and_get_api_token(
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_list_api_tokens(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
-) -> anyhow::Result<()> {
-  let now = db_service.now();
-  let db_service = Arc::new(db_service);
-  let time_service = Arc::new(FrozenTimeService::default());
-  let token_service = DefaultTokenService::new(db_service.clone(), time_service);
-
+async fn test_list_api_tokens(#[future] token_service: DefaultTokenService) -> anyhow::Result<()> {
   for i in 0..3 {
-    let mut token = TokenEntity {
-      id: format!("tok_{i}"),
-      tenant_id: TEST_TENANT_ID.to_string(),
-      user_id: "user1".to_string(),
-      name: format!("token-{i}"),
-      token_hash: format!("hash_{i}"),
-      token_prefix: format!("bt_{i}"),
-      scopes: "user".to_string(),
-      status: TokenStatus::Active,
-      grants: crate::tokens::default_grants_json(),
-      last_used_at: None,
-      created_at: now,
-      updated_at: now,
-    };
+    let mut token = token_entity(&format!("tok_{i}"), "user1", &format!("bt_{i}"), fixed_dt());
     token_service
       .create_api_token(TEST_TENANT_ID, &mut token)
       .await?;
@@ -101,29 +68,10 @@ async fn test_list_api_tokens(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_get_api_token_by_prefix(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
+  #[future] token_service: DefaultTokenService,
 ) -> anyhow::Result<()> {
-  let now = db_service.now();
-  let db_service = Arc::new(db_service);
-  let time_service = Arc::new(FrozenTimeService::default());
-  let token_service = DefaultTokenService::new(db_service.clone(), time_service);
-
-  let mut token = TokenEntity {
-    id: "tok_prefix".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
-    user_id: "user1".to_string(),
-    name: "prefix-token".to_string(),
-    token_hash: "hash_prefix".to_string(),
-    token_prefix: "bt_unique".to_string(),
-    scopes: "user".to_string(),
-    status: TokenStatus::Active,
-    grants: crate::tokens::default_grants_json(),
-    last_used_at: None,
-    created_at: now,
-    updated_at: now,
-  };
+  let mut token = token_entity("tok_prefix", "user1", "bt_unique", fixed_dt());
+  token.name = "prefix-token".to_string();
   token_service
     .create_api_token(TEST_TENANT_ID, &mut token)
     .await?;
@@ -142,30 +90,8 @@ async fn test_get_api_token_by_prefix(
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_update_api_token(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
-) -> anyhow::Result<()> {
-  let now = db_service.now();
-  let db_service = Arc::new(db_service);
-  let time_service = Arc::new(FrozenTimeService::default());
-  let token_service = DefaultTokenService::new(db_service.clone(), time_service);
-
-  let mut token = TokenEntity {
-    id: "tok_update".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
-    user_id: "user1".to_string(),
-    name: "original-name".to_string(),
-    token_hash: "hash_update".to_string(),
-    token_prefix: "bt_upd".to_string(),
-    scopes: "user".to_string(),
-    status: TokenStatus::Active,
-    grants: crate::tokens::default_grants_json(),
-    last_used_at: None,
-    created_at: now,
-    updated_at: now,
-  };
+async fn test_update_api_token(#[future] token_service: DefaultTokenService) -> anyhow::Result<()> {
+  let mut token = token_entity("tok_update", "user1", "bt_upd", fixed_dt());
   token_service
     .create_api_token(TEST_TENANT_ID, &mut token)
     .await?;
@@ -191,14 +117,8 @@ async fn test_update_api_token(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_create_token_generates_valid_token(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
+  #[future] token_service: DefaultTokenService,
 ) -> anyhow::Result<()> {
-  let db_service = Arc::new(db_service);
-  let time_service = Arc::new(FrozenTimeService::default());
-  let token_service = DefaultTokenService::new(db_service.clone(), time_service);
-
   let form = CreateTokenRequest {
     name: Some("my-token".to_string()),
     scope: TokenScope::User,
@@ -243,29 +163,9 @@ async fn test_create_token_generates_valid_token(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_update_token_with_form(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
+  #[future] token_service: DefaultTokenService,
 ) -> anyhow::Result<()> {
-  let now = db_service.now();
-  let db_service = Arc::new(db_service);
-  let time_service = Arc::new(FrozenTimeService::default());
-  let token_service = DefaultTokenService::new(db_service.clone(), time_service);
-
-  let mut token = TokenEntity {
-    id: "tok_form_update".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
-    user_id: "user1".to_string(),
-    name: "original-name".to_string(),
-    token_hash: "hash_form".to_string(),
-    token_prefix: "bt_form".to_string(),
-    scopes: "user".to_string(),
-    status: TokenStatus::Active,
-    grants: crate::tokens::default_grants_json(),
-    last_used_at: None,
-    created_at: now,
-    updated_at: now,
-  };
+  let mut token = token_entity("tok_form_update", "user1", "bt_form", fixed_dt());
   token_service
     .create_api_token(TEST_TENANT_ID, &mut token)
     .await?;

@@ -45,11 +45,33 @@ pub fn anthropic_model(id: &str) -> ApiModel {
   })
 }
 
+use crate::tokens::{default_grants_json, TokenEntity, TokenStatus};
 use crate::{AppStatus, Tenant};
 use chrono::{DateTime, Utc};
 use rstest::fixture;
 
 use super::{TEST_CLIENT_ID, TEST_CLIENT_SECRET, TEST_TENANT_ID, TEST_USER_ID};
+
+/// Shared `TokenEntity` builder for token service/repository/isolation tests.
+/// Defaults to `TEST_TENANT_ID`, an active token, and the deny-all `default_grants_json()`.
+/// Override `tenant_id`/`name`/`scopes`/`status`/`grants` on the returned value for cases that
+/// assert on those fields (e.g. cross-tenant isolation or grant-specific behavior).
+pub fn token_entity(id: &str, user_id: &str, prefix: &str, now: DateTime<Utc>) -> TokenEntity {
+  TokenEntity {
+    id: id.to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
+    user_id: user_id.to_string(),
+    name: format!("Token {prefix}"),
+    token_prefix: prefix.to_string(),
+    token_hash: format!("hash_{prefix}"),
+    scopes: "scope_token_user".to_string(),
+    status: TokenStatus::Active,
+    grants: default_grants_json(),
+    last_used_at: None,
+    created_at: now,
+    updated_at: now,
+  }
+}
 
 /// Fixed deterministic timestamp matching `FrozenTimeService` default (2025-01-01T00:00:00Z).
 pub fn fixed_dt() -> DateTime<Utc> {
