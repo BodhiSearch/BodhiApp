@@ -121,7 +121,7 @@ async fn test_mcps_index_external_app_grant_filters_list(
 ) -> anyhow::Result<()> {
   // An approved app's grants flow through the SAME AccessPolicy as API tokens —
   // no bespoke access-request re-fetch. Owner granted only "mcp-uuid-1" (via
-  // mcps_extra), list_mcps off ⇒ only that instance is listed.
+  // mcps_access), mcps_list off ⇒ only that instance is listed.
   let granted = test_mcp_entity.clone(); // id "mcp-uuid-1"
   let mut other = test_mcp_entity.clone();
   other.id = "mcp-uuid-2".to_string();
@@ -134,11 +134,11 @@ async fn test_mcps_index_external_app_grant_filters_list(
   let app = test_router_for_crud(mock).await?;
 
   let approved = services::ApprovedResources::V1(services::ApprovedResourcesV1 {
-    list_models: false,
-    models: ModelGrant::All,
-    list_mcps: false,
+    models_list: false,
+    models_access: ModelGrant::All,
+    mcps_list: false,
     mcps: vec![],
-    mcps_extra: McpGrant::Specific {
+    mcps_access: McpGrant::Specific {
       ids: vec!["mcp-uuid-1".to_string()],
     },
   });

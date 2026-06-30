@@ -335,7 +335,7 @@ pub async fn apps_approve_access_request(
       }
 
       // Owner-extra MCP grants must reference the owner's own enabled instances too.
-      if let McpGrant::Specific { ids } = &v1.mcps_extra {
+      if let McpGrant::Specific { ids } = &v1.mcps_access {
         for id in ids {
           let mcp_entity = auth_scope
             .mcps()

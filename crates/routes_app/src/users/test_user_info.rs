@@ -548,13 +548,13 @@ async fn test_user_info_handler_external_app_reflects_grants(
 
   // Owner approved: list models on + specific model; list mcps off + owner-extra mcp.
   let approved = ApprovedResources::V1(ApprovedResourcesV1 {
-    list_models: true,
-    models: ModelGrant::Specific {
+    models_list: true,
+    models_access: ModelGrant::Specific {
       ids: vec!["alias-x".to_string()],
     },
-    list_mcps: false,
+    mcps_list: false,
     mcps: vec![],
-    mcps_extra: McpGrant::Specific {
+    mcps_access: McpGrant::Specific {
       ids: vec!["mcp-1".to_string()],
     },
   });

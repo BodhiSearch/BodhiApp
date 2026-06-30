@@ -1670,17 +1670,18 @@ export interface components {
             /** @enum {string} */
             version: "1";
         };
-        /** @description What the owner granted at consent. Model grants mirror API tokens
-         *     (`list_models` + `models`). MCP grants combine the existing by-url instance
-         *     approvals (`mcps`) with an owner-granted-beyond-requested set (`mcps_extra`). */
+        /** @description What the owner granted at consent. Field names mirror `RequestedResourcesV1`
+         *     (`models_list` / `models_access` / `mcps_list` / `mcps_access`) — there the
+         *     values are UI-driver booleans, here they are the actual grants. `mcps` holds
+         *     the by-url instance approvals; `mcps_access` is the owner-granted set beyond them. */
         ApprovedResourcesV1: {
-            list_models?: boolean;
-            models?: components["schemas"]["ModelGrant"];
-            list_mcps?: boolean;
+            models_list?: boolean;
+            models_access?: components["schemas"]["ModelGrant"];
+            mcps_list?: boolean;
             mcps?: components["schemas"]["McpApproval"][];
             /** @description Owner-granted MCP instances beyond the by-url requests. Defaults to none
              *     (empty `Specific`) — unlike a token's all-access default. */
-            mcps_extra?: components["schemas"]["McpGrant"];
+            mcps_access?: components["schemas"]["McpGrant"];
         };
         /** @example {
          *       "code": "auth_code_123",
@@ -2709,6 +2710,7 @@ export interface components {
         };
         /** @description What the external app asks for. The four booleans are **UI drivers**: they tell
          *     the consent screen which controls to render (the owner decides the actual grant).
+         *     Fields are domain-first (`models_*` / `mcps_*`), matching `ApprovedResourcesV1`.
          *     `mcp_servers` is the existing by-url MCP request and is unchanged. */
         RequestedResourcesV1: {
             /** @description Render the "list all models" toggle. */

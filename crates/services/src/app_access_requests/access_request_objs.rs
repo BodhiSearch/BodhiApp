@@ -228,6 +228,7 @@ impl Default for ApprovedResources {
 
 /// What the external app asks for. The four booleans are **UI drivers**: they tell
 /// the consent screen which controls to render (the owner decides the actual grant).
+/// Fields are domain-first (`models_*` / `mcps_*`), matching `ApprovedResourcesV1`.
 /// `mcp_servers` is the existing by-url MCP request and is unchanged.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Default)]
 pub struct RequestedResourcesV1 {
@@ -247,26 +248,27 @@ pub struct RequestedResourcesV1 {
   pub mcp_servers: Vec<RequestedMcpServer>,
 }
 
-/// What the owner granted at consent. Model grants mirror API tokens
-/// (`list_models` + `models`). MCP grants combine the existing by-url instance
-/// approvals (`mcps`) with an owner-granted-beyond-requested set (`mcps_extra`).
+/// What the owner granted at consent. Field names mirror `RequestedResourcesV1`
+/// (`models_list` / `models_access` / `mcps_list` / `mcps_access`) — there the
+/// values are UI-driver booleans, here they are the actual grants. `mcps` holds
+/// the by-url instance approvals; `mcps_access` is the owner-granted set beyond them.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ApprovedResourcesV1 {
   #[serde(default)]
-  pub list_models: bool,
+  pub models_list: bool,
   #[serde(default)]
-  pub models: ModelGrant,
+  pub models_access: ModelGrant,
   #[serde(default)]
-  pub list_mcps: bool,
+  pub mcps_list: bool,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub mcps: Vec<McpApproval>,
   /// Owner-granted MCP instances beyond the by-url requests. Defaults to none
   /// (empty `Specific`) — unlike a token's all-access default.
   #[serde(default = "no_extra_mcps")]
-  pub mcps_extra: McpGrant,
+  pub mcps_access: McpGrant,
 }
 
-/// Default for `mcps_extra`: no extra MCPs (empty `Specific`), not the
+/// Default for `mcps_access`: no extra MCPs (empty `Specific`), not the
 /// all-access `McpGrant::default()`.
 fn no_extra_mcps() -> McpGrant {
   McpGrant::Specific { ids: Vec::new() }
@@ -275,32 +277,32 @@ fn no_extra_mcps() -> McpGrant {
 impl Default for ApprovedResourcesV1 {
   fn default() -> Self {
     Self {
-      list_models: false,
-      models: ModelGrant::default(),
-      list_mcps: false,
+      models_list: false,
+      models_access: ModelGrant::default(),
+      mcps_list: false,
       mcps: Vec::new(),
-      mcps_extra: no_extra_mcps(),
+      mcps_access: no_extra_mcps(),
     }
   }
 }
 
 impl ResourceGrants for ApprovedResourcesV1 {
   fn allows_model_inference(&self, model_id: &str) -> bool {
-    self.models.allows(model_id)
+    self.models_access.allows(model_id)
   }
 
   fn model_listable(&self, model_id: &str) -> bool {
-    self.list_models || self.allows_model_inference(model_id)
+    self.models_list || self.allows_model_inference(model_id)
   }
 
   fn allows_mcp_connect(&self, mcp_id: &str) -> bool {
     self.mcps.iter().any(|a| {
       a.status == ApprovalStatus::Approved && a.instance.as_ref().is_some_and(|i| i.id == mcp_id)
-    }) || self.mcps_extra.allows(mcp_id)
+    }) || self.mcps_access.allows(mcp_id)
   }
 
   fn mcp_listable(&self, mcp_id: &str) -> bool {
-    self.list_mcps || self.allows_mcp_connect(mcp_id)
+    self.mcps_list || self.allows_mcp_connect(mcp_id)
   }
 }
 

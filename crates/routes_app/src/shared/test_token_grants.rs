@@ -121,11 +121,11 @@ fn external_app_without_grants_is_unrestricted() {
 fn external_app_grants_enforce_like_a_token() {
   // App approved: specific model "a", list off; owner-extra MCP "x9", list off.
   let approved = ApprovedResources::V1(ApprovedResourcesV1 {
-    list_models: false,
-    models: specific(&["a"]),
-    list_mcps: false,
+    models_list: false,
+    models_access: specific(&["a"]),
+    mcps_list: false,
     mcps: vec![],
-    mcps_extra: McpGrant::Specific {
+    mcps_access: McpGrant::Specific {
       ids: vec!["x9".to_string()],
     },
   });

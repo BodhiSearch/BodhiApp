@@ -172,13 +172,13 @@ async fn test_chat_completions_external_app_model_forbidden() -> anyhow::Result<
 
   // Approved app scoped to a different model → 403, same as an API token.
   let approved = ApprovedResources::V1(ApprovedResourcesV1 {
-    list_models: false,
-    models: ModelGrant::Specific {
+    models_list: false,
+    models_access: ModelGrant::Specific {
       ids: vec!["some-other-model".to_string()],
     },
-    list_mcps: false,
+    mcps_list: false,
     mcps: vec![],
-    mcps_extra: McpGrant::Specific { ids: vec![] },
+    mcps_access: McpGrant::Specific { ids: vec![] },
   });
   let ctx = AuthContext::test_external_app(TEST_USER_ID, UserScope::User, "app", Some("ar"))
     .with_tenant_id(TEST_TENANT_ID)

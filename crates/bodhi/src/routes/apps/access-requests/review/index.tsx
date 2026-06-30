@@ -264,15 +264,15 @@ const ReviewContent = () => {
       approved: {
         version: req.version,
         // Listing toggles are only meaningful when the app requested them.
-        list_models: req.models_list ? listModels : false,
+        models_list: req.models_list ? listModels : false,
         // If the app didn't request a model selector, the owner can't restrict —
         // the app keeps all-model access (the pre-grants default).
-        models: req.models_access
+        models_access: req.models_access
           ? modelMode === 'all'
             ? { type: 'all' }
             : { type: 'specific', ids: models }
           : { type: 'all' },
-        list_mcps: req.mcps_list ? listMcps : false,
+        mcps_list: req.mcps_list ? listMcps : false,
         mcps: (reviewData.mcps_info ?? []).map((mcp) => ({
           url: mcp.url,
           status: approvedMcps[mcp.url] ? 'approved' : 'denied',
@@ -285,7 +285,7 @@ const ReviewContent = () => {
               : undefined,
         })),
         // Owner-granted extras default to none when not requested.
-        mcps_extra: req.mcps_access
+        mcps_access: req.mcps_access
           ? mcpExtraMode === 'all'
             ? { type: 'all' }
             : { type: 'specific', ids: mcpsExtra }

@@ -1304,7 +1304,7 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: Some(
-      r#"{"version":"1","list_models":true,"models":{"type":"specific","ids":["alias-x"]}}"#
+      r#"{"version":"1","models_list":true,"models_access":{"type":"specific","ids":["alias-x"]}}"#
         .to_string(),
     ),
     user_id: Some(sub.clone()),
@@ -1387,12 +1387,12 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
       assert_eq!(Some(record_id.to_string()), access_request_id);
       // Approved grants are resolved from the access-request row and ride on the context.
       let grants = grants.expect("approved grants resolved");
-      assert!(grants.v1().list_models);
+      assert!(grants.v1().models_list);
       assert_eq!(
         services::ModelGrant::Specific {
           ids: vec!["alias-x".to_string()]
         },
-        grants.v1().models
+        grants.v1().models_access
       );
     }
     _ => panic!("Expected ExternalApp"),

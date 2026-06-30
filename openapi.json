@@ -8809,15 +8809,15 @@
       },
       "ApprovedResourcesV1": {
         "type": "object",
-        "description": "What the owner granted at consent. Model grants mirror API tokens\n(`list_models` + `models`). MCP grants combine the existing by-url instance\napprovals (`mcps`) with an owner-granted-beyond-requested set (`mcps_extra`).",
+        "description": "What the owner granted at consent. Field names mirror `RequestedResourcesV1`\n(`models_list` / `models_access` / `mcps_list` / `mcps_access`) — there the\nvalues are UI-driver booleans, here they are the actual grants. `mcps` holds\nthe by-url instance approvals; `mcps_access` is the owner-granted set beyond them.",
         "properties": {
-          "list_models": {
+          "models_list": {
             "type": "boolean"
           },
-          "models": {
+          "models_access": {
             "$ref": "#/components/schemas/ModelGrant"
           },
-          "list_mcps": {
+          "mcps_list": {
             "type": "boolean"
           },
           "mcps": {
@@ -8826,7 +8826,7 @@
               "$ref": "#/components/schemas/McpApproval"
             }
           },
-          "mcps_extra": {
+          "mcps_access": {
             "$ref": "#/components/schemas/McpGrant",
             "description": "Owner-granted MCP instances beyond the by-url requests. Defaults to none\n(empty `Specific`) — unlike a token's all-access default."
           }
@@ -11916,7 +11916,7 @@
       },
       "RequestedResourcesV1": {
         "type": "object",
-        "description": "What the external app asks for. The four booleans are **UI drivers**: they tell\nthe consent screen which controls to render (the owner decides the actual grant).\n`mcp_servers` is the existing by-url MCP request and is unchanged.",
+        "description": "What the external app asks for. The four booleans are **UI drivers**: they tell\nthe consent screen which controls to render (the owner decides the actual grant).\nFields are domain-first (`models_*` / `mcps_*`), matching `ApprovedResourcesV1`.\n`mcp_servers` is the existing by-url MCP request and is unchanged.",
         "properties": {
           "models_list": {
             "type": "boolean",

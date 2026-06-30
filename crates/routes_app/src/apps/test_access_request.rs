@@ -205,7 +205,7 @@ async fn test_list_user_access_returns_only_callers_approved_with_summary() -> a
     "ar-mine",
     "owner-1",
     "app-mine",
-    r#"{"version":"1","list_models":true,"models":{"type":"specific","ids":["alias-x"]},"list_mcps":false,"mcps_extra":{"type":"specific","ids":["mcp-1"]}}"#,
+    r#"{"version":"1","models_list":true,"models_access":{"type":"specific","ids":["alias-x"]},"mcps_list":false,"mcps_access":{"type":"specific","ids":["mcp-1"]}}"#,
   )
   .await?;
   // Another user's grant must NOT appear.
@@ -573,11 +573,11 @@ async fn test_approve_access_request_with_model_and_extra_mcp_grants() -> anyhow
     "approved_role": "scope_user_user",
     "approved": {
       "version": "1",
-      "list_models": true,
-      "models": {"type": "specific", "ids": ["alias-x"]},
-      "list_mcps": false,
+      "models_list": true,
+      "models_access": {"type": "specific", "ids": ["alias-x"]},
+      "mcps_list": false,
       "mcps": [],
-      "mcps_extra": {"type": "specific", "ids": [extra_id]}
+      "mcps_access": {"type": "specific", "ids": [extra_id]}
     }
   });
 
@@ -632,7 +632,7 @@ async fn test_approve_access_request_extra_mcp_not_owned() -> anyhow::Result<()>
     "approved": {
       "version": "1",
       "mcps": [],
-      "mcps_extra": {"type": "specific", "ids": ["nonexistent-extra"]}
+      "mcps_access": {"type": "specific", "ids": ["nonexistent-extra"]}
     }
   });
 

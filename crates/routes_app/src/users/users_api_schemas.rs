@@ -65,12 +65,12 @@ impl ResourceAccess {
 
   /// Effective model access reflected from an approved app grant.
   pub fn app_models(grants: &ApprovedResourcesV1) -> Self {
-    match &grants.models {
+    match &grants.models_access {
       ModelGrant::All => Self::All {
-        list: grants.list_models,
+        list: grants.models_list,
       },
       ModelGrant::Specific { ids } => Self::Specific {
-        list: grants.list_models,
+        list: grants.models_list,
         ids: ids.clone(),
       },
     }
@@ -79,9 +79,9 @@ impl ResourceAccess {
   /// Effective MCP access reflected from an approved app grant: the union of the
   /// by-url approved instances and the owner-extra grant.
   pub fn app_mcps(grants: &ApprovedResourcesV1) -> Self {
-    match &grants.mcps_extra {
+    match &grants.mcps_access {
       McpGrant::All => Self::All {
-        list: grants.list_mcps,
+        list: grants.mcps_list,
       },
       McpGrant::Specific { ids } => {
         let mut all_ids: Vec<String> = grants
@@ -96,7 +96,7 @@ impl ResourceAccess {
           }
         }
         Self::Specific {
-          list: grants.list_mcps,
+          list: grants.mcps_list,
           ids: all_ids,
         }
       }

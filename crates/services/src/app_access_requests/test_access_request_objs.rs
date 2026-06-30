@@ -36,8 +36,8 @@ fn approved_model_predicates(
   #[case] expect_listable: bool,
 ) {
   let grants = ApprovedResourcesV1 {
-    list_models,
-    models,
+    models_list: list_models,
+    models_access: models,
     ..Default::default()
   };
   assert_eq!(expect_infer, grants.allows_model_inference(model));
@@ -59,16 +59,16 @@ fn approved_model_predicates(
 #[case(vec![approval("a1", ApprovalStatus::Approved)], McpGrant::Specific { ids: vec![] }, true, "a2", false, true)]
 fn approved_mcp_predicates(
   #[case] mcps: Vec<McpApproval>,
-  #[case] mcps_extra: McpGrant,
+  #[case] mcps_access: McpGrant,
   #[case] list_mcps: bool,
   #[case] mcp: &str,
   #[case] expect_connect: bool,
   #[case] expect_listable: bool,
 ) {
   let grants = ApprovedResourcesV1 {
-    list_mcps,
+    mcps_list: list_mcps,
     mcps,
-    mcps_extra,
+    mcps_access,
     ..Default::default()
   };
   assert_eq!(expect_connect, grants.allows_mcp_connect(mcp));
@@ -80,20 +80,20 @@ fn approved_resources_default_is_least_privilege_mcp_but_all_models() {
   // Models default to All (preserves the legacy "apps get all models"); MCP extra
   // defaults to none, NOT the all-access McpGrant::default().
   let v1 = ApprovedResourcesV1::default();
-  assert_eq!(ModelGrant::All, v1.models);
-  assert_eq!(McpGrant::Specific { ids: vec![] }, v1.mcps_extra);
+  assert_eq!(ModelGrant::All, v1.models_access);
+  assert_eq!(McpGrant::Specific { ids: vec![] }, v1.mcps_access);
 }
 
 #[test]
 fn approved_resources_serde_round_trip() {
   let original = ApprovedResources::V1(ApprovedResourcesV1 {
-    list_models: true,
-    models: ModelGrant::Specific {
+    models_list: true,
+    models_access: ModelGrant::Specific {
       ids: vec!["m1".into()],
     },
-    list_mcps: false,
+    mcps_list: false,
     mcps: vec![approval("a1", ApprovalStatus::Approved)],
-    mcps_extra: McpGrant::Specific {
+    mcps_access: McpGrant::Specific {
       ids: vec!["x9".into()],
     },
   });
@@ -110,10 +110,10 @@ fn approved_resources_legacy_json_deserializes_with_defaults() {
     r#"{"version":"1","mcps":[{"url":"https://m/x","status":"approved","instance":{"id":"a1"}}]}"#;
   let parsed: ApprovedResources = serde_json::from_str(legacy).unwrap();
   let v1 = parsed.v1();
-  assert!(!v1.list_models);
-  assert_eq!(ModelGrant::All, v1.models);
-  assert!(!v1.list_mcps);
-  assert_eq!(McpGrant::Specific { ids: vec![] }, v1.mcps_extra);
+  assert!(!v1.models_list);
+  assert_eq!(ModelGrant::All, v1.models_access);
+  assert!(!v1.mcps_list);
+  assert_eq!(McpGrant::Specific { ids: vec![] }, v1.mcps_access);
   assert_eq!(1, v1.mcps.len());
 }
 
