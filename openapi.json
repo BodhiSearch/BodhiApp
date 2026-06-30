@@ -11105,7 +11105,7 @@
             }
           }
         ],
-        "description": "Model inference grant. `All` is a wildcard that includes models added in the\nfuture; `Specific` lists alias ids (empty ⇒ no model access)."
+        "description": "Model inference grant. `All` is a wildcard that includes models added in the\nfuture; `Specific` lists alias ids (empty ⇒ no model access).\n\nDefaults to **least-privilege** (empty `Specific` ⇒ deny): an unspecified or\nlegacy grant grants nothing. All-access must be requested explicitly via\n`ModelGrant::All`. Symmetric with `ApprovedResourcesV1`'s empty-MCP default."
       },
       "ModelMetadata": {
         "type": "object",
@@ -11916,7 +11916,7 @@
       },
       "RequestedResourcesV1": {
         "type": "object",
-        "description": "What the external app asks for. The four booleans are **UI drivers**: they tell\nthe consent screen which controls to render (the owner decides the actual grant).\nFields are domain-first (`models_*` / `mcps_*`), matching `ApprovedResourcesV1`.\n`mcp_servers` is the existing by-url MCP request and is unchanged.",
+        "description": "What the external app asks for. The four booleans are **UI drivers**: they tell\nthe consent screen which controls to render (the owner decides the actual grant).\nFields are domain-first (`models_*` / `mcps_*`), matching `ApprovedResourcesV1`.\n`mcp_servers` is the existing by-url MCP request and is unchanged.\n\n`models_access` defaults to **true**: unless the app explicitly opts out\n(`models_access: false`), the consent screen shows the model-access selector so\nthe owner can always scope models. (The other UI-driver flags default to false.)",
         "properties": {
           "models_list": {
             "type": "boolean",
@@ -11924,7 +11924,7 @@
           },
           "models_access": {
             "type": "boolean",
-            "description": "Render the model All/Specific access selector."
+            "description": "Render the model All/Specific access selector. Defaults to `true` (shown)."
           },
           "mcps_list": {
             "type": "boolean",
@@ -11992,7 +11992,7 @@
       },
       "ResourceAccessInfo": {
         "type": "object",
-        "description": "Effective resource access for an external app, reflected from its approved grants.",
+        "description": "Effective resource access for a token-bearing principal (API token or external\napp), reflected from its grants. Reported uniformly via the `access` envelope\nfield for both principals.",
         "required": [
           "models",
           "mcps"
@@ -12000,11 +12000,11 @@
         "properties": {
           "models": {
             "$ref": "#/components/schemas/ResourceAccess",
-            "description": "Effective model access for this app."
+            "description": "Effective model access for this principal."
           },
           "mcps": {
             "$ref": "#/components/schemas/ResourceAccess",
-            "description": "Effective MCP access for this app."
+            "description": "Effective MCP access for this principal."
           }
         }
       },
@@ -12675,23 +12675,13 @@
       },
       "TokenInfo": {
         "type": "object",
-        "description": "API Token information response",
+        "description": "API Token information response. Effective model/MCP access is reported uniformly\nvia the envelope's `access` field (same shape as external apps), not inline here.",
         "required": [
-          "role",
-          "models",
-          "mcps"
+          "role"
         ],
         "properties": {
           "role": {
             "$ref": "#/components/schemas/TokenScope"
-          },
-          "models": {
-            "$ref": "#/components/schemas/ResourceAccess",
-            "description": "Effective model access for this token."
-          },
-          "mcps": {
-            "$ref": "#/components/schemas/ResourceAccess",
-            "description": "Effective MCP access for this token."
           }
         }
       },
@@ -13110,7 +13100,7 @@
                   },
                   {
                     "$ref": "#/components/schemas/ResourceAccessInfo",
-                    "description": "Effective resource access — present only for external-app principals."
+                    "description": "Effective resource access — present for token-bearing principals (API token\nor external app); absent for sessions and anonymous."
                   }
                 ]
               }

@@ -15,7 +15,7 @@ recommendation in `index.md`, this file wins.** Findings not listed here stand a
 | F14 | **Accept (no change)** | `mcps` (`McpGrant` in token vs `Vec<McpApproval>` in approved) is acceptable, not confusing. |
 | F29 | **Won't fix** | Cache-eviction compact-JSON needle: existing code comment is sufficient. |
 | F32 | **Partial** | Reject the "sensitive endpoint under apps-prefix" concern; **now**: drop `/apps` qualifier on the list endpoint; **defer** the module relocation + full path normalization to techdebt. |
-| F6 | **No-op** | Already handled previously. |
+| F6 | **Fix — fail-closed** | Unbound `ExternalApp{grants:None}` resolves to default-deny (not Unrestricted); enforcement + `/bodhi/v1/user` reflection both deny. |
 
 ---
 
@@ -140,8 +140,12 @@ Known and accepted; the **existing code comment is sufficient.** No added test/i
 
 ---
 
-## F6 — unbound ExternalApp → Unrestricted — **NO-OP**
-**Handled previously.** No further action from this review.
+## F6 — unbound ExternalApp → Unrestricted — **FIX (fail-closed)**
+Clarified: "no-op" meant *accept and fix as discussed*, not "do nothing". The fix:
+`AccessPolicy::of` resolves `ExternalApp { grants: None }` to a new `Deny` arm (equivalent to a
+default/empty `ApprovedResourcesV1`) instead of `Unrestricted` — so an external app with no bound,
+approved access request gets **no models and no MCPs** on every surface. `/bodhi/v1/user` reflection
+for the unbound case reports deny (empty `Specific`) to match. Implemented in Batch 2.
 
 ---
 

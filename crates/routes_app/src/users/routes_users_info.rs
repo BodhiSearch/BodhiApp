@@ -115,21 +115,11 @@ pub async fn users_info(
       };
       (user, Some(dashboard))
     }
-    AuthContext::ApiToken {
-      ref role,
-      ref grants,
-      ..
-    } => {
+    AuthContext::ApiToken { ref role, .. } => {
       debug!("api token auth");
-      let g = grants.v1();
-      (
-        UserResponse::Token(TokenInfo {
-          role: *role,
-          models: crate::ResourceAccess::models(g),
-          mcps: crate::ResourceAccess::mcps(g),
-        }),
-        None,
-      )
+      // Effective access is reported via the envelope `access` field below (parity
+      // with external apps) — `TokenInfo` carries only the role.
+      (UserResponse::Token(TokenInfo { role: *role }), None)
     }
     AuthContext::ExternalApp {
       ref token,
@@ -152,8 +142,15 @@ pub async fn users_info(
     }
   };
 
-  // Reflect effective resource access for external apps (parity with API tokens).
+  // Reflect effective resource access uniformly for both token-bearing principals.
   let access = match auth_scope.auth_context() {
+    AuthContext::ApiToken { grants, .. } => {
+      let g = grants.v1();
+      Some(crate::ResourceAccessInfo {
+        models: crate::ResourceAccess::models(g),
+        mcps: crate::ResourceAccess::mcps(g),
+      })
+    }
     AuthContext::ExternalApp { grants, .. } => Some(match grants {
       Some(g) => {
         let v1 = g.v1();
@@ -162,10 +159,17 @@ pub async fn users_info(
           mcps: crate::ResourceAccess::app_mcps(v1),
         }
       }
-      // No bound access request ⇒ unrestricted (pre-grants behavior).
+      // No bound access request ⇒ fail closed (deny everything), matching
+      // `AccessPolicy::Deny` — an unbound external app gets no models and no MCPs.
       None => crate::ResourceAccessInfo {
-        models: crate::ResourceAccess::All { list: true },
-        mcps: crate::ResourceAccess::All { list: true },
+        models: crate::ResourceAccess::Specific {
+          list: false,
+          ids: vec![],
+        },
+        mcps: crate::ResourceAccess::Specific {
+          list: false,
+          ids: vec![],
+        },
       },
     }),
     _ => None,

@@ -13,7 +13,7 @@ use services::{
   test_utils::{AppServiceStubBuilder, MockDbService, TestDbService, TEST_TENANT_ID},
   {AccessRequestRepository, AppAccessRequestStatus, FlowType},
 };
-use services::{ResourceRole, UserScope};
+use services::{ResourceRole, TokenScope, UserScope};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -108,6 +108,30 @@ async fn test_mcp_session_auth_passes_through() {
     .unwrap();
 
   assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[rstest]
+#[tokio::test]
+async fn test_mcp_api_token_passes_through() {
+  // API tokens bypass the access-request lifecycle check in this middleware — their
+  // per-resource grants are enforced downstream by AccessPolicy. Guards the explicit
+  // `AuthContext::ApiToken => Session` bypass arm against accidental removal (which
+  // would otherwise 403 every API token reaching /apps/mcps/* with no failing test).
+  let ctx = AuthContext::test_api_token("user123", TokenScope::User);
+  let app = test_mcp_router(ctx).await;
+
+  let response = app
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/mcps/01ARZ3NDEKTSV4RRFFQ69G5FAV/tools/read/execute")
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  assert_eq!(StatusCode::OK, response.status());
 }
 
 #[rstest]

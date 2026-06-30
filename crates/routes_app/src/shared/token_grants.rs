@@ -8,16 +8,20 @@
 //! (its `TokenGrantsV1`) and `AuthContext::ExternalApp` with a bound access request
 //! (its `ApprovedResourcesV1`) — flow through the same `Grants` arm: the policy holds
 //! a `&dyn ResourceGrants`, so handlers ask identical allow/deny questions of either.
-//! An `ExternalApp` without a bound access request stays `Unrestricted` (pre-grants
-//! behavior). The grant logic lives on the domain types; this type only resolves the
-//! principal and turns a denial into the right HTTP error.
+//! An `ExternalApp` **without** a bound access request is `Deny` (fail closed —
+//! equivalent to an empty `ApprovedResourcesV1`): it gets no models and no MCPs until
+//! an access request is approved. The grant logic lives on the domain types; this type
+//! only resolves the principal and turns a denial into the right HTTP error.
 
 use services::{AppError, AuthContext, ErrorType, ResourceGrants};
 
 /// Effective resource-access policy for the current principal.
 pub enum AccessPolicy<'a> {
-  /// No grant restrictions (session / unbound external-app).
+  /// No grant restrictions (session principals).
   Unrestricted,
+  /// Fail-closed: deny every resource. An external-app principal with no bound,
+  /// approved access request — equivalent to a default (empty) `ApprovedResourcesV1`.
+  Deny,
   /// Restricted to a grant envelope (API token or approved app).
   Grants(&'a dyn ResourceGrants),
 }
@@ -31,6 +35,8 @@ impl<'a> AccessPolicy<'a> {
         grants: Some(grants),
         ..
       } => AccessPolicy::Grants(grants.v1()),
+      // Unbound external app (no approved access request): fail closed.
+      AuthContext::ExternalApp { grants: None, .. } => AccessPolicy::Deny,
       _ => AccessPolicy::Unrestricted,
     }
   }
@@ -39,6 +45,7 @@ impl<'a> AccessPolicy<'a> {
   pub fn model_listable(&self, model_id: &str) -> bool {
     match self {
       AccessPolicy::Unrestricted => true,
+      AccessPolicy::Deny => false,
       AccessPolicy::Grants(grants) => grants.model_listable(model_id),
     }
   }
@@ -47,6 +54,7 @@ impl<'a> AccessPolicy<'a> {
   pub fn mcp_listable(&self, mcp_id: &str) -> bool {
     match self {
       AccessPolicy::Unrestricted => true,
+      AccessPolicy::Deny => false,
       AccessPolicy::Grants(grants) => grants.mcp_listable(mcp_id),
     }
   }
@@ -55,6 +63,7 @@ impl<'a> AccessPolicy<'a> {
   pub fn ensure_model_inference(&self, model_id: &str) -> Result<(), TokenGrantError> {
     match self {
       AccessPolicy::Unrestricted => Ok(()),
+      AccessPolicy::Deny => Err(TokenGrantError::ModelForbidden(model_id.to_string())),
       AccessPolicy::Grants(grants) if grants.allows_model_inference(model_id) => Ok(()),
       AccessPolicy::Grants(_) => Err(TokenGrantError::ModelForbidden(model_id.to_string())),
     }
@@ -64,6 +73,7 @@ impl<'a> AccessPolicy<'a> {
   pub fn ensure_mcp_connect(&self, mcp_id: &str) -> Result<(), TokenGrantError> {
     match self {
       AccessPolicy::Unrestricted => Ok(()),
+      AccessPolicy::Deny => Err(TokenGrantError::McpForbidden(mcp_id.to_string())),
       AccessPolicy::Grants(grants) if grants.allows_mcp_connect(mcp_id) => Ok(()),
       AccessPolicy::Grants(_) => Err(TokenGrantError::McpForbidden(mcp_id.to_string())),
     }

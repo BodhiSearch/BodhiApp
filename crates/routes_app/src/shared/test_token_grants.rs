@@ -108,13 +108,17 @@ fn mcp_policy_matrix(
 }
 
 #[test]
-fn external_app_without_grants_is_unrestricted() {
-  // No bound access request ⇒ preserves the pre-grants all-access behavior.
+fn external_app_without_grants_is_denied() {
+  // No bound access request ⇒ fail closed: no models, no MCPs (not the old
+  // pre-grants all-access). An unbound external app can do nothing until approved.
   let ctx = external_app(None);
   let policy = AccessPolicy::of(&ctx);
-  assert!(policy.model_listable("anything"));
-  assert!(policy.ensure_model_inference("anything").is_ok());
-  assert!(policy.ensure_mcp_connect("anything").is_ok());
+  assert!(!policy.model_listable("anything"));
+  assert!(!policy.mcp_listable("anything"));
+  let model_err = policy.ensure_model_inference("anything").unwrap_err();
+  assert_eq!("token_grant_error-model_forbidden", model_err.code());
+  let mcp_err = policy.ensure_mcp_connect("anything").unwrap_err();
+  assert_eq!("token_grant_error-mcp_forbidden", mcp_err.code());
 }
 
 #[test]

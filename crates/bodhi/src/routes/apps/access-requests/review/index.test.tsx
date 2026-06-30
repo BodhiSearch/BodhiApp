@@ -1057,6 +1057,7 @@ describe('ReviewAccessRequestPage - Model & MCP grant sections', () => {
       approved: {
         models_list: boolean;
         models_access: { type: string };
+        mcps_list: boolean;
         mcps: Array<{ url: string; status: string }>;
         mcps_access: { type: string; ids?: string[] };
       };
@@ -1064,6 +1065,8 @@ describe('ReviewAccessRequestPage - Model & MCP grant sections', () => {
     expect(body.approved.models_list).toBe(true);
     // models_access requested, mode defaults to All.
     expect(body.approved.models_access.type).toBe('all');
+    // "list all MCPs" was not toggled → mcps_list stays off.
+    expect(body.approved.mcps_list).toBe(false);
     expect(body.approved.mcps[0].status).toBe('approved');
     // No owner-extra MCPs selected → empty specific grant.
     expect(body.approved.mcps_access).toEqual({ type: 'specific', ids: [] });

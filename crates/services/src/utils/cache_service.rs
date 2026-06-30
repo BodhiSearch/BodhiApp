@@ -98,8 +98,8 @@ mod tests {
     cache.remove_entries_containing(r#""access_request_id":"ar-1""#);
 
     // Both ar-1 entries gone; ar-2 and the unrelated entry remain.
-    assert_eq!(cache.get("exchanged_token:aaa"), None);
-    assert_eq!(cache.get("exchanged_token:bbb"), None);
+    assert_eq!(None, cache.get("exchanged_token:aaa"));
+    assert_eq!(None, cache.get("exchanged_token:bbb"));
     assert!(cache.get("exchanged_token:ccc").is_some());
     assert!(cache.get("unrelated").is_some());
   }

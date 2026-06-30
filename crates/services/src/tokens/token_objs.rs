@@ -187,9 +187,18 @@ pub struct TokenDetail {
 
 impl From<super::TokenEntity> for TokenDetail {
   fn from(t: super::TokenEntity) -> Self {
-    // Stored grants are written by us and always valid; fall back to all-access
-    // defensively rather than panicking on an unexpected payload.
-    let grants = serde_json::from_str(&t.grants).unwrap_or_default();
+    // Stored grants are written by us and should always parse. If a payload is
+    // corrupt, display **deny-everything** (fail closed) rather than all-access:
+    // the auth middleware also fails closed on a corrupt grants column, so an
+    // all-access display would misrepresent a token that cannot actually be used.
+    let grants = serde_json::from_str(&t.grants).unwrap_or_else(|_| {
+      TokenGrants::V1(TokenGrantsV1 {
+        models_list: false,
+        models: ModelGrant::Specific { ids: vec![] },
+        mcps_list: false,
+        mcps: McpGrant::Specific { ids: vec![] },
+      })
+    });
     Self {
       id: t.id,
       user_id: t.user_id,
@@ -216,8 +225,9 @@ pub struct PaginatedTokenResponse {
 #[cfg(test)]
 mod tests {
   use crate::tokens::token_objs::{
-    default_grants_json, McpGrant, ModelGrant, TokenGrants, TokenGrantsV1,
+    default_grants_json, McpGrant, ModelGrant, TokenDetail, TokenGrants, TokenGrantsV1, TokenStatus,
   };
+  use crate::tokens::TokenEntity;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
@@ -252,11 +262,12 @@ mod tests {
   #[test]
   fn token_grants_defaults_missing_fields() {
     // Only the mandatory version tag → every field falls back to its serde default.
+    // `models` defaults to least-privilege (empty Specific) now; `mcps` is still All.
     let parsed: TokenGrants = serde_json::from_str(r#"{"version":"1"}"#).unwrap();
     assert_eq!(
       TokenGrants::V1(TokenGrantsV1 {
         models_list: false,
-        models: ModelGrant::All,
+        models: ModelGrant::Specific { ids: vec![] },
         mcps_list: false,
         mcps: McpGrant::All,
       }),
@@ -274,5 +285,33 @@ mod tests {
   fn token_grants_unknown_version_errors() {
     let err = serde_json::from_str::<TokenGrants>(r#"{"version":"2"}"#).unwrap_err();
     assert!(err.to_string().contains("Unsupported token grants version"));
+  }
+
+  #[test]
+  fn token_detail_from_corrupt_grants_displays_deny() {
+    // A corrupt/unparsable grants column must display deny-everything (fail closed),
+    // matching the auth middleware — never the all-access default that would
+    // misrepresent a token which cannot actually be used.
+    let ts: chrono::DateTime<chrono::Utc> = "2024-01-01T00:00:00Z".parse().unwrap();
+    let entity = TokenEntity {
+      id: "t1".to_string(),
+      tenant_id: "tenant".to_string(),
+      user_id: "u1".to_string(),
+      name: "n".to_string(),
+      token_prefix: "bodhiapp_x".to_string(),
+      token_hash: "h".to_string(),
+      scopes: "scope_token_user".to_string(),
+      status: TokenStatus::Active,
+      grants: "}{ not valid json".to_string(),
+      last_used_at: None,
+      created_at: ts,
+      updated_at: ts,
+    };
+    let detail = TokenDetail::from(entity);
+    let g = detail.grants.v1();
+    assert!(!g.models_list);
+    assert_eq!(ModelGrant::Specific { ids: vec![] }, g.models);
+    assert!(!g.mcps_list);
+    assert_eq!(McpGrant::Specific { ids: vec![] }, g.mcps);
   }
 }

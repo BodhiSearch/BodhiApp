@@ -230,13 +230,17 @@ impl Default for ApprovedResources {
 /// the consent screen which controls to render (the owner decides the actual grant).
 /// Fields are domain-first (`models_*` / `mcps_*`), matching `ApprovedResourcesV1`.
 /// `mcp_servers` is the existing by-url MCP request and is unchanged.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Default)]
+///
+/// `models_access` defaults to **true**: unless the app explicitly opts out
+/// (`models_access: false`), the consent screen shows the model-access selector so
+/// the owner can always scope models. (The other UI-driver flags default to false.)
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct RequestedResourcesV1 {
   /// Render the "list all models" toggle.
   #[serde(default)]
   pub models_list: bool,
-  /// Render the model All/Specific access selector.
-  #[serde(default)]
+  /// Render the model All/Specific access selector. Defaults to `true` (shown).
+  #[serde(default = "default_true")]
   pub models_access: bool,
   /// Render the "list all MCPs" toggle.
   #[serde(default)]
@@ -246,6 +250,23 @@ pub struct RequestedResourcesV1 {
   pub mcps_access: bool,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub mcp_servers: Vec<RequestedMcpServer>,
+}
+
+/// serde/Default helper: `models_access` is shown by default (see `RequestedResourcesV1`).
+fn default_true() -> bool {
+  true
+}
+
+impl Default for RequestedResourcesV1 {
+  fn default() -> Self {
+    Self {
+      models_list: false,
+      models_access: default_true(),
+      mcps_list: false,
+      mcps_access: false,
+      mcp_servers: Vec::new(),
+    }
+  }
 }
 
 /// What the owner granted at consent. Field names mirror `RequestedResourcesV1`

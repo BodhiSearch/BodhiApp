@@ -97,7 +97,12 @@ pub struct AppAccessSummary {
 impl AppAccessSummary {
   /// Build a summary from an access-request row, reflecting its approved grants
   /// (defaults to no access when the approved JSON is missing/unparsable).
-  pub fn from_row(row: AppAccessRequest) -> Self {
+  ///
+  /// `caller_max_scope` clamps a (possibly DB-tampered) stored `approved_role` to the
+  /// ceiling the session caller could actually have granted — mirroring the
+  /// privilege-escalation guard enforced at token-exchange — so the list/revoke views
+  /// never advertise a role the issued token cannot actually use. `None` ⇒ no clamp.
+  pub fn from_row(row: AppAccessRequest, caller_max_scope: Option<UserScope>) -> Self {
     let approved = row
       .approved
       .as_deref()
@@ -121,7 +126,13 @@ impl AppAccessSummary {
       app_name: row.app_name,
       app_description: row.app_description,
       status: row.status,
-      approved_role: row.approved_role.and_then(|r| r.parse().ok()),
+      approved_role: row
+        .approved_role
+        .and_then(|r| r.parse::<UserScope>().ok())
+        .map(|r| match caller_max_scope {
+          Some(max) if r > max => max,
+          _ => r,
+        }),
       models,
       mcps,
       created_at: row.created_at,

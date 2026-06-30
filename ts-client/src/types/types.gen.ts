@@ -1174,6 +1174,10 @@ export type ModelCapabilities = {
 /**
  * Model inference grant. `All` is a wildcard that includes models added in the
  * future; `Specific` lists alias ids (empty ⇒ no model access).
+ *
+ * Defaults to **least-privilege** (empty `Specific` ⇒ deny): an unspecified or
+ * legacy grant grants nothing. All-access must be requested explicitly via
+ * `ModelGrant::All`. Symmetric with `ApprovedResourcesV1`'s empty-MCP default.
  */
 export type ModelGrant = {
     type: 'all';
@@ -1483,6 +1487,10 @@ export type RequestedResources = RequestedResourcesV1 & {
  * the consent screen which controls to render (the owner decides the actual grant).
  * Fields are domain-first (`models_*` / `mcps_*`), matching `ApprovedResourcesV1`.
  * `mcp_servers` is the existing by-url MCP request and is unchanged.
+ *
+ * `models_access` defaults to **true**: unless the app explicitly opts out
+ * (`models_access: false`), the consent screen shows the model-access selector so
+ * the owner can always scope models. (The other UI-driver flags default to false.)
  */
 export type RequestedResourcesV1 = {
     /**
@@ -1490,7 +1498,7 @@ export type RequestedResourcesV1 = {
      */
     models_list?: boolean;
     /**
-     * Render the model All/Specific access selector.
+     * Render the model All/Specific access selector. Defaults to `true` (shown).
      */
     models_access?: boolean;
     /**
@@ -1520,15 +1528,17 @@ export type ResourceAccess = {
 };
 
 /**
- * Effective resource access for an external app, reflected from its approved grants.
+ * Effective resource access for a token-bearing principal (API token or external
+ * app), reflected from its grants. Reported uniformly via the `access` envelope
+ * field for both principals.
  */
 export type ResourceAccessInfo = {
     /**
-     * Effective model access for this app.
+     * Effective model access for this principal.
      */
     models: ResourceAccess;
     /**
-     * Effective MCP access for this app.
+     * Effective MCP access for this principal.
      */
     mcps: ResourceAccess;
 };
@@ -1732,18 +1742,11 @@ export type TokenGrantsV1 = {
 };
 
 /**
- * API Token information response
+ * API Token information response. Effective model/MCP access is reported uniformly
+ * via the envelope's `access` field (same shape as external apps), not inline here.
  */
 export type TokenInfo = {
     role: TokenScope;
-    /**
-     * Effective model access for this token.
-     */
-    models: ResourceAccess;
-    /**
-     * Effective MCP access for this token.
-     */
-    mcps: ResourceAccess;
 };
 
 export type TokenScope = 'scope_token_user' | 'scope_token_power_user';

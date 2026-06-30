@@ -1256,3 +1256,41 @@ async fn test_review_access_request_invalid_requested_json() -> anyhow::Result<(
 
   Ok(())
 }
+
+#[test]
+fn app_access_summary_clamps_tampered_approved_role() {
+  use services::UserScope;
+  let ts: chrono::DateTime<chrono::Utc> = "2024-01-01T00:00:00Z".parse().unwrap();
+  let row = |approved_role: Option<&str>| AppAccessRequest {
+    id: "ar-1".to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
+    app_client_id: "app".to_string(),
+    app_name: None,
+    app_description: None,
+    flow_type: FlowType::Redirect,
+    redirect_uri: None,
+    status: AppAccessRequestStatus::Approved,
+    requested: r#"{"version":"1"}"#.to_string(),
+    approved: None,
+    user_id: Some("u".to_string()),
+    requested_role: "scope_user_power_user".to_string(),
+    approved_role: approved_role.map(|s| s.to_string()),
+    access_request_scope: None,
+    error_message: None,
+    expires_at: ts,
+    created_at: ts,
+    updated_at: ts,
+  };
+
+  // A (DB-tampered) role above the caller's ceiling is clamped down for display.
+  let s =
+    crate::AppAccessSummary::from_row(row(Some("scope_user_power_user")), Some(UserScope::User));
+  assert_eq!(Some(UserScope::User), s.approved_role);
+  // Within the ceiling ⇒ unchanged.
+  let s =
+    crate::AppAccessSummary::from_row(row(Some("scope_user_user")), Some(UserScope::PowerUser));
+  assert_eq!(Some(UserScope::User), s.approved_role);
+  // No ceiling (non-session principal) ⇒ no clamp.
+  let s = crate::AppAccessSummary::from_row(row(Some("scope_user_power_user")), None);
+  assert_eq!(Some(UserScope::PowerUser), s.approved_role);
+}

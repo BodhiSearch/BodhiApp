@@ -427,12 +427,33 @@ pub async fn apps_list_user_access(
 ) -> Result<Json<ListAppAccessResponse>, BodhiErrorResponse> {
   let user_id = auth_scope.require_user_id()?;
   let tenant_id = auth_scope.require_tenant_id()?;
+  let ceiling = caller_max_user_scope(&auth_scope);
   let rows = auth_scope
     .access_request_service()
     .list_approved_for_user(tenant_id, user_id)
     .await?;
-  let data = rows.into_iter().map(AppAccessSummary::from_row).collect();
+  let data = rows
+    .into_iter()
+    .map(|row| AppAccessSummary::from_row(row, ceiling))
+    .collect();
   Ok(Json(ListAppAccessResponse { data }))
+}
+
+/// The maximum `UserScope` the session caller could have granted — used to clamp a
+/// (possibly DB-tampered) stored `approved_role` for display, mirroring the
+/// token-exchange privilege ceiling. Non-session principals ⇒ `None` (no clamp).
+fn caller_max_user_scope(auth_scope: &AuthScope) -> Option<UserScope> {
+  match auth_scope.auth_context() {
+    services::AuthContext::Session { role, .. }
+    | services::AuthContext::MultiTenantSession { role, .. } => {
+      Some(if *role >= ResourceRole::PowerUser {
+        UserScope::PowerUser
+      } else {
+        UserScope::User
+      })
+    }
+    _ => None,
+  }
 }
 
 /// Revoke an issued app token (POST /access-requests/:id/revoke)
@@ -473,7 +494,8 @@ pub async fn apps_revoke_access_request(
     .cache_service()
     .remove_entries_containing(&needle);
 
-  Ok(Json(AppAccessSummary::from_row(updated)))
+  let ceiling = caller_max_user_scope(&auth_scope);
+  Ok(Json(AppAccessSummary::from_row(updated, ceiling)))
 }
 
 #[cfg(test)]

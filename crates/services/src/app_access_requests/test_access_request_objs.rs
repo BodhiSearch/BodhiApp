@@ -76,11 +76,11 @@ fn approved_mcp_predicates(
 }
 
 #[test]
-fn approved_resources_default_is_least_privilege_mcp_but_all_models() {
-  // Models default to All (preserves the legacy "apps get all models"); MCP extra
-  // defaults to none, NOT the all-access McpGrant::default().
+fn approved_resources_default_is_least_privilege() {
+  // Both dimensions default to least-privilege (empty Specific ⇒ deny). The legacy
+  // "apps get all models" default is gone — the owner must grant models explicitly.
   let v1 = ApprovedResourcesV1::default();
-  assert_eq!(ModelGrant::All, v1.models_access);
+  assert_eq!(ModelGrant::Specific { ids: vec![] }, v1.models_access);
   assert_eq!(McpGrant::Specific { ids: vec![] }, v1.mcps_access);
 }
 
@@ -105,13 +105,13 @@ fn approved_resources_serde_round_trip() {
 #[test]
 fn approved_resources_legacy_json_deserializes_with_defaults() {
   // Pre-grants approval JSON carried only `mcps`. It must still deserialize, with
-  // the new fields taking their defaults.
+  // the new fields taking their defaults — models now deny-by-default (least-privilege).
   let legacy =
     r#"{"version":"1","mcps":[{"url":"https://m/x","status":"approved","instance":{"id":"a1"}}]}"#;
   let parsed: ApprovedResources = serde_json::from_str(legacy).unwrap();
   let v1 = parsed.v1();
   assert!(!v1.models_list);
-  assert_eq!(ModelGrant::All, v1.models_access);
+  assert_eq!(ModelGrant::Specific { ids: vec![] }, v1.models_access);
   assert!(!v1.mcps_list);
   assert_eq!(McpGrant::Specific { ids: vec![] }, v1.mcps_access);
   assert_eq!(1, v1.mcps.len());
@@ -129,5 +129,6 @@ fn requested_resources_legacy_json_deserializes_with_default_flags() {
     },
     v1
   );
-  assert!(!v1.models_list && !v1.models_access && !v1.mcps_list && !v1.mcps_access);
+  // models_access now defaults to true (consent shows the model selector by default).
+  assert!(!v1.models_list && v1.models_access && !v1.mcps_list && !v1.mcps_access);
 }

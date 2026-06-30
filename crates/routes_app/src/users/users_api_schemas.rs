@@ -104,23 +104,22 @@ impl ResourceAccess {
   }
 }
 
-/// Effective resource access for an external app, reflected from its approved grants.
+/// Effective resource access for a token-bearing principal (API token or external
+/// app), reflected from its grants. Reported uniformly via the `access` envelope
+/// field for both principals.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct ResourceAccessInfo {
-  /// Effective model access for this app.
+  /// Effective model access for this principal.
   pub models: ResourceAccess,
-  /// Effective MCP access for this app.
+  /// Effective MCP access for this principal.
   pub mcps: ResourceAccess,
 }
 
-/// API Token information response
+/// API Token information response. Effective model/MCP access is reported uniformly
+/// via the envelope's `access` field (same shape as external apps), not inline here.
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct TokenInfo {
   pub role: TokenScope,
-  /// Effective model access for this token.
-  pub models: ResourceAccess,
-  /// Effective MCP access for this token.
-  pub mcps: ResourceAccess,
 }
 
 /// User authentication response with discriminated union
@@ -162,7 +161,8 @@ pub struct UserInfoEnvelope {
   /// Dashboard user info when a validated dashboard session exists
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub dashboard: Option<DashboardUser>,
-  /// Effective resource access — present only for external-app principals.
+  /// Effective resource access — present for token-bearing principals (API token
+  /// or external app); absent for sessions and anonymous.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub access: Option<ResourceAccessInfo>,
 }

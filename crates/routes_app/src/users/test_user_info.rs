@@ -132,17 +132,17 @@ async fn test_user_info_handler_api_token_with_token_scope(
   assert_eq!(StatusCode::OK, response.status());
   let response_json = response.json::<UserInfoEnvelope>().await?;
 
-  // API tokens should return TokenInfo, not UserInfo. test_api_token uses default
-  // (all-access) grants, so both resources reflect access_all with no ids.
+  // API tokens return TokenInfo (role only). Effective access is reported via the
+  // `access` envelope (parity with external apps). test_api_token uses default
+  // (all-access) grants, so both resources reflect access_all.
   assert_eq!(
     UserInfoEnvelope {
-      user: UserResponse::Token(TokenInfo {
-        role: token_scope,
+      user: UserResponse::Token(TokenInfo { role: token_scope }),
+      dashboard: None,
+      access: Some(ResourceAccessInfo {
         models: ResourceAccess::All { list: true },
         mcps: ResourceAccess::All { list: true },
       }),
-      dashboard: None,
-      access: None,
     },
     response_json
   );
@@ -188,6 +188,9 @@ async fn test_user_info_handler_api_token_reflects_specific_grants() -> anyhow::
     UserInfoEnvelope {
       user: UserResponse::Token(TokenInfo {
         role: TokenScope::User,
+      }),
+      dashboard: None,
+      access: Some(ResourceAccessInfo {
         models: ResourceAccess::Specific {
           list: false,
           ids: vec!["llama2:chat".to_string()],
@@ -198,8 +201,6 @@ async fn test_user_info_handler_api_token_reflects_specific_grants() -> anyhow::
           ids: vec![],
         },
       }),
-      dashboard: None,
-      access: None,
     },
     response_json
   );
@@ -255,9 +256,16 @@ async fn test_user_info_handler_bearer_token_with_user_scope(
         id_token: None,
       }),
       dashboard: None,
+      // Unbound external app (no approved access request) ⇒ fail closed (deny).
       access: Some(ResourceAccessInfo {
-        models: ResourceAccess::All { list: true },
-        mcps: ResourceAccess::All { list: true },
+        models: ResourceAccess::Specific {
+          list: false,
+          ids: vec![],
+        },
+        mcps: ResourceAccess::Specific {
+          list: false,
+          ids: vec![],
+        },
       }),
     },
     response_json
@@ -424,9 +432,16 @@ async fn test_user_info_handler_external_app_without_scope(
         id_token: None,
       }),
       dashboard: None,
+      // Unbound external app (no approved access request) ⇒ fail closed (deny).
       access: Some(ResourceAccessInfo {
-        models: ResourceAccess::All { list: true },
-        mcps: ResourceAccess::All { list: true },
+        models: ResourceAccess::Specific {
+          list: false,
+          ids: vec![],
+        },
+        mcps: ResourceAccess::Specific {
+          list: false,
+          ids: vec![],
+        },
       }),
     },
     response_json

@@ -3,14 +3,21 @@ use utoipa::ToSchema;
 
 /// Model inference grant. `All` is a wildcard that includes models added in the
 /// future; `Specific` lists alias ids (empty ⇒ no model access).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema, Default)]
+///
+/// Defaults to **least-privilege** (empty `Specific` ⇒ deny): an unspecified or
+/// legacy grant grants nothing. All-access must be requested explicitly via
+/// `ModelGrant::All`. Symmetric with `ApprovedResourcesV1`'s empty-MCP default.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ModelGrant {
-  #[default]
   All,
-  Specific {
-    ids: Vec<String>,
-  },
+  Specific { ids: Vec<String> },
+}
+
+impl Default for ModelGrant {
+  fn default() -> Self {
+    ModelGrant::Specific { ids: Vec::new() }
+  }
 }
 
 impl ModelGrant {
