@@ -90,7 +90,9 @@ test.describe('MCP Server Management', () => {
 
     await test.step('Select tool and execute', async () => {
       await mcpsPage.selectPlaygroundTool('echo');
-      await mcpsPage.expectPlaygroundToolSelected('echo');
+      // The detail header shows the tool's friendly title (everything server's
+      // echo tool is titled "Echo Tool"); selection is still keyed on the name.
+      await mcpsPage.expectPlaygroundToolSelected('Echo Tool');
 
       const paramField = mcpsPage.page.locator(mcpsPage.selectors.playgroundParam('message'));
       await expect(paramField).toBeVisible();

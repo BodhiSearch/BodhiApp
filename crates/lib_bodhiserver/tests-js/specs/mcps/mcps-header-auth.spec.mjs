@@ -153,7 +153,7 @@ test.describe('MCP Header/Query Auth E2E', { tag: ['@mcps', '@auth'] }, () => {
     await test.step('Verify credential values flow through encryption/decryption', async () => {
       // Switch to raw tab to get the full response JSON
       await mcpsPage.clickPlaygroundResultTab('raw');
-      const rawContent = await mcpsPage.getPlaygroundResultContent();
+      const rawContent = await mcpsPage.getPlaygroundResultRaw();
       expect(rawContent).toBeTruthy();
 
       // The raw response contains { content: [{ type: 'text', text: '...' }], isError: false }

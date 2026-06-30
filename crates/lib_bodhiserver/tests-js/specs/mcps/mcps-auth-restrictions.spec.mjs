@@ -251,14 +251,17 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       expect(mcpData.id).toBe(approvedInstanceId);
     });
 
-    await test.step('Phase 5: Verify restricted MCP denied (403)', async () => {
+    await test.step('Phase 5: Verify restricted MCP denied (404)', async () => {
+      // Per-instance authorization moved from the access-request middleware to
+      // AccessPolicy in the handler: a non-granted MCP is now hidden (404), not
+      // 403, so its existence is not revealed to a scoped token.
       await app.rest.sendRequest({
         method: 'GET',
         url: `/bodhi/v1/apps/mcps/${restrictedInstanceId}`,
       });
-      expect(await app.rest.getResponseStatus()).toBe(403);
+      expect(await app.rest.getResponseStatus()).toBe(404);
       const getError = await app.rest.getResponse();
-      expect(getError.error.code).toBe('access_request_auth_error-entity_not_approved');
+      expect(getError.error.code).toBe('entity_error-not_found');
     });
   });
 });
