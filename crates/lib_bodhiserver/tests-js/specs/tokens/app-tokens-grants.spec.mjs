@@ -101,42 +101,37 @@ test.describe('App Tokens - grants, enforcement & revoke', { tag: '@oauth' }, ()
       expect(await app.rest.getResponseStatus()).toBe(403);
     });
 
+    // Drive the owner's management UI on a second page (shares the session
+    // cookie) so the test-app page stays authenticated for the token-death check.
+    const ownerPage = await page.context().newPage();
+    const appTokensPage = new AppTokensPage(ownerPage, sharedServerUrl);
+
     let rowId;
     await test.step('Owner sees the app under App Tokens with a "No models" summary', async () => {
-      const appTokensPage = new AppTokensPage(page, sharedServerUrl);
       await appTokensPage.navigateToAppTokens();
       rowId = await appTokensPage.findRowIdByClientId(appClient.clientId);
       expect(rowId).not.toBeNull();
-      await expect(page.locator(appTokensPage.row(rowId))).toContainText('No models');
+      await expect(ownerPage.locator(appTokensPage.row(rowId))).toContainText('No models');
     });
 
     await test.step('Owner opens the rail and revokes access', async () => {
-      const appTokensPage = new AppTokensPage(page, sharedServerUrl);
       await appTokensPage.openRail(rowId);
       await appTokensPage.revokeAccess();
       // Revoked grants drop out of the list (only Approved are shown).
-      await expect(page.locator(appTokensPage.row(rowId))).toHaveCount(0);
+      await expect(ownerPage.locator(appTokensPage.row(rowId))).toHaveCount(0);
+      await ownerPage.close();
     });
 
-    await test.step('Revoked: a fresh exchange of the app token is rejected', async () => {
-      // Re-running the OAuth flow forces a fresh token-exchange, which now fails
-      // because the access request is Revoked (not Approved).
-      await app.navigate();
-      await app.config.configureOAuthForm({
-        bodhiServerUrl: sharedServerUrl,
-        authServerUrl: authServerConfig.authUrl,
-        realm: authServerConfig.authRealm,
-        clientId: appClient.clientId,
-        redirectUri,
-        scope: 'openid email profile roles',
-        requested: JSON.stringify({ version: '1' }),
-      });
-      // A brand-new request-access draft is created (the revoked one can't be reused);
-      // this proves the revoked grant no longer authorizes the app and the owner must re-approve.
-      await app.config.submitAccessRequest();
-      await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
-      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-      await reviewPage.waitForReviewPage();
+    await test.step('Revoked immediately: the previously-working token is now rejected', async () => {
+      // Revoke evicts the cached token-exchange result, so the very next call with
+      // the same token is rejected (no 5-minute TTL wait). The test-app page is
+      // still on its authenticated dashboard. /bodhi/v1/user is optional-auth, so
+      // a rejected token falls back to logged_out.
+      await app.rest.navigateTo();
+      await app.rest.sendRequest({ method: 'GET', url: '/bodhi/v1/user' });
+      expect(await app.rest.getResponseStatus()).toBe(200);
+      const info = await app.rest.getResponse();
+      expect(info.auth_status).toBe('logged_out');
     });
   });
 });

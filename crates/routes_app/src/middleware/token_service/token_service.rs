@@ -35,6 +35,17 @@ pub struct CachedExchangeResult {
   pub cached_at: i64,
 }
 
+/// Cache-value substring identifying every cached exchange result bound to
+/// `access_request_id`. Revoking an access request evicts these so the change
+/// takes effect immediately on all paths (not just after the 5-minute TTL).
+///
+/// Assumes `CachedExchangeResult` is serialized with serde_json's compact form
+/// (no spaces around `:`), which is how it is cached. Co-located with the struct
+/// so it tracks the serialized field name; revisit if the cache format changes.
+pub fn access_request_cache_needle(access_request_id: &str) -> String {
+  format!("\"access_request_id\":\"{}\"", access_request_id)
+}
+
 pub struct DefaultTokenService {
   auth_service: Arc<dyn AuthService>,
   tenant_service: Arc<dyn TenantService>,

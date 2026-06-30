@@ -465,6 +465,14 @@ pub async fn apps_revoke_access_request(
     .access_request_service()
     .revoke_request(tenant_id, &id, user_id)
     .await?;
+
+  // Evict any cached token-exchange results bound to this access request so the
+  // revocation takes effect immediately on every path (not after the 5-min TTL).
+  let needle = crate::middleware::token_service::access_request_cache_needle(&id);
+  auth_scope
+    .cache_service()
+    .remove_entries_containing(&needle);
+
   Ok(Json(AppAccessSummary::from_row(updated)))
 }
 
