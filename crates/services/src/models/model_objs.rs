@@ -994,20 +994,22 @@ impl Alias {
     matches!(self, Alias::ModelRouter(_))
   }
 
-  /// Retain only models for which `keep` (called with each request-facing model id)
-  /// returns true, pruning a multi-model API alias's inner list in place. Returns
-  /// false when nothing remains, so the caller drops the alias. A
-  /// `forward_all_with_prefix` API alias matches an unbounded set and is judged by
-  /// `keep(prefix)` as a whole.
+  /// Retain only models for which `keep` (called with each request-facing model id —
+  /// `prefix + model.id`) returns true, pruning a multi-model API alias's inner list in
+  /// place. Returns false when nothing remains, so the caller drops the alias.
+  ///
+  /// API aliases are judged **per model**, matching `ApiAlias::matchable_models` and the
+  /// OAI `/v1/models` listing — including `forward_all_with_prefix` aliases. The
+  /// forward-all wildcard governs request *routing*, not what the catalog enumerates, so
+  /// a `Specific` grant naming one of the alias's seed models keeps exactly that model
+  /// (judging the whole alias by `keep(prefix)` would key on a different id than the UI
+  /// picker and OAI listing use, hiding granted models from `/bodhi/v1/models`).
   pub fn retain_listable_models(&mut self, keep: impl Fn(&str) -> bool) -> bool {
     match self {
       Alias::User(a) => keep(&a.alias),
       Alias::Model(a) => keep(&a.alias),
       Alias::ModelRouter(r) => keep(&r.alias),
       Alias::Api(a) => {
-        if a.forward_all_with_prefix {
-          return keep(a.prefix.as_deref().unwrap_or(""));
-        }
         let prefix = a.prefix.clone().unwrap_or_default();
         a.models.retain(|m| keep(&format!("{}{}", prefix, m.id())));
         !a.models.is_empty()

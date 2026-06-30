@@ -117,6 +117,10 @@ async fn test_chat_completions_scoped_token_forbidden() -> anyhow::Result<()> {
     .await?;
   let app = Router::new()
     .route("/v1/chat/completions", post(chat_completions_handler))
+    // Inference grants are enforced by the shared middleware, not in the handler.
+    .layer(axum::middleware::from_fn(
+      crate::middleware::model_inference_grant_middleware,
+    ))
     .with_state(Arc::new(app_service) as Arc<dyn services::AppService>);
 
   // Token grants a different model → 403 before the request is ever forwarded.
@@ -168,6 +172,10 @@ async fn test_chat_completions_external_app_model_forbidden() -> anyhow::Result<
     .await?;
   let app = Router::new()
     .route("/v1/chat/completions", post(chat_completions_handler))
+    // Inference grants are enforced by the shared middleware, not in the handler.
+    .layer(axum::middleware::from_fn(
+      crate::middleware::model_inference_grant_middleware,
+    ))
     .with_state(Arc::new(app_service) as Arc<dyn services::AppService>);
 
   // Approved app scoped to a different model → 403, same as an API token.

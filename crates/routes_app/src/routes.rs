@@ -1,7 +1,7 @@
 use crate::middleware::{
   access_request_auth_middleware, anthropic_auth_middleware, api_auth_middleware, auth_middleware,
-  canonical_url_middleware, gemini_auth_middleware, openai_auth_middleware,
-  optional_auth_middleware,
+  canonical_url_middleware, gemini_auth_middleware, model_inference_grant_middleware,
+  openai_auth_middleware, optional_auth_middleware,
 };
 use crate::{
   anthropic_messages_create_handler, anthropic_models_get_handler, anthropic_models_list_handler,
@@ -218,6 +218,9 @@ pub async fn build_routes(
     .route(ENDPOINT_MODELS, get(models_index))
     .route(&format!("{ENDPOINT_MODELS}/{{id}}"), get(models_show))
     .route(ENDPOINT_MODELS_FILES, get(modelfiles_index))
+    // Per-model inference enforcement (runs inside api_auth): 403s a non-granted
+    // model on every completion surface. See middleware::model_grant.
+    .route_layer(from_fn(model_inference_grant_middleware))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
@@ -249,6 +252,7 @@ pub async fn build_routes(
       &format!("{ENDPOINT_ANTHROPIC_MODELS}/{{model_id}}"),
       get(anthropic_models_get_handler),
     )
+    .route_layer(from_fn(model_inference_grant_middleware))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
@@ -275,6 +279,7 @@ pub async fn build_routes(
       ENDPOINT_GEMINI_MODEL,
       get(gemini_models_get).post(gemini_action_handler),
     )
+    .route_layer(from_fn(model_inference_grant_middleware))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {

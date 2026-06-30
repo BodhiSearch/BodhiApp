@@ -125,6 +125,8 @@ pub async fn gemini_models_list(
 ) -> Result<Json<serde_json::Value>, GeminiApiError> {
   let aliases = list_user_gemini_aliases(&auth_scope).await?;
 
+  // Filter by the principal's grant, same as the OAI /v1/models listing.
+  let policy = auth_scope.access_policy();
   let mut seen: HashSet<String> = HashSet::new();
   let mut ordered: Vec<serde_json::Value> = Vec::new();
 
@@ -133,7 +135,7 @@ pub async fn gemini_models_list(
     for model in alias.models.iter() {
       if let ApiModel::Gemini(m) = model {
         let key = format!("{}{}", prefix, m.model_id());
-        if seen.insert(key) {
+        if seen.insert(key.clone()) && policy.model_listable(&key) {
           ordered.push(gemini_model_to_json(m, prefix));
         }
       }
@@ -152,6 +154,14 @@ pub async fn gemini_models_get(
 ) -> Result<Json<serde_json::Value>, GeminiApiError> {
   let model_id = id;
   validate_model_id(&model_id)?;
+
+  // Not-listable → 404 (don't reveal existence to a scoped token/app).
+  if !auth_scope.access_policy().model_listable(&model_id) {
+    return Err(GeminiApiError::not_found(format!(
+      "Model '{}' not found.",
+      model_id
+    )));
+  }
 
   let aliases = list_user_gemini_aliases(&auth_scope).await?;
 
@@ -209,8 +219,6 @@ pub async fn gemini_action_handler(
   }
 
   validate_model_id(model)?;
-
-  auth_scope.access_policy().ensure_model_inference(model)?;
 
   let (api_alias, api_key) = resolve_gemini_alias(&auth_scope, model).await?;
   let stripped_model = strip_alias_prefix(model, &api_alias);

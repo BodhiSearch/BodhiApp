@@ -145,8 +145,6 @@ pub async fn anthropic_messages_create_handler(
     .ok_or_else(AnthropicApiError::missing_model)?
     .to_string();
 
-  auth_scope.access_policy().ensure_model_inference(&model)?;
-
   let resolution = resolve_anthropic_alias(&auth_scope, &model).await?;
   let client_headers = extract_anthropic_headers(&headers);
   let params: Vec<(String, String)> = query_params.into_iter().collect();
@@ -186,6 +184,9 @@ pub async fn anthropic_models_list_handler(
 ) -> Result<Json<serde_json::Value>, AnthropicApiError> {
   let aliases = list_user_anthropic_aliases(&auth_scope).await?;
 
+  // Filter by the principal's grant, same as the OAI /v1/models listing — a scoped
+  // token/app must not see models it isn't granted.
+  let policy = auth_scope.access_policy();
   let mut seen: HashSet<String> = HashSet::new();
   let mut ordered: Vec<serde_json::Value> = Vec::new();
 
@@ -195,7 +196,7 @@ pub async fn anthropic_models_list_handler(
       match model {
         ApiModel::Anthropic(m) => {
           let aliased_id = format!("{}{}", prefix, m.id);
-          if seen.insert(aliased_id.clone()) {
+          if seen.insert(aliased_id.clone()) && policy.model_listable(&aliased_id) {
             let mut entry = serde_json::to_value(m).unwrap_or_default();
             entry["id"] = serde_json::json!(aliased_id);
             ordered.push(entry);
@@ -231,6 +232,11 @@ pub async fn anthropic_models_get_handler(
   Path(model_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, AnthropicApiError> {
   validate_model_id(&model_id)?;
+
+  // Not-listable → 404 (don't reveal existence to a scoped token/app).
+  if !auth_scope.access_policy().model_listable(&model_id) {
+    return Err(AnthropicApiError::not_found(&model_id));
+  }
 
   let aliases = list_user_anthropic_aliases(&auth_scope).await?;
 
