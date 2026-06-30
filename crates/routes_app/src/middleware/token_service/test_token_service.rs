@@ -1733,3 +1733,41 @@ async fn test_validate_bearer_token_privilege_escalation_rejected(
   }
   Ok(())
 }
+
+/// Couples `access_request_cache_needle` to the real serialized
+/// `CachedExchangeResult`. If the cached JSON shape drifts (field rename,
+/// `skip_serializing_if`, different envelope), the eviction needle stops
+/// matching and a revoked app token keeps working until the 5-min TTL — this
+/// fails loudly instead.
+#[test]
+fn test_access_request_cache_needle_matches_serialized_cached_exchange_result() {
+  use crate::middleware::token_service::{access_request_cache_needle, CachedExchangeResult};
+  use pretty_assertions::assert_eq;
+
+  let result = CachedExchangeResult {
+    token: "exchanged-token".to_string(),
+    client_id: "client-id".to_string(),
+    tenant_id: "tenant-id".to_string(),
+    app_client_id: "app-client-id".to_string(),
+    role: None,
+    access_request_id: Some("ar-123".to_string()),
+    grants: None,
+    cached_at: 0,
+  };
+
+  let serialized = serde_json::to_string(&result).expect("serialize CachedExchangeResult");
+  let needle = access_request_cache_needle("ar-123");
+
+  assert!(
+    serialized.contains(&needle),
+    "eviction needle `{needle}` must be a substring of cached JSON `{serialized}`"
+  );
+
+  let other_needle = access_request_cache_needle("ar-999");
+  assert!(
+    !serialized.contains(&other_needle),
+    "needle for a different access_request_id must NOT match — eviction must be targeted"
+  );
+
+  assert_eq!(r#""access_request_id":"ar-123""#, needle);
+}

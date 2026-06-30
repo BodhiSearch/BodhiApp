@@ -7,19 +7,16 @@ use services::{
 };
 
 fn token(models: ModelGrant, models_list: bool, mcps: McpGrant, mcps_list: bool) -> AuthContext {
-  AuthContext::ApiToken {
-    client_id: "c".to_string(),
-    tenant_id: "t".to_string(),
-    user_id: "u".to_string(),
-    role: TokenScope::User,
-    token: "tok".to_string(),
-    grants: TokenGrants::V1(TokenGrantsV1 {
+  AuthContext::test_api_token_with_grants(
+    "u",
+    TokenScope::User,
+    TokenGrants::V1(TokenGrantsV1 {
       models_list,
       models,
       mcps_list,
       mcps,
     }),
-  }
+  )
 }
 
 fn specific(ids: &[&str]) -> ModelGrant {
@@ -29,16 +26,10 @@ fn specific(ids: &[&str]) -> ModelGrant {
 }
 
 fn external_app(grants: Option<ApprovedResources>) -> AuthContext {
-  AuthContext::ExternalApp {
-    client_id: "c".to_string(),
-    tenant_id: "t".to_string(),
-    user_id: "u".to_string(),
-    role: Some(UserScope::User),
-    token: "tok".to_string(),
-    external_app_token: "ext".to_string(),
-    app_client_id: "app".to_string(),
-    access_request_id: Some("ar".to_string()),
-    grants,
+  let ctx = AuthContext::test_external_app("u", UserScope::User, "app", Some("ar"));
+  match grants {
+    Some(grants) => ctx.with_external_app_grants(grants),
+    None => ctx,
   }
 }
 

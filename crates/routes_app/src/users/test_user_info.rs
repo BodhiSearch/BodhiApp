@@ -174,14 +174,8 @@ async fn test_user_info_handler_api_token_reflects_specific_grants() -> anyhow::
     mcps_list: true,
     mcps: McpGrant::Specific { ids: vec![] },
   });
-  let auth_context = AuthContext::ApiToken {
-    client_id: "test-client".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
-    user_id: "test-user-id".to_string(),
-    role: TokenScope::User,
-    token: "test-token".to_string(),
-    grants,
-  };
+  let auth_context =
+    AuthContext::test_api_token_with_grants("test-user-id", TokenScope::User, grants);
 
   let response = router
     .oneshot(

@@ -38,6 +38,13 @@ enum InferenceFormat {
 /// Cap when buffering the request body to read its `model` field (10 MiB).
 const MAX_BODY_BYTES: usize = 10 * 1024 * 1024;
 
+/// Minimal projection of an inference body — only the `model` field is needed for
+/// enforcement. Cheaper than parsing the whole payload into `serde_json::Value`.
+#[derive(serde::Deserialize)]
+struct ModelField {
+  model: Option<String>,
+}
+
 /// Classify an inference request by `(method, path)`. Returns `None` for anything that
 /// is not a model-inference call (listings, GETs, lookups, unrelated routes) — those
 /// pass through untouched. Only POST requests carry an inference body/action.
@@ -80,16 +87,35 @@ pub async fn model_inference_grant_middleware(req: Request, next: Next) -> Respo
     return next.run(req).await;
   };
 
-  // Resolve the target model, keeping a forwardable request.
+  // Resolve the principal's policy BEFORE touching the body. The dominant chat-UI
+  // principal is a session (`Unrestricted`) that needs no model, so it must not pay
+  // the body-buffering + parse cost; only grant/deny principals need the model.
+  let ctx = req
+    .extensions()
+    .get::<AuthContext>()
+    .cloned()
+    .unwrap_or(AuthContext::Anonymous {
+      deployment: DeploymentMode::Standalone,
+    });
+  let policy = AccessPolicy::of(&ctx);
+  if matches!(policy, AccessPolicy::Unrestricted) {
+    return next.run(req).await;
+  }
+
+  // TODO: inefficient interceptor — buffers the complete body to read "model", which the
+  // handler's own extractor then parses again. Lazy single-field extraction is not feasible
+  // with axum/serde (the body must be scanned whole to find field boundaries). This is the
+  // only interceptor that reads the body (the Gemini path takes the model from the URL and
+  // the MCP proxy has no grant middleware), so there is no interceptor-level read to merge.
   let (model, req) = match format {
     InferenceFormat::Gemini => (gemini_model_from_path(&path), req),
     InferenceFormat::OpenAi | InferenceFormat::Anthropic => {
       let (parts, body) = req.into_parts();
       match axum::body::to_bytes(body, MAX_BODY_BYTES).await {
         Ok(bytes) => {
-          let model = serde_json::from_slice::<serde_json::Value>(&bytes)
+          let model = serde_json::from_slice::<ModelField>(&bytes)
             .ok()
-            .and_then(|v| v.get("model").and_then(|m| m.as_str()).map(String::from));
+            .and_then(|m| m.model);
           (model, Request::from_parts(parts, Body::from(bytes)))
         }
         // Unreadable/oversized body: forward empty so the handler's extractor produces
@@ -104,17 +130,7 @@ pub async fn model_inference_grant_middleware(req: Request, next: Next) -> Respo
     return next.run(req).await;
   };
 
-  let ctx = req
-    .extensions()
-    .get::<AuthContext>()
-    .cloned()
-    .unwrap_or(AuthContext::Anonymous {
-      deployment: DeploymentMode::Standalone,
-    });
-  if AccessPolicy::of(&ctx)
-    .ensure_model_inference(&model)
-    .is_err()
-  {
+  if policy.ensure_model_inference(&model).is_err() {
     return forbidden(format, &model);
   }
   next.run(req).await

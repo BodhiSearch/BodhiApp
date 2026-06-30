@@ -1,4 +1,6 @@
-use crate::mcps::{mcps_create, mcps_destroy, mcps_index, mcps_show, mcps_update};
+use crate::mcps::{
+  mcp_proxy_handler, mcps_create, mcps_destroy, mcps_index, mcps_show, mcps_update,
+};
 use crate::test_utils::RequestAuthContextExt;
 use crate::test_utils::{build_mcp_test_state, fixed_dt};
 use crate::BodhiErrorResponse;
@@ -76,13 +78,10 @@ async fn test_mcps_index_api_token_grant_filters_list(
   let app = test_router_for_crud(mock).await?;
 
   // Grant only "mcp-uuid-1" for connect, mcps_list off → only that instance is listed.
-  let token = AuthContext::ApiToken {
-    client_id: "c".to_string(),
-    tenant_id: "tenant".to_string(),
-    user_id: "user".to_string(),
-    role: TokenScope::User,
-    token: "tok".to_string(),
-    grants: TokenGrants::V1(TokenGrantsV1 {
+  let token = AuthContext::test_api_token_with_grants(
+    "user",
+    TokenScope::User,
+    TokenGrants::V1(TokenGrantsV1 {
       models_list: false,
       models: ModelGrant::All,
       mcps_list: false,
@@ -90,7 +89,7 @@ async fn test_mcps_index_api_token_grant_filters_list(
         ids: vec!["mcp-uuid-1".to_string()],
       },
     }),
-  };
+  );
 
   let response = app
     .oneshot(
@@ -163,6 +162,156 @@ async fn test_mcps_index_external_app_grant_filters_list(
     .map(|m| m["id"].as_str().unwrap())
     .collect();
   assert_eq!(vec!["mcp-uuid-1"], ids);
+  Ok(())
+}
+
+// ============================================================================
+// GET /mcps/{id} - existence-hiding for scoped tokens (N6)
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_mcps_show_scoped_token_hides_ungranted(
+  test_mcp_entity: McpWithServerEntity,
+) -> anyhow::Result<()> {
+  // `get` is only reached for the granted (listable) id; the ungranted id is
+  // 404'd by the listability check before any service call.
+  let granted = test_mcp_entity.clone(); // id "mcp-uuid-1"
+  let mut mock = MockMcpService::new();
+  mock
+    .expect_get()
+    .times(0..)
+    .returning(move |_, _, _| Ok(Some(granted.clone())));
+  let app = test_router_for_crud(mock).await?;
+
+  let token = AuthContext::test_api_token_with_grants(
+    "user",
+    TokenScope::User,
+    TokenGrants::V1(TokenGrantsV1 {
+      models_list: false,
+      models: ModelGrant::All,
+      mcps_list: false,
+      mcps: McpGrant::Specific {
+        ids: vec!["mcp-uuid-1".to_string()],
+      },
+    }),
+  );
+
+  // Existing-but-ungranted instance → 404 (existence not revealed, not 403).
+  let response = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri("/mcps/mcp-uuid-2")
+        .body(Body::empty())?
+        .with_auth_context(token.clone()),
+    )
+    .await?;
+  assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+  // Granted instance → 200.
+  let response = app
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri("/mcps/mcp-uuid-1")
+        .body(Body::empty())?
+        .with_auth_context(token),
+    )
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+// ============================================================================
+// POST /apps/mcps/{id}/mcp - proxy grant gate (C1)
+// ============================================================================
+
+/// Proxy router with `get` stubbed to `None` so a granted invocation that
+/// clears the grant gate surfaces the absent upstream as a clean 404 (never a
+/// gate 403). `times(0..)` because the ungranted path never reaches `get`.
+async fn proxy_router() -> anyhow::Result<Router> {
+  let mut mock = MockMcpService::new();
+  mock.expect_get().times(0..).returning(|_, _, _| Ok(None));
+  let state = build_mcp_test_state(mock).await?;
+  Ok(
+    Router::new()
+      .route("/bodhi/v1/apps/mcps/{id}/mcp", post(mcp_proxy_handler))
+      .with_state(state),
+  )
+}
+
+/// API token granting MCP connect only on "mcp-uuid-1".
+fn proxy_api_token() -> AuthContext {
+  AuthContext::test_api_token_with_grants(
+    "user",
+    TokenScope::User,
+    TokenGrants::V1(TokenGrantsV1 {
+      models_list: false,
+      models: ModelGrant::All,
+      mcps_list: false,
+      mcps: McpGrant::Specific {
+        ids: vec!["mcp-uuid-1".to_string()],
+      },
+    }),
+  )
+}
+
+/// Approved external app whose grants ride the SAME AccessPolicy — connect only
+/// on "mcp-uuid-1".
+fn proxy_external_app() -> AuthContext {
+  let approved = services::ApprovedResources::V1(services::ApprovedResourcesV1 {
+    models_list: false,
+    models_access: ModelGrant::All,
+    mcps_list: false,
+    mcps: vec![],
+    mcps_access: McpGrant::Specific {
+      ids: vec!["mcp-uuid-1".to_string()],
+    },
+  });
+  AuthContext::test_external_app("user", services::UserScope::User, "app", Some("ar"))
+    .with_external_app_grants(approved)
+}
+
+#[rstest]
+#[case::api_token(proxy_api_token())]
+#[case::external_app(proxy_external_app())]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_mcp_proxy_enforces_mcp_connect_grant(#[case] ctx: AuthContext) -> anyhow::Result<()> {
+  // Ungranted instance → blocked at the grant gate with mcp_forbidden, before any service call.
+  let deny_app = proxy_router().await?;
+  let response = deny_app
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/bodhi/v1/apps/mcps/mcp-uuid-2/mcp")
+        .body(Body::empty())?
+        .with_auth_context(ctx.clone()),
+    )
+    .await?;
+  assert_eq!(StatusCode::FORBIDDEN, response.status());
+  let body: BodhiErrorResponse = response.json().await?;
+  assert_eq!(
+    Some("token_grant_error-mcp_forbidden".to_string()),
+    body.error.code
+  );
+
+  // Granted instance clears the gate; absent upstream (get → None) surfaces as 404, never 403.
+  let grant_app = proxy_router().await?;
+  let response = grant_app
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/bodhi/v1/apps/mcps/mcp-uuid-1/mcp")
+        .body(Body::empty())?
+        .with_auth_context(ctx),
+    )
+    .await?;
+  assert_ne!(StatusCode::FORBIDDEN, response.status());
+  assert_eq!(StatusCode::NOT_FOUND, response.status());
   Ok(())
 }
 

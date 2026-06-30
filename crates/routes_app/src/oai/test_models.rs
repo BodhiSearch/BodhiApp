@@ -19,13 +19,10 @@ use tower::ServiceExt;
 
 /// API-token auth context granting only `models` for inference, with `models_list`.
 fn scoped_token(models: &[&str], models_list: bool) -> AuthContext {
-  AuthContext::ApiToken {
-    client_id: "test-client".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
-    user_id: "test-user".to_string(),
-    role: TokenScope::User,
-    token: "test-token".to_string(),
-    grants: TokenGrants::V1(TokenGrantsV1 {
+  AuthContext::test_api_token_with_grants(
+    "test-user",
+    TokenScope::User,
+    TokenGrants::V1(TokenGrantsV1 {
       models_list,
       models: ModelGrant::Specific {
         ids: models.iter().map(|s| s.to_string()).collect(),
@@ -33,7 +30,7 @@ fn scoped_token(models: &[&str], models_list: bool) -> AuthContext {
       mcps_list: false,
       mcps: McpGrant::Specific { ids: vec![] },
     }),
-  }
+  )
 }
 
 fn create_router(service: Arc<dyn services::AppService>) -> Router {

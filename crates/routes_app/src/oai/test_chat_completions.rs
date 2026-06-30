@@ -15,7 +15,9 @@ use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::{
   test_utils::{gemini_model, openai_model, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID},
-  AiApiClientFactoryError, ApiAliasBuilder, ApiFormat, ApiModel, AuthContext, ResourceRole,
+  AiApiClientFactoryError, ApiAliasBuilder, ApiFormat, ApiModel, ApprovedResources,
+  ApprovedResourcesV1, AuthContext, McpGrant, ModelGrant, ResourceRole, TokenGrants, TokenGrantsV1,
+  TokenScope, UserScope,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -95,102 +97,63 @@ async fn test_chat_completions_handler_non_stream() -> anyhow::Result<()> {
   Ok(())
 }
 
+/// A scoped principal (API token or approved external app) whose grant names a
+/// *different* model than the request → 403 from the shared middleware before the
+/// request is ever forwarded. Both principal kinds flow through the same policy arm.
 #[rstest]
-#[awt]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_chat_completions_scoped_token_forbidden() -> anyhow::Result<()> {
-  use services::{McpGrant, ModelGrant, TokenGrants, TokenGrantsV1, TokenScope};
-  let request = CreateChatCompletionRequestArgs::default()
-    .model("testalias-exists:instruct")
-    .messages(vec![ChatCompletionRequestMessage::User(
-      ChatCompletionRequestUserMessageArgs::default()
-        .content("hi")
-        .build()?,
-    )])
-    .build()?;
-  let app_service = AppServiceStubBuilder::default()
-    .with_data_service()
-    .await
-    .ai_api_client_factory(mock_ai_factory_returning(non_streamed_axum_response))
-    .build()
-    .await?;
-  let app = Router::new()
-    .route("/v1/chat/completions", post(chat_completions_handler))
-    // Inference grants are enforced by the shared middleware, not in the handler.
-    .layer(axum::middleware::from_fn(
-      crate::middleware::model_inference_grant_middleware,
-    ))
-    .with_state(Arc::new(app_service) as Arc<dyn services::AppService>);
-
-  // Token grants a different model → 403 before the request is ever forwarded.
-  let token = AuthContext::ApiToken {
-    client_id: "c".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
-    user_id: TEST_USER_ID.to_string(),
-    role: TokenScope::User,
-    token: "tok".to_string(),
-    grants: TokenGrants::V1(TokenGrantsV1 {
-      models_list: false,
-      models: ModelGrant::Specific {
-        ids: vec!["some-other-model".to_string()],
-      },
-      mcps_list: false,
-      mcps: McpGrant::Specific { ids: vec![] },
-    }),
-  };
-  let response = app
-    .oneshot(
-      Request::post("/v1/chat/completions")
-        .json(request)?
-        .with_auth_context(token),
-    )
-    .await?;
-  assert_eq!(StatusCode::FORBIDDEN, response.status());
-  Ok(())
-}
-
-#[rstest]
-#[awt]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_chat_completions_external_app_model_forbidden() -> anyhow::Result<()> {
-  use services::{ApprovedResources, ApprovedResourcesV1, McpGrant, ModelGrant, UserScope};
-  let request = CreateChatCompletionRequestArgs::default()
-    .model("testalias-exists:instruct")
-    .messages(vec![ChatCompletionRequestMessage::User(
-      ChatCompletionRequestUserMessageArgs::default()
-        .content("hi")
-        .build()?,
-    )])
-    .build()?;
-  let app_service = AppServiceStubBuilder::default()
-    .with_data_service()
-    .await
-    .ai_api_client_factory(mock_ai_factory_returning(non_streamed_axum_response))
-    .build()
-    .await?;
-  let app = Router::new()
-    .route("/v1/chat/completions", post(chat_completions_handler))
-    // Inference grants are enforced by the shared middleware, not in the handler.
-    .layer(axum::middleware::from_fn(
-      crate::middleware::model_inference_grant_middleware,
-    ))
-    .with_state(Arc::new(app_service) as Arc<dyn services::AppService>);
-
-  // Approved app scoped to a different model → 403, same as an API token.
-  let approved = ApprovedResources::V1(ApprovedResourcesV1 {
+#[case::api_token(AuthContext::test_api_token_with_grants(
+  TEST_USER_ID,
+  TokenScope::User,
+  TokenGrants::V1(TokenGrantsV1 {
     models_list: false,
-    models_access: ModelGrant::Specific {
+    models: ModelGrant::Specific {
       ids: vec!["some-other-model".to_string()],
     },
     mcps_list: false,
-    mcps: vec![],
-    mcps_access: McpGrant::Specific { ids: vec![] },
-  });
-  let ctx = AuthContext::test_external_app(TEST_USER_ID, UserScope::User, "app", Some("ar"))
+    mcps: McpGrant::Specific { ids: vec![] },
+  }),
+))]
+#[case::external_app(
+  AuthContext::test_external_app(TEST_USER_ID, UserScope::User, "app", Some("ar"))
     .with_tenant_id(TEST_TENANT_ID)
-    .with_external_app_grants(approved);
+    .with_external_app_grants(ApprovedResources::V1(ApprovedResourcesV1 {
+      models_list: false,
+      models_access: ModelGrant::Specific {
+        ids: vec!["some-other-model".to_string()],
+      },
+      mcps_list: false,
+      mcps: vec![],
+      mcps_access: McpGrant::Specific { ids: vec![] },
+    }))
+)]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_chat_completions_scoped_principal_model_forbidden(
+  #[case] ctx: AuthContext,
+) -> anyhow::Result<()> {
+  let request = CreateChatCompletionRequestArgs::default()
+    .model("testalias-exists:instruct")
+    .messages(vec![ChatCompletionRequestMessage::User(
+      ChatCompletionRequestUserMessageArgs::default()
+        .content("hi")
+        .build()?,
+    )])
+    .build()?;
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .ai_api_client_factory(mock_ai_factory_returning(non_streamed_axum_response))
+    .build()
+    .await?;
+  let app = Router::new()
+    .route("/v1/chat/completions", post(chat_completions_handler))
+    // Inference grants are enforced by the shared middleware, not in the handler.
+    .layer(axum::middleware::from_fn(
+      crate::middleware::model_inference_grant_middleware,
+    ))
+    .with_state(Arc::new(app_service) as Arc<dyn services::AppService>);
+
   let response = app
     .oneshot(
       Request::post("/v1/chat/completions")
