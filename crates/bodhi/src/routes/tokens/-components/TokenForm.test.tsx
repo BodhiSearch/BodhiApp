@@ -150,9 +150,16 @@ describe('TokenForm', () => {
     expect(screen.getByTestId('token-name-input')).toHaveValue('');
   });
 
-  it('handles form submission without name', async () => {
+  it('handles form submission without name and defaults grants to least-privilege deny', async () => {
     const user = userEvent.setup();
     const onTokenCreated = vi.fn();
+    let captured: Record<string, unknown> | undefined;
+    server.use(
+      http.post(`${BODHI_API_BASE}/tokens`, async ({ request }) => {
+        captured = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ token: mockToken.token }, { status: 201 });
+      })
+    );
 
     renderForm(onTokenCreated);
 
@@ -161,6 +168,43 @@ describe('TokenForm', () => {
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'API token successfully generated'));
       expect(onTokenCreated).toHaveBeenCalledWith(mockToken);
+    });
+    expect(captured?.grants).toEqual({
+      version: '1',
+      models_list: false,
+      models: { type: 'specific', ids: [] },
+      mcps_list: false,
+      mcps: { type: 'specific', ids: [] },
+    });
+  });
+
+  it('grants all-access when the pickers are explicitly switched to All', async () => {
+    const user = userEvent.setup();
+    let captured: Record<string, unknown> | undefined;
+    server.use(
+      http.post(`${BODHI_API_BASE}/tokens`, async ({ request }) => {
+        captured = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ token: mockToken.token }, { status: 201 });
+      })
+    );
+
+    const onTokenCreated = vi.fn();
+    await act(async () => {
+      renderForm(onTokenCreated);
+    });
+
+    await user.click(screen.getByTestId('model-access-mode-all'));
+    await user.click(screen.getByTestId('mcp-access-mode-all'));
+
+    await user.click(screen.getByRole('button', { name: /Generate Token/ }));
+
+    await waitFor(() => expect(onTokenCreated).toHaveBeenCalledWith(mockToken));
+    expect(captured?.grants).toEqual({
+      version: '1',
+      models_list: false,
+      models: { type: 'all' },
+      mcps_list: false,
+      mcps: { type: 'all' },
     });
   });
 
@@ -179,14 +223,14 @@ describe('TokenForm', () => {
       renderForm(onTokenCreated);
     });
 
-    // Model Access → Specific → pick the local alias in the panel
-    await user.click(screen.getByTestId('model-access-mode-specific'));
+    // Model Access defaults to Specific → open the panel and pick the local alias
+    await user.click(screen.getByTestId('model-access-add'));
     await user.click(await screen.findByTestId('model-access-panel-item-test-model'));
     await user.click(screen.getByTestId('model-access-panel-done'));
     expect(screen.getByTestId('model-access-selected-test-model')).toBeInTheDocument();
 
-    // MCP Access → Specific → pick the MCP instance in the panel
-    await user.click(screen.getByTestId('mcp-access-mode-specific'));
+    // MCP Access defaults to Specific → open the panel and pick the MCP instance
+    await user.click(screen.getByTestId('mcp-access-add'));
     await user.click(await screen.findByTestId('mcp-access-panel-item-mcp-uuid-1'));
     await user.click(screen.getByTestId('mcp-access-panel-done'));
     expect(screen.getByTestId('mcp-access-selected-mcp-uuid-1')).toBeInTheDocument();
@@ -208,7 +252,7 @@ describe('TokenForm', () => {
     await act(async () => {
       renderForm();
     });
-    await user.click(screen.getByTestId('model-access-mode-specific'));
+    await user.click(screen.getByTestId('model-access-add'));
     await user.click(await screen.findByTestId('model-access-panel-item-test-model'));
     await user.click(screen.getByTestId('model-access-panel-done'));
     expect(screen.getByTestId('model-access-selected-test-model')).toBeInTheDocument();

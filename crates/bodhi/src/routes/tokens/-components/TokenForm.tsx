@@ -35,10 +35,10 @@ const DEFAULTS: TokenFormData = {
   name: '',
   scope: 'scope_token_user',
   listModels: false,
-  modelMode: 'all',
+  modelMode: 'specific',
   models: [],
   listMcps: false,
-  mcpMode: 'all',
+  mcpMode: 'specific',
   mcps: [],
 };
 

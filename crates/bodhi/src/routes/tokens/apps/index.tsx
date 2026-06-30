@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { AppAccessSummary, ResourceAccess } from '@bodhiapp/ts-client';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import type { AppAccessSummary } from '@bodhiapp/ts-client';
+import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
@@ -14,8 +14,14 @@ import '@/components/shell/tokens.css';
 import { useListAppAccess, useRevokeAppAccess } from '@/hooks/apps';
 import { useGetAppInfo } from '@/hooks/info';
 import { useToastMessages } from '@/hooks/useToastMessages';
-import { useViewTransition } from '@/hooks/useViewTransition';
 import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';
+import {
+  DetailRow,
+  fmtDate,
+  GrantChips,
+  grantSummary,
+  useUrlMirroredSelection,
+} from '@/routes/tokens/-shared/token-rail';
 
 const appsSearchSchema = z.object({ select: z.string().optional() });
 
@@ -31,43 +37,16 @@ const BREADCRUMB = [
   { label: 'App Tokens', current: true },
 ];
 
-const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-
-const readSelectFromUrl = () => new URLSearchParams(window.location.search).get('select');
-
-function resourceLabel(a: ResourceAccess, noun: string): string {
-  if (a.type === 'all') return `All ${noun}s`;
-  const n = a.ids.length;
-  return n ? `${n} ${noun}${n === 1 ? '' : 's'}` : `No ${noun}s`;
-}
-
 const appDisplayName = (app: AppAccessSummary) => app.app_name || app.app_client_id;
 
 export function AppTokensPageContent() {
   useListKeyNav();
   const { isLoading: appLoading } = useGetAppInfo();
   const { showSuccess, showError } = useToastMessages();
-  const navigate = useNavigate();
-  const withViewTransition = useViewTransition();
 
   const { data, isLoading } = useListAppAccess({ enabled: !appLoading });
   const [search, setSearch] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(() => readSelectFromUrl());
-
-  useEffect(() => {
-    const onPop = () => setSelectedId(readSelectFromUrl());
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
-  }, []);
-
-  const selectApp = useCallback(
-    (id: string | null) => {
-      withViewTransition(() => setSelectedId(id));
-      navigate({ to: '/tokens/apps/', search: (prev) => ({ ...prev, select: id ?? undefined }), replace: true });
-    },
-    [withViewTransition, navigate]
-  );
+  const { selectedId, select: selectApp } = useUrlMirroredSelection('/tokens/apps/');
 
   const { mutate: revoke } = useRevokeAppAccess({
     onSuccess: () => {
@@ -117,13 +96,13 @@ export function AppTokensPageContent() {
         key: 'models',
         label: 'Models',
         width: '112px',
-        cell: (a) => <span className="tk-grant">{resourceLabel(a.models, 'model')}</span>,
+        cell: (a) => <span className="tk-grant">{grantSummary(a.models, 'model')}</span>,
       },
       {
         key: 'mcps',
         label: 'Tools',
         width: '100px',
-        cell: (a) => <span className="tk-grant">{resourceLabel(a.mcps, 'tool')}</span>,
+        cell: (a) => <span className="tk-grant">{grantSummary(a.mcps, 'tool')}</span>,
       },
       {
         key: 'created',
@@ -220,30 +199,6 @@ function AppRailHeader({ app, onClose }: { app: AppAccessSummary; onClose: () =>
   );
 }
 
-function DetailRow({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <div className="dp-row">
-      <span className="dp-row-k">
-        <ShellIcon name={icon} size={13} /> {label}
-      </span>
-      <span className="dp-row-v">{value}</span>
-    </div>
-  );
-}
-
-function GrantChips({ ids, testIdPrefix }: { ids: string[]; testIdPrefix: string }) {
-  if (ids.length === 0) return null;
-  return (
-    <div className="dp-chips">
-      {ids.map((m) => (
-        <span key={m} className="dp-chip" data-testid={`${testIdPrefix}-${m}`}>
-          {m}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function AppDetailPanel({ app, onRevoke }: { app: AppAccessSummary; onRevoke: (app: AppAccessSummary) => void }) {
   const [confirmRevoke, setConfirmRevoke] = useState(false);
   useEffect(() => setConfirmRevoke(false), [app.id]);
@@ -265,7 +220,7 @@ function AppDetailPanel({ app, onRevoke }: { app: AppAccessSummary; onRevoke: (a
           <div className="dp-sec-lbl">Models</div>
           <div className="dp-rows">
             {app.models.list && <DetailRow icon="list" label="List all models" value="/v1/models" />}
-            <DetailRow icon="cpu" label="Inference" value={resourceLabel(app.models, 'model')} />
+            <DetailRow icon="cpu" label="Inference" value={grantSummary(app.models, 'model')} />
           </div>
           {app.models.type === 'specific' && <GrantChips ids={app.models.ids} testIdPrefix="app-model-grant" />}
         </div>
@@ -273,7 +228,7 @@ function AppDetailPanel({ app, onRevoke }: { app: AppAccessSummary; onRevoke: (a
           <div className="dp-sec-lbl">Connected tools</div>
           <div className="dp-rows">
             {app.mcps.list && <DetailRow icon="list" label="List all tools" value="/v1/mcps" />}
-            <DetailRow icon="plug" label="Connect" value={resourceLabel(app.mcps, 'tool')} />
+            <DetailRow icon="plug" label="Connect" value={grantSummary(app.mcps, 'tool')} />
           </div>
           {app.mcps.type === 'specific' && <GrantChips ids={app.mcps.ids} testIdPrefix="app-mcp-grant" />}
         </div>

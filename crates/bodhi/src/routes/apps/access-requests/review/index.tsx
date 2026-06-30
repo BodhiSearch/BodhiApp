@@ -26,6 +26,7 @@ import { grantableMcpItems, grantableModelItems } from '@/lib/grantItems';
 import { safeNavigate } from '@/lib/safeNavigate';
 
 import McpServerCard from './-components/McpServerCard';
+import { toApproveBody } from './-shared/toApproveBody';
 import '@/components/shell/api-keys.css';
 
 export const Route = createFileRoute('/apps/access-requests/review/')({
@@ -126,8 +127,10 @@ const ReviewContent = () => {
   const [actionResult, setActionResult] = useState<AccessRequestActionResponse | null>(null);
 
   // Owner's model/MCP grant decisions (driven by the app's requested UI flags).
+  // Both pickers default to least-privilege (Specific/none) — granting a 3rd-party
+  // app is opt-in, matching the fail-closed backend default.
   const [listModels, setListModels] = useState(false);
-  const [modelMode, setModelMode] = useState<AccessMode>('all');
+  const [modelMode, setModelMode] = useState<AccessMode>('specific');
   const [models, setModels] = useState<string[]>([]);
   const [listMcps, setListMcps] = useState(false);
   const [mcpExtraMode, setMcpExtraMode] = useState<AccessMode>('specific');
@@ -261,36 +264,16 @@ const ReviewContent = () => {
     setIsSubmitting(true);
     const body: ApproveAccessRequest = {
       approved_role: approvedRole!,
-      approved: {
-        version: req.version,
-        // Listing toggles are only meaningful when the app requested them.
-        models_list: req.models_list ? listModels : false,
-        // If the app didn't request a model selector, the owner can't restrict —
-        // the app keeps all-model access (the pre-grants default).
-        models_access: req.models_access
-          ? modelMode === 'all'
-            ? { type: 'all' }
-            : { type: 'specific', ids: models }
-          : { type: 'all' },
-        mcps_list: req.mcps_list ? listMcps : false,
-        mcps: (reviewData.mcps_info ?? []).map((mcp) => ({
-          url: mcp.url,
-          status: approvedMcps[mcp.url] ? 'approved' : 'denied',
-          instance:
-            approvedMcps[mcp.url] && selectedMcpInstances[mcp.url]
-              ? (() => {
-                  const inst = mcp.instances.find((i) => i.id === selectedMcpInstances[mcp.url]);
-                  return inst ? { id: inst.id, path: inst.path } : undefined;
-                })()
-              : undefined,
-        })),
-        // Owner-granted extras default to none when not requested.
-        mcps_access: req.mcps_access
-          ? mcpExtraMode === 'all'
-            ? { type: 'all' }
-            : { type: 'specific', ids: mcpsExtra }
-          : { type: 'specific', ids: [] },
-      },
+      approved: toApproveBody(req, reviewData.mcps_info ?? [], {
+        listModels,
+        modelMode,
+        models,
+        listMcps,
+        mcpExtraMode,
+        mcpsExtra,
+        approvedMcps,
+        selectedMcpInstances,
+      }),
     };
     approveMutation.mutate({ id, body });
   };

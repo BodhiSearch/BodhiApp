@@ -1063,8 +1063,9 @@ describe('ReviewAccessRequestPage - Model & MCP grant sections', () => {
       };
     };
     expect(body.approved.models_list).toBe(true);
-    // models_access requested, mode defaults to All.
-    expect(body.approved.models_access.type).toBe('all');
+    // models_access requested; the picker defaults to least-privilege (Specific/none),
+    // so with no models picked the grant is an empty specific set.
+    expect(body.approved.models_access).toEqual({ type: 'specific', ids: [] });
     // "list all MCPs" was not toggled → mcps_list stays off.
     expect(body.approved.mcps_list).toBe(false);
     expect(body.approved.mcps[0].status).toBe('approved');

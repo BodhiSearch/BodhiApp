@@ -79,6 +79,21 @@ describe('AccessPicker', () => {
     expect(screen.queryByTestId('model-access-panel-item-gpt-4o')).not.toBeInTheDocument();
   });
 
+  it('filters the panel list by Local/API type and renders group headers', async () => {
+    const user = setup({ initialMode: 'specific' });
+    await user.click(screen.getByTestId('model-access-add'));
+
+    expect(screen.getByText('Local Models')).toBeInTheDocument();
+    expect(screen.getByText('API Models')).toBeInTheDocument();
+    expect(screen.getByTestId('model-access-panel-item-gpt-4o')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByTestId('model-access-panel-type'), 'local');
+
+    expect(screen.queryByTestId('model-access-panel-item-gpt-4o')).not.toBeInTheDocument();
+    expect(screen.getByTestId('model-access-panel-item-llama3:8b')).toBeInTheDocument();
+    expect(screen.getByTestId('model-access-panel-item-mistral:7b')).toBeInTheDocument();
+  });
+
   it('shows the panel count of selected items', async () => {
     const user = setup({ initialMode: 'specific', initialSelected: ['gpt-4o'] });
     await user.click(screen.getByTestId('model-access-add'));

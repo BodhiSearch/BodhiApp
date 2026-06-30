@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { TokenDetail, TokenGrants } from '@bodhiapp/ts-client';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { TokenDetail } from '@bodhiapp/ts-client';
+import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
@@ -22,8 +22,14 @@ import '@/components/shell/tokens.css';
 import { useGetAppInfo } from '@/hooks/info';
 import { useDeleteToken, useListTokens, useUpdateToken } from '@/hooks/tokens';
 import { useToastMessages } from '@/hooks/useToastMessages';
-import { useViewTransition } from '@/hooks/useViewTransition';
 import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';
+import {
+  DetailRow,
+  fmtDate,
+  GrantChips,
+  grantSummary,
+  useUrlMirroredSelection,
+} from '@/routes/tokens/-shared/token-rail';
 
 // `select` carries the open detail rail (the token id). Written with replace (no history entries);
 // browser Back/Forward restores the rail from whatever the target URL holds.
@@ -52,10 +58,6 @@ const FILTER_TABS: { id: TokenFilter; label: string }[] = [
 ];
 
 const scopeLabel = (scopes: string) => (scopes.includes('power') ? 'Power User' : 'User');
-const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-
-const readSelectFromUrl = () => new URLSearchParams(window.location.search).get('select');
 
 export function TokenPageContent() {
   useListKeyNav();
@@ -63,7 +65,6 @@ export function TokenPageContent() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const { showSuccess, showError } = useToastMessages();
-  const navigate = useNavigate();
 
   const { mutate: updateToken } = useUpdateToken({
     onSuccess: (token) => showSuccess('Token Updated', `Token status changed to ${token.status}`),
@@ -80,26 +81,9 @@ export function TokenPageContent() {
     [updateToken]
   );
 
-  const withViewTransition = useViewTransition();
   const [filter, setFilter] = useState<TokenFilter>('all');
   const [search, setSearch] = useState('');
-  // Render source of truth is local; the URL is mirrored so links are shareable and browser
-  // Back/Forward works (the popstate listener pulls the id back out of the URL).
-  const [selectedId, setSelectedId] = useState<string | null>(() => readSelectFromUrl());
-
-  useEffect(() => {
-    const onPop = () => setSelectedId(readSelectFromUrl());
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
-  }, []);
-
-  const selectToken = useCallback(
-    (id: string | null) => {
-      withViewTransition(() => setSelectedId(id));
-      navigate({ to: '/tokens/', search: (prev) => ({ ...prev, select: id ?? undefined }), replace: true });
-    },
-    [withViewTransition, navigate]
-  );
+  const { selectedId, select: selectToken } = useUrlMirroredSelection('/tokens/');
 
   const searchNode = useCollapsibleSearch({
     value: search,
@@ -168,13 +152,13 @@ export function TokenPageContent() {
         key: 'models',
         label: 'Models',
         width: '112px',
-        cell: (t) => <span className="tk-grant">{modelGrantLabel(t.grants)}</span>,
+        cell: (t) => <span className="tk-grant">{grantSummary(t.grants.models, 'model')}</span>,
       },
       {
         key: 'mcps',
         label: 'MCPs',
         width: '100px',
-        cell: (t) => <span className="tk-grant">{mcpGrantLabel(t.grants)}</span>,
+        cell: (t) => <span className="tk-grant">{grantSummary(t.grants.mcps, 'MCP')}</span>,
       },
       {
         key: 'created',
@@ -316,29 +300,6 @@ function TokenRailHeader({ token, onClose }: { token: TokenDetail; onClose: () =
   );
 }
 
-function DetailRow({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <div className="dp-row">
-      <span className="dp-row-k">
-        <ShellIcon name={icon} size={13} /> {label}
-      </span>
-      <span className="dp-row-v">{value}</span>
-    </div>
-  );
-}
-
-function modelGrantLabel(grants: TokenGrants): string {
-  if (grants.models.type === 'all') return 'All models';
-  const n = grants.models.ids.length;
-  return n ? `${n} model${n === 1 ? '' : 's'}` : 'No models';
-}
-
-function mcpGrantLabel(grants: TokenGrants): string {
-  if (grants.mcps.type === 'all') return 'All MCPs';
-  const n = grants.mcps.ids.length;
-  return n ? `${n} MCP${n === 1 ? '' : 's'}` : 'No MCPs';
-}
-
 function TokenDetailPanel({
   token,
   onStatusChange,
@@ -364,33 +325,17 @@ function TokenDetailPanel({
           <div className="dp-sec-lbl">Models</div>
           <div className="dp-rows">
             {grants.models_list && <DetailRow icon="list" label="List all models" value="/v1/models" />}
-            <DetailRow icon="cpu" label="Inference" value={modelGrantLabel(grants)} />
+            <DetailRow icon="cpu" label="Inference" value={grantSummary(grants.models, 'model')} />
           </div>
-          {grants.models.type === 'specific' && grants.models.ids.length > 0 && (
-            <div className="dp-chips">
-              {grants.models.ids.map((m) => (
-                <span key={m} className="dp-chip" data-testid={`token-model-grant-${m}`}>
-                  {m}
-                </span>
-              ))}
-            </div>
-          )}
+          {grants.models.type === 'specific' && <GrantChips ids={grants.models.ids} testIdPrefix="token-model-grant" />}
         </div>
         <div className="dp-section">
           <div className="dp-sec-lbl">MCP servers</div>
           <div className="dp-rows">
             {grants.mcps_list && <DetailRow icon="list" label="List all MCPs" value="/v1/mcps" />}
-            <DetailRow icon="plug" label="Connect" value={mcpGrantLabel(grants)} />
+            <DetailRow icon="plug" label="Connect" value={grantSummary(grants.mcps, 'MCP')} />
           </div>
-          {grants.mcps.type === 'specific' && grants.mcps.ids.length > 0 && (
-            <div className="dp-chips">
-              {grants.mcps.ids.map((m) => (
-                <span key={m} className="dp-chip" data-testid={`token-mcp-grant-${m}`}>
-                  {m}
-                </span>
-              ))}
-            </div>
-          )}
+          {grants.mcps.type === 'specific' && <GrantChips ids={grants.mcps.ids} testIdPrefix="token-mcp-grant" />}
         </div>
         <div className="dp-section">
           <div className="dp-sec-lbl">Details</div>
