@@ -10,29 +10,29 @@ export class TokensPage extends BasePage {
     newTokenPage: '[data-testid="new-token-page"]',
     tokenForm: '[data-testid="token-form"]',
     tokenNameInput: '[data-testid="token-name-input"]',
-    scopeCard: (scope) => `[data-testid="scope-card-${scope}"]`,
+    scopeCard: scope => `[data-testid="scope-card-${scope}"]`,
     generateButton: '[data-testid="generate-token-button"]',
     cancelButton: '[data-testid="cancel-token-button"]',
 
     // Access pickers (shared AccessPicker; prefix is 'model-access' | 'mcp-access')
-    listToggle: (kind) => `[data-testid="list-${kind}-switch"]`, // kind: 'models' | 'mcps'
-    accessModeSpecific: (prefix) => `[data-testid="${prefix}-mode-specific"]`,
-    accessPanel: (prefix) => `[data-testid="${prefix}-panel"]`,
-    accessPanelSearch: (prefix) => `[data-testid="${prefix}-panel-search"]`,
-    accessPanelItems: (prefix) => `[data-testid^="${prefix}-panel-item-"]`,
-    accessPanelDone: (prefix) => `[data-testid="${prefix}-panel-done"]`,
+    listToggle: kind => `[data-testid="list-${kind}-switch"]`, // kind: 'models' | 'mcps'
+    accessModeSpecific: prefix => `[data-testid="${prefix}-mode-specific"]`,
+    accessPanel: prefix => `[data-testid="${prefix}-panel"]`,
+    accessPanelSearch: prefix => `[data-testid="${prefix}-panel-search"]`,
+    accessPanelItems: prefix => `[data-testid^="${prefix}-panel-item-"]`,
+    accessPanelDone: prefix => `[data-testid="${prefix}-panel-done"]`,
 
     // Detail rail grant chips
     detailRail: '[data-testid="token-detail-rail"]',
-    modelGrantChip: (id) => `[data-testid="token-model-grant-${id}"]`,
-    mcpGrantChip: (id) => `[data-testid="token-mcp-grant-${id}"]`,
+    modelGrantChip: id => `[data-testid="token-model-grant-${id}"]`,
+    mcpGrantChip: id => `[data-testid="token-mcp-grant-${id}"]`,
 
     // List elements (CatalogTable rows)
     tokensTable: '[data-testid="tokens-table"]',
-    tokenRow: (id) => `[data-testid="token-row-${id}"]`,
-    tokenName: (id) => `[data-testid="token-name-${id}"]`,
-    tokenScope: (id) => `[data-testid="token-scope-${id}"]`,
-    statusSwitch: (id) => `[data-testid="token-status-switch-${id}"]`,
+    tokenRow: id => `[data-testid="token-row-${id}"]`,
+    tokenName: id => `[data-testid="token-name-${id}"]`,
+    tokenScope: id => `[data-testid="token-scope-${id}"]`,
+    statusSwitch: id => `[data-testid="token-status-switch-${id}"]`,
     listRow: '[data-testid^="token-row-"]',
 
     // Token reveal dialog (after creation) — unchanged across the migration
@@ -209,9 +209,7 @@ export class TokensPage extends BasePage {
    *  navigation key (Home / ArrowDown / ArrowUp). The caller asserts the resulting
    *  selection via {@link activeRowTestId} — keyed on aria-selected + the row testid. */
   async selectRowByKeyboard(key) {
-    await this.page
-      .locator(`${this.selectors.tokensTable} [aria-selected="true"] [data-testid="row-link"]`)
-      .focus();
+    await this.page.locator(`${this.selectors.tokensTable} [aria-selected="true"] [data-testid="row-link"]`).focus();
     await this.page.keyboard.press(key);
   }
 
@@ -233,9 +231,7 @@ export class TokensPage extends BasePage {
 
   async expectTokenDialog() {
     await expect(this.page.locator(this.selectors.tokenDialog)).toBeVisible();
-    await expect(this.page.locator(this.selectors.tokenDialog)).toContainText(
-      'API Token Generated'
-    );
+    await expect(this.page.locator(this.selectors.tokenDialog)).toContainText('API Token Generated');
   }
 
   /**
@@ -270,8 +266,15 @@ export class TokensPage extends BasePage {
     const copyButton = this.page.locator(this.selectors.copyButton);
     await expect(copyButton).toBeVisible();
     await copyButton.click();
-    await this.page.waitForTimeout(100);
-    const tokenValue = await this.page.evaluate(() => window.clipboardData);
+    // Poll the mocked clipboard until the app's async copy handler has written the
+    // token, rather than a fixed wait (E2E.md: no inline timeouts).
+    let tokenValue;
+    await expect
+      .poll(async () => {
+        tokenValue = await this.page.evaluate(() => window.clipboardData);
+        return tokenValue;
+      })
+      .toMatch(/^bodhiapp_/);
     return tokenValue;
   }
 
@@ -313,11 +316,9 @@ export class TokensPage extends BasePage {
 
     for (let i = 0; i < count; i++) {
       const row = rows.nth(i);
-      const nameText =
-        (await row.locator('[data-testid^="token-name-"]').textContent())?.trim() || '';
+      const nameText = (await row.locator('[data-testid^="token-name-"]').textContent())?.trim() || '';
       if (nameText === name || nameText.includes(name)) {
-        const scopeText =
-          (await row.locator('[data-testid^="token-scope-"]').textContent())?.trim() || '';
+        const scopeText = (await row.locator('[data-testid^="token-scope-"]').textContent())?.trim() || '';
         const statusSwitch = row.locator('[role="switch"]');
         const isActive = await statusSwitch.isChecked();
         return {
@@ -355,7 +356,8 @@ export class TokensPage extends BasePage {
     expect(token).not.toBeNull();
     await token.statusSwitch.click();
     await this.waitForSPAReady();
-    await this.page.waitForTimeout(100);
+    // No fixed wait: callers assert via expectTokenStatus, which polls the live
+    // switch state until the toggle's refetch settles (E2E.md: no inline timeouts).
   }
 
   async expectEmptyTokensList() {

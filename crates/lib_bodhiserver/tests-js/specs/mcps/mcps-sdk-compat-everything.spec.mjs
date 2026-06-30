@@ -47,11 +47,7 @@ import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
 import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 import { mintApiToken, mintApiTokenWithGrants } from '@/utils/api-model-helpers.mjs';
-import {
-  getAuthServerConfig,
-  getPreConfiguredAppClient,
-  getTestCredentials,
-} from '@/utils/auth-server-client.mjs';
+import { getAuthServerConfig, getPreConfiguredAppClient, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { buildMcpClient, safeCloseMcpClient, waitFor } from '@/utils/mcp-sdk-client.mjs';
 
 const ECHO_MESSAGE = 'sdk-e2e-hello';
@@ -78,10 +74,7 @@ test.describe(
       testCredentials = getTestCredentials();
     });
 
-    test('MCP proxy full protocol journey via official SDK client', async ({
-      page,
-      sharedServerUrl,
-    }) => {
+    test('MCP proxy full protocol journey via official SDK client', async ({ page, sharedServerUrl }) => {
       const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
       const mcpsPage = new McpsPage(page, sharedServerUrl);
       const tokensPage = new TokensPage(page, sharedServerUrl);
@@ -115,12 +108,7 @@ test.describe(
       // `mcps_access: All` case exercised against the proxy in Phase 5.
 
       await test.step('Mint all-access bodhiapp_ API token for grant-enforcement coverage', async () => {
-        apiToken = await mintApiToken(
-          tokensPage,
-          page,
-          `mcp-sdk-compat-${Date.now()}`,
-          'scope_token_user'
-        );
+        apiToken = await mintApiToken(tokensPage, page, `mcp-sdk-compat-${Date.now()}`, 'scope_token_user');
         expect(apiToken).toMatch(/^bodhiapp_/);
       });
 
@@ -150,9 +138,7 @@ test.describe(
 
       await test.step('Approve access request with MCP instance and exchange token', async () => {
         const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-        await reviewPage.approveWithMcps([
-          { url: McpFixtures.EVERYTHING_SERVER_MCP_URL, instanceId: mcpId },
-        ]);
+        await reviewPage.approveWithMcps([{ url: McpFixtures.EVERYTHING_SERVER_MCP_URL, instanceId: mcpId }]);
 
         await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
         await app.accessCallback.waitForLoaded();
@@ -200,20 +186,18 @@ test.describe(
             elicitation: {},
             roots: { listChanged: false },
           },
-          registerHandlers: (client) => {
+          registerHandlers: client => {
             // sampling/createMessage: stub an assistant text back. The tool
             // `trigger-sampling-request` stringifies the result into its
             // content block, so asserting our stub text appears proves the
             // proxy forwarded both legs (request → client handler → response).
-            client.setRequestHandler(CreateMessageRequestSchema, async (req) => {
+            client.setRequestHandler(CreateMessageRequestSchema, async req => {
               return {
                 model: 'bodhiapp-sdk-stub',
                 role: 'assistant',
                 content: {
                   type: 'text',
-                  text: `${SAMPLING_STUB_TEXT} | echoed: ${
-                    req.params?.messages?.[0]?.content?.text ?? ''
-                  }`,
+                  text: `${SAMPLING_STUB_TEXT} | echoed: ${req.params?.messages?.[0]?.content?.text ?? ''}`,
                 },
               };
             });
@@ -231,11 +215,11 @@ test.describe(
             }));
             // notifications/message: logging stream. We count + store the
             // most recent so `get-logging-messages` step can assert arrival.
-            client.setNotificationHandler(LoggingMessageNotificationSchema, (notification) => {
+            client.setNotificationHandler(LoggingMessageNotificationSchema, notification => {
               loggingMessages.push(notification.params);
             });
             // notifications/resources/updated: captured for the subscribe step.
-            client.setNotificationHandler(ResourceUpdatedNotificationSchema, (notification) => {
+            client.setNotificationHandler(ResourceUpdatedNotificationSchema, notification => {
               resourceUpdatedEvents.push(notification.params);
             });
           },
@@ -271,18 +255,14 @@ test.describe(
       await test.step('Tools — list returns the full everything catalogue (incl. conditional)', async () => {
         const { tools } = await sdkClient.listTools();
         expect(Array.isArray(tools)).toBe(true);
-        const names = tools.map((t) => t.name);
+        const names = tools.map(t => t.name);
         for (const expected of McpFixtures.EVERYTHING_EXPECTED_TOOLS) {
           expect(names).toContain(expected);
         }
         // Conditional tools registered because we advertised sampling /
         // elicitation / roots at connect time. If the proxy dropped
         // capability advertisement during initialize, these would be absent.
-        for (const expected of [
-          'trigger-sampling-request',
-          'trigger-elicitation-request',
-          'get-roots-list',
-        ]) {
+        for (const expected of ['trigger-sampling-request', 'trigger-elicitation-request', 'get-roots-list']) {
           expect(names).toContain(expected);
         }
       });
@@ -294,8 +274,8 @@ test.describe(
         });
         expect(result.isError).not.toBe(true);
         const text = (result.content ?? [])
-          .filter((b) => b.type === 'text')
-          .map((b) => b.text)
+          .filter(b => b.type === 'text')
+          .map(b => b.text)
           .join('');
         expect(text).toContain(ECHO_MESSAGE);
       });
@@ -307,8 +287,8 @@ test.describe(
         });
         expect(result.isError).not.toBe(true);
         const text = (result.content ?? [])
-          .filter((b) => b.type === 'text')
-          .map((b) => b.text)
+          .filter(b => b.type === 'text')
+          .map(b => b.text)
           .join('');
         expect(text).toContain('20');
       });
@@ -317,12 +297,12 @@ test.describe(
         const result = await sdkClient.callTool({ name: 'get-tiny-image', arguments: {} });
         if (result.isError) {
           const text = (result.content ?? [])
-            .filter((b) => b.type === 'text')
-            .map((b) => b.text)
+            .filter(b => b.type === 'text')
+            .map(b => b.text)
             .join(' | ');
           throw new Error(`get-tiny-image returned isError=true. content: ${text}`);
         }
-        const image = (result.content ?? []).find((b) => b.type === 'image');
+        const image = (result.content ?? []).find(b => b.type === 'image');
         expect(image).toBeDefined();
         expect(image.mimeType).toMatch(/^image\//);
         expect(typeof image.data).toBe('string');
@@ -356,7 +336,7 @@ test.describe(
           },
           undefined,
           {
-            onprogress: (p) => progressEvents.push(p),
+            onprogress: p => progressEvents.push(p),
           }
         );
         expect(result.isError).not.toBe(true);
@@ -388,7 +368,7 @@ test.describe(
       await test.step('Resources — listResourceTemplates returns both dynamic templates', async () => {
         const { resourceTemplates } = await sdkClient.listResourceTemplates();
         expect(Array.isArray(resourceTemplates)).toBe(true);
-        const uris = resourceTemplates.map((t) => t.uriTemplate);
+        const uris = resourceTemplates.map(t => t.uriTemplate);
         for (const expected of McpFixtures.EVERYTHING_EXPECTED_RESOURCE_TEMPLATES) {
           expect(uris).toContain(expected);
         }
@@ -397,7 +377,7 @@ test.describe(
       await test.step('Prompts — list returns expected prompts', async () => {
         const { prompts } = await sdkClient.listPrompts();
         expect(Array.isArray(prompts)).toBe(true);
-        const names = prompts.map((p) => p.name);
+        const names = prompts.map(p => p.name);
         for (const expected of ['simple-prompt', 'args-prompt']) {
           expect(names).toContain(expected);
         }
@@ -407,7 +387,7 @@ test.describe(
         const got = await sdkClient.getPrompt({ name: 'simple-prompt' });
         expect(Array.isArray(got.messages)).toBe(true);
         expect(got.messages.length).toBeGreaterThan(0);
-        const roles = got.messages.map((m) => m.role);
+        const roles = got.messages.map(m => m.role);
         expect(roles).toContain('user');
       });
 
@@ -417,7 +397,7 @@ test.describe(
           arguments: { city: ARGS_PROMPT_CITY },
         });
         expect(Array.isArray(got.messages)).toBe(true);
-        const flat = got.messages.map((m) => (m.content?.text ? m.content.text : '')).join(' ');
+        const flat = got.messages.map(m => (m.content?.text ? m.content.text : '')).join(' ');
         expect(flat).toContain(ARGS_PROMPT_CITY);
       });
 
@@ -436,7 +416,7 @@ test.describe(
           arguments: { messageType: 'error', includeImage: false },
         });
         expect(result.isError).not.toBe(true);
-        const first = (result.content ?? []).find((b) => b.type === 'text');
+        const first = (result.content ?? []).find(b => b.type === 'text');
         expect(first).toBeDefined();
         // Annotations are metadata attached to content blocks. The proxy must
         // passthrough arbitrary JSON for these to survive the round trip.
@@ -451,7 +431,7 @@ test.describe(
           arguments: { count: 3 },
         });
         expect(result.isError).not.toBe(true);
-        const links = (result.content ?? []).filter((b) => b.type === 'resource_link');
+        const links = (result.content ?? []).filter(b => b.type === 'resource_link');
         expect(links.length).toBe(3);
         for (const link of links) {
           expect(link.uri).toMatch(/^demo:\/\/resource\/dynamic\//);
@@ -499,8 +479,8 @@ test.describe(
         });
         expect(result.isError).not.toBe(true);
         const text = (result.content ?? [])
-          .filter((b) => b.type === 'text')
-          .map((b) => b.text)
+          .filter(b => b.type === 'text')
+          .map(b => b.text)
           .join('\n');
         expect(text).toContain(CLIENT_ROOT_URI);
         expect(text).toContain(CLIENT_ROOT_NAME);
@@ -513,8 +493,8 @@ test.describe(
         });
         expect(result.isError).not.toBe(true);
         const text = (result.content ?? [])
-          .filter((b) => b.type === 'text')
-          .map((b) => b.text)
+          .filter(b => b.type === 'text')
+          .map(b => b.text)
           .join('\n');
         // Our client handler stamped SAMPLING_STUB_TEXT into the assistant
         // response; the upstream tool then embedded it in the tool result.
@@ -528,8 +508,8 @@ test.describe(
         });
         expect(result.isError).not.toBe(true);
         const text = (result.content ?? [])
-          .filter((b) => b.type === 'text')
-          .map((b) => b.text)
+          .filter(b => b.type === 'text')
+          .map(b => b.text)
           .join('\n');
         // Server formats our accepted payload back into the tool result.
         expect(text).toContain(ELICITATION_STUB_NAME);
@@ -568,7 +548,7 @@ test.describe(
         try {
           // Server sends one notification immediately on enable, then every 5s.
           await sdkClient.callTool({ name: 'toggle-subscriber-updates', arguments: {} });
-          await waitFor(() => resourceUpdatedEvents.some((e) => e.uri === targetUri), {
+          await waitFor(() => resourceUpdatedEvents.some(e => e.uri === targetUri), {
             timeoutMs: 8000,
             intervalMs: 100,
             label: 'resources/updated for subscribed uri',
@@ -601,7 +581,7 @@ test.describe(
       await test.step('Grant All — all-access API token connects + lists tools', async () => {
         const built = await buildMcpClient({ serverUrl: sharedServerUrl, mcpId, token: apiToken });
         const { tools } = await built.client.listTools();
-        expect(tools.map((t) => t.name)).toContain('echo');
+        expect(tools.map(t => t.name)).toContain('echo');
         await safeCloseMcpClient(built.client);
       });
 
@@ -613,9 +593,11 @@ test.describe(
           'scope_token_user',
           { specificMcps: true, specificMcpsCount: 0 }
         );
-        await expect(
-          buildMcpClient({ serverUrl: sharedServerUrl, mcpId, token: deniedToken })
-        ).rejects.toThrow();
+        // Pin the failure to an auth status (401/403) — not just any throw — so a
+        // transport/DNS error can't masquerade as enforcement.
+        await expect(buildMcpClient({ serverUrl: sharedServerUrl, mcpId, token: deniedToken })).rejects.toThrow(
+          /40[13]/
+        );
       });
 
       await test.step('Grant Specific{this} — API token granted this MCP connects + lists tools', async () => {
@@ -633,7 +615,7 @@ test.describe(
           token: grantedToken,
         });
         const { tools } = await built.client.listTools();
-        expect(tools.map((t) => t.name)).toContain('echo');
+        expect(tools.map(t => t.name)).toContain('echo');
         await safeCloseMcpClient(built.client);
       });
     });

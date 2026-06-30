@@ -88,12 +88,7 @@ export class AccessRequestReviewPage extends BasePage {
    * @param {boolean}  [opts.listMcps] toggle "list all MCPs" on
    * @param {string[]} [opts.mcpIds] grant these owner-extra MCP ids
    */
-  async approveWithGrants({
-    listModels = false,
-    modelIds = null,
-    listMcps = false,
-    mcpIds = null,
-  } = {}) {
+  async approveWithGrants({ listModels = false, modelIds = null, listMcps = false, mcpIds = null } = {}) {
     await this.waitForReviewPage();
     if (listModels) await this.toggleListModels();
     if (modelIds) await this.grantSpecificModels(modelIds);
@@ -114,21 +109,6 @@ export class AccessRequestReviewPage extends BasePage {
     await this.waitForReviewPage();
 
     for (const { url, instanceId } of selections) {
-      await this.selectMcpInstance(url, instanceId);
-    }
-
-    await this.clickApprove();
-  }
-
-  /**
-   * Approve with MCP selections.
-   * @param {Object} params
-   * @param {Array<{url: string, instanceId: string}>} [params.mcps]
-   */
-  async approveWithResources({ mcps = [] }) {
-    await this.waitForReviewPage();
-
-    for (const { url, instanceId } of mcps) {
       await this.selectMcpInstance(url, instanceId);
     }
 

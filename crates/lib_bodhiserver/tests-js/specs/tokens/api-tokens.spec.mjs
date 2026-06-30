@@ -8,7 +8,7 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { McpsPage } from '@/pages/McpsPage.mjs';
 import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
-import { registerApiModelViaUI } from '@/utils/api-model-helpers.mjs';
+import { fetchWithBearer, registerApiModelViaUI } from '@/utils/api-model-helpers.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
 import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
@@ -122,7 +122,7 @@ test.describe('API Tokens - Complete Integration', () => {
       expect(grantedModels.length).toBeGreaterThan(0);
       expect(grantedMcps.length).toBeGreaterThan(0);
 
-      await tokensPage.copyTokenFromDialog();
+      const scopedToken = await tokensPage.copyTokenFromDialog();
       await tokensPage.closeTokenDialog();
       await tokensPage.expectTokenInList(tokenNames.scoped, 'active');
 
@@ -130,6 +130,24 @@ test.describe('API Tokens - Complete Integration', () => {
       await tokensPage.openTokenRail(tokenNames.scoped);
       await tokensPage.expectModelGrantChip(grantedModels[0]);
       await tokensPage.expectMcpGrantChip(grantedMcps[0]);
+
+      // Enforce the model grant over the real API. The chat UI does not enforce token
+      // grants, so drive /v1/chat/completions directly with the scoped token: a
+      // non-granted model is denied (403 model_forbidden) at the grant middleware before
+      // inference, while the granted model clears the gate (never a grant-403; the actual
+      // inference status depends on the model, so we only assert the gate was passed).
+      const denied = await fetchWithBearer(sharedServerUrl, scopedToken, '/v1/chat/completions', {
+        model: 'model-not-in-this-grant',
+        messages: [{ role: 'user', content: 'hi' }],
+      });
+      expect(denied.resp.status).toBe(403);
+      expect(denied.data.error.code).toBe('token_grant_error-model_forbidden');
+
+      const allowed = await fetchWithBearer(sharedServerUrl, scopedToken, '/v1/chat/completions', {
+        model: grantedModels[0],
+        messages: [{ role: 'user', content: 'hi' }],
+      });
+      expect(allowed.resp.status).not.toBe(403);
     });
 
     await test.step('All-access grant: list-all + All models/MCPs reflected in the rail', async () => {
@@ -222,14 +240,8 @@ test.describe('API Tokens - Complete Integration', () => {
     });
   });
 
-  test('Multi-User Isolation and Error Recovery @integration', async ({
-    browser,
-    sharedServerUrl,
-  }, testInfo) => {
-    test.skip(
-      testInfo.project.name === 'multi_tenant',
-      'Multi-user test requires same-tenant membership setup'
-    );
+  test('Multi-User Isolation and Error Recovery @integration', async ({ browser, sharedServerUrl }, testInfo) => {
+    test.skip(testInfo.project.name === 'multi_tenant', 'Multi-user test requires same-tenant membership setup');
 
     let adminContext;
     let managerContext;
@@ -242,12 +254,7 @@ test.describe('API Tokens - Complete Integration', () => {
       await test.step('Admin: login, register model, create tokens', async () => {
         adminContext = await browser.newContext();
         const adminPage = await adminContext.newPage();
-        const adminLogin = new LoginPage(
-          adminPage,
-          sharedServerUrl,
-          authServerConfig,
-          testCredentials
-        );
+        const adminLogin = new LoginPage(adminPage, sharedServerUrl, authServerConfig, testCredentials);
         const adminModelsPage = new ModelsListPageV2(adminPage, sharedServerUrl);
         const adminFormPage = new ApiModelFormPage(adminPage, sharedServerUrl);
         const adminTokensPage = new TokensPage(adminPage, sharedServerUrl);
@@ -281,12 +288,7 @@ test.describe('API Tokens - Complete Integration', () => {
 
         managerContext = await browser.newContext();
         const managerPage = await managerContext.newPage();
-        const managerLogin = new LoginPage(
-          managerPage,
-          sharedServerUrl,
-          authServerConfig,
-          managerCredentials
-        );
+        const managerLogin = new LoginPage(managerPage, sharedServerUrl, authServerConfig, managerCredentials);
         const managerModelsPage = new ModelsListPageV2(managerPage, sharedServerUrl);
         const managerFormPage = new ApiModelFormPage(managerPage, sharedServerUrl);
         const managerTokensPage = new TokensPage(managerPage, sharedServerUrl);

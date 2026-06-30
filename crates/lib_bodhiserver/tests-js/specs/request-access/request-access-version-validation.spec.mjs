@@ -1,5 +1,11 @@
 import { expect, test } from '@/fixtures.mjs';
 
+// These are intentionally node-side API-contract tests: they assert exactly how the
+// `POST /bodhi/v1/apps/request-access` endpoint rejects a malformed `requested` envelope
+// (unknown / missing version -> 400 with a specific error code), which is how a real
+// 3rd-party app hits the API. Per the refined black-box rule, driving the API directly
+// from the test (node context, not the browser) is acceptable for app-facing endpoints —
+// the rule only bans asserting backend state via the browser (page.evaluate + fetch).
 test.describe('Access Request Version Validation', { tag: ['@oauth'] }, () => {
   test('rejects unknown version in requested resources', async ({ sharedServerUrl, request }) => {
     const response = await request.post(`${sharedServerUrl}/bodhi/v1/apps/request-access`, {

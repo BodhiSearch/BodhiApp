@@ -29,6 +29,12 @@ import { expect, test } from '@playwright/test';
  * Due to the long execution time (configures short-lived tokens and waits for expiration),
  * these tests are excluded from regular test runs and should be run on a schedule.
  *
+ * KNOWN LIMITATION (intentional): this suite is NOT run by CI. It is a local-only,
+ * manual harness for debugging session token-refresh issues — it relies on real
+ * wall-clock waits (30s/5s) for token expiry and reads `/dev/secrets` to inspect the
+ * refreshed token, neither of which suits CI. Run it by hand when investigating refresh
+ * behavior; do not convert it to a CI-tier test.
+ *
  * To run these tests:
  *   npm run test:playwright:scheduled
  *
@@ -59,19 +65,12 @@ test.describe('Token Refresh Integration', { tag: '@scheduled' }, () => {
     resourceClient = await authClient.createResourceClient(serverUrl);
 
     // Get admin token using realm admin credentials with admin-cli client
-    adminToken = await authClient.getRealmAdminToken(
-      realmAdminCredentials.username,
-      realmAdminCredentials.password
-    );
+    adminToken = await authClient.getRealmAdminToken(realmAdminCredentials.username, realmAdminCredentials.password);
 
     // Configure client with 15-second access token lifespan
     await authClient.configureClientTokenLifespan(adminToken, resourceClient.clientId, 15);
 
-    await authClient.makeResourceAdmin(
-      resourceClient.clientId,
-      resourceClient.clientSecret,
-      testCredentials.userId
-    );
+    await authClient.makeResourceAdmin(resourceClient.clientId, resourceClient.clientSecret, testCredentials.userId);
 
     serverManager = createServerManager({
       appStatus: 'ready',
@@ -93,10 +92,7 @@ test.describe('Token Refresh Integration', { tag: '@scheduled' }, () => {
     }
   });
 
-  test('should preserve session when token expires in background tab', async ({
-    page,
-    context,
-  }) => {
+  test('should preserve session when token expires in background tab', async ({ page, context }) => {
     test.setTimeout(180000); // 3 minutes timeout for long-running test
     const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
 
@@ -185,8 +181,6 @@ test.describe('Token Refresh Integration', { tag: '@scheduled' }, () => {
     expect(finalAccessToken).toContain('eyJhbGciOiJSUzI1NiIs'); // Valid JWT header
 
     console.log('Final access token (first 20 chars):', finalAccessToken.substring(0, 20));
-    console.log(
-      'Session preserved successfully - user not logged out after token expiry in background'
-    );
+    console.log('Session preserved successfully - user not logged out after token expiry in background');
   });
 });
