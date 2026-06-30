@@ -254,3 +254,23 @@
   border-color: hsl(var(--border));
   color: hsl(var(--muted-foreground));
 }
+
+/* App-access consent: titled resource sections (AI Models / Connected Tools). */
+.api-keys-screen .review-section {
+  padding: 1rem 0;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.api-keys-screen .review-section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.api-keys-screen .review-section-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 0.75rem;
+}

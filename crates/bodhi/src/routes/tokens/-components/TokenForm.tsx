@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
 
-import { AliasResponse, CreateTokenRequest, TokenCreated } from '@bodhiapp/ts-client';
+import { CreateTokenRequest, TokenCreated } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, ShieldPlus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { AccessItem, AccessMode, AccessPicker, ListingToggle } from '@/components/access-picker';
+import { AccessMode, GrantBlock } from '@/components/access-picker';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { useListModels } from '@/hooks/models';
 import { useCreateToken } from '@/hooks/tokens';
 import { useGetUser } from '@/hooks/users';
 import { useToastMessages } from '@/hooks/useToastMessages';
+import { grantableMcpItems, grantableModelItems } from '@/lib/grantItems';
 import { cn } from '@/lib/utils';
 
 export const createTokenSchema = z.object({
@@ -40,24 +41,6 @@ const DEFAULTS: TokenFormData = {
   mcpMode: 'all',
   mcps: [],
 };
-
-/** Resolve each alias to grantable model items (the inference grant id space), tagged
- *  local/api so the picker can group + filter. */
-function grantableModelItems(aliases: AliasResponse[]): AccessItem[] {
-  const items = new Map<string, AccessItem>();
-  for (const alias of aliases) {
-    if (alias.source === 'api') {
-      const prefix = alias.prefix ?? '';
-      for (const model of alias.models) {
-        const id = `${prefix}${model.id}`;
-        if (!items.has(id)) items.set(id, { id, label: id, type: 'api' });
-      }
-    } else if ('alias' in alias) {
-      if (!items.has(alias.alias)) items.set(alias.alias, { id: alias.alias, label: alias.alias, type: 'local' });
-    }
-  }
-  return Array.from(items.values());
-}
 
 export function toCreateTokenRequest(data: TokenFormData): CreateTokenRequest {
   const models = data.modelMode === 'all' ? { type: 'all' as const } : { type: 'specific' as const, ids: data.models };
@@ -100,10 +83,7 @@ export function TokenForm({ onTokenCreated, onCancel }: TokenFormProps) {
   const canPowerUser = userInfo?.auth_status === 'logged_in' && userInfo.role !== 'resource_user';
 
   const modelItems = useMemo(() => grantableModelItems(modelsData?.data ?? []), [modelsData]);
-  const mcpItems = useMemo<AccessItem[]>(
-    () => (mcpsData?.mcps ?? []).map((m) => ({ id: m.id, label: m.name })),
-    [mcpsData]
-  );
+  const mcpItems = useMemo(() => grantableMcpItems(mcpsData?.mcps ?? []), [mcpsData]);
 
   const form = useForm<TokenFormData>({
     resolver: zodResolver(createTokenSchema),
@@ -167,58 +147,50 @@ export function TokenForm({ onTokenCreated, onCancel }: TokenFormProps) {
         {/* §2 Model Access */}
         <div className="nt-section">
           <div className="nt-section-title">Model Access</div>
-          <ListingToggle
-            checked={listModels}
-            onToggle={() => form.setValue('listModels', !listModels)}
-            label="List all models"
-            code="/v1/models"
-            description="Let the token enumerate every model via the catalog. Off → it only sees the models you grant for inference below. (Listing is separate from running inference.)"
-            redundant={modelMode === 'all'}
-            disabled={isLoading}
-            testId="list-models-switch"
-          />
-          <AccessPicker
+          <GrantBlock
+            noun="model"
+            listChecked={listModels}
+            onListToggle={() => form.setValue('listModels', !listModels)}
+            listLabel="List all models"
+            listCode="/v1/models"
+            listDescription="Let the token enumerate every model via the catalog. Off → it only sees the models you grant for inference below. (Listing is separate from running inference.)"
+            listTestId="list-models-switch"
             mode={modelMode}
             onModeChange={(m: AccessMode) => form.setValue('modelMode', m)}
             items={modelItems}
             selectedIds={selectedModels}
             onToggle={(id) => toggle('models', id)}
-            noun="model"
             panelTitle="Select Models"
             panelSubtitle="Choose which models this token can access"
-            disabled={isLoading}
             testIdPrefix="model-access"
+            disabled={isLoading}
           />
         </div>
 
         {/* §3 MCP Access */}
         <div className="nt-section">
           <div className="nt-section-title">MCP Access</div>
-          <ListingToggle
-            checked={listMcps}
-            onToggle={() => form.setValue('listMcps', !listMcps)}
-            label="List all MCPs"
-            code="/v1/mcps"
-            description="Let the token discover every MCP server. Off → it only sees the servers you grant a connection to below. (Listing is separate from connecting.)"
-            redundant={mcpMode === 'all'}
-            disabled={isLoading}
-            testId="list-mcps-switch"
-          />
-          <AccessPicker
+          <GrantBlock
+            noun="MCP"
+            listChecked={listMcps}
+            onListToggle={() => form.setValue('listMcps', !listMcps)}
+            listLabel="List all MCPs"
+            listCode="/v1/mcps"
+            listDescription="Let the token discover every MCP server. Off → it only sees the servers you grant a connection to below. (Listing is separate from connecting.)"
+            listTestId="list-mcps-switch"
             mode={mcpMode}
             onModeChange={(m: AccessMode) => form.setValue('mcpMode', m)}
             items={mcpItems}
             selectedIds={selectedMcps}
             onToggle={(id) => toggle('mcps', id)}
-            noun="MCP"
             panelTitle="Select MCPs"
             panelSubtitle="Choose which MCP servers this token can invoke"
             allLabel="All MCPs"
             allDesc="Access all currently registered MCP servers and any added in the future."
             specificLabel="Specific MCPs"
             specificDesc="Choose exactly which MCP servers this token can invoke."
-            disabled={isLoading}
             testIdPrefix="mcp-access"
+            disabled={isLoading}
           />
         </div>
 

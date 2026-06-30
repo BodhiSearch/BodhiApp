@@ -17,6 +17,7 @@ import {
   mockDraftRedirectResponse,
   mockDraftReviewResponse,
   mockDraftReviewResponsePowerUser,
+  mockDraftWithGrantFlagsResponse,
   mockExpiredReviewResponse,
 } from '@/test-fixtures/apps';
 import {
@@ -28,6 +29,8 @@ import {
   mockAppAccessRequestReviewError,
 } from '@/test-utils/msw-v2/handlers/apps';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
+import { mockListMcps } from '@/test-utils/msw-v2/handlers/mcps';
+import { mockModelsDefault } from '@/test-utils/msw-v2/handlers/models';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
@@ -104,7 +107,13 @@ const setupWindowLocation = () => {
 };
 
 const setupHandlers = (reviewData?: Parameters<typeof mockAppAccessRequestReview>[0]) => {
-  const handlers = [...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_user' })];
+  const handlers = [
+    ...mockAppInfoReady(),
+    ...mockUserLoggedIn({ role: 'resource_user' }),
+    // The consent screen fetches candidate models + MCPs for the access pickers.
+    ...mockModelsDefault(),
+    mockListMcps(),
+  ];
   if (reviewData) {
     handlers.push(...mockAppAccessRequestReview(reviewData));
   }
@@ -804,7 +813,7 @@ describe('ReviewAccessRequestPage - Mixed Resources', () => {
       expect(screen.getByTestId('review-mcp-https://mcp.deepwiki.com/mcp')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Requested MCP Servers:')).toBeInTheDocument();
+    expect(screen.getByTestId('review-mcps-section')).toBeInTheDocument();
   });
 
   it('Approve button requires MCP instance selection', async () => {
@@ -974,5 +983,89 @@ describe('ReviewAccessRequestPage V2', () => {
     expect(screen.getByTestId('review-app-name')).toBeInTheDocument();
     expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     expect(screen.getByTestId('review-deny-button')).toBeInTheDocument();
+  });
+});
+
+describe('ReviewAccessRequestPage - Model & MCP grant sections', () => {
+  it('renders model + MCP grant controls when the app requests them', async () => {
+    mockSearch = { id: MOCK_REQUEST_ID };
+    setupHandlers(mockDraftWithGrantFlagsResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-models-section')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('review-list-models-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('review-model-access-block')).toBeInTheDocument();
+    expect(screen.getByTestId('review-mcps-section')).toBeInTheDocument();
+    expect(screen.getByTestId('review-list-mcps-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('review-mcp-access-block')).toBeInTheDocument();
+  });
+
+  it('omits the grant sections when the app does not request them', async () => {
+    mockSearch = { id: MOCK_REQUEST_ID };
+    setupHandlers(mockDraftReviewResponse); // no model flags
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('review-models-section')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('review-list-models-toggle')).not.toBeInTheDocument();
+  });
+
+  it('approve payload carries the model + MCP grants', async () => {
+    const user = userEvent.setup();
+    mockSearch = { id: MOCK_REQUEST_ID };
+    let capturedBody: unknown = null;
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ role: 'resource_user' }),
+      ...mockModelsDefault(),
+      mockListMcps(),
+      ...mockAppAccessRequestReview(mockDraftWithGrantFlagsResponse),
+      ...mockAppAccessRequestApprove(MOCK_REQUEST_ID, { onBody: (body) => (capturedBody = body) })
+    );
+    setupWindowClose();
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-list-models-toggle')).toBeInTheDocument();
+    });
+
+    // Turn on "list all models" and pick the by-url MCP instance (required to approve).
+    await user.click(screen.getByTestId('review-list-models-toggle'));
+    const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
+    await user.click(selectTrigger);
+    await user.click(await screen.findByText('DeepWiki (deepwiki-prod)'));
+
+    const approveButton = screen.getByTestId('review-approve-button');
+    await waitFor(() => expect(approveButton).not.toBeDisabled());
+    await user.click(approveButton);
+
+    await waitFor(() => expect(capturedBody).not.toBeNull());
+    const body = capturedBody as {
+      approved: {
+        list_models: boolean;
+        models: { type: string };
+        mcps: Array<{ url: string; status: string }>;
+        mcps_extra: { type: string; ids?: string[] };
+      };
+    };
+    expect(body.approved.list_models).toBe(true);
+    // models_access requested, mode defaults to All.
+    expect(body.approved.models.type).toBe('all');
+    expect(body.approved.mcps[0].status).toBe('approved');
+    // No owner-extra MCPs selected → empty specific grant.
+    expect(body.approved.mcps_extra).toEqual({ type: 'specific', ids: [] });
   });
 });

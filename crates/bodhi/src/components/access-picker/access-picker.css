@@ -4,6 +4,13 @@
    tokens mirror model-selector.css so the picker is self-contained. Drag-reorder / rank badges /
    single-combo / granted-new upgrade pills from the prototype are intentionally omitted. */
 
+/* One resource grant editor: listing toggle stacked above the access picker. */
+.grant-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .access-picker,
 .access-picker-panel {
   --c-lotus-bg: rgba(255, 164, 184, 0.13);

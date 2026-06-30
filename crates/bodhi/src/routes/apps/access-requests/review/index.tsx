@@ -5,6 +5,7 @@ import { createFileRoute, useSearch } from '@tanstack/react-router';
 import { AlertCircle, CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { z } from 'zod';
 
+import { GrantBlock, type AccessMode } from '@/components/access-picker';
 import AppInitializer from '@/components/AppInitializer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,10 +16,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGetAppAccessRequestReview, useApproveAppAccessRequest, useDenyAppAccessRequest } from '@/hooks/apps';
 import type { AccessRequestActionResponse, ApproveAccessRequest } from '@/hooks/apps';
+import { useListMcps } from '@/hooks/mcps';
+import { useListModels } from '@/hooks/models';
 import { toast } from '@/hooks/use-toast';
-import { useToastMessages } from '@/hooks/useToastMessages';
 import { useGetUser } from '@/hooks/users';
+import { useToastMessages } from '@/hooks/useToastMessages';
 import { extractErrorMessage } from '@/lib/errorUtils';
+import { grantableMcpItems, grantableModelItems } from '@/lib/grantItems';
 import { safeNavigate } from '@/lib/safeNavigate';
 
 import McpServerCard from './-components/McpServerCard';
@@ -121,8 +125,25 @@ const ReviewContent = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionResult, setActionResult] = useState<AccessRequestActionResponse | null>(null);
 
+  // Owner's model/MCP grant decisions (driven by the app's requested UI flags).
+  const [listModels, setListModels] = useState(false);
+  const [modelMode, setModelMode] = useState<AccessMode>('all');
+  const [models, setModels] = useState<string[]>([]);
+  const [listMcps, setListMcps] = useState(false);
+  const [mcpExtraMode, setMcpExtraMode] = useState<AccessMode>('specific');
+  const [mcpsExtra, setMcpsExtra] = useState<string[]>([]);
+
   const { data: reviewData, isLoading, error } = useGetAppAccessRequestReview(id ?? null);
   const { data: userData } = useGetUser();
+  const { data: modelsData } = useListModels(1, 100, 'alias', 'asc');
+  const { data: mcpsData } = useListMcps();
+
+  const modelItems = useMemo(() => grantableModelItems(modelsData?.data ?? []), [modelsData]);
+  const mcpItems = useMemo(() => grantableMcpItems(mcpsData?.mcps ?? []), [mcpsData]);
+
+  const toggleSelection = (current: string[], setter: (v: string[]) => void, itemId: string) => {
+    setter(current.includes(itemId) ? current.filter((x) => x !== itemId) : [...current, itemId]);
+  };
 
   const handleActionSuccess = (data: AccessRequestActionResponse) => {
     if (data.flow_type === 'popup') {
@@ -234,12 +255,24 @@ const ReviewContent = () => {
     return <NonDraftStatus status={reviewData.status} flowType={reviewData.flow_type} />;
   }
 
+  const req = reviewData.requested;
+
   const handleApprove = () => {
     setIsSubmitting(true);
     const body: ApproveAccessRequest = {
       approved_role: approvedRole!,
       approved: {
-        version: reviewData.requested.version,
+        version: req.version,
+        // Listing toggles are only meaningful when the app requested them.
+        list_models: req.models_list ? listModels : false,
+        // If the app didn't request a model selector, the owner can't restrict —
+        // the app keeps all-model access (the pre-grants default).
+        models: req.models_access
+          ? modelMode === 'all'
+            ? { type: 'all' }
+            : { type: 'specific', ids: models }
+          : { type: 'all' },
+        list_mcps: req.mcps_list ? listMcps : false,
         mcps: (reviewData.mcps_info ?? []).map((mcp) => ({
           url: mcp.url,
           status: approvedMcps[mcp.url] ? 'approved' : 'denied',
@@ -251,6 +284,12 @@ const ReviewContent = () => {
                 })()
               : undefined,
         })),
+        // Owner-granted extras default to none when not requested.
+        mcps_extra: req.mcps_access
+          ? mcpExtraMode === 'all'
+            ? { type: 'all' }
+            : { type: 'specific', ids: mcpsExtra }
+          : { type: 'specific', ids: [] },
       },
     };
     approveMutation.mutate({ id, body });
@@ -291,10 +330,62 @@ const ReviewContent = () => {
           )}
         </CardHeader>
         <CardContent>
-          {reviewData.mcps_info && reviewData.mcps_info.length > 0 && (
-            <div className="mb-4">
-              <h3 className="text-sm font-medium mb-2">Requested MCP Servers:</h3>
-              {reviewData.mcps_info.map((mcpInfo) => (
+          {(req.models_list || req.models_access) && (
+            <section className="review-section" data-testid="review-models-section">
+              <div className="review-section-title">AI Models</div>
+              <GrantBlock
+                noun="model"
+                showListing={req.models_list}
+                showAccess={req.models_access}
+                listChecked={listModels}
+                onListToggle={() => setListModels((v) => !v)}
+                listLabel="Let the app see your full model list"
+                listCode="/v1/models"
+                listDescription="The app can see the names of all your models. It still can't use a model unless you allow it below."
+                listTestId="review-list-models-toggle"
+                mode={modelMode}
+                onModeChange={setModelMode}
+                items={modelItems}
+                selectedIds={models}
+                onToggle={(itemId) => toggleSelection(models, setModels, itemId)}
+                panelTitle="Select Models"
+                panelSubtitle="Choose which models this app can use"
+                testIdPrefix="review-model-access"
+                disabled={isSubmitting}
+              />
+            </section>
+          )}
+
+          {(req.mcps_list || req.mcps_access || (reviewData.mcps_info?.length ?? 0) > 0) && (
+            <section className="review-section" data-testid="review-mcps-section">
+              <div className="review-section-title">Connected Tools</div>
+              {(req.mcps_list || req.mcps_access) && (
+                <GrantBlock
+                  noun="tool"
+                  showListing={req.mcps_list}
+                  showAccess={req.mcps_access}
+                  listChecked={listMcps}
+                  onListToggle={() => setListMcps((v) => !v)}
+                  listLabel="Let the app see your full list of tools"
+                  listCode="/v1/mcps"
+                  listDescription="The app can see the names of all your connected tools. It still can't use a tool unless you allow it below."
+                  listTestId="review-list-mcps-toggle"
+                  mode={mcpExtraMode}
+                  onModeChange={setMcpExtraMode}
+                  items={mcpItems}
+                  selectedIds={mcpsExtra}
+                  onToggle={(itemId) => toggleSelection(mcpsExtra, setMcpsExtra, itemId)}
+                  panelTitle="Give the app extra tools"
+                  panelSubtitle="Tools the app didn't ask for, but you can add."
+                  allLabel="All tools"
+                  allDesc="Give access to every connected tool, including ones added later."
+                  specificLabel="Specific tools"
+                  specificDesc="Choose exactly which tools the app can use."
+                  testIdPrefix="review-mcp-access"
+                  disabled={isSubmitting}
+                />
+              )}
+              {reviewData.mcps_info?.map((mcpInfo) => (
                 <McpServerCard
                   key={mcpInfo.url}
                   mcpInfo={mcpInfo}
@@ -306,7 +397,7 @@ const ReviewContent = () => {
                   onToggleApproval={(url, approved) => setApprovedMcps((prev) => ({ ...prev, [url]: approved }))}
                 />
               ))}
-            </div>
+            </section>
           )}
 
           {roleOptions.length > 0 && (
