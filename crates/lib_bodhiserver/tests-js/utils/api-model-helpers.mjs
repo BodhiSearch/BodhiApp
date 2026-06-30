@@ -14,9 +14,7 @@ import { TokenFixtures } from '@/fixtures/tokenFixtures.mjs';
 export async function registerApiModelViaUI(modelsPage, formPage, apiKey, formatConfig = null) {
   const config = formatConfig || ApiModelFixtures.API_FORMATS.openai;
   const modelData = ApiModelFixtures.createModelDataForFormat(
-    Object.keys(ApiModelFixtures.API_FORMATS).find(
-      (k) => ApiModelFixtures.API_FORMATS[k] === config
-    ) || 'openai'
+    Object.keys(ApiModelFixtures.API_FORMATS).find(k => ApiModelFixtures.API_FORMATS[k] === config) || 'openai'
   );
   await modelsPage.navigateToModels();
   await modelsPage.clickNewApiModel();
@@ -44,7 +42,9 @@ export async function registerApiModelViaUI(modelsPage, formPage, apiKey, format
  */
 export async function mintApiToken(tokensPage, page, name, scope) {
   await tokensPage.navigateToTokens();
-  await tokensPage.createToken(name, scope);
+  // Grants default to fail-closed deny, so an inference token must explicitly grant
+  // all-model + all-MCP access (this helper is for tests that just need a working token).
+  await tokensPage.createTokenWithGrants({ name, scope, allModels: true, allMcps: true });
   await TokenFixtures.mockClipboard(page);
   const token = await tokensPage.copyTokenFromDialog();
   await tokensPage.closeTokenDialog();

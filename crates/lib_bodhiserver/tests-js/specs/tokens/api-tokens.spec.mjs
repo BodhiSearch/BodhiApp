@@ -45,7 +45,9 @@ test.describe('API Tokens - Complete Integration', () => {
       await tokensPage.navigateToTokens();
       await tokensPage.expectTokensPage();
 
-      await tokensPage.createToken(tokenNames.chat);
+      // Grant all-model access so the Chat Integration step below can infer with this
+      // token (grants default to fail-closed deny).
+      await tokensPage.createTokenWithGrants({ name: tokenNames.chat, allModels: true });
       await tokensPage.expectTokenDialog();
 
       // Toggle show/hide
@@ -151,13 +153,15 @@ test.describe('API Tokens - Complete Integration', () => {
     });
 
     await test.step('All-access grant: list-all + All models/MCPs reflected in the rail', async () => {
-      // No Specific selection ⇒ the form's default All mode for both dimensions.
+      // The form defaults to Specific/none, so All access is selected explicitly.
       await tokensPage.navigateToTokens();
       await tokensPage.createTokenWithGrants({
         name: 'all-access-grant',
         scope: 'scope_token_power_user',
         listModels: true,
         listMcps: true,
+        allModels: true,
+        allMcps: true,
       });
       await tokensPage.copyTokenFromDialog();
       await tokensPage.closeTokenDialog();
@@ -265,7 +269,9 @@ test.describe('API Tokens - Complete Integration', () => {
         await adminTokensPage.navigateToTokens();
         await TokenFixtures.mockClipboard(adminPage);
 
-        await adminTokensPage.createToken(tokenNames.admin1);
+        // admin1 is used for real inference below (cross-browser via API-token auth), so
+        // it needs model access (grants default to fail-closed deny).
+        await adminTokensPage.createTokenWithGrants({ name: tokenNames.admin1, allModels: true });
         adminToken1 = await adminTokensPage.copyTokenFromDialog();
         await adminTokensPage.closeTokenDialog();
         await adminTokensPage.expectTokenInList(tokenNames.admin1);
@@ -300,7 +306,7 @@ test.describe('API Tokens - Complete Integration', () => {
         await managerTokensPage.expectEmptyTokensList();
 
         await TokenFixtures.mockClipboard(managerPage);
-        await managerTokensPage.createToken(tokenNames.user);
+        await managerTokensPage.createTokenWithGrants({ name: tokenNames.user, allModels: true });
         managerToken = await managerTokensPage.copyTokenFromDialog();
         await managerTokensPage.closeTokenDialog();
         await managerTokensPage.expectTokenInList(tokenNames.user);
@@ -384,7 +390,7 @@ test.describe('API Tokens - Complete Integration', () => {
         // Create valid token and verify recovery
         await adminTokensPage.navigateToTokens();
         await adminTokensPage.expectTokensPage();
-        await adminTokensPage.createToken(tokenNames.basic);
+        await adminTokensPage.createTokenWithGrants({ name: tokenNames.basic, allModels: true });
         const validToken = await adminTokensPage.copyTokenFromDialog();
         await adminTokensPage.closeTokenDialog();
         await adminTokensPage.expectTokenInList(tokenNames.basic, 'active');

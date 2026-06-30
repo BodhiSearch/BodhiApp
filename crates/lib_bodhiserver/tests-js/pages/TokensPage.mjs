@@ -16,7 +16,9 @@ export class TokensPage extends BasePage {
 
     // Access pickers (shared AccessPicker; prefix is 'model-access' | 'mcp-access')
     listToggle: kind => `[data-testid="list-${kind}-switch"]`, // kind: 'models' | 'mcps'
+    accessModeAll: prefix => `[data-testid="${prefix}-mode-all"]`,
     accessModeSpecific: prefix => `[data-testid="${prefix}-mode-specific"]`,
+    accessAddButton: prefix => `[data-testid="${prefix}-add"]`,
     accessPanel: prefix => `[data-testid="${prefix}-panel"]`,
     accessPanelSearch: prefix => `[data-testid="${prefix}-panel-search"]`,
     accessPanelItems: prefix => `[data-testid^="${prefix}-panel-item-"]`,
@@ -121,6 +123,17 @@ export class TokensPage extends BasePage {
   }
 
   /**
+   * Switch an access picker to All mode. The form defaults to Specific (least-privilege),
+   * so all-access must be selected explicitly.
+   * @param {'model-access'|'mcp-access'} prefix
+   */
+  async selectAllMode(prefix) {
+    const allBtn = this.page.locator(this.selectors.accessModeAll(prefix));
+    await allBtn.click();
+    await expect(allBtn).toHaveAttribute('aria-pressed', 'true');
+  }
+
+  /**
    * Switch an access picker to Specific and pick `count` resources from the slide-in panel.
    * @param {'model-access'|'mcp-access'} prefix
    * @param {{ count?: number }} [opts]
@@ -128,10 +141,12 @@ export class TokensPage extends BasePage {
    */
   async selectSpecificFromPanel(prefix, { count = 1 } = {}) {
     const specificBtn = this.page.locator(this.selectors.accessModeSpecific(prefix));
-    // Switching to Specific auto-opens the slide-in panel. The form is awaited in
-    // its ready state (openNewTokenPage), so this single click is deterministic.
+    // Ensure Specific mode (the form defaults to it), then open the slide-in panel via
+    // the Add button. The mode radio only auto-opens the panel on a transition INTO
+    // Specific, so with Specific as the default the Add button is the reliable opener.
     await specificBtn.click();
     await expect(specificBtn).toHaveAttribute('aria-pressed', 'true');
+    await this.page.locator(this.selectors.accessAddButton(prefix)).click();
     await this.page.waitForSelector(this.selectors.accessPanel(prefix));
 
     // count 0 → select nothing = empty-Specific (deny); count N → pick the first N.
@@ -158,6 +173,8 @@ export class TokensPage extends BasePage {
     scope = 'scope_token_user',
     listModels = false,
     listMcps = false,
+    allModels = false,
+    allMcps = false,
     specificModels = false,
     specificMcps = false,
     specificModelsCount = 1,
@@ -169,6 +186,10 @@ export class TokensPage extends BasePage {
     // done afterwards to keep each picker click landing on a stable element.
     if (listModels) await this.setListAll('models', true);
     if (listMcps) await this.setListAll('mcps', true);
+
+    // The form defaults to Specific/none (fail-closed); All access is explicit.
+    if (allModels) await this.selectAllMode('model-access');
+    if (allMcps) await this.selectAllMode('mcp-access');
 
     // count 0 → switch to Specific and pick nothing = empty-Specific (deny).
     const grantedModels = specificModels
@@ -265,6 +286,25 @@ export class TokensPage extends BasePage {
   async copyTokenFromDialog() {
     const copyButton = this.page.locator(this.selectors.copyButton);
     await expect(copyButton).toBeVisible();
+    // Ensure the clipboard is mocked on the CURRENT page — a full-reload navigation
+    // (page.goto) since an earlier mockClipboard() wipes it, leaving window.clipboardData
+    // undefined and the real navigator.clipboard in place. The guard preserves an
+    // already-installed mock (and any external handle reading window.clipboardData).
+    await this.page.evaluate(() => {
+      if (typeof window.clipboardData !== 'string') {
+        window.clipboardData = '';
+        Object.defineProperty(navigator, 'clipboard', {
+          value: {
+            writeText: t => {
+              window.clipboardData = t;
+              return Promise.resolve();
+            },
+            readText: () => Promise.resolve(window.clipboardData),
+          },
+          writable: true,
+        });
+      }
+    });
     await copyButton.click();
     // Poll the mocked clipboard until the app's async copy handler has written the
     // token, rather than a fixed wait (E2E.md: no inline timeouts).
