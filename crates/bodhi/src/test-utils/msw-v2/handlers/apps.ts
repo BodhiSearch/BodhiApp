@@ -1,10 +1,35 @@
 import {
   ENDPOINT_ACCESS_REQUESTS_APPROVE,
+  ENDPOINT_ACCESS_REQUESTS_APPS,
   ENDPOINT_ACCESS_REQUESTS_DENY,
   ENDPOINT_ACCESS_REQUESTS_REVIEW,
+  ENDPOINT_ACCESS_REQUESTS_REVOKE,
 } from '@/hooks/apps';
-import type { AccessRequestReviewResponse } from '@/hooks/apps';
+import type { AccessRequestReviewResponse, AppAccessSummary, ListAppAccessResponse } from '@/hooks/apps';
 import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '@/test-utils/msw-v2/setup';
+
+export function mockListAppAccess(data: ListAppAccessResponse, { stub = true }: { stub?: boolean } = {}) {
+  let hasBeenCalled = false;
+  return [
+    typedHttp.get(ENDPOINT_ACCESS_REQUESTS_APPS, async ({ response }) => {
+      if (hasBeenCalled && !stub) return;
+      hasBeenCalled = true;
+      return response(200 as const).json(data);
+    }),
+  ];
+}
+
+export function mockRevokeAppAccess(revoked: AppAccessSummary, { stub }: { stub?: boolean } = {}) {
+  let hasBeenCalled = false;
+  return [
+    typedHttp.post(ENDPOINT_ACCESS_REQUESTS_REVOKE, async ({ params, response }) => {
+      if (params.id !== revoked.id) return;
+      if (hasBeenCalled && !stub) return;
+      hasBeenCalled = true;
+      return response(200 as const).json(revoked);
+    }),
+  ];
+}
 
 export function mockAppAccessRequestReview(reviewData: AccessRequestReviewResponse, { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;

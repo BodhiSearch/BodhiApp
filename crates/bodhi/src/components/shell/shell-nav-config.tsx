@@ -88,6 +88,7 @@ export const SHELL_NAV: ShellNavItem[] = [
     subPages: [
       { id: 'api-tokens', label: 'API Tokens', icon: 'key-round', href: '/tokens/' },
       { id: 'new-token', label: 'New API Token', icon: 'plus-circle', href: '/tokens/new/' },
+      { id: 'app-tokens', label: 'App Tokens', icon: 'app-window', href: '/tokens/apps/' },
     ],
   },
   {
