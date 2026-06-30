@@ -52,6 +52,28 @@ export async function mintApiToken(tokensPage, page, name, scope) {
 }
 
 /**
+ * Mint a BodhiApp API token with explicit model/MCP grants via the tokens UI.
+ * Mirrors {@link mintApiToken} but routes through `createTokenWithGrants`, so the
+ * caller can pin list-all toggles and Specific selections (use a Specific count
+ * of 0 to produce an empty-Specific = deny grant).
+ *
+ * @param {TokensPage} tokensPage
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ * @param {string} scope
+ * @param {object} grants - forwarded to `TokensPage.createTokenWithGrants`
+ * @returns {Promise<{ token: string, grantedModels: string[], grantedMcps: string[] }>}
+ */
+export async function mintApiTokenWithGrants(tokensPage, page, name, scope, grants = {}) {
+  await tokensPage.navigateToTokens();
+  const granted = await tokensPage.createTokenWithGrants({ name, scope, ...grants });
+  await TokenFixtures.mockClipboard(page);
+  const token = await tokensPage.copyTokenFromDialog();
+  await tokensPage.closeTokenDialog();
+  return { token, ...granted };
+}
+
+/**
  * Make a POST request to a BodhiApp API endpoint using a Bearer token.
  *
  * @param {string} serverUrl - BodhiApp server base URL

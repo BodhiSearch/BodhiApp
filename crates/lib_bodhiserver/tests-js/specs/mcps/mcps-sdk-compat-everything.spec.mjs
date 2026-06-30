@@ -23,7 +23,9 @@
 //   • Bidirectional (server→client via SSE): sampling/createMessage,
 //     elicitation/create, roots/list — each relayed to a client-side
 //     handler registered before connect
-//   • Auth: OAuth JWT happy path, `bodhiapp_` API token rejection
+//   • Auth: OAuth JWT happy path; `bodhiapp_` API-token grant enforcement on
+//     the proxy (mcps_access: All connects, empty-Specific is denied 403,
+//     Specific-this-instance connects)
 //
 // Not covered here (by design — see Appendix A):
 //   • Cancellation (notifications/cancelled) — tracked separately
@@ -44,7 +46,7 @@ import { McpsPage } from '@/pages/McpsPage.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
 import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
-import { mintApiToken } from '@/utils/api-model-helpers.mjs';
+import { mintApiToken, mintApiTokenWithGrants } from '@/utils/api-model-helpers.mjs';
 import {
   getAuthServerConfig,
   getPreConfiguredAppClient,
@@ -108,9 +110,11 @@ test.describe(
         expect(mcpId).toBeTruthy();
       });
 
-      // ── Phase 2: Mint bodhiapp_ API token (for the negative case) ──
+      // ── Phase 2: Mint a default (all-access) bodhiapp_ API token ──
+      // Default grants are all-access, so this token is the positive
+      // `mcps_access: All` case exercised against the proxy in Phase 5.
 
-      await test.step('Mint bodhiapp_ API token for negative-case coverage', async () => {
+      await test.step('Mint all-access bodhiapp_ API token for grant-enforcement coverage', async () => {
         apiToken = await mintApiToken(
           tokensPage,
           page,
@@ -581,29 +585,56 @@ test.describe(
         await safeCloseMcpClient(sdkClient);
       });
 
-      // ── Phase 5: Negative case — API token must be rejected ──
+      // ── Phase 5: API-token grant enforcement on the MCP proxy ──
+      //
+      // `bodhiapp_` API tokens are now first-class on /bodhi/v1/apps/mcps/* (the
+      // apps router accepts TokenScope::User) and are grant-enforced by
+      // AccessPolicy in the proxy handler (`ensure_mcp_connect`). This proves the
+      // three mcps_access shapes through the official SDK transport:
+      //   • All           → connects + lists tools
+      //   • Specific{}     → connect denied with 401/403
+      //   • Specific{this} → connects + lists tools
+      // A denied connect surfaces as a transport throw (StreamableHTTPError, the
+      // proxy's 403 in its `.code`); the granted/all steps prove the same server
+      // connects, isolating the difference to the grant.
 
-      await test.step('Negative — bodhiapp_ API token is rejected (OAuth-only route)', async () => {
-        let caught;
-        try {
-          const attempt = await buildMcpClient({
-            serverUrl: sharedServerUrl,
-            mcpId,
-            token: apiToken,
-          });
-          // Shouldn't reach here; ensure we tear down if it somehow connected.
-          await safeCloseMcpClient(attempt.client);
-        } catch (err) {
-          caught = err;
-        }
-        expect(caught).toBeDefined();
-        // The transport surfaces HTTP 401/403 either via `StreamableHTTPError`
-        // (with a .code property) or via a thrown Error whose message quotes
-        // the status. Accept either shape.
-        const message = String(caught?.message ?? caught);
-        const statusCode = Number(caught?.code ?? Number.NaN);
-        const matchesStatus = [401, 403].includes(statusCode) || /\b40[13]\b/.test(message);
-        expect(matchesStatus).toBe(true);
+      await test.step('Grant All — all-access API token connects + lists tools', async () => {
+        const built = await buildMcpClient({ serverUrl: sharedServerUrl, mcpId, token: apiToken });
+        const { tools } = await built.client.listTools();
+        expect(tools.map((t) => t.name)).toContain('echo');
+        await safeCloseMcpClient(built.client);
+      });
+
+      await test.step('Grant empty-Specific — API token with no MCP grant is denied (403)', async () => {
+        const { token: deniedToken } = await mintApiTokenWithGrants(
+          tokensPage,
+          page,
+          `mcp-sdk-deny-${Date.now()}`,
+          'scope_token_user',
+          { specificMcps: true, specificMcpsCount: 0 }
+        );
+        await expect(
+          buildMcpClient({ serverUrl: sharedServerUrl, mcpId, token: deniedToken })
+        ).rejects.toThrow();
+      });
+
+      await test.step('Grant Specific{this} — API token granted this MCP connects + lists tools', async () => {
+        const { token: grantedToken, grantedMcps } = await mintApiTokenWithGrants(
+          tokensPage,
+          page,
+          `mcp-sdk-grant-${Date.now()}`,
+          'scope_token_user',
+          { specificMcps: true, specificMcpsCount: 1 }
+        );
+        expect(grantedMcps).toContain(mcpId);
+        const built = await buildMcpClient({
+          serverUrl: sharedServerUrl,
+          mcpId,
+          token: grantedToken,
+        });
+        const { tools } = await built.client.listTools();
+        expect(tools.map((t) => t.name)).toContain('echo');
+        await safeCloseMcpClient(built.client);
       });
     });
   }

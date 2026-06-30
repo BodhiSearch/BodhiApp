@@ -77,8 +77,13 @@ interface TokenFormProps {
 export function TokenForm({ onTokenCreated, onCancel }: TokenFormProps) {
   const { showSuccess, showError } = useToastMessages();
   const { data: userInfo } = useGetUser();
-  const { data: modelsData } = useListModels(1, 100, 'alias', 'asc');
-  const { data: mcpsData } = useListMcps();
+  const { data: modelsData, isLoading: modelsLoading } = useListModels(1, 100, 'alias', 'asc');
+  const { data: mcpsData, isLoading: mcpsLoading } = useListMcps();
+
+  // The model/MCP access pickers re-render when these queries settle; expose a
+  // ready marker so tests interact only after the grantable lists have loaded
+  // (clicking a picker mid-load drops the event).
+  const grantsState = modelsLoading || mcpsLoading ? 'loading' : 'ready';
 
   const canPowerUser = userInfo?.auth_status === 'logged_in' && userInfo.role !== 'resource_user';
 
@@ -117,7 +122,7 @@ export function TokenForm({ onTokenCreated, onCancel }: TokenFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} data-testid="token-form">
+      <form onSubmit={form.handleSubmit(onSubmit)} data-testid="token-form" data-test-state={grantsState}>
         {/* §1 Token Identity */}
         <div className="nt-section">
           <div className="nt-section-title">Token Identity</div>

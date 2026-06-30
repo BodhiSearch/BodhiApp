@@ -71,7 +71,9 @@ export class TokensPage extends BasePage {
   async openNewTokenPage() {
     await this.navViaShell('api-keys', 'new-token');
     await this.page.waitForURL(/\/ui\/tokens\/new\/?$/);
-    await this.page.waitForSelector(this.selectors.tokenForm);
+    // Wait until the grantable model/MCP lists have loaded — the access pickers
+    // re-render when they settle and clicking mid-load drops the event.
+    await this.page.waitForSelector(`${this.selectors.tokenForm}[data-test-state="ready"]`);
   }
 
   /**
@@ -125,15 +127,19 @@ export class TokensPage extends BasePage {
    * @returns {Promise<string[]>} the selected resource ids (parsed from the panel-item testids)
    */
   async selectSpecificFromPanel(prefix, { count = 1 } = {}) {
-    await this.page.locator(this.selectors.accessModeSpecific(prefix)).click();
+    const specificBtn = this.page.locator(this.selectors.accessModeSpecific(prefix));
+    // Switching to Specific auto-opens the slide-in panel. The form is awaited in
+    // its ready state (openNewTokenPage), so this single click is deterministic.
+    await specificBtn.click();
+    await expect(specificBtn).toHaveAttribute('aria-pressed', 'true');
     await this.page.waitForSelector(this.selectors.accessPanel(prefix));
-    const items = this.page.locator(this.selectors.accessPanelItems(prefix));
-    await items.first().waitFor({ state: 'visible' });
 
-    const n = Math.min(count, await items.count());
+    // count 0 → select nothing = empty-Specific (deny); count N → pick the first N.
+    const items = this.page.locator(this.selectors.accessPanelItems(prefix));
     const ids = [];
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < count; i++) {
       const item = items.nth(i);
+      await item.waitFor({ state: 'visible' });
       const testId = await item.getAttribute('data-testid');
       ids.push(testId.replace(`${prefix}-panel-item-`, ''));
       await item.click();
@@ -154,15 +160,25 @@ export class TokensPage extends BasePage {
     listMcps = false,
     specificModels = false,
     specificMcps = false,
+    specificModelsCount = 1,
+    specificMcpsCount = 1,
   } = {}) {
     await this.openNewTokenPage();
-    if (name) await this.page.locator(this.selectors.tokenNameInput).fill(name);
+    // Interact with the grant pickers first, while the freshly-ready form is
+    // settled. Filling the name re-renders the pickers (form.watch), so it is
+    // done afterwards to keep each picker click landing on a stable element.
     if (listModels) await this.setListAll('models', true);
     if (listMcps) await this.setListAll('mcps', true);
 
-    const grantedModels = specificModels ? await this.selectSpecificFromPanel('model-access') : [];
-    const grantedMcps = specificMcps ? await this.selectSpecificFromPanel('mcp-access') : [];
+    // count 0 → switch to Specific and pick nothing = empty-Specific (deny).
+    const grantedModels = specificModels
+      ? await this.selectSpecificFromPanel('model-access', { count: specificModelsCount })
+      : [];
+    const grantedMcps = specificMcps
+      ? await this.selectSpecificFromPanel('mcp-access', { count: specificMcpsCount })
+      : [];
 
+    if (name) await this.page.locator(this.selectors.tokenNameInput).fill(name);
     await this.selectScope(scope);
     await this.page.locator(this.selectors.generateButton).click();
     await this.page.waitForSelector(this.selectors.tokenDialog);
