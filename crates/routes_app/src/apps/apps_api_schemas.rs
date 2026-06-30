@@ -1,5 +1,9 @@
+use crate::ResourceAccess;
 use serde::{Deserialize, Serialize};
-use services::{AppAccessRequestStatus, FlowType, RequestedResources, UserScope};
+use services::{
+  AppAccessRequest, AppAccessRequestStatus, ApprovedResources, FlowType, RequestedResources,
+  UserScope,
+};
 use utoipa::ToSchema;
 
 // Response for POST /apps/request-access
@@ -69,4 +73,65 @@ pub struct AccessRequestActionResponse {
   /// Present for redirect flow
   #[serde(skip_serializing_if = "Option::is_none")]
   pub redirect_url: Option<String>,
+}
+
+/// One issued app token (approved access request) with its effective grant summary.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct AppAccessSummary {
+  pub id: String,
+  pub app_client_id: String,
+  pub app_name: Option<String>,
+  pub app_description: Option<String>,
+  pub status: AppAccessRequestStatus,
+  pub approved_role: Option<UserScope>,
+  /// Effective model access granted to this app.
+  pub models: ResourceAccess,
+  /// Effective MCP access granted to this app.
+  pub mcps: ResourceAccess,
+  #[schema(value_type = String, format = "date-time")]
+  pub created_at: chrono::DateTime<chrono::Utc>,
+  #[schema(value_type = String, format = "date-time")]
+  pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+impl AppAccessSummary {
+  /// Build a summary from an access-request row, reflecting its approved grants
+  /// (defaults to no access when the approved JSON is missing/unparsable).
+  pub fn from_row(row: AppAccessRequest) -> Self {
+    let approved = row
+      .approved
+      .as_deref()
+      .and_then(|json| serde_json::from_str::<ApprovedResources>(json).ok());
+    let (models, mcps) = match approved.as_ref().map(|a| a.v1()) {
+      Some(v1) => (ResourceAccess::app_models(v1), ResourceAccess::app_mcps(v1)),
+      None => (
+        ResourceAccess::Specific {
+          list: false,
+          ids: vec![],
+        },
+        ResourceAccess::Specific {
+          list: false,
+          ids: vec![],
+        },
+      ),
+    };
+    Self {
+      id: row.id,
+      app_client_id: row.app_client_id,
+      app_name: row.app_name,
+      app_description: row.app_description,
+      status: row.status,
+      approved_role: row.approved_role.and_then(|r| r.parse().ok()),
+      models,
+      mcps,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    }
+  }
+}
+
+/// Response for GET /access-requests/apps — the caller's issued app tokens.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ListAppAccessResponse {
+  pub data: Vec<AppAccessSummary>,
 }

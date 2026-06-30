@@ -144,6 +144,8 @@ async fn test_mcp_multi_tenant_session_passes_through() {
 #[rstest]
 #[case::approved(AppAccessRequestStatus::Approved, StatusCode::OK)]
 #[case::denied(AppAccessRequestStatus::Denied, StatusCode::FORBIDDEN)]
+// A revoked (inactive) grant must be rejected on every request.
+#[case::revoked(AppAccessRequestStatus::Revoked, StatusCode::FORBIDDEN)]
 #[tokio::test]
 async fn test_mcp_oauth_lifecycle_validation(
   #[case] status: AppAccessRequestStatus,

@@ -51,6 +51,21 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
 
   async fn deny_request(&self, id: &str, user_id: &str) -> Result<AppAccessRequest>;
 
+  /// Approved access requests (issued app tokens) owned by `user_id` in `tenant_id`.
+  async fn list_approved_for_user(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+  ) -> Result<Vec<AppAccessRequest>>;
+
+  /// Revoke a previously-approved grant owned by `user_id`; the app token stops working.
+  async fn revoke_request(
+    &self,
+    tenant_id: &str,
+    id: &str,
+    user_id: &str,
+  ) -> Result<AppAccessRequest>;
+
   fn build_review_url(&self, access_request_id: &str) -> String;
 }
 
@@ -247,6 +262,34 @@ impl AccessRequestService for DefaultAccessRequestService {
     }
 
     let updated_row = self.db_service.update_denial(id, user_id).await?;
+    Ok(updated_row)
+  }
+
+  async fn list_approved_for_user(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+  ) -> Result<Vec<AppAccessRequest>> {
+    let rows = self
+      .db_service
+      .list_approved_for_user(tenant_id, user_id)
+      .await?;
+    Ok(rows)
+  }
+
+  async fn revoke_request(
+    &self,
+    tenant_id: &str,
+    id: &str,
+    user_id: &str,
+  ) -> Result<AppAccessRequest> {
+    // The token-exchange path requires status == Approved, so flipping to Revoked
+    // stops the app token. Keycloak consent is left in place (best-effort); a
+    // revoked record fails exchange regardless.
+    let updated_row = self
+      .db_service
+      .update_revocation(tenant_id, id, user_id)
+      .await?;
     Ok(updated_row)
   }
 

@@ -15,20 +15,21 @@ use crate::{
   api_models_create, api_models_destroy, api_models_fetch_models, api_models_formats,
   api_models_show, api_models_sync, api_models_test, api_models_update,
   apps_approve_access_request, apps_create_access_request, apps_deny_access_request,
-  apps_get_access_request_review, apps_get_access_request_status, auth_callback, auth_initiate,
-  auth_logout, dashboard_auth_callback, dashboard_auth_initiate, dev_clients_dag_handler,
-  dev_db_reset_handler, dev_secrets_handler, dev_tenants_cleanup_handler, envs_handler,
-  health_handler, model_router_create, model_router_destroy, model_router_show,
-  model_router_update, modelfiles_index, models_copy, models_create, models_destroy, models_index,
-  models_pull_archive, models_pull_create, models_pull_index, models_pull_retry, models_pull_show,
-  models_show, models_update, ping_handler, queue_status_handler, refresh_metadata_handler,
-  tenants_activate, tenants_create, tenants_index, tokens_create, tokens_delete, tokens_index,
-  tokens_update, users_access_request_approve, users_access_request_reject,
-  users_access_requests_index, users_access_requests_pending, users_change_role, users_destroy,
-  users_index, users_info, users_request_access, users_request_status, BodhiOAIOpenAPIDoc,
-  BodhiOpenAPIDoc, GlobalErrorResponses, OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL,
-  ENDPOINT_ACCESS_REQUESTS_APPROVE, ENDPOINT_ACCESS_REQUESTS_DENY,
-  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVIEW,
+  apps_get_access_request_review, apps_get_access_request_status, apps_list_user_access,
+  apps_revoke_access_request, auth_callback, auth_initiate, auth_logout, dashboard_auth_callback,
+  dashboard_auth_initiate, dev_clients_dag_handler, dev_db_reset_handler, dev_secrets_handler,
+  dev_tenants_cleanup_handler, envs_handler, health_handler, model_router_create,
+  model_router_destroy, model_router_show, model_router_update, modelfiles_index, models_copy,
+  models_create, models_destroy, models_index, models_pull_archive, models_pull_create,
+  models_pull_index, models_pull_retry, models_pull_show, models_show, models_update, ping_handler,
+  queue_status_handler, refresh_metadata_handler, tenants_activate, tenants_create, tenants_index,
+  tokens_create, tokens_delete, tokens_index, tokens_update, users_access_request_approve,
+  users_access_request_reject, users_access_requests_index, users_access_requests_pending,
+  users_change_role, users_destroy, users_index, users_info, users_request_access,
+  users_request_status, BodhiOAIOpenAPIDoc, BodhiOpenAPIDoc, GlobalErrorResponses,
+  OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_APPROVE,
+  ENDPOINT_ACCESS_REQUESTS_APPS, ENDPOINT_ACCESS_REQUESTS_DENY, ENDPOINT_ACCESS_REQUESTS_PENDING,
+  ENDPOINT_ACCESS_REQUESTS_REVIEW, ENDPOINT_ACCESS_REQUESTS_REVOKE,
   ENDPOINT_APPS_ACCESS_REQUESTS_ID, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO,
   ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE,
   ENDPOINT_DASHBOARD_AUTH_CALLBACK, ENDPOINT_DASHBOARD_AUTH_INITIATE, ENDPOINT_DEV_CLIENTS_DAG,
@@ -355,6 +356,12 @@ pub async fn build_routes(
     .route(
       ENDPOINT_ACCESS_REQUESTS_DENY,
       post(apps_deny_access_request),
+    )
+    // App token management (session-only): list issued + revoke
+    .route(ENDPOINT_ACCESS_REQUESTS_APPS, get(apps_list_user_access))
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_REVOKE,
+      post(apps_revoke_access_request),
     )
     // API Models management (session-only, user role)
     .route(ENDPOINT_MODELS_API, post(api_models_create))

@@ -1,11 +1,16 @@
 use crate::test_utils::RequestAuthContextExt;
 use crate::{
-  apps::AccessRequestActionResponse, apps_approve_access_request, apps_deny_access_request,
-  ENDPOINT_ACCESS_REQUESTS_APPROVE, ENDPOINT_ACCESS_REQUESTS_DENY,
+  apps::{AccessRequestActionResponse, AppAccessSummary, ListAppAccessResponse},
+  apps_approve_access_request, apps_deny_access_request, apps_list_user_access,
+  apps_revoke_access_request, ResourceAccess, ENDPOINT_ACCESS_REQUESTS_APPROVE,
+  ENDPOINT_ACCESS_REQUESTS_APPS, ENDPOINT_ACCESS_REQUESTS_DENY, ENDPOINT_ACCESS_REQUESTS_REVOKE,
 };
 use anyhow_trace::anyhow_trace;
 use axum::{body::Body, http::StatusCode, routing::put};
-use axum::{routing::post, Router};
+use axum::{
+  routing::{get, post},
+  Router,
+};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
@@ -137,6 +142,230 @@ async fn seed_mcp_instance(
     )
     .await?;
   Ok(instance.id)
+}
+
+// ============================================================================
+// Helper: seed an APPROVED access request owned by `user_id`
+// ============================================================================
+
+#[allow(clippy::too_many_arguments)]
+async fn seed_approved_request(
+  db_service: &dyn DbService,
+  request_id: &str,
+  user_id: &str,
+  app_client_id: &str,
+  approved_json: &str,
+) -> anyhow::Result<AppAccessRequest> {
+  let now = chrono::Utc::now();
+  let row = AppAccessRequest {
+    id: request_id.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
+    app_client_id: app_client_id.to_string(),
+    app_name: Some("Test App".to_string()),
+    app_description: None,
+    flow_type: FlowType::Popup,
+    redirect_uri: None,
+    status: AppAccessRequestStatus::Approved,
+    requested: r#"{"version":"1"}"#.to_string(),
+    approved: Some(approved_json.to_string()),
+    user_id: Some(user_id.to_string()),
+    requested_role: "scope_user_user".to_string(),
+    approved_role: Some("scope_user_user".to_string()),
+    access_request_scope: Some(format!("scope_access_request:{request_id}")),
+    error_message: None,
+    expires_at: now + chrono::Duration::seconds(600),
+    created_at: now,
+    updated_at: now,
+  };
+  let result = db_service.create(&row).await?;
+  Ok(result)
+}
+
+fn management_router(state: Arc<dyn services::AppService>) -> Router {
+  Router::new()
+    .route(ENDPOINT_ACCESS_REQUESTS_APPS, get(apps_list_user_access))
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_REVOKE,
+      post(apps_revoke_access_request),
+    )
+    .with_state(state)
+}
+
+// ============================================================================
+// apps_list_user_access — list issued app tokens with grant summary
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_list_user_access_returns_only_callers_approved_with_summary() -> anyhow::Result<()> {
+  let harness = build_test_harness(MockAuthService::default()).await?;
+  seed_approved_request(
+    harness.db_service.as_ref(),
+    "ar-mine",
+    "owner-1",
+    "app-mine",
+    r#"{"version":"1","list_models":true,"models":{"type":"specific","ids":["alias-x"]},"list_mcps":false,"mcps_extra":{"type":"specific","ids":["mcp-1"]}}"#,
+  )
+  .await?;
+  // Another user's grant must NOT appear.
+  seed_approved_request(
+    harness.db_service.as_ref(),
+    "ar-other",
+    "owner-2",
+    "app-other",
+    r#"{"version":"1"}"#,
+  )
+  .await?;
+
+  let router = management_router(harness.state);
+  let request = axum::http::Request::builder()
+    .method("GET")
+    .uri(ENDPOINT_ACCESS_REQUESTS_APPS)
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "owner-1",
+      "owner1@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<ListAppAccessResponse>().await?;
+  assert_eq!(1, body.data.len());
+  let summary = &body.data[0];
+  assert_eq!("ar-mine", summary.id);
+  assert_eq!("app-mine", summary.app_client_id);
+  assert_eq!(
+    ResourceAccess::Specific {
+      list: true,
+      ids: vec!["alias-x".to_string()]
+    },
+    summary.models
+  );
+  assert_eq!(
+    ResourceAccess::Specific {
+      list: false,
+      ids: vec!["mcp-1".to_string()]
+    },
+    summary.mcps
+  );
+  Ok(())
+}
+
+// ============================================================================
+// apps_revoke_access_request — revoke makes the grant inactive
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_revoke_access_request_transitions_to_revoked() -> anyhow::Result<()> {
+  let harness = build_test_harness(MockAuthService::default()).await?;
+  seed_approved_request(
+    harness.db_service.as_ref(),
+    "ar-revoke",
+    "owner-1",
+    "app-1",
+    r#"{"version":"1"}"#,
+  )
+  .await?;
+
+  let router = management_router(harness.state.clone());
+  let request = axum::http::Request::builder()
+    .method("POST")
+    .uri("/bodhi/v1/access-requests/ar-revoke/revoke")
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "owner-1",
+      "owner1@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::OK, response.status());
+  let summary = response.json::<AppAccessSummary>().await?;
+  assert_eq!(AppAccessRequestStatus::Revoked, summary.status);
+
+  // After revoke it no longer appears in the caller's active list.
+  let list_router = management_router(harness.state);
+  let list_req = axum::http::Request::builder()
+    .method("GET")
+    .uri(ENDPOINT_ACCESS_REQUESTS_APPS)
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "owner-1",
+      "owner1@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
+  let list_resp = list_router.oneshot(list_req).await?;
+  let body = list_resp.json::<ListAppAccessResponse>().await?;
+  assert_eq!(0, body.data.len());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_revoke_access_request_not_owner_rejected() -> anyhow::Result<()> {
+  let harness = build_test_harness(MockAuthService::default()).await?;
+  seed_approved_request(
+    harness.db_service.as_ref(),
+    "ar-revoke-2",
+    "owner-1",
+    "app-1",
+    r#"{"version":"1"}"#,
+  )
+  .await?;
+
+  let router = management_router(harness.state);
+  // A different user attempts the revoke.
+  let request = axum::http::Request::builder()
+    .method("POST")
+    .uri("/bodhi/v1/access-requests/ar-revoke-2/revoke")
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "attacker",
+      "attacker@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
+  let response = router.oneshot(request).await?;
+  assert_ne!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_revoke_non_approved_request_rejected() -> anyhow::Result<()> {
+  let harness = build_test_harness(MockAuthService::default()).await?;
+  // A draft (never approved) cannot be revoked.
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    "ar-draft-revoke",
+    FlowType::Popup,
+    None,
+    "scope_user_user",
+  )
+  .await?;
+
+  let router = management_router(harness.state);
+  let request = axum::http::Request::builder()
+    .method("POST")
+    .uri("/bodhi/v1/access-requests/ar-draft-revoke/revoke")
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "owner-1",
+      "owner1@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
+  let response = router.oneshot(request).await?;
+  assert_ne!(StatusCode::OK, response.status());
+  Ok(())
 }
 
 // ============================================================================

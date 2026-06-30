@@ -748,14 +748,20 @@ async fn test_validate_bearer_token_scope_not_found(
   Ok(())
 }
 
+// A bearer token whose access request is not Approved — Draft, Denied, or
+// Revoked (inactive) — must be rejected at token validation, on every surface.
 #[anyhow_trace]
 #[rstest]
+#[case::draft(AppAccessRequestStatus::Draft)]
+#[case::denied(AppAccessRequestStatus::Denied)]
+#[case::revoked(AppAccessRequestStatus::Revoked)]
 #[awt]
 #[tokio::test]
 async fn test_validate_bearer_token_scope_not_approved(
   #[future] test_db_service: TestDbService,
+  #[case] status: AppAccessRequestStatus,
 ) -> anyhow::Result<()> {
-  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, FlowType};
+  use services::{AccessRequestRepository, AppAccessRequest, FlowType};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -769,9 +775,9 @@ async fn test_validate_bearer_token_scope_not_approved(
     app_description: None,
     flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: AppAccessRequestStatus::Draft,
+    status,
     requested: r#"{"version":"1"}"#.to_string(),
-    approved: None,
+    approved: Some(r#"{"version":"1"}"#.to_string()),
     user_id: None,
     requested_role: "scope_user_user".to_string(),
     approved_role: None,

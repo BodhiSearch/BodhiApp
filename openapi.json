@@ -129,6 +129,73 @@
         ]
       }
     },
+    "/bodhi/v1/access-requests/apps": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "List Issued App Tokens",
+        "description": "List the caller's approved app access grants with their effective resource access. Requires session auth.",
+        "operationId": "listAppAccess",
+        "responses": {
+          "200": {
+            "description": "Issued app tokens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListAppAccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
     "/bodhi/v1/access-requests/pending": {
       "get": {
         "tags": [
@@ -692,6 +759,104 @@
           },
           "410": {
             "description": "Request expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/access-requests/{id}/revoke": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Revoke App Token",
+        "description": "Revoke a previously-approved app grant; the app token stops working. Requires session auth.",
+        "operationId": "revokeAppAccess",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Access request ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Grant revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppAccessSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not in a revocable state",
             "content": {
               "application/json": {
                 "schema": {
@@ -8413,8 +8578,71 @@
           "approved",
           "denied",
           "failed",
-          "expired"
+          "expired",
+          "revoked"
         ]
+      },
+      "AppAccessSummary": {
+        "type": "object",
+        "description": "One issued app token (approved access request) with its effective grant summary.",
+        "required": [
+          "id",
+          "app_client_id",
+          "status",
+          "models",
+          "mcps",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "app_client_id": {
+            "type": "string"
+          },
+          "app_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "app_description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppAccessRequestStatus"
+          },
+          "approved_role": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UserScope"
+              }
+            ]
+          },
+          "models": {
+            "$ref": "#/components/schemas/ResourceAccess",
+            "description": "Effective model access granted to this app."
+          },
+          "mcps": {
+            "$ref": "#/components/schemas/ResourceAccess",
+            "description": "Effective MCP access granted to this app."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "AppInfo": {
         "type": "object",
@@ -9657,6 +9885,21 @@
         "type": "array",
         "items": {
           "type": "string"
+        }
+      },
+      "ListAppAccessResponse": {
+        "type": "object",
+        "description": "Response for GET /access-requests/apps — the caller's issued app tokens.",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppAccessSummary"
+            }
+          }
         }
       },
       "ListMcpServersResponse": {

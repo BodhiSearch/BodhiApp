@@ -242,7 +242,29 @@ export type ApiModelRequest = (DefaultApiModelRequest & {
  */
 export type ApiModelVec = Array<ApiModel>;
 
-export type AppAccessRequestStatus = 'draft' | 'approved' | 'denied' | 'failed' | 'expired';
+export type AppAccessRequestStatus = 'draft' | 'approved' | 'denied' | 'failed' | 'expired' | 'revoked';
+
+/**
+ * One issued app token (approved access request) with its effective grant summary.
+ */
+export type AppAccessSummary = {
+    id: string;
+    app_client_id: string;
+    app_name?: string | null;
+    app_description?: string | null;
+    status: AppAccessRequestStatus;
+    approved_role?: null | UserScope;
+    /**
+     * Effective model access granted to this app.
+     */
+    models: ResourceAccess;
+    /**
+     * Effective MCP access granted to this app.
+     */
+    mcps: ResourceAccess;
+    created_at: string;
+    updated_at: string;
+};
 
 /**
  * Application information and status
@@ -711,6 +733,13 @@ export type GeminiModel = {
 };
 
 export type JsonVec = Array<string>;
+
+/**
+ * Response for GET /access-requests/apps — the caller's issued app tokens.
+ */
+export type ListAppAccessResponse = {
+    data: Array<AppAccessSummary>;
+};
 
 export type ListMcpServersResponse = {
     mcp_servers: Array<McpServerResponse>;
@@ -1939,6 +1968,43 @@ export type ListAllAccessRequestsResponses = {
 
 export type ListAllAccessRequestsResponse = ListAllAccessRequestsResponses[keyof ListAllAccessRequestsResponses];
 
+export type ListAppAccessData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/access-requests/apps';
+};
+
+export type ListAppAccessErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type ListAppAccessError = ListAppAccessErrors[keyof ListAppAccessErrors];
+
+export type ListAppAccessResponses = {
+    /**
+     * Issued app tokens
+     */
+    200: ListAppAccessResponse;
+};
+
+export type ListAppAccessResponse2 = ListAppAccessResponses[keyof ListAppAccessResponses];
+
 export type ListPendingAccessRequestsData = {
     body?: never;
     path?: never;
@@ -2236,6 +2302,56 @@ export type GetAccessRequestReviewResponses = {
 };
 
 export type GetAccessRequestReviewResponse = GetAccessRequestReviewResponses[keyof GetAccessRequestReviewResponses];
+
+export type RevokeAppAccessData = {
+    body?: never;
+    path: {
+        /**
+         * Access request ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/access-requests/{id}/revoke';
+};
+
+export type RevokeAppAccessErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Not found
+     */
+    404: BodhiErrorResponse;
+    /**
+     * Not in a revocable state
+     */
+    409: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type RevokeAppAccessError = RevokeAppAccessErrors[keyof RevokeAppAccessErrors];
+
+export type RevokeAppAccessResponses = {
+    /**
+     * Grant revoked
+     */
+    200: AppAccessSummary;
+};
+
+export type RevokeAppAccessResponse = RevokeAppAccessResponses[keyof RevokeAppAccessResponses];
 
 export type GetAccessRequestStatusData = {
     body?: never;

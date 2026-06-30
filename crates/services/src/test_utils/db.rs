@@ -1403,6 +1403,31 @@ impl AccessRequestRepository for TestDbService {
       .await
       .tap(|_| self.notify("access_request_get_by_scope"))
   }
+
+  async fn list_approved_for_user(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+  ) -> Result<Vec<AppAccessRequest>, DbError> {
+    self
+      .inner
+      .list_approved_for_user(tenant_id, user_id)
+      .await
+      .tap(|_| self.notify("access_request_list_approved_for_user"))
+  }
+
+  async fn update_revocation(
+    &self,
+    tenant_id: &str,
+    id: &str,
+    user_id: &str,
+  ) -> Result<AppAccessRequest, DbError> {
+    self
+      .inner
+      .update_revocation(tenant_id, id, user_id)
+      .await
+      .tap(|_| self.notify("access_request_update_revocation"))
+  }
 }
 
 #[async_trait::async_trait]
@@ -1694,6 +1719,17 @@ mockall::mock! {
       tenant_id: &str,
       scope: &str,
     ) -> Result<Option<AppAccessRequest>, DbError>;
+    async fn list_approved_for_user(
+      &self,
+      tenant_id: &str,
+      user_id: &str,
+    ) -> Result<Vec<AppAccessRequest>, DbError>;
+    async fn update_revocation(
+      &self,
+      tenant_id: &str,
+      id: &str,
+      user_id: &str,
+    ) -> Result<AppAccessRequest, DbError>;
   }
 }
 

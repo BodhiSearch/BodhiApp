@@ -31,7 +31,7 @@ pub enum RoleSource {
 /// reflected from its grants. Discriminated on `type`: `all` ⇒ every current and
 /// future resource; `specific` ⇒ the listed `ids` (empty ⇒ no access).
 /// `list` is the `list_*` toggle (whether the token may enumerate the full catalog).
-#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ResourceAccess {
   All { list: bool },
@@ -105,7 +105,7 @@ impl ResourceAccess {
 }
 
 /// Effective resource access for an external app, reflected from its approved grants.
-#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct ResourceAccessInfo {
   /// Effective model access for this app.
   pub models: ResourceAccess,

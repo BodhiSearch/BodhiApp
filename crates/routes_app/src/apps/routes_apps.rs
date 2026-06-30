@@ -1,6 +1,6 @@
 use crate::apps::{
   AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
-  AppsRouteError, CreateAccessRequestResponse,
+  AppAccessSummary, AppsRouteError, CreateAccessRequestResponse, ListAppAccessResponse,
 };
 use crate::{AuthScope, BodhiErrorResponse, ValidatedJson, API_TAG_AUTH};
 use axum::{
@@ -21,6 +21,8 @@ pub const ENDPOINT_APPS_ACCESS_REQUESTS_ID: &str = "/bodhi/v1/apps/access-reques
 pub const ENDPOINT_ACCESS_REQUESTS_REVIEW: &str = "/bodhi/v1/access-requests/{id}/review";
 pub const ENDPOINT_ACCESS_REQUESTS_APPROVE: &str = "/bodhi/v1/access-requests/{id}/approve";
 pub const ENDPOINT_ACCESS_REQUESTS_DENY: &str = "/bodhi/v1/access-requests/{id}/deny";
+pub const ENDPOINT_ACCESS_REQUESTS_APPS: &str = "/bodhi/v1/access-requests/apps";
+pub const ENDPOINT_ACCESS_REQUESTS_REVOKE: &str = "/bodhi/v1/access-requests/{id}/revoke";
 
 // Query params for GET /apps/access-requests/:id (polling by apps)
 #[derive(Debug, Deserialize)]
@@ -403,6 +405,67 @@ pub async fn apps_deny_access_request(
     flow_type: updated.flow_type,
     redirect_url: updated.redirect_uri,
   }))
+}
+
+/// List the caller's issued app tokens (GET /access-requests/apps)
+#[utoipa::path(
+    get,
+    path = ENDPOINT_ACCESS_REQUESTS_APPS,
+    tag = API_TAG_AUTH,
+    operation_id = "listAppAccess",
+    summary = "List Issued App Tokens",
+    description = "List the caller's approved app access grants with their effective resource access. Requires session auth.",
+    responses(
+        (status = 200, description = "Issued app tokens", body = ListAppAccessResponse),
+    ),
+    security(
+        ("session_auth" = [])
+    )
+)]
+pub async fn apps_list_user_access(
+  auth_scope: AuthScope,
+) -> Result<Json<ListAppAccessResponse>, BodhiErrorResponse> {
+  let user_id = auth_scope.require_user_id()?;
+  let tenant_id = auth_scope.require_tenant_id()?;
+  let rows = auth_scope
+    .access_request_service()
+    .list_approved_for_user(tenant_id, user_id)
+    .await?;
+  let data = rows.into_iter().map(AppAccessSummary::from_row).collect();
+  Ok(Json(ListAppAccessResponse { data }))
+}
+
+/// Revoke an issued app token (POST /access-requests/:id/revoke)
+#[utoipa::path(
+    post,
+    path = ENDPOINT_ACCESS_REQUESTS_REVOKE,
+    tag = API_TAG_AUTH,
+    operation_id = "revokeAppAccess",
+    summary = "Revoke App Token",
+    description = "Revoke a previously-approved app grant; the app token stops working. Requires session auth.",
+    params(
+        ("id" = String, Path, description = "Access request ID")
+    ),
+    responses(
+        (status = 200, description = "Grant revoked", body = AppAccessSummary),
+        (status = 404, description = "Not found", body = BodhiErrorResponse),
+        (status = 409, description = "Not in a revocable state", body = BodhiErrorResponse),
+    ),
+    security(
+        ("session_auth" = [])
+    )
+)]
+pub async fn apps_revoke_access_request(
+  auth_scope: AuthScope,
+  Path(id): Path<String>,
+) -> Result<Json<AppAccessSummary>, BodhiErrorResponse> {
+  let user_id = auth_scope.require_user_id()?;
+  let tenant_id = auth_scope.require_tenant_id()?;
+  let updated = auth_scope
+    .access_request_service()
+    .revoke_request(tenant_id, &id, user_id)
+    .await?;
+  Ok(Json(AppAccessSummary::from_row(updated)))
 }
 
 #[cfg(test)]

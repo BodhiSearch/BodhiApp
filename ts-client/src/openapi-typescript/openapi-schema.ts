@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bodhi/v1/access-requests/apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Issued App Tokens
+         * @description List the caller's approved app access grants with their effective resource access. Requires session auth.
+         */
+        get: operations["listAppAccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bodhi/v1/access-requests/pending": {
         parameters: {
             query?: never;
@@ -122,6 +142,26 @@ export interface paths {
         get: operations["getAccessRequestReview"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/access-requests/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke App Token
+         * @description Revoke a previously-approved app grant; the app token stops working. Requires session auth.
+         */
+        post: operations["revokeAppAccess"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1523,7 +1563,24 @@ export interface components {
         /** @description DB-storable `Vec<ApiModel>` — stored as JSON binary in SeaORM columns. */
         ApiModelVec: components["schemas"]["ApiModel"][];
         /** @enum {string} */
-        AppAccessRequestStatus: "draft" | "approved" | "denied" | "failed" | "expired";
+        AppAccessRequestStatus: "draft" | "approved" | "denied" | "failed" | "expired" | "revoked";
+        /** @description One issued app token (approved access request) with its effective grant summary. */
+        AppAccessSummary: {
+            id: string;
+            app_client_id: string;
+            app_name?: string | null;
+            app_description?: string | null;
+            status: components["schemas"]["AppAccessRequestStatus"];
+            approved_role?: null | components["schemas"]["UserScope"];
+            /** @description Effective model access granted to this app. */
+            models: components["schemas"]["ResourceAccess"];
+            /** @description Effective MCP access granted to this app. */
+            mcps: components["schemas"]["ResourceAccess"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
         /**
          * @description Application information and status
          * @example {
@@ -2007,6 +2064,10 @@ export interface components {
             thinking?: boolean | null;
         };
         JsonVec: string[];
+        /** @description Response for GET /access-requests/apps — the caller's issued app tokens. */
+        ListAppAccessResponse: {
+            data: components["schemas"]["AppAccessSummary"][];
+        };
         ListMcpServersResponse: {
             mcp_servers: components["schemas"]["McpServerResponse"][];
         };
@@ -3169,6 +3230,62 @@ export interface operations {
             };
         };
     };
+    listAppAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Issued app tokens */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListAppAccessResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
     listPendingAccessRequests: {
         parameters: {
             query?: {
@@ -3589,6 +3706,83 @@ export interface operations {
             };
             /** @description Request expired */
             410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    revokeAppAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Access request ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Grant revoked */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppAccessSummary"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not in a revocable state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

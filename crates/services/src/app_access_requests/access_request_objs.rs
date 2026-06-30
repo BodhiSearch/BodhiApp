@@ -67,6 +67,8 @@ pub enum AppAccessRequestStatus {
   Denied,
   Failed,
   Expired,
+  /// Owner revoked a previously-approved grant; the app token stops working.
+  Revoked,
 }
 
 #[derive(
