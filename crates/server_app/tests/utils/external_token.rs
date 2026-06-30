@@ -71,6 +71,7 @@ impl ExternalTokenSimulator {
       app_client_id: azp.to_string(),
       role: role.map(|r| r.to_string()),
       access_request_id,
+      grants: None,
       cached_at: Utc::now().timestamp(),
     };
     let cached_json = serde_json::to_string(&cached)?;
