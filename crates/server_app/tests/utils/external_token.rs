@@ -39,7 +39,22 @@ impl ExternalTokenSimulator {
 
   /// Creates a fake external bearer token and seeds the cache so requests
   /// with this token bypass Keycloak and resolve to the given role.
+  ///
+  /// Seeds `grants: None`, so the resolved `ExternalApp` principal is fail-closed
+  /// (`AccessPolicy::Deny`). Delegates to `create_token_with_grants`.
   pub fn create_token_with_role(&self, role: Option<&str>, azp: &str) -> anyhow::Result<String> {
+    self.create_token_with_grants(role, azp, None)
+  }
+
+  /// Like `create_token_with_role` but seeds the cached exchange result with the
+  /// given approved `grants`, so the resolved `ExternalApp` principal flows through
+  /// `AccessPolicy::Grants` and exercises real grant enforcement (model + MCP).
+  pub fn create_token_with_grants(
+    &self,
+    role: Option<&str>,
+    azp: &str,
+    grants: Option<services::ApprovedResources>,
+  ) -> anyhow::Result<String> {
     let future_exp = (Utc::now() + Duration::hours(1)).timestamp() as u64;
     let access_request_id = role.map(|_| Uuid::new_v4().to_string());
 
@@ -71,7 +86,7 @@ impl ExternalTokenSimulator {
       app_client_id: azp.to_string(),
       role: role.map(|r| r.to_string()),
       access_request_id,
-      grants: None,
+      grants,
       cached_at: Utc::now().timestamp(),
     };
     let cached_json = serde_json::to_string(&cached)?;
