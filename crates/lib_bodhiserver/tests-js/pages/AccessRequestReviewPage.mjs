@@ -39,6 +39,42 @@ export class AccessRequestReviewPage extends BasePage {
     await this.clickApprove();
   }
 
+  // --- Model/MCP grant controls (shown when the app requests the matching flags) ---
+
+  async toggleListModels() {
+    await this.page.click('[data-testid="review-list-models-toggle"]');
+  }
+
+  async toggleListMcps() {
+    await this.page.click('[data-testid="review-list-mcps-toggle"]');
+  }
+
+  /** Switch the model access picker to Specific. With no items selected this grants
+   *  no models — a deterministic "no model access" grant. Switching to Specific
+   *  auto-opens the slide-in picker panel, so close it before continuing. */
+  async setModelAccessSpecific() {
+    await this.page.click('[data-testid="review-model-access-mode-specific"]');
+    const done = this.page.locator('[data-testid="review-model-access-panel-done"]');
+    await done.click();
+    // Wait for the Sheet overlay to detach so it no longer intercepts clicks.
+    await this.page.locator('[data-testid="review-model-access-panel"]').waitFor({ state: 'hidden' });
+  }
+
+  /**
+   * Approve after configuring the model/MCP grant controls.
+   * @param {Object} opts
+   * @param {boolean} [opts.listModels] toggle "list all models" on
+   * @param {boolean} [opts.modelsSpecific] switch model access to Specific (empty = no models)
+   * @param {boolean} [opts.listMcps] toggle "list all MCPs" on
+   */
+  async approveWithGrants({ listModels = false, modelsSpecific = false, listMcps = false } = {}) {
+    await this.waitForReviewPage();
+    if (listModels) await this.toggleListModels();
+    if (modelsSpecific) await this.setModelAccessSpecific();
+    if (listMcps) await this.toggleListMcps();
+    await this.clickApprove();
+  }
+
   async clickDeny() {
     await this.page.click(this.selectors.denyButton);
   }
