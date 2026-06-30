@@ -1,8 +1,8 @@
 /* Bare layout — minimal chrome for in-app full-page flows rendered OUTSIDE the
    AppShell (no sidebar, no breadcrumb): OAuth access-request review, and future
    request-access / status pages. Ported from design/bodhi-standalone.css, mapped
-   to the production token set (no undefined --faint-foreground/--shadow-*/
---font-* vars). */
+   to the production token set (no undefined faint-foreground, shadow, or font
+   custom-property vars). */
 
 .bare-page {
   position: fixed;
