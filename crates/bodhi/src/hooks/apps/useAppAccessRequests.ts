@@ -13,6 +13,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 
 import { useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 import { appAccessRequestKeys, ENDPOINT_ACCESS_REQUESTS, ENDPOINT_ACCESS_REQUESTS_APPS } from './constants';
 
@@ -61,8 +62,7 @@ export function useApproveAppAccessRequest(options?: {
         options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to approve access request';
-        options?.onError?.(message);
+        options?.onError?.(extractErrorMessage(error, 'Failed to approve access request'));
       },
     },
     {
@@ -94,8 +94,7 @@ export function useRevokeAppAccess(options?: {
         options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to revoke app access';
-        options?.onError?.(message);
+        options?.onError?.(extractErrorMessage(error, 'Failed to revoke app access'));
       },
     },
     {
@@ -118,8 +117,7 @@ export function useDenyAppAccessRequest(options?: {
         options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to deny access request';
-        options?.onError?.(message);
+        options?.onError?.(extractErrorMessage(error, 'Failed to deny access request'));
       },
     },
     {

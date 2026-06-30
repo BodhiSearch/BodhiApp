@@ -37,7 +37,7 @@ function NewTokenContent() {
     <div className="new-token api-keys-screen container mx-auto max-w-2xl p-6" data-testid="new-token-page">
       <Card>
         <CardHeader>
-          <CardTitle>New App Token</CardTitle>
+          <CardTitle>New API Token</CardTitle>
           <CardDescription>
             Generate a scoped token for API access — pick the models, MCPs, and capabilities it can use.
           </CardDescription>

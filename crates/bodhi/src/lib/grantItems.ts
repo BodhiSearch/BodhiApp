@@ -15,6 +15,10 @@ export function grantableModelItems(aliases: AliasResponse[]): AccessItem[] {
         const id = `${prefix}${model.id}`;
         if (!items.has(id)) items.set(id, { id, label: id, type: 'api' });
       }
+    } else if ('targets' in alias && 'strategy' in alias) {
+      // ModelRouterResponse — a composite routing alias (also carries `alias`), so it
+      // must be matched BEFORE the local branch. Emit untyped (neither local nor api).
+      if (!items.has(alias.alias)) items.set(alias.alias, { id: alias.alias, label: alias.alias });
     } else if ('alias' in alias) {
       if (!items.has(alias.alias)) items.set(alias.alias, { id: alias.alias, label: alias.alias, type: 'local' });
     }

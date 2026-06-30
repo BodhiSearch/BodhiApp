@@ -2,6 +2,20 @@
 
 Deferred work items intentionally scoped out of their originating effort, to be addressed later.
 
+## Deferred tokens-review nice-to-haves (Batch 4)
+- **Source**: Tokens screen-v2 / App Token grants review — Batch 4 (2026-06-30). Deferred for session
+  length; all low-value.
+- **F35** — `ReviewContent` (`routes/apps/access-requests/review/index.tsx`) fetches models + MCPs
+  unconditionally. Make them conditional on the requested flags (`reviewData.requested.models_access`
+  / `mcps_access`). Needs `useListModels` (`hooks/models/useModels.ts`) to accept an `enabled` option
+  (it currently takes only a `filter`), so it's a shared-hook signature change. Perf-only.
+- **F8** — rename `DbError::AccessRequestNotDraft` (`services/src/db/error.rs`): it now guards the
+  revoke transition (must-be-Approved), so the "NotDraft" name misleads. Rename to a status-neutral
+  variant (e.g. `AccessRequestStatusConflict`) + update the 4 call-sites and the error-code assertions.
+- **Component tests** — F37 (ListingToggle Space/Enter activation), F38 (AccessPickerPanel type
+  filter), F39 (GrantBlock), F40 (TokenForm PowerUser card disabled for `resource_user`). The
+  components ship and are exercised indirectly; these add focused unit coverage.
+
 ## Ollama `/api/chat` is not covered by the inference grant middleware
 - **Source**: Tokens screen-v2 / App Token grants review — Batch 3 (2026-06-30).
 - **What**: `model_inference_grant_middleware` (`routes_app/src/middleware/model_grant.rs`) uniformly

@@ -52,9 +52,10 @@ export function AccessPickerPanel({
     if (!hasTypes) return filtered.length ? [{ label: `${noun}s`, items: filtered }] : [];
     const local = filtered.filter((i) => i.type === 'local');
     const api = filtered.filter((i) => i.type === 'api');
+    const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
     const out: Group[] = [];
-    if (local.length) out.push({ label: 'Local Models', items: local });
-    if (api.length) out.push({ label: 'API Models', items: api });
+    if (local.length) out.push({ label: `Local ${cap(noun)}s`, items: local });
+    if (api.length) out.push({ label: `API ${cap(noun)}s`, items: api });
     return out;
   }, [filtered, hasTypes, noun]);
 

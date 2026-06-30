@@ -251,7 +251,9 @@ function AppDetailPanel({ app, onRevoke }: { app: AppAccessSummary; onRevoke: (a
   return (
     <div className="dp-panel" data-testid="app-detail-rail">
       <div className="dp-status-row">
-        <span className="status-chip status-active">active</span>
+        <span className={`status-chip ${app.status === 'approved' ? 'status-active' : 'status-inactive'}`}>
+          {app.status === 'approved' ? 'active' : app.status}
+        </span>
         {app.approved_role && (
           <span className={app.approved_role.includes('power') ? 'scope-power' : 'scope-user'}>
             {app.approved_role}
