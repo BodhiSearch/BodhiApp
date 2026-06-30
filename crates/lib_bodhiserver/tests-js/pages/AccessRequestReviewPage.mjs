@@ -22,7 +22,9 @@ export class AccessRequestReviewPage extends BasePage {
   }
 
   async waitForReviewPage() {
-    await this.expectVisible(this.selectors.reviewPage);
+    // Wait for the grantable model/MCP lists to settle — the access pickers
+    // re-render when they load and clicking mid-load drops the event.
+    await this.page.waitForSelector(`${this.selectors.reviewPage}[data-test-state="ready"]`);
   }
 
   async selectMcpInstance(url, instanceId) {
@@ -49,29 +51,54 @@ export class AccessRequestReviewPage extends BasePage {
     await this.page.click('[data-testid="review-list-mcps-toggle"]');
   }
 
-  /** Switch the model access picker to Specific. With no items selected this grants
-   *  no models — a deterministic "no model access" grant. Switching to Specific
-   *  auto-opens the slide-in picker panel, so close it before continuing. */
-  async setModelAccessSpecific() {
-    await this.page.click('[data-testid="review-model-access-mode-specific"]');
-    const done = this.page.locator('[data-testid="review-model-access-panel-done"]');
-    await done.click();
+  /** Wait for an open Specific picker panel (prefix `review-model-access` |
+   *  `review-mcp-access`), click each grant id, then close it. Empty `ids` leaves
+   *  the grant empty — a deterministic "no access" grant. */
+  async pickFromOpenPanel(prefix, ids) {
+    await this.page.waitForSelector(`[data-testid="${prefix}-panel"]`);
+    for (const id of ids) {
+      const item = this.page.locator(`[data-testid="${prefix}-panel-item-${id}"]`);
+      await item.waitFor({ state: 'visible' });
+      await item.click();
+    }
+    await this.page.click(`[data-testid="${prefix}-panel-done"]`);
     // Wait for the Sheet overlay to detach so it no longer intercepts clicks.
-    await this.page.locator('[data-testid="review-model-access-panel"]').waitFor({ state: 'hidden' });
+    await this.page.locator(`[data-testid="${prefix}-panel"]`).waitFor({ state: 'hidden' });
+  }
+
+  /** Grant exactly `ids` models. The model picker defaults to All, so clicking
+   *  Specific switches mode and auto-opens the panel. Empty ids = no model access. */
+  async grantSpecificModels(ids) {
+    await this.page.click('[data-testid="review-model-access-mode-specific"]');
+    await this.pickFromOpenPanel('review-model-access', ids);
+  }
+
+  /** Grant exactly `ids` owner-extra MCPs. That picker defaults to Specific, so the
+   *  mode is already set — open the panel via its Add button. */
+  async grantSpecificMcps(ids) {
+    await this.page.click('[data-testid="review-mcp-access-add"]');
+    await this.pickFromOpenPanel('review-mcp-access', ids);
   }
 
   /**
    * Approve after configuring the model/MCP grant controls.
    * @param {Object} opts
-   * @param {boolean} [opts.listModels] toggle "list all models" on
-   * @param {boolean} [opts.modelsSpecific] switch model access to Specific (empty = no models)
-   * @param {boolean} [opts.listMcps] toggle "list all MCPs" on
+   * @param {boolean}  [opts.listModels] toggle "list all models" on
+   * @param {string[]} [opts.modelIds] switch model access to Specific and grant these ids ([] = none)
+   * @param {boolean}  [opts.listMcps] toggle "list all MCPs" on
+   * @param {string[]} [opts.mcpIds] grant these owner-extra MCP ids
    */
-  async approveWithGrants({ listModels = false, modelsSpecific = false, listMcps = false } = {}) {
+  async approveWithGrants({
+    listModels = false,
+    modelIds = null,
+    listMcps = false,
+    mcpIds = null,
+  } = {}) {
     await this.waitForReviewPage();
     if (listModels) await this.toggleListModels();
-    if (modelsSpecific) await this.setModelAccessSpecific();
+    if (modelIds) await this.grantSpecificModels(modelIds);
     if (listMcps) await this.toggleListMcps();
+    if (mcpIds) await this.grantSpecificMcps(mcpIds);
     await this.clickApprove();
   }
 

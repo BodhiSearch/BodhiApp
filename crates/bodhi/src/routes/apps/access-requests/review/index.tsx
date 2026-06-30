@@ -308,6 +308,7 @@ const ReviewContent = () => {
       data-testid="review-access-page"
       data-test-status={reviewData.status}
       data-test-flow-type={reviewData.flow_type}
+      data-test-state={modelsData && mcpsData ? 'ready' : 'loading'}
     >
       <div className="page-header">
         <div className="page-header-text">

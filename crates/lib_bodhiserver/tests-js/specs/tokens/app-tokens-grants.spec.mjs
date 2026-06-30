@@ -1,7 +1,13 @@
+import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
+import { McpFixtures } from '@/fixtures/mcpFixtures.mjs';
 import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
+import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { AppTokensPage } from '@/pages/AppTokensPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
+import { McpsPage } from '@/pages/McpsPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
+import { registerApiModelViaUI } from '@/utils/api-model-helpers.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
@@ -17,6 +23,7 @@ import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 test.describe('App Tokens - grants, enforcement & revoke', { tag: '@oauth' }, () => {
   let authServerConfig;
   let testCredentials;
+  let testApiKey;
 
   test.beforeAll(async () => {
     authServerConfig = getAuthServerConfig();
@@ -25,6 +32,8 @@ test.describe('App Tokens - grants, enforcement & revoke', { tag: '@oauth' }, ()
     if (!authServerConfig.authUrl || !testCredentials.username) {
       throw new Error('Missing INTEG_TEST_* env for App Token E2E (auth url / credentials).');
     }
+    // Throws (no skip) when the OpenAI key is missing — the positive-grant test infers.
+    testApiKey = ApiModelFixtures.getRequiredEnvVars().apiKey;
     createAuthServerTestClient(authServerConfig);
   });
 
@@ -68,7 +77,7 @@ test.describe('App Tokens - grants, enforcement & revoke', { tag: '@oauth' }, ()
     await test.step('Owner approves: list models on, model access = Specific (none)', async () => {
       const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
       // Specific with nothing selected ⇒ a deterministic "no model access" grant.
-      await reviewPage.approveWithGrants({ listModels: true, modelsSpecific: true, listMcps: true });
+      await reviewPage.approveWithGrants({ listModels: true, modelIds: [], listMcps: true });
 
       await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
       await app.accessCallback.waitForLoaded();
@@ -132,6 +141,126 @@ test.describe('App Tokens - grants, enforcement & revoke', { tag: '@oauth' }, ()
       expect(await app.rest.getResponseStatus()).toBe(200);
       const info = await app.rest.getResponse();
       expect(info.auth_status).toBe('logged_out');
+    });
+  });
+
+  // Positive counterpart to the deny test: the owner grants ONE specific model and
+  // ONE specific MCP (owner-extra grant), then the exchanged token infers the granted
+  // model, reaches the granted MCP, and is denied the non-granted model + MCP.
+  test('approve specific model + MCP grants; enforce inference, MCP connect, and listings', async ({
+    page,
+    sharedServerUrl,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+
+    const appClient = getPreConfiguredAppClient();
+    const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
+    const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
+
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const modelsPage = new ModelsListPageV2(page, sharedServerUrl);
+    const apiModelFormPage = new ApiModelFormPage(page, sharedServerUrl);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
+
+    const stamp = `${Date.now()}`;
+    // Grant the OpenAI model (inferenceable in E2E) and the first MCP instance; the
+    // second MCP is the restricted control.
+    const grantedModelId = ApiModelFixtures.OPENAI_MODEL;
+    let grantedMcpId;
+    let restrictedMcpId;
+
+    await test.step('Owner logs in, registers a model + two MCP instances', async () => {
+      await loginPage.performOAuthLogin();
+      await registerApiModelViaUI(modelsPage, apiModelFormPage, testApiKey);
+
+      const serverData = McpFixtures.createEverythingServerData();
+      await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
+      await mcpsPage.createMcpInstance(serverData.name, `Ev-A-${stamp}`, `ev-a-${stamp}`);
+      await mcpsPage.createMcpInstance(serverData.name, `Ev-B-${stamp}`, `ev-b-${stamp}`);
+      await mcpsPage.expectMcpsListPage();
+      grantedMcpId = await mcpsPage.getMcpUuidByName(`Ev-A-${stamp}`);
+      restrictedMcpId = await mcpsPage.getMcpUuidByName(`Ev-B-${stamp}`);
+      expect(grantedMcpId).toBeTruthy();
+      expect(restrictedMcpId).toBeTruthy();
+    });
+
+    await test.step('External app requests model + MCP grant controls', async () => {
+      await app.navigate();
+      await app.config.configureOAuthForm({
+        bodhiServerUrl: sharedServerUrl,
+        authServerUrl: authServerConfig.authUrl,
+        realm: authServerConfig.authRealm,
+        clientId: appClient.clientId,
+        redirectUri,
+        scope: 'openid email profile roles',
+        requested: JSON.stringify({
+          version: '1',
+          models_list: true,
+          models_access: true,
+          mcps_list: true,
+          mcps_access: true,
+        }),
+      });
+      await app.config.submitAccessRequest();
+      await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
+    });
+
+    await test.step('Owner approves one specific model + one specific MCP (owner-extra grant)', async () => {
+      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
+      // list-all OFF so non-granted resources are hidden (404), not just connect-denied.
+      await reviewPage.approveWithGrants({
+        modelIds: [grantedModelId],
+        mcpIds: [grantedMcpId],
+      });
+
+      await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
+      await app.accessCallback.waitForLoaded();
+      await app.accessCallback.clickLogin();
+      await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
+    });
+
+    await test.step('Exchanged token reflects the specific model grant on /bodhi/v1/user', async () => {
+      await app.expectLoggedIn();
+      await app.rest.navigateTo();
+      await app.rest.sendRequest({ method: 'GET', url: '/bodhi/v1/user' });
+      expect(await app.rest.getResponseStatus()).toBe(200);
+      const info = await app.rest.getResponse();
+      expect(info.auth_status).toBe('logged_in');
+      expect(info.access.models.type).toBe('specific');
+      expect(info.access.models.ids).toContain(grantedModelId);
+    });
+
+    await test.step('Inference: granted model allowed (200), non-granted model denied (403)', async () => {
+      await app.rest.sendRequest({
+        method: 'POST',
+        url: '/v1/chat/completions',
+        body: { model: grantedModelId, messages: [{ role: 'user', content: 'hi' }] },
+      });
+      expect(await app.rest.getResponseStatus()).toBe(200);
+
+      await app.rest.sendRequest({
+        method: 'POST',
+        url: '/v1/chat/completions',
+        body: { model: 'gpt-4', messages: [{ role: 'user', content: 'hi' }] },
+      });
+      expect(await app.rest.getResponseStatus()).toBe(403);
+    });
+
+    await test.step('MCP: granted instance reachable (200), restricted hidden (404)', async () => {
+      await app.rest.sendRequest({ method: 'GET', url: `/bodhi/v1/apps/mcps/${grantedMcpId}` });
+      expect(await app.rest.getResponseStatus()).toBe(200);
+
+      await app.rest.sendRequest({ method: 'GET', url: `/bodhi/v1/apps/mcps/${restrictedMcpId}` });
+      expect(await app.rest.getResponseStatus()).toBe(404);
+    });
+
+    await test.step('MCP listing reflects the grant: granted present, restricted hidden', async () => {
+      await app.rest.sendRequest({ method: 'GET', url: '/bodhi/v1/apps/mcps' });
+      expect(await app.rest.getResponseStatus()).toBe(200);
+      const list = await app.rest.getResponse();
+      const ids = (list.mcps ?? []).map((m) => m.id);
+      expect(ids).toContain(grantedMcpId);
+      expect(ids).not.toContain(restrictedMcpId);
     });
   });
 });
