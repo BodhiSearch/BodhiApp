@@ -138,7 +138,7 @@ from `app.status` (F36); `access-picker/AccessPickerPanel` derive group labels v
 AccessPickerPanel filter, F39 GrantBlock, F40 TokenForm PowerUser card disabled.
 **Gate:** `cd crates/bodhi && npm test`. **Commit.**
 
-## Batch 5 — E2E hardening & page objects (test-only)
+## Batch 5 — E2E hardening & page objects (test-only) — ✅ DONE (2026-06-30)
 **Findings:** F20 (finalize positive infer/connect + list reflection), F21 (owner-extra MCP in
 `approveWithGrants`), F41 (List-all case), F42 (keyboard nav → page-object method), F43 (env
 validation in `beforeAll`).
@@ -147,6 +147,30 @@ keyboard-nav method to `pages/{AccessRequestReviewPage,AppTokensPage,TokensPage}
 throws on missing `INTEG_TEST_*` env (no `test.skip`). Black-box only (UI interactions);
 `reducedMotion:'reduce'` at context level.
 **Gate:** `make build.dev-server` then full `make test.e2e`. **Commit.**
+
+### Batch 5 — outcome
+First fixed the four red specs (all asserting pre-change behavior, no code regressions):
+- `mcps-auth-restrictions` Phase 5: restricted MCP get is now **404** (`entity_error-not_found`,
+  F12/F31 hide-not-reveal), not 403 + `entity_not_approved` (that error path was deleted).
+- `mcps-crud`: playground header renders the tool's friendly **title** ("Echo Tool").
+- `mcps-header-auth`: `getPlaygroundResultContent` → `getPlaygroundResultRaw` (Playground-V2 rename).
+- `mcps-sdk-compat-everything`: the obsolete "API token rejected (OAuth-only route)" step was
+  **rewritten** (per operator) into API-token MCP grant coverage (All connects / empty-Specific
+  denied / Specific-this connects) — API tokens are now first-class + grant-enforced on `/apps/mcps/*`.
+
+Coverage added: **F20** (app-token specific model + owner-extra MCP → infer 200/non-granted 403,
+granted MCP 200/restricted 404/hidden-in-list, `/bodhi/v1/user` reflection), **F21**
+(`grantSpecificModels`/`grantSpecificMcps` — consent MCP picker defaults to Specific→open via Add;
+model picker defaults to All→Specific auto-opens; select by explicit id), **F41** (list-all + All
+case in api-tokens), **F42** (`TokensPage.selectRowByKeyboard`/`activeRowTestId` via `aria-selected`,
+not the `.l-listrow.active` CSS class). **F43** already present.
+
+Determinism work (no if-else / try-catch / white-box on UI state): `TokenForm` and the review screen
+expose `data-test-state="ready"` once their grant lists settle; page objects wait for it before
+interacting (clicking a picker mid-load dropped the event). Verified green on **standalone** (all 26
+tokens+mcps specs) and **multi_tenant** (app-tokens-grants ×2, api-tokens lifecycle).
+Commits: `e6078a9f` (phase-1 spec fixes), `3e99601d` (rust `grants:None` test-compile fix),
+`691aab15` (F-2a), `9d5398b3` (F20/F21), `fb1dec25` (F41/F42).
 
 ---
 
