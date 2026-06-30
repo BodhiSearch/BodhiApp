@@ -112,11 +112,11 @@ async fn test_validate_bodhiapp_token_parses_grants(
   let token_hash = format!("{:x}", hasher.finalize());
 
   let grants = TokenGrants::V1(TokenGrantsV1 {
-    list_models: false,
+    models_list: false,
     models: ModelGrant::Specific {
       ids: vec!["m1".to_string()],
     },
-    list_mcps: true,
+    mcps_list: true,
     mcps: McpGrant::Specific { ids: vec![] },
   });
 

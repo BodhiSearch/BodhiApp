@@ -127,11 +127,11 @@ async fn test_chat_completions_scoped_token_forbidden() -> anyhow::Result<()> {
     role: TokenScope::User,
     token: "tok".to_string(),
     grants: TokenGrants::V1(TokenGrantsV1 {
-      list_models: false,
+      models_list: false,
       models: ModelGrant::Specific {
         ids: vec!["some-other-model".to_string()],
       },
-      list_mcps: false,
+      mcps_list: false,
       mcps: McpGrant::Specific { ids: vec![] },
     }),
   };

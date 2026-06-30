@@ -46,7 +46,7 @@ describe('toCreateTokenRequest', () => {
     ).toEqual({
       name: 'x',
       scope: 'scope_token_user',
-      grants: { version: '1', list_models: true, models: { type: 'all' }, list_mcps: false, mcps: { type: 'all' } },
+      grants: { version: '1', models_list: true, models: { type: 'all' }, mcps_list: false, mcps: { type: 'all' } },
     });
   });
 
@@ -67,9 +67,9 @@ describe('toCreateTokenRequest', () => {
       scope: 'scope_token_user',
       grants: {
         version: '1',
-        list_models: false,
+        models_list: false,
         models: { type: 'specific', ids: ['a', 'b'] },
-        list_mcps: false,
+        mcps_list: false,
         mcps: { type: 'specific', ids: [] },
       },
     });
@@ -88,9 +88,9 @@ describe('toCreateTokenRequest', () => {
     });
     expect(req.grants).toEqual({
       version: '1',
-      list_models: false,
+      models_list: false,
       models: { type: 'all' },
-      list_mcps: true,
+      mcps_list: true,
       mcps: { type: 'specific', ids: ['mcp-1'] },
     });
   });
@@ -196,9 +196,9 @@ describe('TokenForm', () => {
     await waitFor(() => expect(onTokenCreated).toHaveBeenCalledWith(mockToken));
     expect(captured?.grants).toEqual({
       version: '1',
-      list_models: false,
+      models_list: false,
       models: { type: 'specific', ids: ['test-model'] },
-      list_mcps: false,
+      mcps_list: false,
       mcps: { type: 'specific', ids: ['mcp-uuid-1'] },
     });
   });

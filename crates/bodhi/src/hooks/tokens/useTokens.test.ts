@@ -47,9 +47,9 @@ const mockUpdatedToken = {
   user_id: 'user-123',
   grants: {
     version: '1' as const,
-    list_models: true,
+    models_list: true,
     models: { type: 'all' as const },
-    list_mcps: true,
+    mcps_list: true,
     mcps: { type: 'all' as const },
   },
   created_at: '2024-01-01T00:00:00Z',

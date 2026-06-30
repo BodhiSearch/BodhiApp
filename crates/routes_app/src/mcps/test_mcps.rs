@@ -75,7 +75,7 @@ async fn test_mcps_index_api_token_grant_filters_list(
     .returning(move |_, _| Ok(vec![granted.clone(), other.clone()]));
   let app = test_router_for_crud(mock).await?;
 
-  // Grant only "mcp-uuid-1" for connect, list_mcps off → only that instance is listed.
+  // Grant only "mcp-uuid-1" for connect, mcps_list off → only that instance is listed.
   let token = AuthContext::ApiToken {
     client_id: "c".to_string(),
     tenant_id: "tenant".to_string(),
@@ -83,9 +83,9 @@ async fn test_mcps_index_api_token_grant_filters_list(
     role: TokenScope::User,
     token: "tok".to_string(),
     grants: TokenGrants::V1(TokenGrantsV1 {
-      list_models: false,
+      models_list: false,
       models: ModelGrant::All,
-      list_mcps: false,
+      mcps_list: false,
       mcps: McpGrant::Specific {
         ids: vec!["mcp-uuid-1".to_string()],
       },

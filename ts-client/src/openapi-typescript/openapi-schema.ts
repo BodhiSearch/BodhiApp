@@ -2936,17 +2936,17 @@ export interface components {
             /** @enum {string} */
             version: "1";
         };
-        /** @description Per-resource grants carried by an API token. Listing (`list_models` /
-         *     `list_mcps`) is separate from inference/connect: with listing off the
+        /** @description Per-resource grants carried by an API token. Listing (`models_list` /
+         *     `mcps_list`) is separate from inference/connect: with listing off the
          *     discovery endpoints return an empty set, but inference on an individually
          *     granted resource still succeeds.
          *
          *     Intentionally standalone — NOT shared with the App-access-request envelope
          *     (`ApprovedResources`); the two may diverge. */
         TokenGrantsV1: {
-            list_models?: boolean;
+            models_list?: boolean;
             models?: components["schemas"]["ModelGrant"];
-            list_mcps?: boolean;
+            mcps_list?: boolean;
             mcps?: components["schemas"]["McpGrant"];
         };
         /** @description API Token information response */

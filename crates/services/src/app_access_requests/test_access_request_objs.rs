@@ -30,13 +30,13 @@ fn approval(id: &str, status: ApprovalStatus) -> McpApproval {
 #[case(ModelGrant::Specific { ids: vec![] }, false, "m1", false, false)]
 fn approved_model_predicates(
   #[case] models: ModelGrant,
-  #[case] list_models: bool,
+  #[case] models_list: bool,
   #[case] model: &str,
   #[case] expect_infer: bool,
   #[case] expect_listable: bool,
 ) {
   let grants = ApprovedResourcesV1 {
-    models_list: list_models,
+    models_list,
     models_access: models,
     ..Default::default()
   };
@@ -60,13 +60,13 @@ fn approved_model_predicates(
 fn approved_mcp_predicates(
   #[case] mcps: Vec<McpApproval>,
   #[case] mcps_access: McpGrant,
-  #[case] list_mcps: bool,
+  #[case] mcps_list: bool,
   #[case] mcp: &str,
   #[case] expect_connect: bool,
   #[case] expect_listable: bool,
 ) {
   let grants = ApprovedResourcesV1 {
-    mcps_list: list_mcps,
+    mcps_list,
     mcps,
     mcps_access,
     ..Default::default()

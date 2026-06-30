@@ -9,7 +9,7 @@ use sea_orm_migration::prelude::*;
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
-const DEFAULT_GRANTS: &str = r#"{"version":"1","list_models":true,"models":{"type":"all"},"list_mcps":true,"mcps":{"type":"all"}}"#;
+const DEFAULT_GRANTS: &str = r#"{"version":"1","models_list":true,"models":{"type":"all"},"mcps_list":true,"mcps":{"type":"all"}}"#;
 
 #[derive(DeriveIden)]
 enum ApiTokens {

@@ -23,8 +23,8 @@ pub enum TokenStatus {
   Inactive,
 }
 
-/// Per-resource grants carried by an API token. Listing (`list_models` /
-/// `list_mcps`) is separate from inference/connect: with listing off the
+/// Per-resource grants carried by an API token. Listing (`models_list` /
+/// `mcps_list`) is separate from inference/connect: with listing off the
 /// discovery endpoints return an empty set, but inference on an individually
 /// granted resource still succeeds.
 ///
@@ -33,11 +33,11 @@ pub enum TokenStatus {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema, Default)]
 pub struct TokenGrantsV1 {
   #[serde(default)]
-  pub list_models: bool,
+  pub models_list: bool,
   #[serde(default)]
   pub models: ModelGrant,
   #[serde(default)]
-  pub list_mcps: bool,
+  pub mcps_list: bool,
   #[serde(default)]
   pub mcps: McpGrant,
 }
@@ -48,7 +48,7 @@ impl ResourceGrants for TokenGrantsV1 {
   }
 
   fn model_listable(&self, model_id: &str) -> bool {
-    self.list_models || self.allows_model_inference(model_id)
+    self.models_list || self.allows_model_inference(model_id)
   }
 
   fn allows_mcp_connect(&self, mcp_id: &str) -> bool {
@@ -56,7 +56,7 @@ impl ResourceGrants for TokenGrantsV1 {
   }
 
   fn mcp_listable(&self, mcp_id: &str) -> bool {
-    self.list_mcps || self.allows_mcp_connect(mcp_id)
+    self.mcps_list || self.allows_mcp_connect(mcp_id)
   }
 }
 
@@ -109,9 +109,9 @@ impl Default for TokenGrants {
   /// All-access (parity with the pre-grants behavior): list + use every model and MCP.
   fn default() -> Self {
     Self::V1(TokenGrantsV1 {
-      list_models: true,
+      models_list: true,
       models: ModelGrant::All,
-      list_mcps: true,
+      mcps_list: true,
       mcps: McpGrant::All,
     })
   }
@@ -224,15 +224,15 @@ mod tests {
   #[rstest]
   #[case(TokenGrants::default())]
   #[case(TokenGrants::V1(TokenGrantsV1 {
-    list_models: false,
+    models_list: false,
     models: ModelGrant::Specific { ids: vec!["m1".into(), "m2".into()] },
-    list_mcps: true,
+    mcps_list: true,
     mcps: McpGrant::Specific { ids: vec![] },
   }))]
   #[case(TokenGrants::V1(TokenGrantsV1 {
-    list_models: true,
+    models_list: true,
     models: ModelGrant::All,
-    list_mcps: false,
+    mcps_list: false,
     mcps: McpGrant::Specific { ids: vec!["inst-1".into()] },
   }))]
   fn token_grants_round_trip(#[case] grants: TokenGrants) {
@@ -244,7 +244,7 @@ mod tests {
   #[test]
   fn default_grants_json_is_all_access() {
     assert_eq!(
-      r#"{"version":"1","list_models":true,"models":{"type":"all"},"list_mcps":true,"mcps":{"type":"all"}}"#,
+      r#"{"version":"1","models_list":true,"models":{"type":"all"},"mcps_list":true,"mcps":{"type":"all"}}"#,
       default_grants_json()
     );
   }
@@ -255,9 +255,9 @@ mod tests {
     let parsed: TokenGrants = serde_json::from_str(r#"{"version":"1"}"#).unwrap();
     assert_eq!(
       TokenGrants::V1(TokenGrantsV1 {
-        list_models: false,
+        models_list: false,
         models: ModelGrant::All,
-        list_mcps: false,
+        mcps_list: false,
         mcps: McpGrant::All,
       }),
       parsed
@@ -266,7 +266,7 @@ mod tests {
 
   #[test]
   fn token_grants_missing_version_errors() {
-    let err = serde_json::from_str::<TokenGrants>(r#"{"list_models":true}"#).unwrap_err();
+    let err = serde_json::from_str::<TokenGrants>(r#"{"models_list":true}"#).unwrap_err();
     assert!(err.to_string().contains("version"));
   }
 

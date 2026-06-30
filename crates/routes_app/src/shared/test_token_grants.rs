@@ -6,7 +6,7 @@ use services::{
   ModelGrant, TokenGrants, TokenGrantsV1, TokenScope, UserScope,
 };
 
-fn token(models: ModelGrant, list_models: bool, mcps: McpGrant, list_mcps: bool) -> AuthContext {
+fn token(models: ModelGrant, models_list: bool, mcps: McpGrant, mcps_list: bool) -> AuthContext {
   AuthContext::ApiToken {
     client_id: "c".to_string(),
     tenant_id: "t".to_string(),
@@ -14,9 +14,9 @@ fn token(models: ModelGrant, list_models: bool, mcps: McpGrant, list_mcps: bool)
     role: TokenScope::User,
     token: "tok".to_string(),
     grants: TokenGrants::V1(TokenGrantsV1 {
-      list_models,
+      models_list,
       models,
-      list_mcps,
+      mcps_list,
       mcps,
     }),
   }
@@ -58,17 +58,17 @@ fn unrestricted_principal_passes_everything() {
 // All grant: everything listable + inferable regardless of list flag.
 #[case(specific(&["a"]), false, "a", true, true)]
 #[case(specific(&["a"]), false, "b", false, false)]
-// list_models on: non-granted model is listable but NOT inferable.
+// models_list on: non-granted model is listable but NOT inferable.
 #[case(specific(&["a"]), true, "b", true, false)]
 #[case(ModelGrant::All, false, "z", true, true)]
 fn model_policy_matrix(
   #[case] models: ModelGrant,
-  #[case] list_models: bool,
+  #[case] models_list: bool,
   #[case] model: &str,
   #[case] expect_listable: bool,
   #[case] expect_inferable: bool,
 ) {
-  let ctx = token(models, list_models, McpGrant::All, false);
+  let ctx = token(models, models_list, McpGrant::All, false);
   let policy = AccessPolicy::of(&ctx);
   assert_eq!(expect_listable, policy.model_listable(model));
   assert_eq!(
@@ -90,18 +90,18 @@ fn model_forbidden_has_forbidden_code() {
 #[rstest]
 #[case(McpGrant::All, false, "x", true, true)]
 #[case(McpGrant::Specific { ids: vec![] }, false, "x", false, false)]
-// list_mcps on: non-granted mcp is listable but NOT connectable.
+// mcps_list on: non-granted mcp is listable but NOT connectable.
 #[case(McpGrant::Specific { ids: vec![] }, true, "x", true, false)]
 #[case(McpGrant::Specific { ids: vec!["x".to_string()] }, false, "x", true, true)]
 #[case(McpGrant::Specific { ids: vec!["x".to_string()] }, false, "y", false, false)]
 fn mcp_policy_matrix(
   #[case] mcps: McpGrant,
-  #[case] list_mcps: bool,
+  #[case] mcps_list: bool,
   #[case] mcp: &str,
   #[case] expect_listable: bool,
   #[case] expect_connectable: bool,
 ) {
-  let ctx = token(ModelGrant::All, false, mcps, list_mcps);
+  let ctx = token(ModelGrant::All, false, mcps, mcps_list);
   let policy = AccessPolicy::of(&ctx);
   assert_eq!(expect_listable, policy.mcp_listable(mcp));
   assert_eq!(expect_connectable, policy.ensure_mcp_connect(mcp).is_ok());

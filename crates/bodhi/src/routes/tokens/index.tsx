@@ -363,7 +363,7 @@ function TokenDetailPanel({
         <div className="dp-section">
           <div className="dp-sec-lbl">Models</div>
           <div className="dp-rows">
-            {grants.list_models && <DetailRow icon="list" label="List all models" value="/v1/models" />}
+            {grants.models_list && <DetailRow icon="list" label="List all models" value="/v1/models" />}
             <DetailRow icon="cpu" label="Inference" value={modelGrantLabel(grants)} />
           </div>
           {grants.models.type === 'specific' && grants.models.ids.length > 0 && (
@@ -379,7 +379,7 @@ function TokenDetailPanel({
         <div className="dp-section">
           <div className="dp-sec-lbl">MCP servers</div>
           <div className="dp-rows">
-            {grants.list_mcps && <DetailRow icon="list" label="List all MCPs" value="/v1/mcps" />}
+            {grants.mcps_list && <DetailRow icon="list" label="List all MCPs" value="/v1/mcps" />}
             <DetailRow icon="plug" label="Connect" value={mcpGrantLabel(grants)} />
           </div>
           {grants.mcps.type === 'specific' && grants.mcps.ids.length > 0 && (

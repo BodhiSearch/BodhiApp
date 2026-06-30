@@ -84,7 +84,7 @@ test.describe('App Tokens - grants, enforcement & revoke', { tag: '@oauth' }, ()
       expect(await app.rest.getResponseStatus()).toBe(200);
       const info = await app.rest.getResponse();
       expect(info.auth_status).toBe('logged_in');
-      // Phase-4 reflection: list_models on, but no specific models granted.
+      // Phase-4 reflection: models_list on, but no specific models granted.
       expect(info.access).toBeDefined();
       expect(info.access.models.type).toBe('specific');
       expect(info.access.models.list).toBe(true);

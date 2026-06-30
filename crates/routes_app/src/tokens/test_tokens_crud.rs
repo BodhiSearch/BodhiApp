@@ -640,11 +640,11 @@ async fn test_create_token_persists_and_returns_grants(
   );
 
   let grants = TokenGrants::V1(TokenGrantsV1 {
-    list_models: false,
+    models_list: false,
     models: ModelGrant::Specific {
       ids: vec!["my-model".to_string()],
     },
-    list_mcps: true,
+    mcps_list: true,
     mcps: McpGrant::Specific { ids: vec![] },
   });
 

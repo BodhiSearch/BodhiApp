@@ -1716,8 +1716,8 @@ export type TokenGrants = TokenGrantsV1 & {
 };
 
 /**
- * Per-resource grants carried by an API token. Listing (`list_models` /
- * `list_mcps`) is separate from inference/connect: with listing off the
+ * Per-resource grants carried by an API token. Listing (`models_list` /
+ * `mcps_list`) is separate from inference/connect: with listing off the
  * discovery endpoints return an empty set, but inference on an individually
  * granted resource still succeeds.
  *
@@ -1725,9 +1725,9 @@ export type TokenGrants = TokenGrantsV1 & {
  * (`ApprovedResources`); the two may diverge.
  */
 export type TokenGrantsV1 = {
-    list_models?: boolean;
+    models_list?: boolean;
     models?: ModelGrant;
-    list_mcps?: boolean;
+    mcps_list?: boolean;
     mcps?: McpGrant;
 };
 

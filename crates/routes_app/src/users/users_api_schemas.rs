@@ -42,10 +42,10 @@ impl ResourceAccess {
   pub fn models(grants: &TokenGrantsV1) -> Self {
     match &grants.models {
       ModelGrant::All => Self::All {
-        list: grants.list_models,
+        list: grants.models_list,
       },
       ModelGrant::Specific { ids } => Self::Specific {
-        list: grants.list_models,
+        list: grants.models_list,
         ids: ids.clone(),
       },
     }
@@ -54,10 +54,10 @@ impl ResourceAccess {
   pub fn mcps(grants: &TokenGrantsV1) -> Self {
     match &grants.mcps {
       McpGrant::All => Self::All {
-        list: grants.list_mcps,
+        list: grants.mcps_list,
       },
       McpGrant::Specific { ids } => Self::Specific {
-        list: grants.list_mcps,
+        list: grants.mcps_list,
         ids: ids.clone(),
       },
     }

@@ -17,8 +17,8 @@ use services::{McpGrant, ModelGrant, TokenGrants, TokenGrantsV1, TokenScope};
 use std::sync::Arc;
 use tower::ServiceExt;
 
-/// API-token auth context granting only `models` for inference, with `list_models`.
-fn scoped_token(models: &[&str], list_models: bool) -> AuthContext {
+/// API-token auth context granting only `models` for inference, with `models_list`.
+fn scoped_token(models: &[&str], models_list: bool) -> AuthContext {
   AuthContext::ApiToken {
     client_id: "test-client".to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
@@ -26,11 +26,11 @@ fn scoped_token(models: &[&str], list_models: bool) -> AuthContext {
     role: TokenScope::User,
     token: "test-token".to_string(),
     grants: TokenGrants::V1(TokenGrantsV1 {
-      list_models,
+      models_list,
       models: ModelGrant::Specific {
         ids: models.iter().map(|s| s.to_string()).collect(),
       },
-      list_mcps: false,
+      mcps_list: false,
       mcps: McpGrant::Specific { ids: vec![] },
     }),
   }
@@ -105,7 +105,7 @@ async fn test_oai_models_handler_list_all(#[future] app: Router) -> anyhow::Resu
 #[tokio::test]
 #[anyhow_trace]
 async fn test_oai_models_scoped_token_filters_listing(#[future] app: Router) -> anyhow::Result<()> {
-  // list_models off → only the granted model is listed.
+  // models_list off → only the granted model is listed.
   let response = app
     .clone()
     .oneshot(
@@ -125,7 +125,7 @@ async fn test_oai_models_scoped_token_filters_listing(#[future] app: Router) -> 
     .collect();
   assert_eq!(vec!["llama3:instruct"], ids);
 
-  // list_models on → full catalog despite the narrow inference grant.
+  // models_list on → full catalog despite the narrow inference grant.
   let response = app
     .oneshot(
       Request::builder()

@@ -48,7 +48,7 @@ export function toCreateTokenRequest(data: TokenFormData): CreateTokenRequest {
   return {
     name: data.name || undefined,
     scope: data.scope,
-    grants: { version: '1', list_models: data.listModels, models, list_mcps: data.listMcps, mcps },
+    grants: { version: '1', models_list: data.listModels, models, mcps_list: data.listMcps, mcps },
   };
 }
 

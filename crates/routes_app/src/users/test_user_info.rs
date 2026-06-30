@@ -158,11 +158,11 @@ async fn test_user_info_handler_api_token_reflects_specific_grants() -> anyhow::
   let router = test_router(app_service);
 
   let grants = TokenGrants::V1(TokenGrantsV1 {
-    list_models: false,
+    models_list: false,
     models: ModelGrant::Specific {
       ids: vec!["llama2:chat".to_string()],
     },
-    list_mcps: true,
+    mcps_list: true,
     mcps: McpGrant::Specific { ids: vec![] },
   });
   let auth_context = AuthContext::ApiToken {

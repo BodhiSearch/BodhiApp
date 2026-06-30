@@ -39,9 +39,9 @@ const TOKENS = [
     status: 'active' as const,
     grants: {
       version: '1' as const,
-      list_models: true,
+      models_list: true,
       models: { type: 'all' as const },
-      list_mcps: true,
+      mcps_list: true,
       mcps: { type: 'all' as const },
     },
     created_at: '2024-01-03T10:00:00Z',
@@ -56,9 +56,9 @@ const TOKENS = [
     status: 'inactive' as const,
     grants: {
       version: '1' as const,
-      list_models: false,
+      models_list: false,
       models: { type: 'specific' as const, ids: ['llama3:instruct'] },
-      list_mcps: false,
+      mcps_list: false,
       mcps: { type: 'specific' as const, ids: [] },
     },
     created_at: '2024-01-01T08:00:00Z',

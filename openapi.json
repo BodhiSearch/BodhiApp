@@ -12657,15 +12657,15 @@
       },
       "TokenGrantsV1": {
         "type": "object",
-        "description": "Per-resource grants carried by an API token. Listing (`list_models` /\n`list_mcps`) is separate from inference/connect: with listing off the\ndiscovery endpoints return an empty set, but inference on an individually\ngranted resource still succeeds.\n\nIntentionally standalone — NOT shared with the App-access-request envelope\n(`ApprovedResources`); the two may diverge.",
+        "description": "Per-resource grants carried by an API token. Listing (`models_list` /\n`mcps_list`) is separate from inference/connect: with listing off the\ndiscovery endpoints return an empty set, but inference on an individually\ngranted resource still succeeds.\n\nIntentionally standalone — NOT shared with the App-access-request envelope\n(`ApprovedResources`); the two may diverge.",
         "properties": {
-          "list_models": {
+          "models_list": {
             "type": "boolean"
           },
           "models": {
             "$ref": "#/components/schemas/ModelGrant"
           },
-          "list_mcps": {
+          "mcps_list": {
             "type": "boolean"
           },
           "mcps": {
