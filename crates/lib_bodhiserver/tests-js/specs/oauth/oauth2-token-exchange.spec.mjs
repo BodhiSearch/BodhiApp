@@ -67,9 +67,6 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
         const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
         await reviewPage.approve();
 
-        await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
-        await app.accessCallback.waitForLoaded();
-        await app.accessCallback.clickLogin();
         // KC session already exists from performOAuthLogin, so Keycloak auto-redirects
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
       });
@@ -139,9 +136,6 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
         const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
         await reviewPage.approveWithRole('scope_user_user');
 
-        await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
-        await app.accessCallback.waitForLoaded();
-        await app.accessCallback.clickLogin();
         // KC session already exists from performOAuthLogin, so Keycloak auto-redirects
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
       });

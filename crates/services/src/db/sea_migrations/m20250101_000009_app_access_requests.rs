@@ -11,8 +11,6 @@ enum AppAccessRequests {
   AppClientId,
   AppName,
   AppDescription,
-  FlowType,
-  RedirectUri,
   Status,
   Requested,
   Approved,
@@ -38,8 +36,6 @@ impl MigrationTrait for Migration {
           .col(string(AppAccessRequests::AppClientId))
           .col(string_null(AppAccessRequests::AppName))
           .col(string_null(AppAccessRequests::AppDescription))
-          .col(string(AppAccessRequests::FlowType))
-          .col(string_null(AppAccessRequests::RedirectUri))
           .col(string(AppAccessRequests::Status).default("draft"))
           .col(string(AppAccessRequests::Requested))
           .col(string_null(AppAccessRequests::Approved))

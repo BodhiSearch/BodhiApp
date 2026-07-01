@@ -65,7 +65,7 @@ Each domain module follows `*_objs.rs` pattern for types and `error.rs` for erro
 - `tenants/tenant_objs.rs` — `DeploymentMode` (Standalone/MultiTenant), `AppStatus` (Setup/Ready/ResourceAdmin), `Tenant` (includes `created_by: Option<String>`)
 - `tenants/spi_types.rs` — `SpiTenant`, `SpiTenantListResponse`, `SpiCreateTenantRequest`, `SpiCreateTenantResponse`
 - `mcps/mcp_objs.rs` — MCP types, `McpRequest`, `McpServerRequest` (both derive `Validate`)
-- `app_access_requests/access_request_objs.rs` — `AppAccessRequest` (renamed from `AppAccessRequestRow`)
+- `app_access_requests/access_request_objs.rs` — `AppAccessRequest`. Single-step 3rd-party OAuth: the app forwards its pre-built Keycloak authorize URL + error URL to the review **page** (client-side query params, never stored); on approve the page appends the minted `scope_access_request:<id>` to that URL and redirects straight to Keycloak. So `CreateAccessRequest` has no `flow_type`/`redirect_url` and the row has no `redirect_uri` (all removed); `AccessRequestService::build_authorize_endpoint()` returns `AuthService::authorize_url()` for the page to validate the app-supplied URL against.
 - `shared_objs/` — `error_wrappers.rs`, `utils.rs`, `log.rs`, `token.rs` (JWT parsing)
 - `tenants/` — tenant management module
 - `inference/` — `InferenceService` trait, `LlmEndpoint`, `InferenceError`

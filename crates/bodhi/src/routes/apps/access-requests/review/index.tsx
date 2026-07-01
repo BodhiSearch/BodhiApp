@@ -1,13 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { UserScope } from '@bodhiapp/ts-client';
 import { createFileRoute, useSearch } from '@tanstack/react-router';
-import { AlertCircle, CheckCircle, Loader2, XCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { z } from 'zod';
 
 import { GrantBlock, type AccessMode } from '@/components/access-picker';
 import AppInitializer from '@/components/AppInitializer';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { ErrorPage } from '@/components/ui/ErrorPage';
@@ -15,10 +14,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGetAppAccessRequestReview, useApproveAppAccessRequest, useDenyAppAccessRequest } from '@/hooks/apps';
-import type { AccessRequestActionResponse, ApproveAccessRequest } from '@/hooks/apps';
+import type { ApproveAccessRequest } from '@/hooks/apps';
 import { useListMcps } from '@/hooks/mcps';
 import { useListModels } from '@/hooks/models';
-import { toast } from '@/hooks/use-toast';
 import { useGetUser } from '@/hooks/users';
 import { useToastMessages } from '@/hooks/useToastMessages';
 import { extractErrorMessage } from '@/lib/errorUtils';
@@ -26,64 +24,30 @@ import { grantableMcpItems, grantableModelItems } from '@/lib/grantItems';
 import { safeNavigate } from '@/lib/safeNavigate';
 
 import McpServerCard from './-components/McpServerCard';
+import { appendScopeToAuthUrl, buildErrorRedirect, readState, validateAuthUrl } from './-shared/authUrl';
 import { toApproveBody } from './-shared/toApproveBody';
 import '@/components/shell/api-keys.css';
 
 export const Route = createFileRoute('/apps/access-requests/review/')({
-  validateSearch: z.object({ id: z.string().optional() }),
+  validateSearch: z.object({
+    id: z.string().optional(),
+    auth_url: z.string().optional(),
+    error_url: z.string().optional(),
+  }),
   component: ReviewAccessRequestPage,
 });
 
-const NonDraftStatus = ({ status, flowType }: { status: string; flowType: string }) => {
-  useEffect(() => {
-    if (flowType === 'popup') {
-      window.close();
-    }
-    // For redirect flow, the backend redirect_url is not available in the review response,
-    // so we just show the status. The 3rd party app polls for status changes.
-  }, [flowType]);
+type Preflight =
+  | { kind: 'pending' }
+  | { kind: 'ok' }
+  | { kind: 'fatal'; message: string }
+  | { kind: 'redirect'; url: string };
 
-  const statusConfig: Record<
-    string,
-    { icon: React.ReactNode; label: string; variant: 'default' | 'secondary' | 'destructive' }
-  > = {
-    approved: { icon: <CheckCircle className="h-5 w-5 text-green-500" />, label: 'Approved', variant: 'default' },
-    denied: { icon: <XCircle className="h-5 w-5 text-red-500" />, label: 'Denied', variant: 'destructive' },
-    expired: { icon: <AlertCircle className="h-5 w-5 text-yellow-500" />, label: 'Expired', variant: 'secondary' },
-  };
-
-  const config = statusConfig[status] || {
-    icon: <AlertCircle className="h-5 w-5" />,
-    label: status,
-    variant: 'secondary' as const,
-  };
-
-  return (
-    <div
-      className="flex min-h-[50vh] items-center justify-center"
-      data-testid={`review-status-${status}`}
-      data-test-status={status}
-      data-test-flow-type={flowType}
-    >
-      <Card className="w-full max-w-md">
-        <CardContent className="flex flex-col items-center gap-4 pt-6 pb-6">
-          {config.icon}
-          <div className="text-lg font-medium">Access Request {config.label}</div>
-          <Badge variant={config.variant}>{config.label}</Badge>
-          <p className="text-sm text-muted-foreground text-center">
-            {status === 'approved' && 'This access request has already been approved.'}
-            {status === 'denied' && 'This access request has been denied.'}
-            {status === 'expired' && 'This access request has expired.'}
-            {!['approved', 'denied', 'expired'].includes(status) && `Status: ${status}`}
-          </p>
-          {flowType === 'popup' && (
-            <p className="text-xs text-muted-foreground">This window should close automatically.</p>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
+const Redirecting = () => (
+  <div className="flex min-h-[50vh] items-center justify-center" data-testid="review-redirecting">
+    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+  </div>
+);
 
 const SCOPE_ORDER = ['scope_user_power_user', 'scope_user_user'] as const;
 type UserScopeValue = (typeof SCOPE_ORDER)[number];
@@ -118,13 +82,15 @@ function computeRoleOptions(
 const ReviewContent = () => {
   const search = useSearch({ strict: false });
   const id = search.id as string | undefined;
+  const authUrl = search.auth_url as string | undefined;
+  const errorUrl = search.error_url as string | undefined;
 
   const { showError } = useToastMessages();
   const [selectedMcpInstances, setSelectedMcpInstances] = useState<Record<string, string>>({});
   const [approvedMcps, setApprovedMcps] = useState<Record<string, boolean>>({});
   const [approvedRole, setApprovedRole] = useState<UserScope | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [actionResult, setActionResult] = useState<AccessRequestActionResponse | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
 
   // Owner's model/MCP grant decisions (driven by the app's requested UI flags).
   // Both pickers default to least-privilege (Specific/none) — granting a 3rd-party
@@ -148,23 +114,13 @@ const ReviewContent = () => {
     setter(current.includes(itemId) ? current.filter((x) => x !== itemId) : [...current, itemId]);
   };
 
-  const handleActionSuccess = (data: AccessRequestActionResponse) => {
-    if (data.flow_type === 'popup') {
-      window.close();
-    } else if (data.flow_type === 'redirect' && data.redirect_url) {
-      if (!safeNavigate(data.redirect_url)) {
-        toast({
-          title: 'Invalid redirect URL',
-          description: `URL "${data.redirect_url}" must use http:// or https:// scheme`,
-          variant: 'destructive',
-        });
-      }
-    }
-    setActionResult(data);
-  };
-
   const approveMutation = useApproveAppAccessRequest({
-    onSuccess: handleActionSuccess,
+    onSuccess: (data) => {
+      if (authUrl && data.access_request_scope) {
+        setRedirecting(true);
+        safeNavigate(appendScopeToAuthUrl(authUrl, data.access_request_scope));
+      }
+    },
     onError: (message) => {
       setIsSubmitting(false);
       showError('Approval Failed', message);
@@ -172,7 +128,18 @@ const ReviewContent = () => {
   });
 
   const denyMutation = useDenyAppAccessRequest({
-    onSuccess: handleActionSuccess,
+    onSuccess: () => {
+      if (errorUrl) {
+        setRedirecting(true);
+        safeNavigate(
+          buildErrorRedirect(errorUrl, {
+            error: 'access_denied',
+            errorDescription: 'User denied the access request',
+            state: authUrl ? readState(authUrl) : null,
+          })
+        );
+      }
+    },
     onError: (message) => {
       setIsSubmitting(false);
       showError('Denial Failed', message);
@@ -220,13 +187,54 @@ const ReviewContent = () => {
 
   const totalCount = reviewData?.mcps_info?.length ?? 0;
 
-  if (!id) {
-    return <ErrorPage message="Missing access request ID" />;
+  // A non-draft status or an invalid app-supplied auth_url both send the user back to the app's
+  // error_url (OAuth-style, source-marked) rather than rendering the consent form.
+  const preflight = useMemo((): Preflight => {
+    if (!id) return { kind: 'fatal', message: 'Missing access request ID' };
+    if (!authUrl || !errorUrl) {
+      return { kind: 'fatal', message: 'Missing required auth_url or error_url query parameter' };
+    }
+    if (!reviewData) return { kind: 'pending' };
+    if (reviewData.status !== 'draft') {
+      return {
+        kind: 'redirect',
+        url: buildErrorRedirect(errorUrl, {
+          error: 'invalid_request',
+          errorDescription: `Access request is ${reviewData.status}`,
+          state: readState(authUrl),
+        }),
+      };
+    }
+    const validation = validateAuthUrl(authUrl, reviewData.auth_endpoint, reviewData.app_client_id);
+    if (!validation.ok) {
+      return {
+        kind: 'redirect',
+        url: buildErrorRedirect(errorUrl, {
+          error: 'invalid_request',
+          errorDescription: validation.description,
+          state: readState(authUrl),
+        }),
+      };
+    }
+    return { kind: 'ok' };
+  }, [id, authUrl, errorUrl, reviewData]);
+
+  useEffect(() => {
+    // Only the initial preflight (invalid auth_url / non-draft on load) redirects here. Once an
+    // approve/deny is in flight the query refetches to a non-draft status — ignore that so it
+    // can't hijack the navigation the action already started (to Keycloak or error_url).
+    if (preflight.kind === 'redirect' && !redirecting) {
+      setRedirecting(true);
+      safeNavigate(preflight.url);
+    }
+  }, [preflight, redirecting]);
+
+  if (preflight.kind === 'fatal') {
+    return <ErrorPage message={preflight.message} />;
   }
 
-  // Show immediate result without waiting for refetch
-  if (actionResult) {
-    return <NonDraftStatus status={actionResult.status} flowType={actionResult.flow_type} />;
+  if (redirecting || preflight.kind === 'redirect') {
+    return <Redirecting />;
   }
 
   if (isLoading) {
@@ -254,10 +262,6 @@ const ReviewContent = () => {
     );
   }
 
-  if (reviewData.status !== 'draft') {
-    return <NonDraftStatus status={reviewData.status} flowType={reviewData.flow_type} />;
-  }
-
   const req = reviewData.requested;
 
   const handleApprove = () => {
@@ -275,12 +279,12 @@ const ReviewContent = () => {
         selectedMcpInstances,
       }),
     };
-    approveMutation.mutate({ id, body });
+    approveMutation.mutate({ id: id!, body });
   };
 
   const handleDeny = () => {
     setIsSubmitting(true);
-    denyMutation.mutate({ id });
+    denyMutation.mutate({ id: id! });
   };
 
   const displayName = reviewData.app_name || reviewData.app_client_id;
@@ -290,7 +294,6 @@ const ReviewContent = () => {
       className="api-keys-screen container mx-auto max-w-2xl p-4"
       data-testid="review-access-page"
       data-test-status={reviewData.status}
-      data-test-flow-type={reviewData.flow_type}
       data-test-state={modelsData && mcpsData ? 'ready' : 'loading'}
     >
       <div className="page-header">

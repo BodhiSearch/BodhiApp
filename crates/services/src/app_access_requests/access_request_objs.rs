@@ -10,8 +10,6 @@ pub struct AppAccessRequest {
   pub app_client_id: String,
   pub app_name: Option<String>,
   pub app_description: Option<String>,
-  pub flow_type: FlowType,
-  pub redirect_uri: Option<String>,
   pub status: AppAccessRequestStatus,
   pub requested: String,
   pub approved: Option<String>,
@@ -69,25 +67,6 @@ pub enum AppAccessRequestStatus {
   Expired,
   /// Owner revoked a previously-approved grant; the app token stops working.
   Revoked,
-}
-
-#[derive(
-  Debug,
-  Clone,
-  Serialize,
-  Deserialize,
-  strum::EnumString,
-  strum::Display,
-  PartialEq,
-  ToSchema,
-  sea_orm::DeriveValueType,
-)]
-#[sea_orm(value_type = "String")]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-pub enum FlowType {
-  Redirect,
-  Popup,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
@@ -300,8 +279,6 @@ impl ResourceGrants for ApprovedResourcesV1 {
 #[derive(Debug, Clone, Serialize, Deserialize, validator::Validate, ToSchema)]
 #[schema(example = json!({
     "app_client_id": "my-app-client",
-    "flow_type": "redirect",
-    "redirect_url": "https://myapp.com/callback",
     "requested_role": "scope_user_user",
     "requested": {
         "version": "1",
@@ -313,11 +290,6 @@ impl ResourceGrants for ApprovedResourcesV1 {
 pub struct CreateAccessRequest {
   /// App client ID from Keycloak
   pub app_client_id: String,
-  /// Flow type: "redirect" or "popup"
-  pub flow_type: FlowType,
-  /// Redirect URL for result notification (required for redirect flow)
-  #[validate(custom(function = "validate_redirect_url_scheme"))]
-  pub redirect_url: Option<String>,
   /// Role requested for the external app (scope_user_user or scope_user_power_user)
   pub requested_role: crate::UserScope,
   /// Resources requested (tools, etc.)
@@ -343,13 +315,4 @@ pub struct ApproveAccessRequest {
   pub approved_role: crate::UserScope,
   /// Approved resources with selections
   pub approved: ApprovedResources,
-}
-
-fn validate_redirect_url_scheme(url: &str) -> Result<(), validator::ValidationError> {
-  match url::Url::parse(url) {
-    Ok(parsed) if parsed.scheme() == "http" || parsed.scheme() == "https" => Ok(()),
-    _ => Err(validator::ValidationError::new(
-      "invalid_redirect_url_scheme",
-    )),
-  }
 }

@@ -60,8 +60,6 @@ impl AccessRequestRepository for DefaultDbService {
       app_client_id: Set(row.app_client_id.clone()),
       app_name: Set(row.app_name.clone()),
       app_description: Set(row.app_description.clone()),
-      flow_type: Set(row.flow_type.clone()),
-      redirect_uri: Set(row.redirect_uri.clone()),
       status: Set(row.status),
       requested: Set(row.requested.clone()),
       approved: Set(row.approved.clone()),

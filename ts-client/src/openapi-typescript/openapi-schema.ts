@@ -1324,9 +1324,8 @@ export interface components {
     schemas: {
         AccessRequestActionResponse: {
             status: components["schemas"]["AppAccessRequestStatus"];
-            flow_type: components["schemas"]["FlowType"];
-            /** @description Present for redirect flow */
-            redirect_url?: string | null;
+            /** @description Dynamic scope minted on approval; the review page appends it to `auth_url` before redirecting to Keycloak. */
+            access_request_scope?: string | null;
         };
         AccessRequestReviewResponse: {
             id: string;
@@ -1335,12 +1334,12 @@ export interface components {
             app_name?: string | null;
             /** @description From KC, if available */
             app_description?: string | null;
-            /** @description One of: "redirect", "popup" */
-            flow_type: components["schemas"]["FlowType"];
             status: components["schemas"]["AppAccessRequestStatus"];
             requested_role: string;
             requested: components["schemas"]["RequestedResources"];
             mcps_info?: components["schemas"]["McpServerReviewInfo"][];
+            /** @description Canonical Keycloak authorize endpoint the review page validates the app-supplied `auth_url` against. */
+            auth_endpoint: string;
         };
         /** @example {
          *       "access_request_scope": "scope_access_request:550e8400-e29b-41d4-a716-446655440000",
@@ -1804,8 +1803,6 @@ export interface components {
         };
         /** @example {
          *       "app_client_id": "my-app-client",
-         *       "flow_type": "redirect",
-         *       "redirect_url": "https://myapp.com/callback",
          *       "requested": {
          *         "mcp_servers": [
          *           {
@@ -1819,10 +1816,6 @@ export interface components {
         CreateAccessRequest: {
             /** @description App client ID from Keycloak */
             app_client_id: string;
-            /** @description Flow type: "redirect" or "popup" */
-            flow_type: components["schemas"]["FlowType"];
-            /** @description Redirect URL for result notification (required for redirect flow) */
-            redirect_url?: string | null;
             /** @description Role requested for the external app (scope_user_user or scope_user_power_user) */
             requested_role: components["schemas"]["UserScope"];
             /** @description Resources requested (tools, etc.) */
@@ -2042,8 +2035,6 @@ export interface components {
         FetchModelsResponse: {
             models: string[];
         };
-        /** @enum {string} */
-        FlowType: "redirect" | "popup";
         /** @description Gemini `Model` schema (see `openapi-gemini.json`). */
         GeminiModel: {
             name: string;

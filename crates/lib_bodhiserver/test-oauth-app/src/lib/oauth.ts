@@ -43,6 +43,14 @@ export function buildAuthUrl(config: OAuthConfig, codeChallenge: string, state: 
   return authUrl.toString();
 }
 
+/** Append the app-built authorize URL and error URL to the Bodhi review URL. */
+export function buildReviewRedirect(reviewUrl: string, authUrl: string, errorUrl: string): string {
+  const url = new URL(reviewUrl);
+  url.searchParams.set('auth_url', authUrl);
+  url.searchParams.set('error_url', errorUrl);
+  return url.toString();
+}
+
 export async function exchangeCodeForToken(
   code: string,
   config: OAuthConfig

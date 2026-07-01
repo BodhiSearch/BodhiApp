@@ -20,8 +20,8 @@ use services::AuthContext;
 use services::ResourceRole;
 use services::{
   test_utils::{AppServiceStubBuilder, FrozenTimeService, TEST_TENANT_ID},
-  DbService, DefaultAccessRequestService, MockAuthService, RegisterAccessRequestConsentResponse,
-  {AppAccessRequest, FlowType},
+  AppAccessRequest, DbService, DefaultAccessRequestService, MockAuthService,
+  RegisterAccessRequestConsentResponse,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -69,8 +69,6 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
 async fn seed_draft_request(
   db_service: &dyn DbService,
   request_id: &str,
-  flow_type: FlowType,
-  redirect_uri: Option<&str>,
   requested_role: &str,
 ) -> anyhow::Result<AppAccessRequest> {
   let now = chrono::Utc::now();
@@ -80,8 +78,6 @@ async fn seed_draft_request(
     app_client_id: "test-app-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type,
-    redirect_uri: redirect_uri.map(|u| u.to_string()),
     status: AppAccessRequestStatus::Draft,
     requested: r#"{"version":"1","mcp_servers":[{"url":"https://mcp.example.com/mcp"}]}"#
       .to_string(),
@@ -163,8 +159,6 @@ async fn seed_approved_request(
     app_client_id: app_client_id.to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: FlowType::Popup,
-    redirect_uri: None,
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: Some(approved_json.to_string()),
@@ -346,8 +340,6 @@ async fn test_revoke_non_approved_request_rejected() -> anyhow::Result<()> {
   seed_draft_request(
     harness.db_service.as_ref(),
     "ar-draft-revoke",
-    FlowType::Popup,
-    None,
     "scope_user_user",
   )
   .await?;
@@ -373,15 +365,9 @@ async fn test_revoke_non_approved_request_rejected() -> anyhow::Result<()> {
 // ============================================================================
 
 #[rstest]
-#[case::popup_flow(FlowType::Popup, None, false)]
-#[case::redirect_flow(FlowType::Redirect, Some("https://app.com/cb"), true)]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_approve_access_request_success(
-  #[case] flow_type: FlowType,
-  #[case] redirect_url: Option<&str>,
-  #[case] expect_redirect: bool,
-) -> anyhow::Result<()> {
+async fn test_approve_access_request_success() -> anyhow::Result<()> {
   let request_id = "ar-approve-ok";
   let user_id = "test-user-1";
 
@@ -397,15 +383,7 @@ async fn test_approve_access_request_success(
     });
 
   let harness = build_test_harness(mock_auth).await?;
-  let expected_flow_type = flow_type.clone();
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    flow_type,
-    redirect_url,
-    "scope_user_user",
-  )
-  .await?;
+  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
 
   let router = Router::new()
     .route(
@@ -439,18 +417,10 @@ async fn test_approve_access_request_success(
 
   let result = response.json::<AccessRequestActionResponse>().await?;
   assert_eq!(AppAccessRequestStatus::Approved, result.status);
-  assert_eq!(expected_flow_type, result.flow_type);
-  if expect_redirect {
-    assert!(
-      result.redirect_url.is_some(),
-      "redirect_url should be present for redirect flow"
-    );
-  } else {
-    assert!(
-      result.redirect_url.is_none(),
-      "redirect_url should be absent for popup flow"
-    );
-  }
+  assert_eq!(
+    Some("scope_access_request:ar-approve-ok".to_string()),
+    result.access_request_scope
+  );
 
   Ok(())
 }
@@ -468,14 +438,7 @@ async fn test_approve_access_request_mcp_instance_not_owned() -> anyhow::Result<
 
   let mock_auth = MockAuthService::default();
   let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    FlowType::Popup,
-    None,
-    "scope_user_user",
-  )
-  .await?;
+  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
   // No MCP instance seeded for this user -> "not owned"
 
   let router = Router::new()
@@ -553,14 +516,7 @@ async fn test_approve_access_request_with_model_and_extra_mcp_grants() -> anyhow
     true,
   )
   .await?;
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    FlowType::Popup,
-    None,
-    "scope_user_user",
-  )
-  .await?;
+  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
 
   let router = Router::new()
     .route(
@@ -610,14 +566,7 @@ async fn test_approve_access_request_extra_mcp_not_owned() -> anyhow::Result<()>
 
   let mock_auth = MockAuthService::default();
   let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    FlowType::Popup,
-    None,
-    "scope_user_user",
-  )
-  .await?;
+  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
 
   let router = Router::new()
     .route(
@@ -693,14 +642,7 @@ async fn test_approve_access_request_cross_url_instance() -> anyhow::Result<()> 
   )
   .await?;
 
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    FlowType::Popup,
-    None,
-    "scope_user_user",
-  )
-  .await?;
+  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
 
   let router = Router::new()
     .route(
@@ -753,7 +695,10 @@ async fn test_review_lists_all_instances_match_first() -> anyhow::Result<()> {
   let request_id = "ar-review-order";
   let user_id = "test-user-review";
 
-  let mock_auth = MockAuthService::default();
+  let mut mock_auth = MockAuthService::default();
+  mock_auth
+    .expect_authorize_url()
+    .return_const("https://kc.example.com/realms/bodhi/protocol/openid-connect/auth".to_string());
   let harness = build_test_harness(mock_auth).await?;
 
   // One instance on a different URL, one on the exact requested URL.
@@ -774,14 +719,7 @@ async fn test_review_lists_all_instances_match_first() -> anyhow::Result<()> {
   )
   .await?;
 
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    FlowType::Popup,
-    None,
-    "scope_user_user",
-  )
-  .await?;
+  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
 
   let router = Router::new()
     .route(
@@ -813,6 +751,10 @@ async fn test_review_lists_all_instances_match_first() -> anyhow::Result<()> {
     "https://mcp.example.com/mcp",
     instances[0]["mcp_server"]["url"].as_str().unwrap()
   );
+  assert_eq!(
+    "https://kc.example.com/realms/bodhi/protocol/openid-connect/auth",
+    body["auth_endpoint"].as_str().unwrap()
+  );
 
   Ok(())
 }
@@ -822,29 +764,15 @@ async fn test_review_lists_all_instances_match_first() -> anyhow::Result<()> {
 // ============================================================================
 
 #[rstest]
-#[case::popup_flow(FlowType::Popup, None, false)]
-#[case::redirect_flow(FlowType::Redirect, Some("https://app.com/cb"), true)]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_deny_access_request_success(
-  #[case] flow_type: FlowType,
-  #[case] redirect_url: Option<&str>,
-  #[case] expect_redirect: bool,
-) -> anyhow::Result<()> {
-  let expected_flow_type = flow_type.clone();
-  let request_id = &format!("ar-deny-{}", flow_type);
+async fn test_deny_access_request_success() -> anyhow::Result<()> {
+  let request_id = "ar-deny-1";
   let user_id = "test-user-5";
 
   let mock_auth = MockAuthService::default();
   let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    flow_type,
-    redirect_url,
-    "scope_user_user",
-  )
-  .await?;
+  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
 
   let router = Router::new()
     .route(
@@ -868,18 +796,7 @@ async fn test_deny_access_request_success(
 
   let result = response.json::<AccessRequestActionResponse>().await?;
   assert_eq!(AppAccessRequestStatus::Denied, result.status);
-  assert_eq!(expected_flow_type, result.flow_type);
-  if expect_redirect {
-    assert!(
-      result.redirect_url.is_some(),
-      "redirect_url should be present for redirect flow"
-    );
-  } else {
-    assert!(
-      result.redirect_url.is_none(),
-      "redirect_url should be absent for popup flow"
-    );
-  }
+  assert_eq!(None, result.access_request_scope);
 
   Ok(())
 }
@@ -900,8 +817,6 @@ async fn test_approve_privilege_escalation_user_grants_power_user() -> anyhow::R
   seed_draft_request(
     harness.db_service.as_ref(),
     request_id,
-    FlowType::Popup,
-    None,
     "scope_user_power_user",
   )
   .await?;
@@ -972,8 +887,6 @@ async fn test_approve_valid_downgrade_power_user_grants_user() -> anyhow::Result
   seed_draft_request(
     harness.db_service.as_ref(),
     request_id,
-    FlowType::Popup,
-    None,
     "scope_user_power_user",
   )
   .await?;
@@ -1029,14 +942,7 @@ async fn test_approve_privilege_escalation_approved_exceeds_requested() -> anyho
 
   let mock_auth = MockAuthService::default();
   let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    FlowType::Popup,
-    None,
-    "scope_user_user",
-  )
-  .await?;
+  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
 
   let router = Router::new()
     .route(
@@ -1098,7 +1004,6 @@ async fn test_create_access_request_unknown_version() -> anyhow::Result<()> {
 
   let body = json!({
     "app_client_id": "test-app-client",
-    "flow_type": "popup",
     "requested_role": "scope_user_user",
     "requested": {
       "version": "99",
@@ -1144,14 +1049,7 @@ async fn test_approve_access_request_unknown_version() -> anyhow::Result<()> {
   let request_id = "ar-unknown-ver";
   let user_id = "user-1";
 
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    FlowType::Popup,
-    None,
-    "scope_user_user",
-  )
-  .await?;
+  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
 
   let router = Router::new()
     .route(
@@ -1212,8 +1110,6 @@ async fn test_review_access_request_invalid_requested_json() -> anyhow::Result<(
     app_client_id: "test-app-client".to_string(),
     app_name: None,
     app_description: None,
-    flow_type: FlowType::Popup,
-    redirect_uri: None,
     status: AppAccessRequestStatus::Draft,
     requested: "not-valid-json".to_string(),
     approved: None,
@@ -1267,8 +1163,6 @@ fn app_access_summary_clamps_tampered_approved_role() {
     app_client_id: "app".to_string(),
     app_name: None,
     app_description: None,
-    flow_type: FlowType::Redirect,
-    redirect_uri: None,
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: None,

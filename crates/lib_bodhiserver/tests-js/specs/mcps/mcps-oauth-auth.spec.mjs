@@ -169,14 +169,13 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
       await app.config.submitAccessRequest();
       await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
+      // Single-step: approving redirects the browser straight to Keycloak (SSO-silent, since the
+      // user is already logged in), which returns to the app's /callback with the code.
       const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
       await reviewPage.approveWithMcps([
         { url: McpFixtures.OAUTH_MCP_URL, instanceId: mcpInstanceId },
       ]);
 
-      await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
-      await app.accessCallback.waitForLoaded();
-      await app.accessCallback.clickLogin();
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
 
@@ -309,11 +308,82 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
       await reviewPage.clickDeny();
     });
 
-    await test.step('Phase 4: Verify callback redirects with denied error state', async () => {
-      await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
-      await app.accessCallback.waitForLoaded();
-      const state = await app.accessCallback.getState();
-      expect(state).toBe('error');
+    await test.step('Phase 4: App lands on error_url with an OAuth error marked error_source=bodhi', async () => {
+      const { error, errorSource } = await app.oauth.expectOAuthError('access_denied');
+      expect(error).toBe('access_denied');
+      expect(errorSource).toBe('bodhi');
+    });
+  });
+
+  test('OAuth access request (popup flow): approve in popup, opener receives token', async ({
+    page,
+    sharedServerUrl,
+  }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
+    const serverData = McpFixtures.createOAuthServerData();
+    const instanceData = McpFixtures.createOAuthInstanceData();
+    let mcpInstanceId;
+
+    await test.step('Phase 1: Login, create OAuth MCP server and instance', async () => {
+      await loginPage.performOAuthLogin('/ui/chat/');
+      await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
+      const serverId = await mcpsPage.getServerUuidByName(serverData.name);
+      const oauthConfig = await mcpsPage.createOAuthConfigViaApi(
+        serverId,
+        McpFixtures.createOAuthConfigData()
+      );
+      await mcpsPage.createMcpInstanceWithOAuth({
+        serverName: serverData.name,
+        name: instanceData.name,
+        slug: instanceData.slug,
+        authConfigId: oauthConfig.id,
+      });
+      await mcpsPage.expectMcpsListPage();
+      mcpInstanceId = await mcpsPage.getMcpUuidByName(instanceData.name);
+      expect(mcpInstanceId).toBeTruthy();
+    });
+
+    const appClient = getPreConfiguredAppClient();
+    const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
+
+    await test.step('Phase 2: Configure external app with popup flow', async () => {
+      await app.navigate();
+      await app.config.configureOAuthForm({
+        bodhiServerUrl: sharedServerUrl,
+        authServerUrl: authServerConfig.authUrl,
+        realm: authServerConfig.authRealm,
+        clientId: appClient.clientId,
+        redirectUri: `${SHARED_STATIC_SERVER_URL}/callback`,
+        scope: 'openid profile email',
+        flowType: 'popup',
+        requested: JSON.stringify({
+          version: '1',
+          mcp_servers: [{ url: McpFixtures.OAUTH_MCP_URL }],
+        }),
+      });
+    });
+
+    await test.step('Phase 3: Approve in the popup; opener completes token exchange', async () => {
+      const popupPromise = page.waitForEvent('popup');
+      await app.config.submitAccessRequest();
+      const popup = await popupPromise;
+      await popup.waitForLoadState('domcontentloaded');
+
+      // Review + approve happen inside the popup; it then flows through Keycloak and posts the
+      // authorization code back to the opener, which owns the PKCE verifier and exchanges it.
+      const reviewPage = new AccessRequestReviewPage(popup, sharedServerUrl);
+      await reviewPage.approveWithMcps([
+        { url: McpFixtures.OAUTH_MCP_URL, instanceId: mcpInstanceId },
+      ]);
+
+      await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
+    });
+
+    await test.step('Phase 4: Verify OAuth MCP access via REST API', async () => {
+      await app.rest.navigateTo();
+      await app.rest.sendRequest({ method: 'GET', url: `/bodhi/v1/apps/mcps/${mcpInstanceId}` });
+      expect(await app.rest.getResponseStatus()).toBe(200);
     });
   });
 });

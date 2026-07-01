@@ -1,5 +1,5 @@
 use crate::app_access_requests::access_request_objs::AppAccessRequest;
-use crate::{AppAccessRequestStatus, FlowType};
+use crate::AppAccessRequestStatus;
 use chrono::{DateTime, Utc};
 use sea_orm::entity::prelude::*;
 
@@ -12,8 +12,6 @@ pub struct Model {
   pub app_client_id: String,
   pub app_name: Option<String>,
   pub app_description: Option<String>,
-  pub flow_type: FlowType,
-  pub redirect_uri: Option<String>,
   pub status: AppAccessRequestStatus,
   pub requested: String,
   pub approved: Option<String>,
@@ -40,8 +38,6 @@ impl From<Model> for AppAccessRequest {
       app_client_id: m.app_client_id,
       app_name: m.app_name,
       app_description: m.app_description,
-      flow_type: m.flow_type,
-      redirect_uri: m.redirect_uri,
       status: m.status,
       requested: m.requested,
       approved: m.approved,

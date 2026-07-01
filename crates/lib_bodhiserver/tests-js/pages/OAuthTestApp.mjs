@@ -1,5 +1,4 @@
 import { ConfigSection } from '@/pages/sections/ConfigSection.mjs';
-import { AccessCallbackSection } from '@/pages/sections/AccessCallbackSection.mjs';
 import { OAuthSection } from '@/pages/sections/OAuthSection.mjs';
 import { DashboardPage } from '@/pages/test-app/DashboardPage.mjs';
 import { ChatPage } from '@/pages/test-app/ChatPage.mjs';
@@ -10,7 +9,6 @@ export class OAuthTestApp {
     this.page = page;
     this.baseUrl = baseUrl;
     this.config = new ConfigSection(page);
-    this.accessCallback = new AccessCallbackSection(page);
     this.oauth = new OAuthSection(page);
     this.dashboard = new DashboardPage(page);
     this.chat = new ChatPage(page);

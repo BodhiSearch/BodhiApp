@@ -2,6 +2,8 @@ import type { AccessRequestReviewResponse, AppAccessSummary, ListAppAccessRespon
 
 const REQUEST_ID = '550e8400-e29b-41d4-a716-446655440000';
 const APP_CLIENT_ID = 'test-app-client';
+export const MOCK_AUTH_ENDPOINT = 'https://id.example.com/realms/bodhi/protocol/openid-connect/auth';
+const AUTH_ENDPOINT = MOCK_AUTH_ENDPOINT;
 
 export const mockAppAccessSummary: AppAccessSummary = {
   id: 'app-grant-1',
@@ -42,7 +44,7 @@ export const mockDraftReviewResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'Test Application',
   app_description: 'A test third-party application',
-  flow_type: 'popup',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
@@ -79,7 +81,7 @@ export const mockDraftNoInstancesResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'Test Application',
   app_description: 'A test third-party application',
-  flow_type: 'popup',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
@@ -99,7 +101,7 @@ export const mockApprovedReviewResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'Test Application',
   app_description: 'A test third-party application',
-  flow_type: 'popup',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'approved',
   requested_role: 'scope_user_user',
   requested: {
@@ -114,7 +116,7 @@ export const mockFailedReviewResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'Test Application',
   app_description: null,
-  flow_type: 'redirect',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'failed',
   requested_role: 'scope_user_user',
   requested: {
@@ -129,7 +131,7 @@ export const mockExpiredReviewResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'Test Application',
   app_description: null,
-  flow_type: 'redirect',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'expired',
   requested_role: 'scope_user_user',
   requested: {
@@ -144,7 +146,7 @@ export const mockDeniedReviewResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'Test Application',
   app_description: null,
-  flow_type: 'redirect',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'denied',
   requested_role: 'scope_user_user',
   requested: {
@@ -159,7 +161,7 @@ export const mockDraftRedirectResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'Redirect App',
   app_description: 'An app using redirect flow',
-  flow_type: 'redirect',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
@@ -196,7 +198,7 @@ export const mockDraftMultiToolResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'Multi-MCP App',
   app_description: 'An app requesting multiple MCP servers',
-  flow_type: 'popup',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'draft',
   requested_role: 'scope_user_power_user',
   requested: {
@@ -254,7 +256,7 @@ export const mockDraftMultiToolMixedResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'Mixed MCP App',
   app_description: 'An app with mixed MCP availability',
-  flow_type: 'popup',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
@@ -295,7 +297,7 @@ export const mockDraftMcpResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'MCP App',
   app_description: 'An app requesting MCP access',
-  flow_type: 'popup',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
@@ -334,7 +336,7 @@ export const mockDraftMcpCrossUrlResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'MCP App',
   app_description: 'An app requesting MCP access',
-  flow_type: 'popup',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
@@ -387,7 +389,7 @@ export const mockDraftMixedResourcesResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'Mixed Resources App',
   app_description: 'An app requesting MCPs',
-  flow_type: 'popup',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
@@ -424,7 +426,7 @@ export const mockDraftMcpNoInstancesResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'MCP No Instances App',
   app_description: 'An app requesting MCP with no instances',
-  flow_type: 'popup',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
@@ -446,7 +448,7 @@ export const mockDraftWithGrantFlagsResponse: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'Grants App',
   app_description: 'An app requesting model and MCP grant controls',
-  flow_type: 'popup',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
@@ -486,7 +488,7 @@ export const mockDraftReviewResponsePowerUser: AccessRequestReviewResponse = {
   app_client_id: APP_CLIENT_ID,
   app_name: 'Power User App',
   app_description: 'An app requesting power user access',
-  flow_type: 'popup',
+  auth_endpoint: AUTH_ENDPOINT,
   status: 'draft',
   requested_role: 'scope_user_power_user',
   requested: {

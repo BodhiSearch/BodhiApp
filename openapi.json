@@ -7768,22 +7768,18 @@
       "AccessRequestActionResponse": {
         "type": "object",
         "required": [
-          "status",
-          "flow_type"
+          "status"
         ],
         "properties": {
           "status": {
             "$ref": "#/components/schemas/AppAccessRequestStatus"
           },
-          "flow_type": {
-            "$ref": "#/components/schemas/FlowType"
-          },
-          "redirect_url": {
+          "access_request_scope": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Present for redirect flow"
+            "description": "Dynamic scope minted on approval; the review page appends it to `auth_url` before redirecting to Keycloak."
           }
         }
       },
@@ -7792,10 +7788,10 @@
         "required": [
           "id",
           "app_client_id",
-          "flow_type",
           "status",
           "requested_role",
-          "requested"
+          "requested",
+          "auth_endpoint"
         ],
         "properties": {
           "id": {
@@ -7818,10 +7814,6 @@
             ],
             "description": "From KC, if available"
           },
-          "flow_type": {
-            "$ref": "#/components/schemas/FlowType",
-            "description": "One of: \"redirect\", \"popup\""
-          },
           "status": {
             "$ref": "#/components/schemas/AppAccessRequestStatus"
           },
@@ -7836,6 +7828,10 @@
             "items": {
               "$ref": "#/components/schemas/McpServerReviewInfo"
             }
+          },
+          "auth_endpoint": {
+            "type": "string",
+            "description": "Canonical Keycloak authorize endpoint the review page validates the app-supplied `auth_url` against."
           }
         }
       },
@@ -9074,7 +9070,6 @@
         "type": "object",
         "required": [
           "app_client_id",
-          "flow_type",
           "requested_role",
           "requested"
         ],
@@ -9082,17 +9077,6 @@
           "app_client_id": {
             "type": "string",
             "description": "App client ID from Keycloak"
-          },
-          "flow_type": {
-            "$ref": "#/components/schemas/FlowType",
-            "description": "Flow type: \"redirect\" or \"popup\""
-          },
-          "redirect_url": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Redirect URL for result notification (required for redirect flow)"
           },
           "requested_role": {
             "$ref": "#/components/schemas/UserScope",
@@ -9105,8 +9089,6 @@
         },
         "example": {
           "app_client_id": "my-app-client",
-          "flow_type": "redirect",
-          "redirect_url": "https://myapp.com/callback",
           "requested": {
             "mcp_servers": [
               {
@@ -9789,13 +9771,6 @@
             "gpt-4-turbo"
           ]
         }
-      },
-      "FlowType": {
-        "type": "string",
-        "enum": [
-          "redirect",
-          "popup"
-        ]
       },
       "GeminiModel": {
         "type": "object",

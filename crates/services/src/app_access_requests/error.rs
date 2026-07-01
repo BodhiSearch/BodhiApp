@@ -21,10 +21,6 @@ pub enum AccessRequestError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidStatus(String),
 
-  #[error("Redirect URI is required for redirect flow.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  MissingRedirectUri,
-
   #[error("Approved resources version '{approved_version}' does not match requested version '{requested_version}'.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   VersionMismatch {

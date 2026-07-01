@@ -154,9 +154,6 @@ test.describe(
           { url: McpFixtures.EVERYTHING_SERVER_MCP_URL, instanceId: mcpId },
         ]);
 
-        await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
-        await app.accessCallback.waitForLoaded();
-        await app.accessCallback.clickLogin();
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
 
         await app.dashboard.navigateTo();

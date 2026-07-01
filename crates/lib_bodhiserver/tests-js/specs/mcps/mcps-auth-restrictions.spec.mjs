@@ -79,9 +79,6 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
       await reviewPage.approveWithMcps([{ url: MCP_URL, instanceId: mcpInstanceId }]);
 
-      await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
-      await app.accessCallback.waitForLoaded();
-      await app.accessCallback.clickLogin();
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
 
@@ -154,10 +151,6 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
 
       const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
       await reviewPage.approve();
-
-      await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
-      await app.accessCallback.waitForLoaded();
-      await app.accessCallback.clickLogin();
 
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
@@ -233,9 +226,6 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
       await reviewPage.approveWithMcps([{ url: MCP_URL, instanceId: approvedInstanceId }]);
 
-      await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
-      await app.accessCallback.waitForLoaded();
-      await app.accessCallback.clickLogin();
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
 

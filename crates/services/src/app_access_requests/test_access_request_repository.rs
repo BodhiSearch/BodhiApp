@@ -3,7 +3,6 @@ use crate::{
   db::DbError,
   new_ulid,
   test_utils::{sea_context, setup_env, TEST_TENANT_ID},
-  FlowType,
 };
 use anyhow_trace::anyhow_trace;
 use chrono::Duration;
@@ -19,8 +18,6 @@ fn make_request(id: &str, now: chrono::DateTime<chrono::Utc>) -> AppAccessReques
     app_client_id: "test-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: Some("A test application".to_string()),
-    flow_type: FlowType::Redirect,
-    redirect_uri: Some("https://example.com/callback".to_string()),
     status: AppAccessRequestStatus::Draft,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: None,
@@ -56,27 +53,6 @@ async fn test_create_and_get_access_request(
 
   let not_found = ctx.service.get(TEST_TENANT_ID, "nonexistent").await?;
   assert!(not_found.is_none());
-
-  Ok(())
-}
-
-#[rstest]
-#[anyhow_trace]
-#[tokio::test]
-#[serial(pg_app)]
-async fn test_create_access_request_popup_flow(
-  _setup_env: (),
-  #[values("sqlite", "postgres")] db_type: &str,
-) -> anyhow::Result<()> {
-  let ctx = sea_context(db_type).await;
-  let id = new_ulid();
-  let mut row = make_request(&id, ctx.now);
-  row.flow_type = FlowType::Popup;
-  row.redirect_uri = None;
-
-  let created = ctx.service.create(&row).await?;
-  assert_eq!(FlowType::Popup, created.flow_type);
-  assert!(created.redirect_uri.is_none());
 
   Ok(())
 }

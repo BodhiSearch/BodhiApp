@@ -1,7 +1,4 @@
-use crate::{
-  app_access_requests::{AppAccessRequest, AppAccessRequestStatus},
-  FlowType,
-};
+use crate::app_access_requests::{AppAccessRequest, AppAccessRequestStatus};
 use chrono::Duration;
 
 /// A Draft `AppAccessRequest` row owned by `tenant_id`.
@@ -16,8 +13,6 @@ pub(crate) fn make_request(
     app_client_id: "test-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: FlowType::Popup,
-    redirect_uri: None,
     status: AppAccessRequestStatus::Draft,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: None,

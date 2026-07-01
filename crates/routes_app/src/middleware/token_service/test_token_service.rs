@@ -761,7 +761,7 @@ async fn test_validate_bearer_token_scope_not_approved(
   #[future] test_db_service: TestDbService,
   #[case] status: AppAccessRequestStatus,
 ) -> anyhow::Result<()> {
-  use services::{AccessRequestRepository, AppAccessRequest, FlowType};
+  use services::{AccessRequestRepository, AppAccessRequest};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -773,8 +773,6 @@ async fn test_validate_bearer_token_scope_not_approved(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: FlowType::Redirect,
-    redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: Some(r#"{"version":"1"}"#.to_string()),
@@ -840,7 +838,7 @@ async fn test_validate_bearer_token_scope_not_approved(
 async fn test_validate_bearer_token_app_client_mismatch(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, FlowType};
+  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -853,8 +851,6 @@ async fn test_validate_bearer_token_app_client_mismatch(
     app_client_id: "app2".to_string(), // Different from token azp
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: FlowType::Redirect,
-    redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: Some(r#"{"version":"1"}"#.to_string()),
@@ -918,7 +914,7 @@ async fn test_validate_bearer_token_app_client_mismatch(
 async fn test_validate_bearer_token_user_mismatch(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, FlowType};
+  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -930,8 +926,6 @@ async fn test_validate_bearer_token_user_mismatch(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: FlowType::Redirect,
-    redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: Some(r#"{"version":"1"}"#.to_string()),
@@ -1003,7 +997,7 @@ async fn test_validate_bearer_token_invalid_status(
   #[case] status_label: &str,
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::{AccessRequestRepository, AppAccessRequest, FlowType};
+  use services::{AccessRequestRepository, AppAccessRequest};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -1016,8 +1010,6 @@ async fn test_validate_bearer_token_invalid_status(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: FlowType::Redirect,
-    redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: None,
@@ -1083,7 +1075,7 @@ async fn test_validate_bearer_token_invalid_status(
 async fn test_validate_bearer_token_access_request_id_mismatch(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, FlowType};
+  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -1097,8 +1089,6 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: FlowType::Redirect,
-    redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: Some(r#"{"version":"1"}"#.to_string()),
@@ -1179,7 +1169,7 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
 async fn test_validate_bearer_token_missing_access_request_id_claim(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, FlowType};
+  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -1192,8 +1182,6 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: FlowType::Redirect,
-    redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: Some(r#"{"version":"1"}"#.to_string()),
@@ -1273,7 +1261,7 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
 async fn test_validate_bearer_token_with_access_request_scope_success(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, FlowType};
+  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus};
 
   let tenant_row = test_db_service
     .create_tenant(
@@ -1299,8 +1287,6 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: FlowType::Redirect,
-    redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: Some(
@@ -1407,7 +1393,7 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
 async fn test_validate_bearer_token_cache_hit_returns_role(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, FlowType};
+  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus};
 
   let tenant_row = test_db_service
     .create_tenant(
@@ -1433,8 +1419,6 @@ async fn test_validate_bearer_token_cache_hit_returns_role(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: FlowType::Redirect,
-    redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: Some(r#"{"version":"1"}"#.to_string()),
@@ -1618,7 +1602,7 @@ async fn test_validate_bearer_token_without_access_request_scope(
 async fn test_validate_bearer_token_privilege_escalation_rejected(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, FlowType};
+  use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus};
 
   let tenant_row = test_db_service
     .create_tenant(
@@ -1645,8 +1629,6 @@ async fn test_validate_bearer_token_privilege_escalation_rejected(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: FlowType::Redirect,
-    redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: Some(r#"{"version":"1"}"#.to_string()),

@@ -7,9 +7,10 @@ export function ConfigPage() {
   const [searchParams] = useSearchParams();
   const errorParam = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
+  const errorSource = searchParams.get('error_source');
 
   const initialError = errorParam
-    ? `OAuth Error: ${errorParam}${errorDescription ? ' - ' + errorDescription : ''}`
+    ? `OAuth Error: ${errorParam}${errorDescription ? ' - ' + errorDescription : ''}${errorSource ? ` (source: ${errorSource})` : ''}`
     : null;
 
   return (

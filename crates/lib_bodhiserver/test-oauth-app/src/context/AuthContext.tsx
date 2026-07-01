@@ -13,8 +13,6 @@ export interface OAuthConfig {
   requested: string;
   codeVerifier?: string;
   state?: string;
-  approvedScopes?: string[];
-  accessRequestId?: string;
 }
 
 interface AuthContextValue {

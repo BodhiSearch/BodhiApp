@@ -2,11 +2,10 @@
 
 export type AccessRequestActionResponse = {
     status: AppAccessRequestStatus;
-    flow_type: FlowType;
     /**
-     * Present for redirect flow
+     * Dynamic scope minted on approval; the review page appends it to `auth_url` before redirecting to Keycloak.
      */
-    redirect_url?: string | null;
+    access_request_scope?: string | null;
 };
 
 export type AccessRequestReviewResponse = {
@@ -20,14 +19,14 @@ export type AccessRequestReviewResponse = {
      * From KC, if available
      */
     app_description?: string | null;
-    /**
-     * One of: "redirect", "popup"
-     */
-    flow_type: FlowType;
     status: AppAccessRequestStatus;
     requested_role: string;
     requested: RequestedResources;
     mcps_info?: Array<McpServerReviewInfo>;
+    /**
+     * Canonical Keycloak authorize endpoint the review page validates the app-supplied `auth_url` against.
+     */
+    auth_endpoint: string;
 };
 
 export type AccessRequestStatusResponse = {
@@ -449,14 +448,6 @@ export type CreateAccessRequest = {
      */
     app_client_id: string;
     /**
-     * Flow type: "redirect" or "popup"
-     */
-    flow_type: FlowType;
-    /**
-     * Redirect URL for result notification (required for redirect flow)
-     */
-    redirect_url?: string | null;
-    /**
      * Role requested for the external app (scope_user_user or scope_user_power_user)
      */
     requested_role: UserScope;
@@ -713,8 +704,6 @@ export type FetchModelsRequest = (DefaultFetchModelsRequest & {
 export type FetchModelsResponse = {
     models: Array<string>;
 };
-
-export type FlowType = 'redirect' | 'popup';
 
 /**
  * Gemini `Model` schema (see `openapi-gemini.json`).

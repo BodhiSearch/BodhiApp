@@ -19,17 +19,6 @@ export class OAuthSection {
     await this.page.waitForURL((url) => new URL(url).origin === new URL(bodhiServerUrl).origin);
   }
 
-  async waitForAccessRequestCallback(testAppUrl) {
-    await this.page.waitForURL((url) => {
-      const parsed = new URL(url);
-      return (
-        parsed.origin === new URL(testAppUrl).origin &&
-        parsed.pathname === '/access-callback' &&
-        parsed.searchParams.has('id')
-      );
-    });
-  }
-
   async waitForAuthServerRedirect(authServerUrl) {
     await this.page.waitForURL((url) => new URL(url).origin === authServerUrl);
   }
@@ -65,9 +54,10 @@ export class OAuthSection {
     const url = new URL(this.page.url());
     const error = url.searchParams.get('error');
     const errorDescription = url.searchParams.get('error_description');
+    const errorSource = url.searchParams.get('error_source');
     if (expectedError && error !== expectedError) {
       throw new Error(`Expected OAuth error '${expectedError}' but got '${error}'`);
     }
-    return { error, errorDescription };
+    return { error, errorDescription, errorSource };
   }
 }

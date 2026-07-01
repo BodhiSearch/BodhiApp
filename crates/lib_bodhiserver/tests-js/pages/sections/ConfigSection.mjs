@@ -8,19 +8,14 @@ export class ConfigSection {
     redirectUri: '[data-testid="input-redirect-uri"]',
     scope: '[data-testid="input-scope"]',
     requestedRole: '[data-testid="select-requested-role"]',
+    flowType: '[data-testid="select-flow-type"]',
     requested: '[data-testid="input-requested"]',
     confidentialToggle: '[data-testid="toggle-confidential"]',
     clientSecret: '[data-testid="input-client-secret"]',
     submitButton: '[data-testid="btn-request-access"]',
     errorSection: '[data-testid="error-section"]',
     loading: '[data-testid="access-request-loading"]',
-    // State-based selectors
-    formLogin: '[data-testid="div-config-form"][data-test-state="login"]',
     formError: '[data-testid="div-config-form"][data-test-state="error"]',
-    // Terminal state after submitting access request: login (approved) or error
-    terminal:
-      '[data-testid="div-config-form"][data-test-state="login"], [data-testid="div-config-form"][data-test-state="error"]',
-    buttonLogin: '[data-testid="btn-request-access"][data-test-state="login"]',
   };
 
   constructor(page) {
@@ -35,6 +30,7 @@ export class ConfigSection {
     redirectUri,
     scope,
     requestedRole,
+    flowType,
     requested,
   }) {
     await this.page.fill(this.selectors.bodhiServerUrl, bodhiServerUrl);
@@ -46,6 +42,9 @@ export class ConfigSection {
     if (requestedRole) {
       await this.setRequestedRole(requestedRole);
     }
+    if (flowType) {
+      await this.setFlowType(flowType);
+    }
     await this.page.fill(this.selectors.requested, requested || '');
   }
 
@@ -53,32 +52,12 @@ export class ConfigSection {
     await this.page.selectOption(this.selectors.requestedRole, value);
   }
 
+  async setFlowType(value) {
+    await this.page.selectOption(this.selectors.flowType, value);
+  }
+
   async submitAccessRequest() {
     await this.page.click(this.selectors.submitButton);
-  }
-
-  async waitForLoginReady() {
-    // Wait for form state to transition to "login" (auto-approved)
-    await this.page.locator(this.selectors.buttonLogin).waitFor();
-  }
-
-  async clickLogin() {
-    await this.waitForLoginReady();
-    await this.page.click(this.selectors.submitButton);
-  }
-
-  async setScopes(value) {
-    await this.page.fill(this.selectors.scope, value);
-  }
-
-  async getScopeValue() {
-    return await this.page.inputValue(this.selectors.scope);
-  }
-
-  async getAccessRequestScope() {
-    return await this.page
-      .locator('[data-test-access-request-scope]')
-      .getAttribute('data-test-access-request-scope');
   }
 
   async getFormState() {

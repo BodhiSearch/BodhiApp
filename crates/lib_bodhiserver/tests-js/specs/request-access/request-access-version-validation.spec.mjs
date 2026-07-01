@@ -11,7 +11,6 @@ test.describe('Access Request Version Validation', { tag: ['@oauth'] }, () => {
     const response = await request.post(`${sharedServerUrl}/bodhi/v1/apps/request-access`, {
       data: {
         app_client_id: 'test-app-client',
-        flow_type: 'popup',
         requested_role: 'scope_user_user',
         requested: {
           version: '99',
@@ -30,7 +29,6 @@ test.describe('Access Request Version Validation', { tag: ['@oauth'] }, () => {
     const response = await request.post(`${sharedServerUrl}/bodhi/v1/apps/request-access`, {
       data: {
         app_client_id: 'test-app-client',
-        flow_type: 'popup',
         requested_role: 'scope_user_user',
         requested: {
           mcp_servers: [{ url: 'https://example.com/mcp' }],

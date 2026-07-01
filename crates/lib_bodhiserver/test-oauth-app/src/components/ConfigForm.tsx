@@ -1,14 +1,28 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, Input, Label, Checkbox, Textarea } from '@/components/ui';
 import type { OAuthConfig } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { requestAccess } from '@/lib/api';
 import { saveConfig, loadConfig } from '@/lib/storage';
+import {
+  buildAuthUrl,
+  buildReviewRedirect,
+  exchangeCodeForToken,
+  generateCodeChallenge,
+  generateCodeVerifier,
+  generateState,
+} from '@/lib/oauth';
+import type { OAuthResult } from '@/pages/OAuthCallbackPage';
+import { OAUTH_RESULT_KEY } from '@/pages/OAuthCallbackPage';
 
 interface ConfigFormProps {
   initialError?: string | null;
 }
 
 export function ConfigForm({ initialError }: ConfigFormProps) {
+  const navigate = useNavigate();
+  const { setToken } = useAuth();
   const [bodhiServerUrl, setBodhiServerUrl] = useState('http://localhost:1135');
   const [authServerUrl, setAuthServerUrl] = useState(import.meta.env.INTEG_TEST_MAIN_AUTH_URL || 'https://main-id.getbodhi.app');
   const [realm, setRealm] = useState(import.meta.env.INTEG_TEST_AUTH_REALM || 'bodhi');
@@ -18,10 +32,42 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
   const [redirectUri, setRedirectUri] = useState(`${window.location.origin}/callback`);
   const [scope, setScope] = useState('openid profile email roles');
   const [requestedRole, setRequestedRole] = useState('scope_user_user');
+  const [flowType, setFlowType] = useState<'redirect' | 'popup'>('redirect');
   const [requested, setRequested] = useState('{"version":"1","mcp_servers":[{"url":"https://mcp.example.com/mcp"}]}');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(initialError || null);
+
+  // Popup flow: the popup's /callback posts the OAuth result (code/error) back here; the opener
+  // owns the PKCE verifier and does the token exchange, so the verifier never leaves this window.
+  useEffect(() => {
+    const onMessage = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const result = (event.data as { [OAUTH_RESULT_KEY]?: OAuthResult })?.[OAUTH_RESULT_KEY];
+      if (!result) return;
+      if (result.type === 'error') {
+        setLoading(false);
+        setError(`OAuth Error: ${result.error} (source: ${result.errorSource ?? 'keycloak'})`);
+        return;
+      }
+      const config = loadConfig();
+      if (!config || result.state !== config.state) {
+        setLoading(false);
+        setError('OAuth Error: state mismatch on popup result');
+        return;
+      }
+      try {
+        const tokenData = await exchangeCodeForToken(result.code, config);
+        setToken(tokenData.access_token);
+        navigate('/rest', { replace: true });
+      } catch (err) {
+        setLoading(false);
+        setError('Token exchange failed: ' + (err instanceof Error ? err.message : String(err)));
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [navigate, setToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,9 +82,7 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
     }
 
     let parsedRequested: Record<string, unknown> | undefined;
-    const hasRequested = requested.trim().length > 0;
-
-    if (hasRequested) {
+    if (requested.trim().length > 0) {
       try {
         parsedRequested = JSON.parse(requested.trim());
       } catch (err) {
@@ -46,6 +90,12 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
         return;
       }
     }
+
+    // Generate PKCE + state up front and build the full Keycloak authorize URL — Bodhi appends
+    // the dynamic scope on approval and redirects straight to Keycloak (single-step flow).
+    const codeVerifier = generateCodeVerifier();
+    const state = generateState();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
 
     const config: OAuthConfig = {
       bodhiServerUrl,
@@ -57,43 +107,35 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
       redirectUri,
       scope,
       requested,
+      codeVerifier,
+      state,
     };
     saveConfig(config);
 
     setLoading(true);
 
     try {
-      const body: {
-        app_client_id: string;
-        flow_type: string;
-        redirect_url: string;
-        requested_role: string;
-        requested: Record<string, unknown>;
-      } = {
+      const data = await requestAccess(bodhiServerUrl, {
         app_client_id: clientId,
-        flow_type: 'redirect',
-        redirect_url: window.location.origin + '/access-callback',
         requested_role: requestedRole,
         requested: parsedRequested ?? { version: '1' },
-      };
+      });
 
-      const data = await requestAccess(bodhiServerUrl, body);
-
-      if (data.status === 'draft') {
-        const storedConfig = loadConfig();
-        if (storedConfig) {
-          storedConfig.accessRequestId = data.id;
-          saveConfig(storedConfig);
-        }
-
-        window.location.href = data.review_url;
-      } else {
+      if (data.status !== 'draft') {
         throw new Error('Unexpected response status: ' + data.status);
+      }
+
+      const authUrl = buildAuthUrl(config, codeChallenge, state);
+      const reviewTarget = buildReviewRedirect(data.review_url, authUrl, redirectUri);
+
+      if (flowType === 'popup') {
+        window.open(reviewTarget, '_bodhi_review', 'width=600,height=700');
+      } else {
+        window.location.href = reviewTarget;
       }
     } catch (err) {
       console.error('Access request error:', err);
       setError('Access request failed: ' + (err instanceof Error ? err.message : String(err)));
-    } finally {
       setLoading(false);
     }
   };
@@ -204,6 +246,20 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
           >
             <option value="scope_user_user">scope_user_user (User)</option>
             <option value="scope_user_power_user">scope_user_power_user (Power User)</option>
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="flow-type">Flow Type</Label>
+          <select
+            id="flow-type"
+            data-testid="select-flow-type"
+            value={flowType}
+            onChange={(e) => setFlowType(e.target.value as 'redirect' | 'popup')}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="redirect">redirect (same tab)</option>
+            <option value="popup">popup (new window)</option>
           </select>
         </div>
 

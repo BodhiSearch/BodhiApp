@@ -87,6 +87,8 @@ Every new route must:
 
 **AppStatus values**: `Setup` (default), `Ready`, `ResourceAdmin`. `TenantSelection` was removed -- Anonymous{MultiTenant} and MultiTenantSession{client_id: None} with memberships now return `Ready`.
 
+**Single-step app access-request flow**: `POST /apps/request-access` takes only `{app_client_id, requested_role, requested}` (no `flow_type`/`redirect_url`). The app forwards its pre-built Keycloak authorize URL + error URL to the review **page** as query params (backend never sees/stores them). `GET /access-requests/{id}/review` returns `auth_endpoint` (from `build_authorize_endpoint()`) so the page can validate the app-supplied URL. `approve` returns `{status, access_request_scope}`; the page appends the scope to the authorize URL and redirects to Keycloak. `deny` returns `{status}`; the page redirects to the app's error URL with `error=access_denied&error_source=bodhi`. The `token_service` scope-validation + `access_request_id` claim path is unchanged.
+
 See `PACKAGE.md` for full Key Workflow Gotchas list.
 
 ## Commands

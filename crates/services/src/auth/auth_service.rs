@@ -125,6 +125,8 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     description: &str,
   ) -> Result<RegisterAccessRequestConsentResponse>;
 
+  fn authorize_url(&self) -> String;
+
   /// Get app client info (name, description) from Keycloak
   /// KC endpoint: GET /users/apps/{app_client_id}/info
   async fn get_app_client_info(
@@ -817,6 +819,10 @@ impl AuthService for KeycloakAuthService {
         body: error_text,
       })
     }
+  }
+
+  fn authorize_url(&self) -> String {
+    format!("{}/protocol/openid-connect/auth", self.auth_url())
   }
 
   async fn get_app_client_info(

@@ -16,14 +16,6 @@ pub enum AppsRouteError {
   #[error_meta(error_type = ErrorType::Conflict)]
   AlreadyProcessed,
 
-  #[error("Redirect URL required for redirect flow.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  MissingRedirectUrl,
-
-  #[error("Invalid redirect URL '{0}': only http:// and https:// URLs are allowed.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  InvalidRedirectUrl(String),
-
   #[error("Failed to parse requested resources JSON.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   InvalidRequestedJson,

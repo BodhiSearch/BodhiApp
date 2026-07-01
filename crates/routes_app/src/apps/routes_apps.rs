@@ -11,7 +11,7 @@ use axum::{
 use serde::Deserialize;
 use services::{
   AppAccessRequestStatus, ApprovalStatus, ApproveAccessRequest, ApprovedResources,
-  CreateAccessRequest, FlowType, McpGrant, RequestedResources,
+  CreateAccessRequest, McpGrant, RequestedResources,
 };
 use services::{ResourceRole, UserScope};
 use tracing::{debug, info};
@@ -53,35 +53,18 @@ pub async fn apps_create_access_request(
   auth_scope: AuthScope,
   ValidatedJson(request): ValidatedJson<CreateAccessRequest>,
 ) -> Result<(StatusCode, Json<CreateAccessRequestResponse>), BodhiErrorResponse> {
+  // App info is fetched later during review (this endpoint is unauthenticated, so no user
+  // token is available and the KC app-info endpoint cannot be called yet).
   debug!(
     "Creating access request for app_client_id: {}",
     request.app_client_id
   );
 
-  if request.flow_type == FlowType::Redirect && request.redirect_url.is_none() {
-    return Err(AppsRouteError::MissingRedirectUrl)?;
-  }
-
-  // Note: redirect_url scheme validation (XSS-VULN-01) is handled by ValidatedJson via
-  // the #[validate(custom(function = "validate_redirect_url_scheme"))] attribute on CreateAccessRequest.
-  // Note: We skip fetching app client info here because:
-  // 1. This endpoint is unauthenticated (no user token available)
-  // 2. KC endpoint for app client info may not be implemented yet
-  // 3. App info will be fetched during review (when user is authenticated)
-  debug!(
-    "Creating access request for app_client_id: {} (app info will be fetched during review)",
-    request.app_client_id
-  );
-
-  let requested = request.requested;
-
   let access_request_service = auth_scope.access_request_service();
   let created = access_request_service
     .create_draft(
       request.app_client_id,
-      request.flow_type,
-      request.redirect_url,
-      requested,
+      request.requested,
       request.requested_role,
     )
     .await?;
@@ -214,11 +197,11 @@ pub async fn apps_get_access_request_review(
     app_client_id: request.app_client_id,
     app_name: request.app_name,
     app_description: request.app_description,
-    flow_type: request.flow_type,
     status: request.status,
     requested_role: request.requested_role,
     requested,
     mcps_info,
+    auth_endpoint: access_request_service.build_authorize_endpoint(),
   }))
 }
 
@@ -366,8 +349,7 @@ pub async fn apps_approve_access_request(
 
   Ok(Json(AccessRequestActionResponse {
     status: updated.status,
-    flow_type: updated.flow_type,
-    redirect_url: updated.redirect_uri,
+    access_request_scope: updated.access_request_scope,
   }))
 }
 
@@ -402,8 +384,7 @@ pub async fn apps_deny_access_request(
 
   Ok(Json(AccessRequestActionResponse {
     status: updated.status,
-    flow_type: updated.flow_type,
-    redirect_url: updated.redirect_uri,
+    access_request_scope: None,
   }))
 }
 

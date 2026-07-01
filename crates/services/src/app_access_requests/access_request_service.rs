@@ -4,8 +4,7 @@ use std::sync::Arc;
 
 use super::error::{AccessRequestError, Result};
 use super::{
-  AppAccessRequest, AppAccessRequestStatus, ApprovalStatus, ApprovedResources, FlowType,
-  RequestedResources,
+  AppAccessRequest, AppAccessRequestStatus, ApprovalStatus, ApprovedResources, RequestedResources,
 };
 use crate::db::{DbService, TimeService};
 use crate::new_ulid;
@@ -29,8 +28,6 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
   async fn create_draft(
     &self,
     app_client_id: String,
-    flow_type: FlowType,
-    redirect_uri: Option<String>,
     requested: RequestedResources,
     requested_role: UserScope,
   ) -> Result<AppAccessRequest>;
@@ -67,6 +64,9 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
   ) -> Result<AppAccessRequest>;
 
   fn build_review_url(&self, access_request_id: &str) -> String;
+
+  /// Canonical authorize endpoint the review page validates the app-supplied `auth_url` against.
+  fn build_authorize_endpoint(&self) -> String;
 }
 
 #[derive(Debug)]
@@ -116,15 +116,9 @@ impl AccessRequestService for DefaultAccessRequestService {
   async fn create_draft(
     &self,
     app_client_id: String,
-    flow_type: FlowType,
-    redirect_uri: Option<String>,
     requested: RequestedResources,
     requested_role: UserScope,
   ) -> Result<AppAccessRequest> {
-    if flow_type == FlowType::Redirect && redirect_uri.is_none() {
-      return Err(AccessRequestError::MissingRedirectUri);
-    }
-
     let access_request_id = new_ulid();
 
     let now = self.time_service.utc_now();
@@ -134,22 +128,12 @@ impl AccessRequestService for DefaultAccessRequestService {
       AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e))
     })?;
 
-    let modified_redirect_uri = redirect_uri.map(|uri| {
-      if uri.contains('?') {
-        format!("{}&id={}", uri, access_request_id)
-      } else {
-        format!("{}?id={}", uri, access_request_id)
-      }
-    });
-
     let row = AppAccessRequest {
       id: access_request_id,
       tenant_id: None,
       app_client_id,
       app_name: None,
       app_description: None,
-      flow_type,
-      redirect_uri: modified_redirect_uri,
       status: AppAccessRequestStatus::Draft,
       requested: requested_json,
       approved: None,
@@ -298,6 +282,10 @@ impl AccessRequestService for DefaultAccessRequestService {
       "{}/ui/apps/access-requests/review?id={}",
       self.frontend_url, access_request_id
     )
+  }
+
+  fn build_authorize_endpoint(&self) -> String {
+    self.auth_service.authorize_url()
   }
 }
 

@@ -2,7 +2,7 @@ use crate::{
   app_access_requests::{
     test_access_request_builders::{approved_request, make_request},
     AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, ApprovedResources,
-    ApprovedResourcesV1, FlowType, RequestedResources, RequestedResourcesV1,
+    ApprovedResourcesV1, RequestedResources, RequestedResourcesV1,
   },
   db::DbService,
   test_utils::{test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID},
@@ -63,7 +63,7 @@ fn stub_consent_err(err: AuthServiceError) -> MockAuthService {
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_create_draft_popup_valid(
+async fn test_create_draft_valid(
   #[future] access_request_service: (Arc<TestDbService>, DefaultAccessRequestService),
 ) -> anyhow::Result<()> {
   let (_db, service) = access_request_service;
@@ -71,8 +71,6 @@ async fn test_create_draft_popup_valid(
   let result = service
     .create_draft(
       "app-client-1".to_string(),
-      FlowType::Popup,
-      None,
       RequestedResources::V1(RequestedResourcesV1 {
         mcp_servers: vec![],
         ..Default::default()
@@ -83,8 +81,6 @@ async fn test_create_draft_popup_valid(
 
   assert_eq!(AppAccessRequestStatus::Draft, result.status);
   assert_eq!("app-client-1", result.app_client_id);
-  assert_eq!(FlowType::Popup, result.flow_type);
-  assert_eq!(None, result.redirect_uri);
   assert_eq!("scope_user_user", result.requested_role);
   assert_eq!(None, result.approved_role);
   assert_eq!(None, result.user_id);
@@ -94,60 +90,6 @@ async fn test_create_draft_popup_valid(
     "Expected serialized requested to contain version tag, got: {}",
     result.requested
   );
-
-  Ok(())
-}
-
-#[rstest]
-#[awt]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_create_draft_redirect_valid(
-  #[future] access_request_service: (Arc<TestDbService>, DefaultAccessRequestService),
-) -> anyhow::Result<()> {
-  let (_db, service) = access_request_service;
-
-  let result = service
-    .create_draft(
-      "app-client-2".to_string(),
-      FlowType::Redirect,
-      Some("https://example.com/callback".to_string()),
-      RequestedResources::default(),
-      UserScope::PowerUser,
-    )
-    .await?;
-
-  assert_eq!(AppAccessRequestStatus::Draft, result.status);
-  assert_eq!(FlowType::Redirect, result.flow_type);
-  assert_eq!("scope_user_power_user", result.requested_role);
-  let redirect = result.redirect_uri.unwrap();
-  assert!(redirect.starts_with("https://example.com/callback?id="));
-
-  Ok(())
-}
-
-#[rstest]
-#[awt]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_create_draft_redirect_missing_uri(
-  #[future] access_request_service: (Arc<TestDbService>, DefaultAccessRequestService),
-) -> anyhow::Result<()> {
-  let (_db, service) = access_request_service;
-
-  let result = service
-    .create_draft(
-      "app-client-1".to_string(),
-      FlowType::Redirect,
-      None,
-      RequestedResources::default(),
-      UserScope::User,
-    )
-    .await;
-
-  assert!(result.is_err());
-  let err = result.unwrap_err();
-  assert_eq!("access_request_error-missing_redirect_uri", err.code());
 
   Ok(())
 }

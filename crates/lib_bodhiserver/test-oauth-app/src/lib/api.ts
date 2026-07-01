@@ -2,8 +2,6 @@ export async function requestAccess(
   bodhiServerUrl: string,
   body: {
     app_client_id: string;
-    flow_type: string;
-    redirect_url: string;
     requested_role: string;
     requested?: Record<string, unknown>;
   }
@@ -16,17 +14,5 @@ export async function requestAccess(
   const data = await response.json();
   if (!response.ok)
     throw new Error(data?.error?.message || data?.message || `Request failed: ${response.status}`);
-  return data;
-}
-
-export async function getAccessRequestStatus(bodhiServerUrl: string, id: string, clientId: string) {
-  const response = await fetch(
-    `${bodhiServerUrl}/bodhi/v1/apps/access-requests/${id}?app_client_id=${encodeURIComponent(clientId)}`
-  );
-  const data = await response.json();
-  if (!response.ok)
-    throw new Error(
-      data?.error?.message || data?.message || `Status check failed: ${response.status}`
-    );
   return data;
 }

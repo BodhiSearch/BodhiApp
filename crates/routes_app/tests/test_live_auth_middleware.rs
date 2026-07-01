@@ -171,8 +171,6 @@ async fn test_cross_client_token_exchange_success(
     app_client_id: auth_server_config.app_client_id.clone(),
     app_name: None,
     app_description: None,
-    flow_type: services::FlowType::Popup,
-    redirect_uri: None,
     status: services::AppAccessRequestStatus::Draft,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: None,

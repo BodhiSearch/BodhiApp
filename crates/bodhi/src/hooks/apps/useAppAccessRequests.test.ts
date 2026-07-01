@@ -94,7 +94,7 @@ describe('useApproveAppAccessRequest', () => {
     expect(onSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'approved',
-        flow_type: 'popup',
+        access_request_scope: `scope_access_request:${MOCK_REQUEST_ID}`,
       })
     );
   });
@@ -149,7 +149,6 @@ describe('useDenyAppAccessRequest', () => {
     expect(onSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'denied',
-        flow_type: 'popup',
       })
     );
   });

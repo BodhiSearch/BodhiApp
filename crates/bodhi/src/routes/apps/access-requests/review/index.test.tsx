@@ -4,17 +4,16 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 
 import ReviewAccessRequestPage from '@/routes/apps/access-requests/review/index';
 import {
+  MOCK_APP_CLIENT_ID,
+  MOCK_AUTH_ENDPOINT,
   MOCK_REQUEST_ID,
-  mockApprovedReviewResponse,
   mockDeniedReviewResponse,
   mockDraftMcpCrossUrlResponse,
   mockDraftMcpNoInstancesResponse,
   mockDraftMcpResponse,
   mockDraftMixedResourcesResponse,
-  mockDraftMultiToolMixedResponse,
   mockDraftMultiToolResponse,
   mockDraftNoInstancesResponse,
-  mockDraftRedirectResponse,
   mockDraftReviewResponse,
   mockDraftReviewResponsePowerUser,
   mockDraftWithGrantFlagsResponse,
@@ -38,6 +37,9 @@ import { createWrapper } from '@/tests/wrapper';
 const navigateMock = vi.fn();
 let mockSearch: Record<string, string | undefined> = {};
 
+const VALID_AUTH_URL = `${MOCK_AUTH_ENDPOINT}?client_id=${MOCK_APP_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent('https://myapp.example.com/callback')}&scope=${encodeURIComponent('openid profile email roles')}&code_challenge=abc123&code_challenge_method=S256&state=xyz789`;
+const ERROR_URL = 'https://myapp.example.com/error';
+
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual('@tanstack/react-router');
   return {
@@ -60,8 +62,6 @@ vi.mock('@/hooks/useToastMessages', () => ({
   }),
 }));
 
-const windowCloseMock = vi.fn();
-const MOCK_REDIRECT_URL = 'https://example.com/callback?code=auth_code';
 let originalLocationDescriptor: PropertyDescriptor | undefined;
 
 beforeAll(() => server.listen());
@@ -69,7 +69,6 @@ afterAll(() => server.close());
 afterEach(() => {
   server.resetHandlers();
   navigateMock.mockClear();
-  windowCloseMock.mockClear();
   mockSearch = {};
   if (originalLocationDescriptor) {
     Object.defineProperty(window, 'location', originalLocationDescriptor);
@@ -77,10 +76,6 @@ afterEach(() => {
   }
   vi.restoreAllMocks();
 });
-
-const setupWindowClose = () => {
-  window.close = windowCloseMock;
-};
 
 const setupWindowLocation = () => {
   originalLocationDescriptor = Object.getOwnPropertyDescriptor(window, 'location');
@@ -135,7 +130,7 @@ describe('ReviewAccessRequestPage - Loading & Error States', () => {
   });
 
   it('shows loading skeleton while fetching review data', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     // Handlers without review data so the query stays pending and the skeleton shows
     server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_user' }));
 
@@ -149,7 +144,7 @@ describe('ReviewAccessRequestPage - Loading & Error States', () => {
   });
 
   it('shows error page when API returns 404', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -172,7 +167,7 @@ describe('ReviewAccessRequestPage - Loading & Error States', () => {
   });
 
   it('shows error page when API returns 500', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -196,7 +191,7 @@ describe('ReviewAccessRequestPage - Loading & Error States', () => {
 
 describe('ReviewAccessRequestPage - Draft Review Form', () => {
   it('renders app name and description from review data', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -212,7 +207,7 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
   });
 
   it('Approve button disabled until MCP instance is selected', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -228,7 +223,7 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
 
   it('Approve button becomes enabled after selecting MCP instance', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -254,49 +249,14 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
 });
 
 describe('ReviewAccessRequestPage - Approve Flow', () => {
-  it('clicking Approve calls PUT with correct body', async () => {
+  it('approve appends the minted scope to auth_url and redirects to Keycloak', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
       ...mockAppAccessRequestReview(mockDraftReviewResponse),
-      ...mockAppAccessRequestApprove(MOCK_REQUEST_ID)
-    );
-    setupWindowClose();
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
-    });
-
-    const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
-    await user.click(selectTrigger);
-    const option = await screen.findByText('DeepWiki (deepwiki-prod)');
-    await user.click(option);
-
-    const approveButton = screen.getByTestId('review-approve-button');
-    await waitFor(() => {
-      expect(approveButton).not.toBeDisabled();
-    });
-    await user.click(approveButton);
-
-    await waitFor(() => {
-      expect(windowCloseMock).toHaveBeenCalled();
-    });
-  });
-
-  it('clicking Approve on redirect flow redirects using window.location', async () => {
-    const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
-    server.use(
-      ...mockAppInfoReady(),
-      ...mockUserLoggedIn({ role: 'resource_user' }),
-      ...mockAppAccessRequestReview(mockDraftRedirectResponse),
-      ...mockAppAccessRequestApprove(MOCK_REQUEST_ID, { flowType: 'redirect', redirectUrl: MOCK_REDIRECT_URL })
+      ...mockAppAccessRequestApprove(MOCK_REQUEST_ID, { accessRequestScope: `scope_access_request:${MOCK_REQUEST_ID}` })
     );
     setupWindowLocation();
 
@@ -320,13 +280,15 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
     await user.click(approveButton);
 
     await waitFor(() => {
-      expect(window.location.href).toBe(MOCK_REDIRECT_URL);
+      const target = new URL(window.location.href);
+      expect(`${target.origin}${target.pathname}`).toBe(MOCK_AUTH_ENDPOINT);
+      expect(target.searchParams.get('scope')?.split(' ')).toContain(`scope_access_request:${MOCK_REQUEST_ID}`);
     });
   });
 
   it('on approve error, shows toast error message', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -365,41 +327,14 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
 });
 
 describe('ReviewAccessRequestPage - Deny Flow', () => {
-  it('clicking Deny calls POST to deny endpoint', async () => {
+  it('deny redirects to error_url with access_denied and error_source=bodhi', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
       ...mockAppAccessRequestReview(mockDraftReviewResponse),
       ...mockAppAccessRequestDeny(MOCK_REQUEST_ID)
-    );
-    setupWindowClose();
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-deny-button')).toBeInTheDocument();
-    });
-
-    const denyButton = screen.getByTestId('review-deny-button');
-    await user.click(denyButton);
-
-    await waitFor(() => {
-      expect(windowCloseMock).toHaveBeenCalled();
-    });
-  });
-
-  it('clicking Deny on redirect flow redirects using window.location', async () => {
-    const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
-    server.use(
-      ...mockAppInfoReady(),
-      ...mockUserLoggedIn({ role: 'resource_user' }),
-      ...mockAppAccessRequestReview(mockDraftRedirectResponse),
-      ...mockAppAccessRequestDeny(MOCK_REQUEST_ID, { flowType: 'redirect', redirectUrl: MOCK_REDIRECT_URL })
     );
     setupWindowLocation();
 
@@ -415,13 +350,17 @@ describe('ReviewAccessRequestPage - Deny Flow', () => {
     await user.click(denyButton);
 
     await waitFor(() => {
-      expect(window.location.href).toBe(MOCK_REDIRECT_URL);
+      const target = new URL(window.location.href);
+      expect(`${target.origin}${target.pathname}`).toBe(ERROR_URL);
+      expect(target.searchParams.get('error')).toBe('access_denied');
+      expect(target.searchParams.get('error_source')).toBe('bodhi');
+      expect(target.searchParams.get('state')).toBe('xyz789');
     });
   });
 
   it('on deny error, shows toast error message', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -451,65 +390,85 @@ describe('ReviewAccessRequestPage - Deny Flow', () => {
   });
 });
 
-describe('ReviewAccessRequestPage - Non-Draft States', () => {
-  it('approved status with popup flow calls window.close', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
-    server.use(
-      ...mockAppInfoReady(),
-      ...mockUserLoggedIn({ role: 'resource_user' }),
-      ...mockAppAccessRequestReview(mockApprovedReviewResponse)
-    );
-    setupWindowClose();
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(windowCloseMock).toHaveBeenCalled();
-    });
-  });
-
-  it('denied status with redirect flow shows status', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+describe('ReviewAccessRequestPage - Non-Draft & Invalid States', () => {
+  it('a non-draft (denied) request redirects to error_url with invalid_request', async () => {
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
       ...mockAppAccessRequestReview(mockDeniedReviewResponse)
     );
+    setupWindowLocation();
 
     await act(async () => {
       render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('review-status-denied')).toBeInTheDocument();
+      const target = new URL(window.location.href);
+      expect(`${target.origin}${target.pathname}`).toBe(ERROR_URL);
+      expect(target.searchParams.get('error')).toBe('invalid_request');
+      expect(target.searchParams.get('error_source')).toBe('bodhi');
     });
-    expect(screen.getByText('Denied')).toBeInTheDocument();
   });
 
-  it('expired status with redirect flow shows status', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+  it('an expired request redirects to error_url', async () => {
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
       ...mockAppAccessRequestReview(mockExpiredReviewResponse)
     );
+    setupWindowLocation();
 
     await act(async () => {
       render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('review-status-expired')).toBeInTheDocument();
+      const target = new URL(window.location.href);
+      expect(`${target.origin}${target.pathname}`).toBe(ERROR_URL);
+      expect(target.searchParams.get('error')).toBe('invalid_request');
     });
-    expect(screen.getByText('Expired')).toBeInTheDocument();
+  });
+
+  it('an auth_url whose client_id does not match redirects to error_url', async () => {
+    mockSearch = {
+      id: MOCK_REQUEST_ID,
+      auth_url: VALID_AUTH_URL.replace(`client_id=${MOCK_APP_CLIENT_ID}`, 'client_id=someone-else'),
+      error_url: ERROR_URL,
+    };
+    setupHandlers(mockDraftReviewResponse);
+    setupWindowLocation();
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      const target = new URL(window.location.href);
+      expect(`${target.origin}${target.pathname}`).toBe(ERROR_URL);
+      expect(target.searchParams.get('error')).toBe('invalid_request');
+    });
+  });
+
+  it('shows a fatal error page when error_url is missing', async () => {
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL };
+    setupHandlers(mockDraftReviewResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Missing required auth_url or error_url/)).toBeInTheDocument();
+    });
   });
 });
 
 describe('ReviewAccessRequestPage - MCP Server Review', () => {
   it('renders MCP server card with URL badge', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftMcpResponse);
 
     await act(async () => {
@@ -525,7 +484,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
   });
 
   it('shows instance select for MCP when approved', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftMcpResponse);
 
     await act(async () => {
@@ -538,7 +497,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
   });
 
   it('Approve button disabled until MCP instance is selected', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftMcpResponse);
 
     await act(async () => {
@@ -554,7 +513,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
 
   it('selecting MCP instance enables Approve button', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftMcpResponse);
 
     await act(async () => {
@@ -576,7 +535,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
   });
 
   it('shows "No MCP instances" alert when no instances available', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftMcpNoInstancesResponse);
 
     await act(async () => {
@@ -592,7 +551,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
 
   it('unchecking MCP checkbox enables Approve without instance selection', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftMcpResponse);
 
     await act(async () => {
@@ -615,7 +574,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
 
   it('approve with MCP sends correct body', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
 
     let capturedBody: unknown = null;
     server.use(
@@ -628,7 +587,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
         },
       })
     );
-    setupWindowClose();
+    setupWindowLocation();
 
     await act(async () => {
       render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
@@ -668,7 +627,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
 
   it('lists both exact-match and non-matching instances, match first', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftMcpCrossUrlResponse);
 
     await act(async () => {
@@ -688,7 +647,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
 
   it('approve with a non-matching instance sends its id', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
 
     let capturedBody: unknown = null;
     server.use(
@@ -701,7 +660,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
         },
       })
     );
-    setupWindowClose();
+    setupWindowLocation();
 
     await act(async () => {
       render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
@@ -734,7 +693,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
 describe('ReviewAccessRequestPage - MCP Partial Approve', () => {
   it('no-instances MCP: blocks Approve, unchecking enables Approve', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftNoInstancesResponse);
 
     await act(async () => {
@@ -757,7 +716,7 @@ describe('ReviewAccessRequestPage - MCP Partial Approve', () => {
 
   it('button shows "Approve All" when all checkboxes checked and instances selected', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -780,7 +739,7 @@ describe('ReviewAccessRequestPage - MCP Partial Approve', () => {
 
   it('button shows "Approve Selected" when some checkboxes unchecked', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftMultiToolResponse);
 
     await act(async () => {
@@ -802,7 +761,7 @@ describe('ReviewAccessRequestPage - MCP Partial Approve', () => {
 
 describe('ReviewAccessRequestPage - Mixed Resources', () => {
   it('renders MCP cards', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftMixedResourcesResponse);
 
     await act(async () => {
@@ -818,7 +777,7 @@ describe('ReviewAccessRequestPage - Mixed Resources', () => {
 
   it('Approve button requires MCP instance selection', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftMixedResourcesResponse);
 
     await act(async () => {
@@ -845,7 +804,7 @@ describe('ReviewAccessRequestPage - Mixed Resources', () => {
 describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
   it('shows 2 role options when resource_power_user approves scope_user_power_user request', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_power_user' }),
@@ -869,7 +828,7 @@ describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
 
   it('shows only scope_user_user option when resource_user approves scope_user_power_user request', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -893,7 +852,7 @@ describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
 
   it('shows only scope_user_user option when requested_role is scope_user_user', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -913,7 +872,7 @@ describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
 
   it('approve sends downgraded approved_role when user selects scope_user_user', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
 
     let capturedBody: unknown = null;
     server.use(
@@ -926,7 +885,7 @@ describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
         },
       })
     );
-    setupWindowClose();
+    setupWindowLocation();
 
     await act(async () => {
       render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
@@ -964,7 +923,7 @@ describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
 
 describe('ReviewAccessRequestPage V2', () => {
   it('renders the consent page with the V2 header and preserves review testids', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -988,7 +947,7 @@ describe('ReviewAccessRequestPage V2', () => {
 
 describe('ReviewAccessRequestPage - Model & MCP grant sections', () => {
   it('renders model + MCP grant controls when the app requests them', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftWithGrantFlagsResponse);
 
     await act(async () => {
@@ -1006,7 +965,7 @@ describe('ReviewAccessRequestPage - Model & MCP grant sections', () => {
   });
 
   it('omits the grant sections when the app does not request them', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     setupHandlers(mockDraftReviewResponse); // no model flags
 
     await act(async () => {
@@ -1022,7 +981,7 @@ describe('ReviewAccessRequestPage - Model & MCP grant sections', () => {
 
   it('approve payload carries the model + MCP grants', async () => {
     const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
     let capturedBody: unknown = null;
     server.use(
       ...mockAppInfoReady(),
@@ -1032,7 +991,7 @@ describe('ReviewAccessRequestPage - Model & MCP grant sections', () => {
       ...mockAppAccessRequestReview(mockDraftWithGrantFlagsResponse),
       ...mockAppAccessRequestApprove(MOCK_REQUEST_ID, { onBody: (body) => (capturedBody = body) })
     );
-    setupWindowClose();
+    setupWindowLocation();
 
     await act(async () => {
       render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });

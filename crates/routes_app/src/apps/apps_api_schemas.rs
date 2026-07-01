@@ -1,8 +1,7 @@
 use crate::ResourceAccess;
 use serde::{Deserialize, Serialize};
 use services::{
-  AppAccessRequest, AppAccessRequestStatus, ApprovedResources, FlowType, RequestedResources,
-  UserScope,
+  AppAccessRequest, AppAccessRequestStatus, ApprovedResources, RequestedResources, UserScope,
 };
 use utoipa::ToSchema;
 
@@ -49,13 +48,13 @@ pub struct AccessRequestReviewResponse {
   pub app_name: Option<String>,
   /// From KC, if available
   pub app_description: Option<String>,
-  /// One of: "redirect", "popup"
-  pub flow_type: FlowType,
   pub status: AppAccessRequestStatus,
   pub requested_role: String,
   pub requested: RequestedResources,
   #[serde(default)]
   pub mcps_info: Vec<McpServerReviewInfo>,
+  /// Canonical Keycloak authorize endpoint the review page validates the app-supplied `auth_url` against.
+  pub auth_endpoint: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -69,10 +68,9 @@ pub struct McpServerReviewInfo {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AccessRequestActionResponse {
   pub status: AppAccessRequestStatus,
-  pub flow_type: FlowType,
-  /// Present for redirect flow
+  /// Dynamic scope minted on approval; the review page appends it to `auth_url` before redirecting to Keycloak.
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub redirect_url: Option<String>,
+  pub access_request_scope: Option<String>,
 }
 
 /// One issued app token (approved access request) with its effective grant summary.

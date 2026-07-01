@@ -320,9 +320,6 @@ test.describe('Live upstream - OAuth app token', () => {
         // Specific/none under fail-closed grants).
         await reviewPage.approveWithGrants({ allModels: true });
 
-        await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
-        await app.accessCallback.waitForLoaded();
-        await app.accessCallback.clickLogin();
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
 
         await app.dashboard.navigateTo();

@@ -11,7 +11,7 @@ use services::AppService;
 use services::AuthContext;
 use services::{
   test_utils::{AppServiceStubBuilder, MockDbService, TestDbService, TEST_TENANT_ID},
-  {AccessRequestRepository, AppAccessRequestStatus, FlowType},
+  {AccessRequestRepository, AppAccessRequestStatus},
 };
 use services::{ResourceRole, TokenScope, UserScope};
 use std::sync::Arc;
@@ -188,8 +188,6 @@ async fn test_mcp_oauth_lifecycle_validation(
     app_client_id: "app1".to_string(),
     app_name: None,
     app_description: None,
-    flow_type: FlowType::Redirect,
-    redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status,
     requested: r#"{"version":"1","mcp_servers":[{"url":"https://mcp.deepwiki.com/mcp"}]}"#
       .to_string(),
@@ -242,8 +240,6 @@ async fn test_mcp_oauth_app_client_mismatch_forbidden() {
     app_client_id: "a-different-app".to_string(),
     app_name: None,
     app_description: None,
-    flow_type: FlowType::Redirect,
-    redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"version":"1"}"#.to_string(),
     approved: Some(r#"{"version":"1"}"#.to_string()),
