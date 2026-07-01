@@ -7,10 +7,10 @@ type Grant = Approved['models_access'];
 /** The app's requested UI-driver flags (from `reviewData.requested`). */
 export interface RequestedFlags {
   version: Approved['version'];
-  models_list: boolean;
-  models_access: boolean;
-  mcps_list: boolean;
-  mcps_access: boolean;
+  models_list?: boolean;
+  models_access?: boolean;
+  mcps_list?: boolean;
+  mcps_access?: boolean;
 }
 
 /** Minimal shape of a requested MCP server + its candidate instances. */

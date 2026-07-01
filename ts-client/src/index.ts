@@ -1,5 +1,5 @@
 // Re-export BodhiApp management API types.
-// For OpenAI/Ollama-compatible types, use the subpath import:
+// For OpenAI-compatible types, use the subpath import:
 //   import { CreateChatCompletionRequest } from '@bodhiapp/ts-client/openai';
 export * from './types';
 

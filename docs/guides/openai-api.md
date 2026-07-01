@@ -509,8 +509,7 @@ Now that you understand the OpenAI-compatible API:
 
 1. **[Learn Model Management](model-management.md)** - Create and manage model aliases
 2. **[Explore BodhiApp APIs](bodhi-api.md)** - Access advanced BodhiApp features
-3. **[Try Ollama APIs](ollama-api.md)** - Use Ollama-compatible endpoints
-4. **[Handle Errors](error-handling.md)** - Implement robust error handling
+3. **[Handle Errors](error-handling.md)** - Implement robust error handling
 
 ---
 

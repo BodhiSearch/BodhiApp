@@ -4,7 +4,7 @@ System design and architectural context. For code-level crate detail, follow lin
 
 | Doc | Covers |
 |---|---|
-| `system-overview.md` | High-level architecture: crate dependency chain, tech stack (Rust+Axum+SeaORM, Vite+React+TanStack), API surfaces (OpenAI/Ollama/Anthropic/Responses), key features |
+| `system-overview.md` | High-level architecture: crate dependency chain, tech stack (Rust+Axum+SeaORM, Vite+React+TanStack), API surfaces (OpenAI/Anthropic/Responses), key features |
 | `bodhi-platform.md` | Multi-component platform: Bodhi App, browser extension, bodhi.js, auth server, and how they integrate |
 | `architectural-decisions.md` | ADR-style rationale: dumb-frontend, Rust-first, SeaORM, TanStack Query, OAuth, crate organization |
 | `authentication.md` | OAuth2/OIDC/Keycloak, JWT, sessions vs API tokens, RBAC (`ResourceRole` hierarchy) |

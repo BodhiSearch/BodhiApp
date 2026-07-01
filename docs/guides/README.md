@@ -62,7 +62,6 @@ npm install @bodhiapp/ts-client
 |---------|---------|----------|
 | **[Model Management](model-management.md)** | Model download and aliases | Advanced model workflows |
 | **[BodhiApp API](bodhi-api.md)** | BodhiApp-specific endpoints | Full platform integration |
-| **[Ollama API](ollama-api.md)** | Ollama-compatible endpoints | Ollama migrations |
 
 ### Reference & Support
 
@@ -76,7 +75,6 @@ npm install @bodhiapp/ts-client
 
 ### API Compatibility
 - **OpenAI Compatible**: Drop-in replacement for `/v1/chat/completions` and `/v1/models`
-- **Ollama Compatible**: Support for `/api/chat`, `/api/tags`, and `/api/show`
 - **BodhiApp Native**: Advanced features via `/bodhi/v1/*` endpoints
 
 ### Authentication & Security

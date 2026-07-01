@@ -723,9 +723,8 @@ async function downloadWithRetry(repo: string, filename: string, maxRetries = 3)
 Now that you understand model management:
 
 1. **[Learn BodhiApp APIs](bodhi-api.md)** - Access system information and settings
-2. **[Try Ollama APIs](ollama-api.md)** - Use Ollama-compatible endpoints
-3. **[Handle Errors](error-handling.md)** - Implement robust error handling
-4. **[See Examples](examples.md)** - Complete integration examples
+2. **[Handle Errors](error-handling.md)** - Implement robust error handling
+3. **[See Examples](examples.md)** - Complete integration examples
 
 ---
 

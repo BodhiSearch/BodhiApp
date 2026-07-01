@@ -4,10 +4,7 @@ use crate::oai::{
   __path_responses_delete_handler, __path_responses_get_handler,
   __path_responses_input_items_handler,
 };
-use crate::ollama::{
-  __path_ollama_model_chat_handler, __path_ollama_model_show_handler, __path_ollama_models_handler,
-};
-use crate::{API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_RESPONSES};
+use crate::{API_TAG_OPENAI, API_TAG_RESPONSES};
 use async_openai::error::{ApiError as OaiErrorBody, WrappedError as OaiWrappedError};
 use async_openai::types::{
   chat::{
@@ -23,7 +20,7 @@ use async_openai::types::{
 };
 use utoipa::OpenApi;
 
-/// OpenAPI documentation for OpenAI- and Ollama-compatible LLM endpoints exposed by Bodhi App.
+/// OpenAPI documentation for OpenAI-compatible LLM endpoints exposed by Bodhi App.
 ///
 /// This spec is intentionally separate from `BodhiOpenAPIDoc` (which documents the
 /// BodhiApp management API) so that LLM client SDKs and OpenAI-compatible tooling
@@ -38,9 +35,9 @@ use utoipa::OpenApi;
             url = "https://github.com/BodhiSearch/BodhiApp/issues",
             email = "support@getbodhi.app"
         ),
-        description = r#"OpenAI Chat Completions, Embeddings, Responses API and Ollama-compatible endpoints exposed by Bodhi App.
+        description = r#"OpenAI Chat Completions, Embeddings, and Responses API endpoints exposed by Bodhi App.
 
-Use the standard OpenAI or Ollama SDKs against these routes. Authentication options:
+Use the standard OpenAI SDKs against these routes. Authentication options:
 
 - **API Token** — `Authorization: Bearer bodhiapp_<token>` (created via the Bodhi web UI)
 - **OAuth Token Exchange** — `Authorization: Bearer <oauth_exchanged_token>`
@@ -55,7 +52,6 @@ For BodhiApp management endpoints (auth, settings, model aliases, MCPs, tokens, 
     tags(
         (name = API_TAG_OPENAI, description = "OpenAI-compatible API endpoints"),
         (name = API_TAG_RESPONSES, description = "OpenAI Responses API proxy endpoints"),
-        (name = API_TAG_OLLAMA, description = "Ollama-compatible API endpoints"),
     ),
     components(
         schemas(
@@ -92,9 +88,6 @@ For BodhiApp management endpoints (auth, settings, model aliases, MCPs, tokens, 
         responses_delete_handler,
         responses_input_items_handler,
         responses_cancel_handler,
-        ollama_models_handler,
-        ollama_model_show_handler,
-        ollama_model_chat_handler,
     )
 )]
 pub struct BodhiOAIOpenAPIDoc;

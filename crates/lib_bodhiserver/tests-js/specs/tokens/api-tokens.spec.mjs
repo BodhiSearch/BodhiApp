@@ -244,8 +244,14 @@ test.describe('API Tokens - Complete Integration', () => {
     });
   });
 
-  test('Multi-User Isolation and Error Recovery @integration', async ({ browser, sharedServerUrl }, testInfo) => {
-    test.skip(testInfo.project.name === 'multi_tenant', 'Multi-user test requires same-tenant membership setup');
+  test('Multi-User Isolation and Error Recovery @integration', async ({
+    browser,
+    sharedServerUrl,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === 'multi_tenant',
+      'Multi-user test requires same-tenant membership setup'
+    );
 
     let adminContext;
     let managerContext;
@@ -258,7 +264,12 @@ test.describe('API Tokens - Complete Integration', () => {
       await test.step('Admin: login, register model, create tokens', async () => {
         adminContext = await browser.newContext();
         const adminPage = await adminContext.newPage();
-        const adminLogin = new LoginPage(adminPage, sharedServerUrl, authServerConfig, testCredentials);
+        const adminLogin = new LoginPage(
+          adminPage,
+          sharedServerUrl,
+          authServerConfig,
+          testCredentials
+        );
         const adminModelsPage = new ModelsListPageV2(adminPage, sharedServerUrl);
         const adminFormPage = new ApiModelFormPage(adminPage, sharedServerUrl);
         const adminTokensPage = new TokensPage(adminPage, sharedServerUrl);
@@ -294,7 +305,12 @@ test.describe('API Tokens - Complete Integration', () => {
 
         managerContext = await browser.newContext();
         const managerPage = await managerContext.newPage();
-        const managerLogin = new LoginPage(managerPage, sharedServerUrl, authServerConfig, managerCredentials);
+        const managerLogin = new LoginPage(
+          managerPage,
+          sharedServerUrl,
+          authServerConfig,
+          managerCredentials
+        );
         const managerModelsPage = new ModelsListPageV2(managerPage, sharedServerUrl);
         const managerFormPage = new ApiModelFormPage(managerPage, sharedServerUrl);
         const managerTokensPage = new TokensPage(managerPage, sharedServerUrl);

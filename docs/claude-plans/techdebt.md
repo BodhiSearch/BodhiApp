@@ -16,21 +16,6 @@ Deferred work items intentionally scoped out of their originating effort, to be 
   PowerUser card disabled for `resource_user`). The components ship and are exercised indirectly;
   these add focused unit coverage.
 
-## Ollama `/api/chat` is not covered by the inference grant middleware
-- **Source**: Tokens screen-v2 / App Token grants review — Batch 3 (2026-06-30).
-- **What**: `model_inference_grant_middleware` (`routes_app/src/middleware/model_grant.rs`) uniformly
-  enforces per-model grants on the OpenAI (`/v1/chat/completions`, `/v1/embeddings`), OpenAI-Responses
-  (`/v1/responses`), Anthropic (`/v1/messages`, `/anthropic/v1/messages`), and Gemini
-  (`/v1beta/models/{model}:{action}`) inference surfaces. `ollama_model_chat_handler` (`/api/chat`) is
-  an inference path that is **not** classified by the middleware and has no in-handler check either —
-  a scoped token / external app can run inference on any model via the Ollama endpoint.
-- **Why deferred**: out of the named scope for this effort (deliberate decision, 2026-06-30).
-- **Fix**: add `"/api/chat" => InferenceFormat::OpenAi` (model in body) to `classify()` and attach the
-  middleware to the Ollama route group; or confirm Ollama is intentionally session-only.
-- **Update 2026-07-01**: `model_inference_grant_middleware` was reworked in the grants-review
-  remediation (Batch 2 — it now short-circuits `Unrestricted` before buffering the body), but the
-  `/api/chat` gap is unchanged: still not in `classify()`. Still open.
-
 ## Relocate access-request handlers to a dedicated `access_requests` module + normalize endpoint paths
 - **Source**: Tokens screen-v2 / App Token grants review — finding F32 (`docs/claude-plans/202606/screen-v2/tokens-review/`).
 - **Date logged**: 2026-06-30

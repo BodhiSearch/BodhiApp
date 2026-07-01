@@ -5,7 +5,7 @@ use axum::{
 };
 use services::AppError;
 
-/// Wire-format error type for OpenAI- and Ollama-compatible endpoints.
+/// Wire-format error type for OpenAI-compatible endpoints.
 ///
 /// Serializes to OpenAI's native error envelope (async-openai's
 /// `WrappedError { error: ApiError }`) on the wire, so OpenAI SDK clients can

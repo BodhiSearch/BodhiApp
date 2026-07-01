@@ -3,7 +3,11 @@ import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { McpsPage } from '@/pages/McpsPage.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
-import { getAuthServerConfig, getPreConfiguredAppClient, getTestCredentials } from '@/utils/auth-server-client.mjs';
+import {
+  getAuthServerConfig,
+  getPreConfiguredAppClient,
+  getTestCredentials,
+} from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
 import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
@@ -27,7 +31,10 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
     testCredentials = getTestCredentials();
   });
 
-  test('App WITH MCP scope + OAuth WITH scope can list and access MCPs', async ({ page, sharedServerUrl }) => {
+  test('App WITH MCP scope + OAuth WITH scope can list and access MCPs', async ({
+    page,
+    sharedServerUrl,
+  }) => {
     let mcpInstanceId;
 
     await test.step('Phase 1: Session login and create MCP server + instance', async () => {
@@ -92,7 +99,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       expect(listData.mcps).toBeDefined();
       expect(Array.isArray(listData.mcps)).toBe(true);
 
-      const approvedMcp = listData.mcps.find(m => m.id === mcpInstanceId);
+      const approvedMcp = listData.mcps.find((m) => m.id === mcpInstanceId);
       expect(approvedMcp).toBeTruthy();
 
       // GET /mcps/{id} should return the MCP details
@@ -107,7 +114,10 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
     });
   });
 
-  test('App WITHOUT MCP scope + OAuth returns empty MCP list', async ({ page, sharedServerUrl }) => {
+  test('App WITHOUT MCP scope + OAuth returns empty MCP list', async ({
+    page,
+    sharedServerUrl,
+  }) => {
     await test.step('Phase 1: Session login and create MCP server + instance', async () => {
       const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
       await loginPage.performOAuthLogin();

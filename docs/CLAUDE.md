@@ -11,7 +11,7 @@ Curated, current-truth documentation for BodhiApp, organized for progressive dis
 | Area | Load when | Index |
 |---|---|---|
 | **architecture/** | Understanding system design, auth, app lifecycle, desktop, or doing security work | `architecture/CLAUDE.md` |
-| **guides/** | Integrating with BodhiApp's APIs as an external consumer (OpenAI/Ollama/Anthropic/native/NAPI) | `guides/CLAUDE.md` |
+| **guides/** | Integrating with BodhiApp's APIs as an external consumer (OpenAI/Anthropic/native/NAPI) | `guides/CLAUDE.md` |
 | **conventions/** | Writing tests, managing deps, CI/CD, setup flow, or other cross-cutting practices | `conventions/CLAUDE.md` |
 | **research/** | Working on the model-router / fallback-routing feature | `research/CLAUDE.md` |
 | **notes/** | Picking up open tech-debt, deferred fixes, or the roadmap | `notes/CLAUDE.md` |

@@ -19,7 +19,6 @@ Entry point: `src/lib.rs` -- re-exports all public modules with conditional `tes
 | `setup/` | `SetupRouteError` | App setup/init |
 | `mcps/` | `McpRouteError` | MCP CRUD, tools, servers, OAuth, MCP proxy |
 | `oai/` | `OAIRouteError` | OpenAI-compatible endpoints |
-| `ollama/` | `OllamaRouteError` | Ollama-compatible endpoints |
 | `tenants/` | `DashboardAuthRouteError` | Dashboard auth, tenant CRUD, multi-tenant management |
 
 `models/` sub-modules: `alias/` (user-created aliases), `api/` (remote API model configs), `files/` (local model files + downloads).
@@ -72,7 +71,7 @@ Authentication, authorization, and request processing middleware. Merged from th
 | File | Purpose |
 |------|---------|
 | `api_error.rs` | `OaiApiError` with blanket `From<T: AppError>` and `Into<async_openai::error::WrappedError>`; OpenAI-compatible wire-format error envelope. Used only by handlers under `src/oai/`. |
-| `openapi.rs` | `BodhiOAIOpenAPIDoc` — OpenAPI spec for OAI/Ollama/Responses endpoints; sole `async-openai` schema importer |
+| `openapi.rs` | `BodhiOAIOpenAPIDoc` — OpenAPI spec for OAI/Responses endpoints; sole `async-openai` schema importer |
 
 ### Route Composition
 
@@ -104,7 +103,6 @@ All enums use `#[error_meta(trait_to_impl = AppError)]` from `errmeta_derive`.
 | `SetupRouteError` | `setup/error.rs` | Setup flow errors |
 | `McpRouteError` | `mcps/error.rs` | MCP CRUD, OAuth validation |
 | `OAIRouteError` | `oai/error.rs` | OpenAI endpoint errors |
-| `OllamaRouteError` | `ollama/error.rs` | Ollama endpoint errors |
 
 ## API Token Privilege Matrix
 
@@ -119,7 +117,7 @@ All enums use `#[error_meta(trait_to_impl = AppError)]` from `errmeta_derive`.
 
 Defined in `src/shared/constants.rs`, registered in `src/shared/openapi.rs`:
 
-`system`, `setup`, `auth`, `api-keys`, `api-models`, `models`, `settings`, `mcps`, `openai`, `ollama`
+`system`, `setup`, `auth`, `api-keys`, `api-models`, `models`, `settings`, `mcps`, `openai`
 
 ## Commands
 
@@ -138,7 +136,7 @@ Defined in `src/routes.rs`. Two CORS tiers: **restrictive** (blocks all cross-or
 |-------|---------------|------------|---------|
 | `public_apis` | none | -- | `/ping`, `/health`, `/setup`, `/logout`, app access request create/status |
 | `optional_auth` | `optional_auth_middleware` | -- | `/info`, `/user`, auth initiate/callback, dashboard auth, tenants, dev-only routes |
-| `user_apis` | `api_auth_middleware` | User / TokenScope::User / UserScope::User | OpenAI/Ollama compat, model listing, model files |
+| `user_apis` | `api_auth_middleware` | User / TokenScope::User / UserScope::User | OpenAI compat, model listing, model files |
 | `power_user_apis` | `api_auth_middleware` | PowerUser / TokenScope::PowerUser / UserScope::PowerUser | Model alias CRUD, file pull/downloads |
 | `apps_apis` | `api_auth_middleware` + `access_request_auth_middleware` | User / UserScope::User | External app endpoints under `/bodhi/v1/apps/...` (OAuth tokens), includes MCP transparent proxy |
 

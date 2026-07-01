@@ -14,7 +14,7 @@ This document outlines the strategic direction and planned improvements for the 
 
 ### Core Principles
 - **Local-First**: Maintain privacy and control with local data processing
-- **API Compatibility**: Preserve OpenAI and Ollama compatibility for ecosystem integration
+- **API Compatibility**: Preserve OpenAI compatibility for ecosystem integration
 - **User Experience**: Balance technical capability with ease of use
 - **Performance**: Optimize for both resource efficiency and response speed
 - **Extensibility**: Design for future feature expansion and customization

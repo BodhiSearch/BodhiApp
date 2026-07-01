@@ -554,10 +554,9 @@ try {
 
 Now that you understand the BodhiApp native API:
 
-1. **[Try Ollama APIs](ollama-api.md)** - Use Ollama-compatible endpoints
-2. **[Handle Errors](error-handling.md)** - Implement robust error handling
-3. **[See Examples](examples.md)** - Complete integration examples
-4. **[API Reference](api-reference.md)** - Quick endpoint reference
+1. **[Handle Errors](error-handling.md)** - Implement robust error handling
+2. **[See Examples](examples.md)** - Complete integration examples
+3. **[API Reference](api-reference.md)** - Quick endpoint reference
 
 ---
 

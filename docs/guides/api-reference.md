@@ -7,7 +7,6 @@ Quick reference guide for all BodhiApp API endpoints, including authentication r
 - **BodhiApp Native API**: `http://localhost:1135/bodhi/v1/`
 - **OpenAI Compatible API**: `http://localhost:1135/v1/`
 - **Anthropic Compatible API**: `http://localhost:1135/anthropic/v1/`
-- **Ollama Compatible API**: `http://localhost:1135/api/`
 - **System Endpoints**: `http://localhost:1135/`
 
 ## Authentication
@@ -114,37 +113,6 @@ GET /anthropic/v1/models
 GET /anthropic/v1/models/{model_id}
 ```
 **Auth**: User level
-
-## Ollama Compatible API
-
-### List Models
-```http
-GET /api/tags
-```
-**Auth**: User level  
-**Response**: Ollama-format model list
-
-### Show Model
-```http
-POST /api/show
-```
-**Auth**: User level  
-**Request**: `{"name": "llama3:instruct"}`
-
-### Chat
-```http
-POST /api/chat
-```
-**Auth**: User level  
-**Request**:
-```json
-{
-  "model": "llama3:instruct",
-  "messages": [{"role": "user", "content": "Hello"}],
-  "stream": false,
-  "options": {"temperature": 0.7}
-}
-```
 
 ## BodhiApp Native API
 
@@ -306,9 +274,6 @@ POST /bodhi/v1/setup
 | `/anthropic/v1/messages` | POST | User | Anthropic message (also `/v1/messages`) |
 | `/anthropic/v1/models` | GET | User | List Anthropic models |
 | `/anthropic/v1/models/{id}` | GET | User | Get Anthropic model |
-| `/api/tags` | GET | User | List Ollama models |
-| `/api/show` | POST | User | Show Ollama model |
-| `/api/chat` | POST | User | Ollama chat |
 | `/bodhi/v1/models` | GET | User | List model aliases |
 | `/bodhi/v1/models/{id}` | GET | User | Get model alias |
 | `/bodhi/v1/modelfiles` | GET | User | List model files |
@@ -548,12 +513,6 @@ curl -X POST http://localhost:1135/v1/chat/completions \
 2. Add authentication header
 3. Use BodhiApp model aliases
 4. Handle additional error codes
-
-### From Ollama
-1. Change base URL to `http://localhost:1135/api`
-2. Add authentication header
-3. Model names may differ (use `/api/tags` to list)
-4. Some endpoints not supported (use BodhiApp equivalents)
 
 ## Best Practices
 

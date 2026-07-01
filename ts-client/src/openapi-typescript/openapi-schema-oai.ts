@@ -4,66 +4,6 @@
  */
 
 export interface paths {
-    "/api/chat": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Chat with Model (Ollama Compatible)
-         * @description Creates a chat completion using Ollama API format. Supports both streaming and non-streaming responses with Ollama-specific options and response format.
-         */
-        post: operations["chatOllamaModel"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/show": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Show Model Details (Ollama Compatible)
-         * @description Retrieves detailed information about a specific model in Ollama API compatible format. Includes model parameters, template, license, and configuration details.
-         */
-        post: operations["showOllamaModel"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Available Models (Ollama Compatible)
-         * @description Returns a list of all available models in Ollama API compatible format. Includes model metadata such as size, modification time, and format details.
-         */
-        get: operations["listOllamaModels"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/chat/completions": {
         parameters: {
             query?: never;
@@ -714,14 +654,6 @@ export interface components {
             /** @enum {string} */
             type: "custom";
         });
-        ChatRequest: {
-            model: string;
-            messages: components["schemas"]["Message"][];
-            stream?: boolean | null;
-            format?: string | null;
-            keep_alive?: null | components["schemas"]["Duration"];
-            options?: null | components["schemas"]["Options"];
-        };
         /** @enum {string} */
         ClickButtonType: "left" | "right" | "wheel" | "back" | "forward";
         /** @description A click action. */
@@ -1543,7 +1475,6 @@ export interface components {
             /** @description An array of coordinates representing the path of the drag action. */
             path: components["schemas"]["CoordParam"][];
         };
-        Duration: string;
         /** @description Content for EasyInputMessage - can be a simple string or structured list. */
         EasyInputContent: string | components["schemas"]["InputContent"][];
         /** @description A simplified message input to the model (EasyInputMessage in the OpenAPI spec).
@@ -2401,11 +2332,6 @@ export interface components {
         MCPToolRequireApproval: components["schemas"]["MCPToolApprovalFilter"] | components["schemas"]["MCPToolApprovalSetting"];
         /** @enum {string} */
         McpToolConnectorId: "connector_dropbox" | "connector_gmail" | "connector_googlecalendar" | "connector_googledrive" | "connector_microsoftteams" | "connector_outlookcalendar" | "connector_outlookemail" | "connector_sharepoint";
-        Message: {
-            role: string;
-            content: string;
-            images?: string[] | null;
-        };
         /** @description A message item used within the `Item` enum.
          *
          *     Both InputMessage and OutputMessage have `type: "message"`, so we use an untagged
@@ -2446,17 +2372,6 @@ export interface components {
             /** @description The organization that owns the model. */
             owned_by: string;
         };
-        ModelDetails: {
-            parent_model?: string | null;
-            format: string;
-            family: string;
-            families?: string[] | null;
-            parameter_size: string;
-            quantization_level: string;
-        };
-        ModelsResponse: {
-            models: components["schemas"]["OllamaModel"][];
-        };
         /** @description A mouse move action. */
         MoveParam: {
             /**
@@ -2487,69 +2402,6 @@ export interface components {
             /** @enum {string} */
             type: "custom";
         });
-        OllamaError: {
-            error: string;
-        };
-        OllamaModel: {
-            model: string;
-            /** Format: int32 */
-            modified_at: number;
-            /** Format: int64 */
-            size: number;
-            digest: string;
-            details: components["schemas"]["ModelDetails"];
-        };
-        Options: {
-            /** Format: int32 */
-            num_keep?: number | null;
-            /** Format: int64 */
-            seed?: number | null;
-            /** Format: int32 */
-            num_predict?: number | null;
-            /** Format: int32 */
-            top_k?: number | null;
-            /** Format: float */
-            top_p?: number | null;
-            /** Format: float */
-            tfs_z?: number | null;
-            /** Format: float */
-            typical_p?: number | null;
-            /** Format: int32 */
-            repeat_last_n?: number | null;
-            /** Format: float */
-            temperature?: number | null;
-            /** Format: float */
-            repeat_penalty?: number | null;
-            /** Format: float */
-            presence_penalty?: number | null;
-            /** Format: float */
-            frequency_penalty?: number | null;
-            /** Format: float */
-            mirostat?: number | null;
-            /** Format: float */
-            mirostat_tau?: number | null;
-            /** Format: float */
-            mirostat_eta?: number | null;
-            penalize_newline?: boolean | null;
-            stop?: string[] | null;
-            numa?: boolean | null;
-            /** Format: int32 */
-            num_ctx?: number | null;
-            /** Format: int32 */
-            num_batch?: number | null;
-            /** Format: int32 */
-            num_gpu?: number | null;
-            /** Format: int32 */
-            main_gpu?: number | null;
-            low_vram?: boolean | null;
-            f16_kv?: boolean | null;
-            logits_all?: boolean | null;
-            vocab_only?: boolean | null;
-            use_mmap?: boolean | null;
-            use_mlock?: boolean | null;
-            /** Format: int32 */
-            num_thread?: number | null;
-        };
         /** @description Output item */
         OutputItem: (components["schemas"]["OutputMessage"] & {
             /** @enum {string} */
@@ -2978,21 +2830,6 @@ export interface components {
         SearchContentType: "text" | "image";
         /** @enum {string} */
         ServiceTier: "auto" | "default" | "flex" | "scale" | "priority";
-        ShowRequest: {
-            name: string;
-        };
-        ShowResponse: {
-            details: components["schemas"]["ModelDetails"];
-            license: string;
-            model_info: {
-                [key: string]: unknown;
-            };
-            modelfile: string;
-            /** Format: int32 */
-            modified_at: number;
-            parameters: string;
-            template: string;
-        };
         /** @description A skill parameter — either a reference or inline definition. */
         SkillParam: (components["schemas"]["SkillReferenceParam"] & {
             /** @enum {string} */
@@ -3417,280 +3254,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    chatOllamaModel: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Chat request in Ollama format */
-        requestBody: {
-            content: {
-                /** @example {
-                 *       "messages": [
-                 *         {
-                 *           "content": "You are a helpful assistant.",
-                 *           "role": "system"
-                 *         },
-                 *         {
-                 *           "content": "Hello!",
-                 *           "role": "user"
-                 *         }
-                 *       ],
-                 *       "model": "llama2:chat",
-                 *       "options": {
-                 *         "num_predict": 100,
-                 *         "temperature": 0.7
-                 *       },
-                 *       "stream": true
-                 *     } */
-                "application/json": components["schemas"]["ChatRequest"];
-            };
-        };
-        responses: {
-            /** @description Chat response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "created_at": "2024-01-20T12:00:00.000000000Z",
-                     *       "done": true,
-                     *       "done_reason": "stop",
-                     *       "eval_count": 10,
-                     *       "eval_duration": "-1",
-                     *       "load_duration": "-1",
-                     *       "message": {
-                     *         "content": "Hello! How can I help you today?",
-                     *         "images": null,
-                     *         "role": "assistant"
-                     *       },
-                     *       "model": "llama2:chat",
-                     *       "prompt_eval_count": 20,
-                     *       "prompt_eval_duration": "-1",
-                     *       "total_duration": 0
-                     *     } */
-                    "application/json": unknown;
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Model not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "error": "model not found"
-                     *     } */
-                    "application/json": components["schemas"]["OllamaError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    showOllamaModel: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Model name to get details for */
-        requestBody: {
-            content: {
-                /** @example {
-                 *       "name": "llama2:chat"
-                 *     } */
-                "application/json": components["schemas"]["ShowRequest"];
-            };
-        };
-        responses: {
-            /** @description Model details */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "details": {
-                     *         "families": null,
-                     *         "family": "unknown",
-                     *         "format": "gguf",
-                     *         "parameter_size": "",
-                     *         "parent_model": null,
-                     *         "quantization_level": ""
-                     *       },
-                     *       "license": "",
-                     *       "model_info": {},
-                     *       "modelfile": "",
-                     *       "modified_at": "2024-01-20T12:00:00.000000000Z",
-                     *       "parameters": "n_keep: 24\nstop:\n- <|start_header_id|>\n- <|end_header_id|>\n- <|eot_id|>\n",
-                     *       "template": "llama2"
-                     *     } */
-                    "application/json": components["schemas"]["ShowResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Model not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "error": "model not found"
-                     *     } */
-                    "application/json": components["schemas"]["OllamaError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    listOllamaModels: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of available models */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "models": [
-                     *         {
-                     *           "details": {
-                     *             "families": null,
-                     *             "family": "unknown",
-                     *             "format": "gguf",
-                     *             "parameter_size": "",
-                     *             "parent_model": null,
-                     *             "quantization_level": ""
-                     *           },
-                     *           "digest": "sha256:abc123",
-                     *           "model": "llama2:chat",
-                     *           "modified_at": "2024-01-20T12:00:00.000000000Z",
-                     *           "size": 0
-                     *         }
-                     *       ]
-                     *     } */
-                    "application/json": components["schemas"]["ModelsResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
     createChatCompletion: {
         parameters: {
             query?: never;

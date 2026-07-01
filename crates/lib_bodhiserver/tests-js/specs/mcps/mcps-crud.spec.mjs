@@ -82,7 +82,9 @@ test.describe('MCP Server Management', () => {
     });
 
     await test.step('Overview shows non-zero tool count', async () => {
-      const toolsCount = mcpsPage.page.locator('[data-testid="mcp-playground-capability-count-tools"]');
+      const toolsCount = mcpsPage.page.locator(
+        '[data-testid="mcp-playground-capability-count-tools"]'
+      );
       await expect(toolsCount).toBeVisible();
       const text = (await toolsCount.textContent())?.trim() ?? '';
       expect(Number(text)).toBeGreaterThan(0);
@@ -118,35 +120,47 @@ test.describe('MCP Server Management', () => {
     await test.step('Preview a prompt and render messages', async () => {
       await mcpsPage.page.click(mcpsPage.selectors.playgroundCapability('prompts'));
       await mcpsPage.page.click('[data-testid="mcp-playground-rail-item-simple-prompt"]');
-      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-prompt-detail"]')).toBeVisible();
+      await expect(
+        mcpsPage.page.locator('[data-testid="mcp-playground-prompt-detail"]')
+      ).toBeVisible();
       await mcpsPage.page.click('[data-testid="mcp-playground-prompt-preview-button"]');
-      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-result-status"]')).toHaveAttribute(
-        'data-test-state',
-        'success'
-      );
-      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-prompt-msg-0"]')).toBeVisible();
+      await expect(
+        mcpsPage.page.locator('[data-testid="mcp-playground-result-status"]')
+      ).toHaveAttribute('data-test-state', 'success');
+      await expect(
+        mcpsPage.page.locator('[data-testid="mcp-playground-prompt-msg-0"]')
+      ).toBeVisible();
     });
 
     await test.step('Read the first resource and verify success', async () => {
       await mcpsPage.page.click(mcpsPage.selectors.playgroundCapability('resources'));
-      const firstResource = mcpsPage.page.locator('[data-testid^="mcp-playground-rail-item-"]').first();
+      const firstResource = mcpsPage.page
+        .locator('[data-testid^="mcp-playground-rail-item-"]')
+        .first();
       await expect(firstResource).toBeVisible();
       await firstResource.click();
-      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-resource-detail"]')).toBeVisible();
+      await expect(
+        mcpsPage.page.locator('[data-testid="mcp-playground-resource-detail"]')
+      ).toBeVisible();
       await mcpsPage.page.click('[data-testid="mcp-playground-resource-read-button"]');
-      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-result-status"]')).toHaveAttribute(
-        'data-test-state',
-        'success'
-      );
+      await expect(
+        mcpsPage.page.locator('[data-testid="mcp-playground-result-status"]')
+      ).toHaveAttribute('data-test-state', 'success');
     });
 
     await test.step('Resolve a template and verify the resource is read', async () => {
       await mcpsPage.page.click(mcpsPage.selectors.playgroundCapability('templates'));
-      const firstTemplate = mcpsPage.page.locator('[data-testid^="mcp-playground-rail-item-"]').first();
+      const firstTemplate = mcpsPage.page
+        .locator('[data-testid^="mcp-playground-rail-item-"]')
+        .first();
       await expect(firstTemplate).toBeVisible();
       await firstTemplate.click();
-      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-template-detail"]')).toBeVisible();
-      const fields = mcpsPage.page.locator('[data-testid^="mcp-playground-param-"] input, [data-testid^="mcp-playground-param-"] textarea');
+      await expect(
+        mcpsPage.page.locator('[data-testid="mcp-playground-template-detail"]')
+      ).toBeVisible();
+      const fields = mcpsPage.page.locator(
+        '[data-testid^="mcp-playground-param-"] input, [data-testid^="mcp-playground-param-"] textarea'
+      );
       const count = await fields.count();
       for (let i = 0; i < count; i++) {
         await fields.nth(i).fill('1');
@@ -154,10 +168,9 @@ test.describe('MCP Server Management', () => {
       const resolved = mcpsPage.page.locator('[data-testid="mcp-playground-template-resolved"]');
       await expect(resolved).toHaveAttribute('data-filled', 'true');
       await mcpsPage.page.click('[data-testid="mcp-playground-template-read-button"]');
-      await expect(mcpsPage.page.locator('[data-testid="mcp-playground-result-status"]')).toHaveAttribute(
-        'data-test-state',
-        'success'
-      );
+      await expect(
+        mcpsPage.page.locator('[data-testid="mcp-playground-result-status"]')
+      ).toHaveAttribute('data-test-state', 'success');
     });
   });
 

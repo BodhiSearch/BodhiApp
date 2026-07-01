@@ -25,7 +25,9 @@ export class BasePage {
    * @param {string} [subPage] - shell nav sub-page id (e.g. 'app-tokens')
    */
   async navViaShell(section, subPage) {
-    const subLink = subPage ? this.page.locator(`[data-testid="shell-sub-${subPage}"]`).first() : null;
+    const subLink = subPage
+      ? this.page.locator(`[data-testid="shell-sub-${subPage}"]`).first()
+      : null;
 
     // Fast path: the sub-page is already reachable (section is active) — just click it.
     if (subLink && (await subLink.isVisible().catch(() => false))) {
@@ -63,7 +65,10 @@ export class BasePage {
 
   async waitForToast(message, options = {}) {
     // toContainText accepts a string or RegExp, so no branch is needed.
-    await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(message, options);
+    await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(
+      message,
+      options
+    );
   }
 
   async waitForToastAndExtractId(messagePattern) {
@@ -112,9 +117,15 @@ export class BasePage {
     try {
       const finalOptions = { timeout: 15000, ...options }; // toasts take longer to show up
       if (message instanceof RegExp) {
-        await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(message, finalOptions);
+        await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(
+          message,
+          finalOptions
+        );
       } else {
-        await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(message, finalOptions);
+        await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(
+          message,
+          finalOptions
+        );
       }
     } catch (error) {
       console.log(`Toast check skipped (CI=${!!process.env.CI}):`, message);
@@ -149,26 +160,26 @@ export class BasePage {
   }
 
   async expectToBeOnPage(pathname) {
-    await this.page.waitForURL(url => url.pathname === pathname);
+    await this.page.waitForURL((url) => url.pathname === pathname);
     await this.expectCurrentPath(pathname);
   }
 
   async navigateAndWaitForPage(path) {
     await this.page.goto(`${this.baseUrl}${path}`);
-    await this.page.waitForURL(url => url.pathname === path);
+    await this.page.waitForURL((url) => url.pathname === path);
     await this.waitForSPAReady();
   }
 
   async waitForUrl(pathOrPredicate) {
     if (typeof pathOrPredicate === 'string') {
-      await this.page.waitForURL(url => url.pathname === pathOrPredicate);
+      await this.page.waitForURL((url) => url.pathname === pathOrPredicate);
     } else {
       await this.page.waitForURL(pathOrPredicate);
     }
   }
 
   async waitForUrlAndExpect(pathname) {
-    await this.page.waitForURL(url => url.pathname === pathname);
+    await this.page.waitForURL((url) => url.pathname === pathname);
     await this.expectCurrentPath(pathname);
   }
 
@@ -183,7 +194,9 @@ export class BasePage {
   async dismissAllToasts() {
     try {
       // Find all visible toasts and close buttons
-      const toastCloseButtons = await this.page.locator('[data-radix-toast-announce-exclude] button').all();
+      const toastCloseButtons = await this.page
+        .locator('[data-radix-toast-announce-exclude] button')
+        .all();
 
       // Click all close buttons to dismiss toasts
       for (const closeButton of toastCloseButtons) {

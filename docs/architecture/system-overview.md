@@ -22,11 +22,10 @@ For non-technical users, it comes with a built-in Chat UI that is quick to start
 
 ### API Compatibility
 - **OpenAI**: Full OpenAI API compatibility for chat completions (`/v1/chat/completions`, `/v1/models`)
-- **Ollama**: Drop-in replacement endpoints (`/api/tags`, `/api/show`, `/api/chat`)
 - **Anthropic**: Messages API proxy under `/anthropic/v1/*`
 - **Responses**: OpenAI Responses API support
 - **Streaming**: Real-time response streaming via Server-Sent Events
-- **Client Library Support**: Works with existing OpenAI / Ollama / Anthropic client libraries
+- **Client Library Support**: Works with existing OpenAI / Anthropic client libraries
 
 ### Authentication & Security
 - **OAuth2 Integration**: External authentication provider (Keycloak) support
@@ -229,7 +228,7 @@ Model aliases provide user-friendly names for complex model configurations:
 - **Frontend**: Vite, React, TypeScript, TanStack Router, TanStack Query v5, TailwindCSS, Shadcn UI
 - **Desktop**: Tauri
 - **LLM**: llama.cpp integration
-- **API**: OpenAI-compatible + Ollama + Anthropic + Responses endpoints
+- **API**: OpenAI-compatible + Anthropic + Responses endpoints
 - **Auth**: OAuth2, JWT (Keycloak)
 - **Database**: SeaORM over SQLite (dev/desktop) and PostgreSQL (production/Docker)
 - **Documentation**: OpenAPI/Swagger via utoipa

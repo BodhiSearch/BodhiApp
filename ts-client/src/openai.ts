@@ -1,5 +1,5 @@
 // Subpath entry point: @bodhiapp/ts-client/openai
-// Exposes the OpenAI/Ollama-compatible types (generated from openapi-oai.json)
+// Exposes the OpenAI-compatible types (generated from openapi-oai.json)
 // as a dedicated module so consumers can write:
 //
 //   import { CreateChatCompletionRequest, Role } from '@bodhiapp/ts-client/openai';

@@ -241,9 +241,6 @@ These endpoints work with or without authentication, providing different informa
 | `GET` | `/v1/models` | List OpenAI-compatible models |
 | `GET` | `/v1/models/{id}` | Get specific model info |
 | `POST` | `/v1/chat/completions` | OpenAI chat completions |
-| `GET` | `/api/tags` | List Ollama-compatible models |
-| `POST` | `/api/show` | Show Ollama model details |
-| `POST` | `/api/chat` | Ollama chat completions |
 | `GET` | `/bodhi/v1/models` | List model aliases |
 | `GET` | `/bodhi/v1/models/{id}` | Get model alias details |
 | `GET` | `/bodhi/v1/modelfiles` | List local model files |

@@ -74,7 +74,7 @@ export function AppTokensPageContent() {
 
   const selected = useMemo(() => apps.find((a) => a.id === selectedId) ?? null, [apps, selectedId]);
 
-  const columns = useMemo<CatalogColumn<AppAccessSummary>[]>(
+  const columns = useMemo<CatalogColumn<AppAccessSummary, never>[]>(
     () => [
       { key: 'num', label: '', width: '52px', cell: () => null },
       {

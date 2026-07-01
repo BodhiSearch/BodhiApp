@@ -5,11 +5,6 @@
 - **Currently**: MCP OAuth handlers (`mcps_oauth_initiate`, `mcps_oauth_callback`, etc.) contain complex OAuth flow logic that partially duplicates auth module patterns
 - **Skipped in CRUD refactor**: Known anomaly to address when standardizing OAuth patterns
 
-## OAI/Ollama model conversion logic
-
-- **Currently**: Model conversion between internal types and OpenAI/Ollama formats lives in routes_app
-- **Keep as-is**: Ollama compatibility is being dropped soon
-
 ## Setup/Auth redirect URL construction
 
 - **Currently**: `build_redirect_url` and host detection logic in setup/auth routes is HTTP-layer concern with complex edge cases

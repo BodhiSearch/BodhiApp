@@ -1,6 +1,7 @@
 import type { AliasResponse, Mcp } from '@bodhiapp/ts-client';
 
 import type { AccessItem } from '@/components/access-picker';
+import { modelId } from '@/lib/modelAlias';
 
 /** Resolve each alias to grantable model items (the inference grant id space), tagged
  *  local/api so the picker can group + filter. Shared by the API-token form and the
@@ -12,7 +13,7 @@ export function grantableModelItems(aliases: AliasResponse[]): AccessItem[] {
     if ('models' in alias && 'prefix' in alias) {
       const prefix = alias.prefix ?? '';
       for (const model of alias.models) {
-        const id = `${prefix}${model.id}`;
+        const id = `${prefix}${modelId(model)}`;
         if (!items.has(id)) items.set(id, { id, label: id, type: 'api' });
       }
     } else if ('targets' in alias && 'strategy' in alias) {

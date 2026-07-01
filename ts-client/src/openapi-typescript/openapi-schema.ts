@@ -1886,7 +1886,8 @@ export interface components {
             name?: string | null;
             /** @description Token scope defining access level */
             scope: components["schemas"]["TokenScope"];
-            /** @description Per-resource grants for this token. Defaults to all-access when omitted. */
+            /** @description Per-resource grants for this token. Defaults to deny (least-privilege) when
+             *     omitted — specify grants to widen access. */
             grants?: components["schemas"]["TokenGrants"];
         };
         /** @description Dashboard user information from a validated dashboard session token */
@@ -2292,7 +2293,12 @@ export interface components {
         /** @enum {string} */
         McpAuthType: "public" | "header" | "oauth";
         /** @description MCP connect grant. `All` is a wildcard (incl. future MCPs); `Specific` lists
-         *     the user's own instance ids (empty ⇒ no MCP access). */
+         *     the user's own instance ids (empty ⇒ no MCP access).
+         *
+         *     Defaults to **least-privilege** (empty `Specific` ⇒ deny), symmetric with
+         *     `ModelGrant`: an unspecified or legacy grant grants nothing, so a stored
+         *     payload that omits `mcps` cannot silently grant every MCP. All-access must be
+         *     requested explicitly via `McpGrant::All`. */
         McpGrant: {
             /** @enum {string} */
             type: "all";

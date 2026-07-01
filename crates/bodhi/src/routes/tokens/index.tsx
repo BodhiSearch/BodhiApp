@@ -130,7 +130,7 @@ export function TokenPageContent() {
 
   const selected = useMemo(() => tokens.find((t) => t.id === selectedId) ?? null, [tokens, selectedId]);
 
-  const columns = useMemo<CatalogColumn<TokenDetail>[]>(
+  const columns = useMemo<CatalogColumn<TokenDetail, never>[]>(
     () => [
       { key: 'num', label: '', width: '52px', cell: () => null },
       {
@@ -327,7 +327,9 @@ function TokenDetailPanel({
             {grants.models_list && <DetailRow icon="list" label="List all models" value="/v1/models" />}
             <DetailRow icon="cpu" label="Inference" value={grantSummary(grants.models, 'model')} />
           </div>
-          {grants.models.type === 'specific' && <GrantChips ids={grants.models.ids} testIdPrefix="token-model-grant" />}
+          {grants.models?.type === 'specific' && (
+            <GrantChips ids={grants.models.ids} testIdPrefix="token-model-grant" />
+          )}
         </div>
         <div className="dp-section">
           <div className="dp-sec-lbl">MCP servers</div>
@@ -335,7 +337,7 @@ function TokenDetailPanel({
             {grants.mcps_list && <DetailRow icon="list" label="List all MCPs" value="/v1/mcps" />}
             <DetailRow icon="plug" label="Connect" value={grantSummary(grants.mcps, 'MCP')} />
           </div>
-          {grants.mcps.type === 'specific' && <GrantChips ids={grants.mcps.ids} testIdPrefix="token-mcp-grant" />}
+          {grants.mcps?.type === 'specific' && <GrantChips ids={grants.mcps.ids} testIdPrefix="token-mcp-grant" />}
         </div>
         <div className="dp-section">
           <div className="dp-sec-lbl">Details</div>

@@ -18,11 +18,6 @@ BodhiApp bridges the gap between complex AI infrastructure and user-friendly int
 - Support for streaming and non-streaming responses
 - Compatible with OpenAI client libraries
 
-**Ollama Compatible APIs**  
-- Support for `/api/chat`, `/api/tags`, and `/api/show` endpoints
-- Easy migration path for Ollama users
-- Compatible with existing Ollama client tools
-
 **Anthropic Compatible APIs**
 - Anthropic Messages format via `/anthropic/v1/messages` (and `/v1/messages`)
 - Model listing via `/anthropic/v1/models`

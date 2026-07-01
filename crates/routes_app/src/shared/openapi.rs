@@ -153,7 +153,7 @@ Bodhi App supports three sophisticated authentication methods:
 - **Format**: `Authorization: Bearer bodhiapp_<random_string>`
 - **Obtain**: Create via web interface at Menu > Settings > API Tokens
 - **Scopes**: Token-based scopes with hierarchical permissions
-  - `scope_token_user`: Basic API access (read operations, OpenAI/Ollama APIs)
+  - `scope_token_user`: Basic API access (read operations, OpenAI APIs)
   - `scope_token_power_user`: Advanced operations (model creation, downloads)
   - `scope_token_manager`: User management operations
   - `scope_token_admin`: Full administrative access

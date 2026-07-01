@@ -15,7 +15,7 @@ This document captures key architectural decisions, their rationale, and the ben
 **Decision**: Use an embedded web server instead of Tauri's native IPC for desktop application communication.
 
 **Rationale**:
-- **API Compatibility**: Maintains full compatibility with OpenAI and Ollama client libraries
+- **API Compatibility**: Maintains full compatibility with OpenAI client libraries
 - **Standard Debugging**: Enables use of standard web debugging tools (browser dev tools, Postman, curl)
 - **Unified Codebase**: Single API implementation serves both web and desktop clients
 - **Third-party Integration**: Existing tools and libraries work without modification
@@ -77,7 +77,7 @@ This document captures key architectural decisions, their rationale, and the ben
 **Crate Organization**:
 - **Domain + Logic**: `services` is the single hub for all domain types and business logic (the former `objs` crate was merged into `services`)
 - **HTTP Infrastructure**: `server_core` for SharedContext, SSE streaming, InferenceService
-- **API + Middleware**: `routes_app` hosts all HTTP endpoints (OpenAI/Ollama/Anthropic/app) plus auth middleware
+- **API + Middleware**: `routes_app` hosts all HTTP endpoints (OpenAI/Anthropic/app) plus auth middleware
 - **Deployment Separation**: `server_app` vs `bodhi/src-tauri` for different deployment modes
 
 **Rationale**:

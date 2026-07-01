@@ -15,7 +15,6 @@ The platform consists of multiple integrated components that work together to pr
 **Key Capabilities**:
 - Local LLM inference via llama.cpp integration
 - OpenAI-compatible API endpoints (`/v1/chat/completions`, `/v1/models`)
-- Ollama-compatible API endpoints (`/api/tags`, `/api/show`, `/api/chat`)
 - Built-in web chat interface
 - Model management and downloading from HuggingFace
 - OAuth2 resource server with role-based access control

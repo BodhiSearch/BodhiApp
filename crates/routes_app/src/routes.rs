@@ -57,10 +57,6 @@ use crate::{
   gemini_action_handler, gemini_models_get, gemini_models_list, ENDPOINT_GEMINI_MODEL,
   ENDPOINT_GEMINI_MODELS,
 };
-use crate::{
-  ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
-  ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
-};
 use axum::{
   http::HeaderName,
   middleware::{from_fn, from_fn_with_state},
@@ -210,10 +206,6 @@ pub async fn build_routes(
       &format!("{ENDPOINT_OAI_RESPONSES}/{{response_id}}/cancel"),
       post(responses_cancel_handler),
     )
-    // Ollama APIs
-    .route(ENDPOINT_OLLAMA_TAGS, get(ollama_models_handler))
-    .route(ENDPOINT_OLLAMA_SHOW, post(ollama_model_show_handler))
-    .route(ENDPOINT_OLLAMA_CHAT, post(ollama_model_chat_handler))
     // Basic Bodhi APIs
     .route(ENDPOINT_MODELS, get(models_index))
     .route(&format!("{ENDPOINT_MODELS}/{{id}}"), get(models_show))

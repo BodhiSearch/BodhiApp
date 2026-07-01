@@ -686,15 +686,6 @@ export type ChatCompletionTools = (ChatCompletionTool & {
     type: 'custom';
 });
 
-export type ChatRequest = {
-    model: string;
-    messages: Array<Message>;
-    stream?: boolean | null;
-    format?: string | null;
-    keep_alive?: null | Duration;
-    options?: null | Options;
-};
-
 export type ClickButtonType = 'left' | 'right' | 'wheel' | 'back' | 'forward';
 
 /**
@@ -1790,8 +1781,6 @@ export type DragParam = {
      */
     path: Array<CoordParam>;
 };
-
-export type Duration = string;
 
 /**
  * Content for EasyInputMessage - can be a simple string or structured list.
@@ -3059,12 +3048,6 @@ export type McpToolRequireApproval = McpToolApprovalFilter | McpToolApprovalSett
 
 export type McpToolConnectorId = 'connector_dropbox' | 'connector_gmail' | 'connector_googlecalendar' | 'connector_googledrive' | 'connector_microsoftteams' | 'connector_outlookcalendar' | 'connector_outlookemail' | 'connector_sharepoint';
 
-export type Message = {
-    role: string;
-    content: string;
-    images?: Array<string> | null;
-};
-
 /**
  * A message item used within the `Item` enum.
  *
@@ -3119,19 +3102,6 @@ export type Model = {
     owned_by: string;
 };
 
-export type ModelDetails = {
-    parent_model?: string | null;
-    format: string;
-    family: string;
-    families?: Array<string> | null;
-    parameter_size: string;
-    quantization_level: string;
-};
-
-export type ModelsResponse = {
-    models: Array<OllamaModel>;
-};
-
 /**
  * A mouse move action.
  */
@@ -3172,50 +3142,6 @@ export type NamespaceToolParamTool = (FunctionToolParam & {
 }) | (CustomToolParam & {
     type: 'custom';
 });
-
-export type OllamaError = {
-    error: string;
-};
-
-export type OllamaModel = {
-    model: string;
-    modified_at: number;
-    size: number;
-    digest: string;
-    details: ModelDetails;
-};
-
-export type Options = {
-    num_keep?: number | null;
-    seed?: number | null;
-    num_predict?: number | null;
-    top_k?: number | null;
-    top_p?: number | null;
-    tfs_z?: number | null;
-    typical_p?: number | null;
-    repeat_last_n?: number | null;
-    temperature?: number | null;
-    repeat_penalty?: number | null;
-    presence_penalty?: number | null;
-    frequency_penalty?: number | null;
-    mirostat?: number | null;
-    mirostat_tau?: number | null;
-    mirostat_eta?: number | null;
-    penalize_newline?: boolean | null;
-    stop?: Array<string> | null;
-    numa?: boolean | null;
-    num_ctx?: number | null;
-    num_batch?: number | null;
-    num_gpu?: number | null;
-    main_gpu?: number | null;
-    low_vram?: boolean | null;
-    f16_kv?: boolean | null;
-    logits_all?: boolean | null;
-    vocab_only?: boolean | null;
-    use_mmap?: boolean | null;
-    use_mlock?: boolean | null;
-    num_thread?: number | null;
-};
 
 /**
  * Output item
@@ -3728,20 +3654,6 @@ export type ScrollParam = {
 export type SearchContentType = 'text' | 'image';
 
 export type ServiceTier = 'auto' | 'default' | 'flex' | 'scale' | 'priority';
-
-export type ShowRequest = {
-    name: string;
-};
-
-export type ShowResponse = {
-    details: ModelDetails;
-    license: string;
-    model_info: {};
-    modelfile: string;
-    modified_at: number;
-    parameters: string;
-    template: string;
-};
 
 /**
  * A skill parameter — either a reference or inline definition.
@@ -4293,129 +4205,6 @@ export type WebSearchUserLocation = {
 };
 
 export type WebSearchUserLocationType = 'approximate';
-
-export type ChatOllamaModelData = {
-    /**
-     * Chat request in Ollama format
-     */
-    body: ChatRequest;
-    path?: never;
-    query?: never;
-    url: '/api/chat';
-};
-
-export type ChatOllamaModelErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: ErrorResponse;
-    /**
-     * Not authenticated
-     */
-    401: ErrorResponse;
-    /**
-     * Insufficient permissions
-     */
-    403: ErrorResponse;
-    /**
-     * Model not found
-     */
-    404: OllamaError;
-    /**
-     * Internal server error
-     */
-    500: ErrorResponse;
-};
-
-export type ChatOllamaModelError = ChatOllamaModelErrors[keyof ChatOllamaModelErrors];
-
-export type ChatOllamaModelResponses = {
-    /**
-     * Chat response
-     */
-    200: unknown;
-};
-
-export type ShowOllamaModelData = {
-    /**
-     * Model name to get details for
-     */
-    body: ShowRequest;
-    path?: never;
-    query?: never;
-    url: '/api/show';
-};
-
-export type ShowOllamaModelErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: ErrorResponse;
-    /**
-     * Not authenticated
-     */
-    401: ErrorResponse;
-    /**
-     * Insufficient permissions
-     */
-    403: ErrorResponse;
-    /**
-     * Model not found
-     */
-    404: OllamaError;
-    /**
-     * Internal server error
-     */
-    500: ErrorResponse;
-};
-
-export type ShowOllamaModelError = ShowOllamaModelErrors[keyof ShowOllamaModelErrors];
-
-export type ShowOllamaModelResponses = {
-    /**
-     * Model details
-     */
-    200: ShowResponse;
-};
-
-export type ShowOllamaModelResponse = ShowOllamaModelResponses[keyof ShowOllamaModelResponses];
-
-export type ListOllamaModelsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/tags';
-};
-
-export type ListOllamaModelsErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: ErrorResponse;
-    /**
-     * Not authenticated
-     */
-    401: ErrorResponse;
-    /**
-     * Insufficient permissions
-     */
-    403: ErrorResponse;
-    /**
-     * Internal server error
-     */
-    500: ErrorResponse;
-};
-
-export type ListOllamaModelsError = ListOllamaModelsErrors[keyof ListOllamaModelsErrors];
-
-export type ListOllamaModelsResponses = {
-    /**
-     * List of available models
-     */
-    200: ModelsResponse;
-};
-
-export type ListOllamaModelsResponse = ListOllamaModelsResponses[keyof ListOllamaModelsResponses];
 
 export type CreateChatCompletionData = {
     body: CreateChatCompletionRequest;

@@ -527,7 +527,8 @@ export type CreateTokenRequest = {
      */
     scope: TokenScope;
     /**
-     * Per-resource grants for this token. Defaults to all-access when omitted.
+     * Per-resource grants for this token. Defaults to deny (least-privilege) when
+     * omitted — specify grants to widen access.
      */
     grants?: TokenGrants;
 };
@@ -1010,6 +1011,11 @@ export type McpAuthType = 'public' | 'header' | 'oauth';
 /**
  * MCP connect grant. `All` is a wildcard (incl. future MCPs); `Specific` lists
  * the user's own instance ids (empty ⇒ no MCP access).
+ *
+ * Defaults to **least-privilege** (empty `Specific` ⇒ deny), symmetric with
+ * `ModelGrant`: an unspecified or legacy grant grants nothing, so a stored
+ * payload that omits `mcps` cannot silently grant every MCP. All-access must be
+ * requested explicitly via `McpGrant::All`.
  */
 export type McpGrant = {
     type: 'all';
