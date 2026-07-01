@@ -8,5 +8,5 @@
     "tanstack-query@tanstack-skills": true,
     "tanstack-devtools@tanstack-skills": true
   },
-  "plansDirectory": "docs/claude-plans/202606/"
+  "plansDirectory": "docs/claude-plans/202607/"
 }
