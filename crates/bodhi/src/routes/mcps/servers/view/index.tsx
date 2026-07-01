@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import type { McpAuthConfigParamInput, McpAuthConfigResponse } from '@bodhiapp/ts-client';
+import type { McpAuthConfigParamInput, McpAuthConfigResponse, RegistrationType } from '@bodhiapp/ts-client';
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
 import { z } from 'zod';
 
@@ -107,9 +107,7 @@ function ServerViewContent() {
   const [formType, setFormType] = useState<'header' | 'oauth'>('header');
   const [formName, setFormName] = useState('');
   const [formEntries, setFormEntries] = useState<McpAuthConfigParamInput[]>([{ param_type: 'header', param_key: '' }]);
-  const [formRegistrationType, setFormRegistrationType] = useState<'pre_registered' | 'dynamic_registration'>(
-    'pre_registered'
-  );
+  const [formRegistrationType, setFormRegistrationType] = useState<RegistrationType>('pre_registered');
   const [formClientId, setFormClientId] = useState('');
   const [formClientSecret, setFormClientSecret] = useState('');
   const [formAuthEndpoint, setFormAuthEndpoint] = useState('');

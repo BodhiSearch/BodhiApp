@@ -7,10 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDiscoverMcp } from '@/hooks/mcps';
-import type { McpAuthConfigParamInput, McpAuthParamType } from '@bodhiapp/ts-client';
+import type { McpAuthConfigParamInput, McpAuthParamType, RegistrationType } from '@bodhiapp/ts-client';
 
 type AuthConfigType = 'header' | 'oauth';
-type OAuthRegistrationType = 'pre_registered' | 'dynamic_registration';
 
 interface AuthConfigFormProps {
   // Server context
@@ -31,14 +30,14 @@ interface AuthConfigFormProps {
   onEntriesChange: (entries: McpAuthConfigParamInput[]) => void;
 
   // OAuth state
-  registrationType: OAuthRegistrationType;
+  registrationType: RegistrationType;
   clientId: string;
   clientSecret: string;
   authEndpoint: string;
   tokenEndpoint: string;
   registrationEndpoint: string;
   scopes: string;
-  onRegistrationTypeChange: (type: OAuthRegistrationType) => void;
+  onRegistrationTypeChange: (type: RegistrationType) => void;
   onClientIdChange: (value: string) => void;
   onClientSecretChange: (value: string) => void;
   onAuthEndpointChange: (value: string) => void;
@@ -226,7 +225,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
             <Label>Registration Type</Label>
             <Select
               value={props.registrationType}
-              onValueChange={(val) => props.onRegistrationTypeChange(val as OAuthRegistrationType)}
+              onValueChange={(val) => props.onRegistrationTypeChange(val as RegistrationType)}
             >
               <SelectTrigger data-testid="oauth-registration-type-select">
                 <SelectValue placeholder="Select registration type" />

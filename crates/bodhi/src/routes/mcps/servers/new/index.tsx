@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 
-import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
+import type { McpAuthConfigParamInput, RegistrationType } from '@bodhiapp/ts-client';
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { z } from 'zod';
@@ -37,7 +37,7 @@ export const Route = createFileRoute('/mcps/servers/new/')({
 function authPrefill(auth: string | undefined): {
   show: boolean;
   type: 'none' | 'header' | 'oauth';
-  regType: 'pre_registered' | 'dynamic_registration';
+  regType: RegistrationType;
 } {
   switch (auth) {
     case 'oauth-dcr':
@@ -58,7 +58,6 @@ const NEW_SERVER_BREADCRUMB = [
 ];
 
 type AuthConfigType = 'none' | 'header' | 'oauth';
-type OAuthRegistrationType = 'pre_registered' | 'dynamic_registration';
 
 function NewMcpServerContent() {
   useShellChrome({ breadcrumb: useMemo(() => NEW_SERVER_BREADCRUMB, []) });
@@ -74,7 +73,7 @@ function NewMcpServerContent() {
   // Auth config state — seeded from the catalog auth_type prefill (oauth-dcr/oauth-pre-registered/key).
   const [showAuthConfig, setShowAuthConfig] = useState(prefill.show);
   const [authConfigType, setAuthConfigType] = useState<AuthConfigType>(prefill.type);
-  const [oauthRegistrationType, setOauthRegistrationType] = useState<OAuthRegistrationType>(prefill.regType);
+  const [oauthRegistrationType, setOauthRegistrationType] = useState<RegistrationType>(prefill.regType);
   const [authName, setAuthName] = useState('');
   const [entries, setEntries] = useState<McpAuthConfigParamInput[]>([{ param_type: 'header', param_key: '' }]);
   const [clientId, setClientId] = useState('');
