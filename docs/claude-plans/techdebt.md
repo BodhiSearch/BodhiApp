@@ -12,9 +12,9 @@ Deferred work items intentionally scoped out of their originating effort, to be 
 - **F8** — rename `DbError::AccessRequestNotDraft` (`services/src/db/error.rs`): it now guards the
   revoke transition (must-be-Approved), so the "NotDraft" name misleads. Rename to a status-neutral
   variant (e.g. `AccessRequestStatusConflict`) + update the 4 call-sites and the error-code assertions.
-- **Component tests** — F37 (ListingToggle Space/Enter activation), F38 (AccessPickerPanel type
-  filter), F39 (GrantBlock), F40 (TokenForm PowerUser card disabled for `resource_user`). The
-  components ship and are exercised indirectly; these add focused unit coverage.
+- **Component tests** — F37 (ListingToggle Space/Enter activation), F39 (GrantBlock), F40 (TokenForm
+  PowerUser card disabled for `resource_user`). The components ship and are exercised indirectly;
+  these add focused unit coverage.
 
 ## Ollama `/api/chat` is not covered by the inference grant middleware
 - **Source**: Tokens screen-v2 / App Token grants review — Batch 3 (2026-06-30).
@@ -27,6 +27,9 @@ Deferred work items intentionally scoped out of their originating effort, to be 
 - **Why deferred**: out of the named scope for this effort (deliberate decision, 2026-06-30).
 - **Fix**: add `"/api/chat" => InferenceFormat::OpenAi` (model in body) to `classify()` and attach the
   middleware to the Ollama route group; or confirm Ollama is intentionally session-only.
+- **Update 2026-07-01**: `model_inference_grant_middleware` was reworked in the grants-review
+  remediation (Batch 2 — it now short-circuits `Unrestricted` before buffering the body), but the
+  `/api/chat` gap is unchanged: still not in `classify()`. Still open.
 
 ## Relocate access-request handlers to a dedicated `access_requests` module + normalize endpoint paths
 - **Source**: Tokens screen-v2 / App Token grants review — finding F32 (`docs/claude-plans/202606/screen-v2/tokens-review/`).
@@ -62,4 +65,50 @@ Deferred work items intentionally scoped out of their originating effort, to be 
   decision. `/bodhi/v1/apps/*` remains a reserved prefix for endpoints accessed directly by 3rd-party
   apps — that placement is acceptable and is **not** a reason to move on its own.
 - **Reference**: see `decision.md` (F32) in the tokens-review folder for the full rationale.
+
+## Inference grant middleware double-parses the request body
+- **Source**: Grants-review remediation — finding I2 (`docs/claude-plans/202606/review/architecture-review.md`), 2026-07-01.
+- **What**: For OpenAI / Anthropic inference, `model_inference_grant_middleware`
+  (`routes_app/src/middleware/model_grant.rs`) buffers the full body and parses it (into a minimal
+  `ModelField`) to read `model`, then reconstructs the request; the handler's `Json<…>` extractor
+  parses the same in-memory body a **second** time. There is a `// TODO: inefficient interceptor`
+  comment at the read site. (Batch 2 already removed the wasted read for the dominant `Unrestricted`
+  session principal by short-circuiting before buffering, and Gemini/MCP paths are single-read.)
+- **Why deferred**: a true single-parse requires the middleware to parse the full typed payload and
+  hand it to the handler via request extensions (touching 4 handlers) — bigger than the review's
+  scope, and the residual cost only applies to grant/deny (token/app) principals, not sessions.
+- **Fix**: parse once in the middleware and stash the parsed value in `req.extensions()`; have the
+  OpenAI/Anthropic handlers read from extensions instead of re-extracting. Revisit only if profiling
+  flags it.
+
+## Missing embeddings/responses grant-enforcement parity test
+- **Source**: Grants-review remediation — architecture-review "Missing Test Coverage", 2026-07-01.
+- **What**: The unified inference middleware was created specifically to close the `/v1/embeddings`
+  and `/v1/responses` gap, but the routes_app tests only assert a non-granted token gets 403 on
+  `/v1/chat/completions`. There is no integration test pinning 403 on `/v1/embeddings` and
+  `/v1/responses` specifically.
+- **Why deferred**: nice-to-have; the middleware `classify()` covers all three via one code path, so
+  the risk is a future `classify()` edit silently dropping an endpoint.
+- **Fix**: add a `routes_app` (or `server_app`) test asserting a scoped/deny token → 403 on
+  `/v1/embeddings` and `/v1/responses`, mirroring the chat-completions forbidden test.
+
+## E2E `mockClipboard` does not survive full-reload navigation
+- **Source**: Grants-review remediation — discovered fixing E2E fallout from fail-closed defaults, 2026-07-01.
+- **What**: `TokenFixtures.mockClipboard` (`tests-js/fixtures/tokenFixtures.mjs`) installs the
+  `navigator.clipboard` / `window.clipboardData` mock via a one-shot `page.evaluate`, so any
+  `page.goto` (full reload — e.g. `navigateToTokens`/`navigateToChat`) wipes it. `copyTokenFromDialog`
+  now re-installs the mock defensively before reading, but the underlying fixture is still
+  navigation-fragile for any other consumer.
+- **Why deferred**: the localized re-install in `copyTokenFromDialog` fixed the observed failures;
+  hardening the fixture is a broader cleanup.
+- **Fix**: install the clipboard mock via `page.addInitScript` so it re-applies on every document load,
+  then drop the defensive re-install in `copyTokenFromDialog`.
+
+## `BasePage.waitForToastOptional` still has the dead if/else branch
+- **Source**: Grants-review remediation — N11 (`tests-js/pages/BasePage.mjs`), 2026-07-01.
+- **What**: N11 collapsed the identical `if (message instanceof RegExp) … else …` branches in
+  `waitForToast` (both arms call `toContainText`, which already accepts a string or RegExp), but the
+  same dead branch remains in the sibling `waitForToastOptional`.
+- **Why deferred**: intentionally kept N11 scoped to the finding; trivial.
+- **Fix**: collapse the branch in `waitForToastOptional` the same way.
 </content>
