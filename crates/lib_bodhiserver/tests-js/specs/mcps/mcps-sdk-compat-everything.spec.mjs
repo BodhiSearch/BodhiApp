@@ -593,10 +593,12 @@ test.describe(
           'scope_token_user',
           { specificMcps: true, specificMcpsCount: 0 }
         );
-        // Pin the failure to an auth status (401/403) — not just any throw — so a
-        // transport/DNS error can't masquerade as enforcement.
+        // Pin the failure to the grant-forbidden error — not just any throw — so a
+        // transport/DNS error can't masquerade as enforcement. The SDK transport surfaces
+        // the server's JSON error body (code `token_grant_error-mcp_forbidden`), not a
+        // bare status number.
         await expect(buildMcpClient({ serverUrl: sharedServerUrl, mcpId, token: deniedToken })).rejects.toThrow(
-          /40[13]/
+          /mcp_forbidden|forbidden_error/
         );
       });
 

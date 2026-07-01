@@ -4,11 +4,7 @@ import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
-import {
-  getAuthServerConfig,
-  getPreConfiguredAppClient,
-  getTestCredentials,
-} from '@/utils/auth-server-client.mjs';
+import { getAuthServerConfig, getPreConfiguredAppClient, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { registerApiModelViaUI } from '@/utils/api-model-helpers.mjs';
 import { expect, test } from '@/fixtures.mjs';
 import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
@@ -30,10 +26,7 @@ test.describe('OAuth Chat Streaming', () => {
     testCredentials = getTestCredentials();
   });
 
-  test('3rd-party app: OAuth token → streaming chat completion', async ({
-    page,
-    sharedServerUrl,
-  }) => {
+  test('3rd-party app: OAuth token → streaming chat completion', async ({ page, sharedServerUrl }) => {
     const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
     const appClient = getPreConfiguredAppClient();
     const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
@@ -64,7 +57,9 @@ test.describe('OAuth Chat Streaming', () => {
       await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
       const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-      await reviewPage.approve();
+      // Grant all models so the exchanged app token can infer (consent defaults to
+      // Specific/none under fail-closed grants).
+      await reviewPage.approveWithGrants({ allModels: true });
 
       await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
       await app.accessCallback.waitForLoaded();

@@ -24,11 +24,7 @@ import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
 import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 import { mintApiToken } from '@/utils/api-model-helpers.mjs';
-import {
-  getAuthServerConfig,
-  getPreConfiguredAppClient,
-  getTestCredentials,
-} from '@/utils/auth-server-client.mjs';
+import { getAuthServerConfig, getPreConfiguredAppClient, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { buildSdkAdapter } from '@/utils/sdk-adapters.mjs';
 
 const SDK_FORMATS = ['openai', 'openai_responses', 'anthropic', 'gemini'];
@@ -79,10 +75,7 @@ test.describe('SDK compatibility — provider endpoints × auth tokens', () => {
     }
   });
 
-  test('[setup] login, provision aliases, mint API + OAuth app tokens', async ({
-    page,
-    sharedServerUrl,
-  }) => {
+  test('[setup] login, provision aliases, mint API + OAuth app tokens', async ({ page, sharedServerUrl }) => {
     const authServerConfig = getAuthServerConfig();
     const testCredentials = getTestCredentials();
     const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
@@ -118,18 +111,11 @@ test.describe('SDK compatibility — provider endpoints × auth tokens', () => {
         effectiveModel: prefix ? `${prefix}${cfg.model}` : cfg.model,
       };
       if (cfg.embeddingModel) {
-        state.embeddingAliases[formatKey] = prefix
-          ? `${prefix}${cfg.embeddingModel}`
-          : cfg.embeddingModel;
+        state.embeddingAliases[formatKey] = prefix ? `${prefix}${cfg.embeddingModel}` : cfg.embeddingModel;
       }
     }
 
-    state.apiToken = await mintApiToken(
-      tokensPage,
-      page,
-      'sdk-compat-api-token',
-      'scope_token_user'
-    );
+    state.apiToken = await mintApiToken(tokensPage, page, 'sdk-compat-api-token', 'scope_token_user');
     expect(state.apiToken).toMatch(/^bodhiapp_/);
 
     // OAuth app token via full PKCE flow (same pattern as api-live-upstream.spec.mjs).
@@ -151,7 +137,9 @@ test.describe('SDK compatibility — provider endpoints × auth tokens', () => {
     await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
     const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-    await reviewPage.approve();
+    // Grant all models so the exchanged app token can infer (consent defaults to
+    // Specific/none under fail-closed grants).
+    await reviewPage.approveWithGrants({ allModels: true });
 
     await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
     await app.accessCallback.waitForLoaded();
@@ -168,7 +156,7 @@ test.describe('SDK compatibility — provider endpoints × auth tokens', () => {
     for (const auth of AUTH_METHODS) {
       test.describe(`${format} × ${auth}`, () => {
         const tokenFor = () => (auth === 'apiToken' ? state.apiToken : state.appToken);
-        const adapterFor = (serverUrl) => buildSdkAdapter(format, serverUrl, tokenFor(), state);
+        const adapterFor = serverUrl => buildSdkAdapter(format, serverUrl, tokenFor(), state);
 
         test('non-streaming chat', async ({ sharedServerUrl }) => {
           const out = await adapterFor(sharedServerUrl).chat({ stream: false });
@@ -192,7 +180,7 @@ test.describe('SDK compatibility — provider endpoints × auth tokens', () => {
           const effective = state.models[format].effectiveModel;
           // Providers return models as "models/<id>" (Gemini) or "<id>" (OpenAI/Anthropic).
           // Accept either form so the assertion stays SDK-agnostic.
-          expect(ids.some((id) => id === effective || id.endsWith(`/${effective}`))).toBe(true);
+          expect(ids.some(id => id === effective || id.endsWith(`/${effective}`))).toBe(true);
         });
 
         if (EMBED_SUPPORTED.has(format)) {
