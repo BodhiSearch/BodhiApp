@@ -124,8 +124,29 @@ npm install @bodhiapp/ts-client
 2. **Create New Token**: Click "Create Token"
 3. **Token Configuration**:
    - **Name**: Descriptive name (e.g., "Development Token")
-   - **Scope**: Select appropriate permissions (start with `scope_token_power_user`)
+   - **Scope**: `scope_token_user` or `scope_token_power_user` (these are the only two scopes; scope governs role/privilege, not which models are reachable). A `User`-role caller may only mint `scope_token_user`.
+   - **Grants**: Grant the models this token may use. Tokens are **fail-closed** — a token created without grants can reach **no** models and its model lists come back empty. Grant **all models** (present and future) or select **specific** aliases.
 4. **Save Token**: Copy the generated token immediately (it won't be shown again)
+
+> **Grants are set at creation and are immutable.** Editing a token changes only its name and status — to change grants you must delete the token and mint a new one. See [Authentication](authentication.md) for the full grant model.
+
+If you create tokens programmatically via `POST /bodhi/v1/tokens`, pass the `grants` envelope (omitting it yields the deny-everything default):
+
+```json
+{
+  "name": "Development Token",
+  "scope": "scope_token_power_user",
+  "grants": {
+    "version": "1",
+    "models_list": true,
+    "models": { "type": "all" },
+    "mcps_list": false,
+    "mcps": { "type": "specific", "ids": [] }
+  }
+}
+```
+
+To restrict the token to named aliases instead, use `"models": { "type": "specific", "ids": ["llama3:instruct"] }`.
 
 ### Test API Access
 ```typescript
@@ -167,6 +188,8 @@ npx tsx test-api.ts
 ```
 
 ## Step 5: Make Your First Chat Request
+
+> **Inference requires the model to be granted.** The token you use below must carry a `models` grant covering the alias in the request (either `{"type":"all"}` or a `specific` list that includes it). If the model is not granted, inference returns **403** `token_grant_error-model_forbidden` and the model will be absent from `/v1/models`. If you hit this, delete the token and re-mint it with the model granted (grants are immutable).
 
 ### Using OpenAI-Compatible Endpoint
 ```typescript
@@ -263,9 +286,14 @@ chatWithOpenAISDK();
 **Issue**: API calls return 401 Unauthorized
 **Solutions**:
 - Verify token is correctly copied (no extra spaces)
-- Check token hasn't expired or been deactivated
+- Check token hasn't been deactivated
 - Ensure proper `Authorization: Bearer <token>` header format
-- Verify token has appropriate scope permissions
+- Verify the token scope is `scope_token_user` or `scope_token_power_user`
+
+**Issue**: Inference returns 403 `token_grant_error-model_forbidden`, or a model is missing from `/v1/models`
+**Solutions**:
+- The token lacks a grant for that model — tokens are fail-closed. Check the token's grants in **Settings → API Tokens**
+- Grants are immutable: delete the token and re-mint it with the model granted (`{"type":"all"}` or a `specific` list including the alias)
 
 ### Model Download Failures
 **Issue**: Models fail to download during setup

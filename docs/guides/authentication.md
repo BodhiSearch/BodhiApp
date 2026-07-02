@@ -81,7 +81,9 @@ User
 
 ## Token Scope System
 
-API tokens use a scope-based permission system that parallels the role hierarchy:
+API tokens carry a **scope** that governs their role/privilege, and a separate **grant envelope** that governs which models and MCPs they may actually reach. The scope parallels the role hierarchy; it no longer decides resource access on its own.
+
+> **Scope-only access is superseded.** A token's `scope` sets its role (what *kinds* of operations it may perform), while its per-resource `grants` decide *which* models and MCPs it can list and use. Grants are **fail-closed**: a token created without explicit `grants` (or with a corrupt stored envelope) denies everything. See [Token Grants](#token-grants).
 
 ### Available Token Scopes
 
@@ -109,7 +111,7 @@ const scopeHierarchy = {
 };
 ```
 
-**Note**: Currently, only `scope_token_user` and `scope_token_power_user` are actively used in the API endpoints. Higher-level token scopes (`scope_token_manager`, `scope_token_admin`) are defined but not currently assigned to specific endpoints.
+**Note**: There are exactly two token scopes — `scope_token_user` and `scope_token_power_user`. A `User`-role caller may only mint `scope_token_user`; `PowerUser` and above may mint either. Token scope governs role/privilege; which specific models and MCPs a token can reach is controlled independently by its [grants](#token-grants).
 
 ## API Token Management
 
@@ -121,19 +123,100 @@ const scopeHierarchy = {
 3. **Configure Token**:
    - **Name**: Descriptive identifier (e.g., "Production API", "Development Scripts")
    - **Scope**: Select appropriate permission level
+   - **Grants**: Choose which models and MCPs the token may access (omit for the deny-everything default)
 4. **Save Token**: Copy the generated token immediately (shown only once)
 
-#### Token Configuration Options
+Token management endpoints are **session-only** — API tokens cannot create, list, update, or delete tokens (this prevents privilege escalation). A `scope_token_user` caller may only mint `scope_token_user` tokens; PowerUser+ may mint `user` or `power_user`.
+
+#### Create Request (`POST /bodhi/v1/tokens`)
+
+The request body carries `name` (optional), `scope`, and an optional `grants` envelope:
 
 ```json
 {
   "name": "My API Token",
   "scope": "scope_token_power_user",
-  "created_at": "2024-01-15T10:30:00Z",
-  "last_used": "2024-01-15T15:45:00Z",
-  "status": "active"
+  "grants": {
+    "version": "1",
+    "models_list": false,
+    "models": { "type": "specific", "ids": ["llama3:instruct"] },
+    "mcps_list": false,
+    "mcps": { "type": "all" }
+  }
 }
 ```
+
+Omitting `grants` yields the **deny-everything** default (`models` and `mcps` both `{"type":"specific","ids":[]}`). See [Token Grants](#token-grants) for the envelope shape.
+
+The response returns the raw secret **once** (with `Cache-Control: no-store`):
+
+```json
+{
+  "token": "bodhiapp_<random>.<client_id>"
+}
+```
+
+#### Token Detail (list response)
+
+`GET /bodhi/v1/tokens` returns token records — the raw secret is **never** returned again, only `token_prefix`:
+
+```json
+{
+  "id": "…",
+  "user_id": "…",
+  "name": "My API Token",
+  "token_prefix": "bodhiapp_ab…",
+  "scopes": "scope_token_power_user",
+  "status": "active",
+  "grants": {
+    "version": "1",
+    "models_list": false,
+    "models": { "type": "specific", "ids": ["llama3:instruct"] },
+    "mcps_list": false,
+    "mcps": { "type": "all" }
+  },
+  "last_used_at": "2024-01-15T15:45:00Z",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:00Z"
+}
+```
+
+### Token Grants
+
+A token's `grants` are a versioned `TokenGrants` v1 envelope — a **flat object** with a mandatory `"version":"1"` tag:
+
+```json
+{
+  "version": "1",
+  "models_list": false,
+  "models": { "type": "specific", "ids": [] },
+  "mcps_list": false,
+  "mcps": { "type": "specific", "ids": [] }
+}
+```
+
+- **`models` / `mcps`** are grants of shape `{"type":"all"}` (wildcard, includes future resources) or `{"type":"specific","ids":[...]}` (explicit allowlist). Both **default to `specific`/empty ⇒ deny**; there is no `none` variant. All-access must be explicit `{"type":"all"}`.
+- **`models_list` / `mcps_list`** toggle full-catalog listing. A resource is listable if the toggle is on **or** it is individually granted; an individually granted resource is usable for inference even when the full catalog isn't listable.
+- The example above is the canonical **deny-everything** default applied when `grants` is omitted or the stored envelope is corrupt (fail-closed).
+
+**Grants are immutable after creation.** They are set only at create time — `PUT /bodhi/v1/tokens/{id}` changes only `name` and `status`. To change what a token can access, **delete it and mint a new one**.
+
+#### Updating a Token (`PUT /bodhi/v1/tokens/{id}`)
+
+The update body is limited to `name` and `status` — it has **no `grants` field**:
+
+```json
+{
+  "name": "Renamed Token",
+  "status": "inactive"
+}
+```
+
+Returns the updated `TokenDetail`; **404** (`entity_error-not_found`) if the id is missing or not owned.
+
+#### Deleting a Token (`DELETE /bodhi/v1/tokens/{id}`)
+
+This is a **hard delete** — the row is physically removed inside the tenant transaction and the token is revoked immediately (not a soft status flip). Returns **204 No Content**; **404** (`entity_error-not_found`) for a missing or unowned id.
 
 ### Using API Tokens
 
@@ -206,6 +289,28 @@ class TokenManager {
 }
 ```
 
+### Inspecting the Current Principal (`/bodhi/v1/user`)
+
+`GET /bodhi/v1/user` reflects the calling principal. For token-bearing callers (API tokens and external apps) it includes an `access` envelope describing the effective per-resource grants; the envelope is **omitted** for sessions and anonymous callers.
+
+```json
+{
+  "auth_status": "api_token",
+  "role": "scope_token_user",
+  "access": {
+    "models": { "type": "specific", "list": false, "ids": ["alias-1"] },
+    "mcps":   { "type": "all",      "list": true }
+  }
+}
+```
+
+Each of `access.models` / `access.mcps` is a `ResourceAccess` value with exactly two shapes (there is **no `none` variant** — deny is `{"type":"specific","list":false,"ids":[]}`):
+
+- `{ "type": "all", "list": bool }`
+- `{ "type": "specific", "list": bool, "ids": [...] }`
+
+`list` mirrors the token's listing toggle (whether the full catalog is discoverable). Validate a token by checking `auth_status` rather than a `logged_in` flag, and read `access` to learn what the token may reach.
+
 ## API Endpoint Authorization
 
 BodhiApp uses a multi-layered authorization system with role-based access control and token scopes. Below is the complete authorization matrix for all API endpoints:
@@ -218,6 +323,8 @@ BodhiApp uses a multi-layered authorization system with role-based access contro
 | `GET` | `/bodhi/v1/info` | App information and status |
 | `POST` | `/bodhi/v1/setup` | Initial app setup |
 | `POST` | `/bodhi/v1/logout` | User logout |
+| `POST` | `/bodhi/v1/apps/request-access` | File an app access request (external-app OAuth flow) |
+| `GET` | `/bodhi/v1/apps/access-requests/{id}` | Poll app access-request status (`?app_client_id=` match) |
 | `GET` | `/dev/secrets` | Development secrets (dev mode only) |
 | `GET` | `/dev/envs` | Environment variables (dev mode only) |
 
@@ -227,10 +334,9 @@ These endpoints work with or without authentication, providing different informa
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| `GET` | `/bodhi/v1/user` | User information | Optional |
+| `GET` | `/bodhi/v1/user` | User information (returns an `access` envelope for token-bearing callers) | Optional |
 | `POST` | `/bodhi/v1/auth/initiate` | Start OAuth flow | No |
 | `POST` | `/bodhi/v1/auth/callback` | OAuth callback | No |
-| `POST` | `/bodhi/v1/auth/request-access` | Request access | No |
 
 ### User Level Access
 
@@ -264,9 +370,10 @@ These endpoints work with or without authentication, providing different informa
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/bodhi/v1/tokens` | Create API token |
+| `POST` | `/bodhi/v1/tokens` | Create API token (with `grants`) |
 | `GET` | `/bodhi/v1/tokens` | List user's API tokens |
-| `PUT` | `/bodhi/v1/tokens/{token_id}` | Update API token |
+| `PUT` | `/bodhi/v1/tokens/{token_id}` | Update API token (name + status only; grants immutable) |
+| `DELETE` | `/bodhi/v1/tokens/{token_id}` | Delete API token (hard delete, immediate revoke, 204) |
 
 ### Admin Session-Only Access
 
@@ -280,17 +387,31 @@ These endpoints work with or without authentication, providing different informa
 
 ### Authorization Logic
 
-The authorization system follows this precedence:
+Authorization has **two independent layers**:
 
-1. **Role-based access**: Checked first, hierarchical (admin > manager > power_user > user)
-2. **Token scope access**: For API tokens, checked if role requirement not met
-3. **User scope access**: For third-party app permissions, checked if token scope not met
+1. **Role / scope gate** — establishes the caller's role (hierarchical: admin > manager > power_user > user), from the session role, the API-token `scope`, or a third-party app's user scope (`scope_user_user` / `scope_user_power_user`). This decides which *kinds* of operations the caller may perform.
+2. **Grant gate** — for token-bearing callers (API tokens and external apps), a per-resource grant envelope decides *which* models and MCPs are reachable. This layer is **fail-closed**: anything not explicitly granted is denied. Sessions and anonymous callers are unrestricted at this layer.
+
+The user scopes `scope_user_user` / `scope_user_power_user` are minted for external apps through the owner-consent flow in [App-to-BodhiApp OAuth Integration](app-to-bodhi-oauth.md), where the same grant envelopes gate model and MCP access.
+
+#### Grant Enforcement
+
+For API tokens and external apps, a resource not covered by the token's grants behaves as follows:
+
+| Surface | Ungranted behavior |
+|---|---|
+| Inference (`POST /v1/chat/completions`, `/v1/embeddings`, `/v1/responses`, `/anthropic/v1/messages`, Gemini `:{action}`) | **403** `token_grant_error-model_forbidden` |
+| MCP connect/invoke (`ANY /bodhi/v1/apps/mcps/{id}/mcp`) | **403** `token_grant_error-mcp_forbidden` |
+| Model GET (`GET /v1/models/{id}`, Anthropic/Gemini equivalents) | **404 hidden** (`model_not_found`) |
+| MCP GET (`GET /bodhi/v1/apps/mcps/{id}`) | **404 hidden** (`entity_error-not_found`) |
+| List endpoints (`GET /v1/models`, `GET /bodhi/v1/models`, `GET /bodhi/v1/apps/mcps`, …) | Ungranted resources silently omitted (no error) |
 
 **Important Notes**:
 - Session-only endpoints (token management, settings) cannot be accessed via API tokens
 - Higher roles automatically include lower role permissions
-- Token scopes `scope_token_manager` and `scope_token_admin` are defined but not currently used
-- User scopes `scope_user_manager` and `scope_user_admin` are defined but not currently used
+- Access is **not** determined by scope alone — grants gate the actual model/MCP surface, fail-closed by default
+- Token scopes are limited to `scope_token_user` and `scope_token_power_user`; user (app) scopes to `scope_user_user` and `scope_user_power_user` — there are no `manager`/`admin` variants of either
+- Role hierarchy (`Admin`/`Manager`/`PowerUser`/`User`) governs session-authenticated access; token/user *scopes* cap at power-user
 
 ## BodhiApp Settings System
 

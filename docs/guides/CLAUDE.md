@@ -6,10 +6,10 @@ Integration and usage guides for **external consumers** of BodhiApp's APIs and e
 |---|---|
 | `overview.md` | What BodhiApp is and its API compatibility layers (OpenAI/Anthropic/Responses/native) |
 | `getting-started.md` | Install, 4-step setup, first API call (`localhost:1135`) |
-| `authentication.md` | Role hierarchy, session vs API-token auth, scopes |
-| `app-to-bodhi-oauth.md` | RFC 8693 token-exchange flow for external apps (request-access, scopes) |
+| `authentication.md` | Role hierarchy, session vs API-token auth, scopes, per-resource token grants (immutable at create) |
+| `app-to-bodhi-oauth.md` | External-app access-request + owner-consent flow (draft→approve/deny/revoke), grant envelopes, internal RFC-8693 exchange |
 | `openai-api.md` | OpenAI-compatible `/v1/*` endpoints (incl. Responses `/v1/responses`) |
-| `bodhi-api.md` | Native `/bodhi/v1/*` endpoints (info, user, tokens, settings, setup) |
+| `bodhi-api.md` | Native `/bodhi/v1/*` endpoints (info, user + `access` envelope, tokens, app access-requests, settings, setup) |
 | `model-management.md` | Model files, aliases, downloads, parameter config by permission level |
 | `api-reference.md` | Quick endpoint reference + authorization matrix across all base URLs (incl. Anthropic `/anthropic/v1/*`) |
 | `error-handling.md` | Error envelope formats, codes, retry patterns |

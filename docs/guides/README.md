@@ -38,8 +38,8 @@ npm install @bodhiapp/ts-client
 
 1. **[Getting Started](getting-started.md)** - Install and set up BodhiApp
 2. **[Embedded UI Guide](embedded-ui.md)** - Learn the built-in interface
-3. **[Authentication](authentication.md)** - Understand API tokens and permissions
-4. **[App-to-BodhiApp OAuth](app-to-bodhi-oauth.md)** - External app integration guide
+3. **[Authentication](authentication.md)** - Understand API tokens and per-resource token grants
+4. **[App-to-BodhiApp OAuth](app-to-bodhi-oauth.md)** - External app access-request and owner-consent flow
 5. **[OpenAI API](openai-api.md)** - Start with familiar OpenAI-compatible endpoints
 6. **[Model Management](model-management.md)** - Download and configure models
 
@@ -52,8 +52,8 @@ npm install @bodhiapp/ts-client
 | **[Overview](overview.md)** | System architecture and key concepts | Understanding BodhiApp capabilities |
 | **[Getting Started](getting-started.md)** | Installation and initial setup | First-time users |
 | **[Embedded UI](embedded-ui.md)** | Built-in React interface guide | Users of the desktop app |
-| **[Authentication](authentication.md)** | API tokens and authorization | API developers |
-| **[App-to-BodhiApp OAuth](app-to-bodhi-oauth.md)** | External app OAuth integration | Third-party app developers |
+| **[Authentication](authentication.md)** | API tokens, authorization, and per-resource token grants | API developers |
+| **[App-to-BodhiApp OAuth](app-to-bodhi-oauth.md)** | External app access-request + owner-consent flow | Third-party app developers |
 | **[OpenAI API](openai-api.md)** | OpenAI-compatible endpoints | Existing OpenAI integrations |
 
 ### API Documentation
@@ -80,8 +80,8 @@ npm install @bodhiapp/ts-client
 ### Authentication & Security
 - **Role-based Access Control**: Admin → Manager → PowerUser → User hierarchy
 - **API Token Management**: Long-lived tokens for programmatic access
-- **OAuth2 Token Exchange**: External app integration with user consent
-- **Scope-based Permissions**: Fine-grained access control
+- **Token Grants**: Per-model and per-MCP allow-listing, set at token creation and immutable thereafter (change via delete + re-mint) — see [Authentication](authentication.md)
+- **External App Access**: Apps submit an access request; the resource owner reviews and consents (approve/deny/revoke) before any scope is minted — see [App-to-BodhiApp OAuth](app-to-bodhi-oauth.md)
 
 ### Model Management
 - **HuggingFace Integration**: Direct model downloads from repositories

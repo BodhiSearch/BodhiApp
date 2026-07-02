@@ -8,9 +8,10 @@ The BodhiApp native API provides:
 
 - **System Information**: Application status, version, and health checks
 - **User Management**: User information and authentication status
-- **API Token Management**: Create, list, and manage API tokens
+- **API Token Management**: Create, list, and manage API tokens (with per-resource grants)
 - **Settings Management**: System configuration and preferences
 - **Setup and Authentication**: Initial setup and OAuth flows
+- **Third-Party App Access**: OAuth access-request flow for external apps (owner-consented, grant-scoped)
 
 ## Authentication Requirements
 
@@ -104,36 +105,45 @@ const response = await fetch('http://localhost:1135/bodhi/v1/user', {
 const userInfo = await response.json();
 ```
 
-**Response Format (Authenticated)**:
+The response is a discriminated union on `auth_status` (`logged_out` | `logged_in` | `api_token`), wrapped in an envelope that adds optional `dashboard` and `access` fields.
+
+**Not authenticated**:
 ```json
-{
-  "logged_in": true,
-  "email": "user@example.com",
-  "role": "power_user",
-  "token_type": "bearer",
-  "role_source": "scope_token"
-}
+{ "auth_status": "logged_out" }
 ```
 
-**Response Format (Not Authenticated)**:
+**Session (logged in)**:
 ```json
 {
-  "logged_in": false,
-  "email": null,
-  "role": null,
-  "token_type": null,
-  "role_source": null
+  "auth_status": "logged_in",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
+  "username": "user@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "role": "resource_user",
+  "id_token": "<oidc-id-token>"
 }
 ```
+`first_name`, `last_name`, `role`, and `id_token` are nullable/optional. `id_token` is present only for session auth (used by the frontend to call the external reference API).
 
-**Token Types**:
-- `session`: Session-based authentication (browser cookies)
-- `bearer`: API token authentication
+**API token / external app**:
+```json
+{
+  "auth_status": "api_token",
+  "role": "scope_token_user",
+  "access": {
+    "models": { "type": "specific", "list": false, "ids": ["alias-1"] },
+    "mcps":   { "type": "all",      "list": true }
+  }
+}
+```
+The `api_token` core body carries only `auth_status` + `role`. The effective per-resource grant is reflected in the separate envelope field **`access`** (`ResourceAccessInfo` = `{ models: ResourceAccess, mcps: ResourceAccess }`). `access` is present only for token-bearing principals (API token or bound external app) and omitted for sessions/anonymous.
 
-**Role Sources**:
-- `role`: Direct user role assignment
-- `scope_token`: Role derived from token scope
-- `scope_user`: Role derived from user scope
+**`ResourceAccess`** is discriminated on `type` with exactly two arms — there is no `none` variant:
+- `{ "type": "all", "list": bool }` — every current and future resource.
+- `{ "type": "specific", "list": bool, "ids": [...] }` — only the listed ids (empty ⇒ no access, the deny default).
+
+`list` mirrors the token's `list_*` toggle (whether it may enumerate the full catalog).
 
 **Use Cases**:
 - User profile display
@@ -160,18 +170,29 @@ const response = await fetch('http://localhost:1135/bodhi/v1/tokens', {
 const tokens = await response.json();
 ```
 
-**Response Format**:
+**Query Params**: `page`, `page_size` (cap 100). Returns the caller's own tokens only.
+
+**Response Format** (`PaginatedTokenResponse` of `TokenDetail`):
 ```json
 {
   "data": [
     {
       "id": "token-123",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
       "name": "Development Token",
-      "scope": "scope_token_power_user",
+      "token_prefix": "bodhiapp_abc12",
+      "scopes": "scope_token_power_user",
       "status": "active",
+      "grants": {
+        "version": "1",
+        "models_list": false,
+        "models": { "type": "specific", "ids": ["alias-1"] },
+        "mcps_list": false,
+        "mcps": { "type": "specific", "ids": [] }
+      },
+      "last_used_at": "2024-01-15T14:20:00Z",
       "created_at": "2024-01-15T10:30:00Z",
-      "last_used": "2024-01-15T14:20:00Z",
-      "expires_at": null
+      "updated_at": "2024-01-15T10:30:00Z"
     }
   ],
   "total": 1,
@@ -179,6 +200,8 @@ const tokens = await response.json();
   "page_size": 30
 }
 ```
+
+The raw token is **never** returned by list — only `token_prefix`. `grants` is the full grant envelope (see [Token Grants](#token-grants) below). There is no `expires_at` field; `last_used_at` is optional.
 
 ### Create API Token
 
@@ -192,7 +215,13 @@ Create a new API token for programmatic access.
 const tokenData = {
   name: 'My API Token',
   scope: 'scope_token_power_user',
-  expires_at: null // null for non-expiring token
+  grants: {
+    version: '1',
+    models_list: false,
+    models: { type: 'specific', ids: ['alias-1'] },
+    mcps_list: false,
+    mcps: { type: 'specific', ids: [] }
+  }
 };
 
 const response = await fetch('http://localhost:1135/bodhi/v1/tokens', {
@@ -205,33 +234,37 @@ const response = await fetch('http://localhost:1135/bodhi/v1/tokens', {
 const newToken = await response.json();
 ```
 
-**Request Format**:
+**Request Format** (`CreateTokenRequest`):
 ```json
 {
   "name": "My API Token",
   "scope": "scope_token_power_user",
-  "expires_at": "2024-12-31T23:59:59Z"
+  "grants": {
+    "version": "1",
+    "models_list": false,
+    "models": { "type": "specific", "ids": ["alias-1"] },
+    "mcps_list": false,
+    "mcps": { "type": "specific", "ids": [] }
+  }
 }
 ```
+- `name` (optional, 0–100 chars) and `scope` are the only required inputs; `grants` is optional. There is no `expires_at`.
+- `grants` omitted ⇒ **deny-everything** default (fail-closed): the token can reach no models or MCPs until grants are set. See [Token Grants](#token-grants).
 
-**Response Format**:
+**Response Format** — **201 Created**, `Cache-Control: no-store`:
 ```json
 {
-  "id": "token-456",
-  "name": "My API Token",
-  "scope": "scope_token_power_user",
-  "status": "active",
-  "token": "sk-bodhi-abc123...", // Only shown once!
-  "created_at": "2024-01-15T15:00:00Z",
-  "expires_at": "2024-12-31T23:59:59Z"
+  "token": "bodhiapp_<base64url-random>.<client_id>"
 }
 ```
 
-**Available Scopes**:
+**Available Scopes** (`TokenScope`):
 - `scope_token_user`: Basic API access
 - `scope_token_power_user`: Advanced API access including model management
 
-**Important**: The actual token value is only returned once during creation. Store it securely!
+**Privilege ceiling**: a caller with `ResourceRole::User` may mint only `scope_token_user`; requesting a higher scope returns **403** (`TokenRouteError::PrivilegeEscalation`). PowerUser+ callers may mint `scope_token_user` or `scope_token_power_user`.
+
+**Important**: The raw token (format `bodhiapp_<random>.<client_id>`) is returned **only once** at creation and never again. Store it securely!
 
 ### Update API Token
 
@@ -257,11 +290,57 @@ const response = await fetch('http://localhost:1135/bodhi/v1/tokens/token-123', 
 const updatedToken = await response.json();
 ```
 
-**Updatable Fields**:
-- `name`: Token display name
+**Request Format** (`UpdateTokenRequest`) — **only** these two fields:
+```json
+{ "name": "Updated Token Name", "status": "inactive" }
+```
+- `name`: 3–100 chars
 - `status`: `active` or `inactive`
 
-**Note**: Token scope and expiration cannot be modified after creation.
+Returns **200** with the updated `TokenDetail`, or **404** (`entity_error-not_found`) if the id is absent or not owned by the caller.
+
+**Note**: Scope and **grants are immutable** after creation. To change grants, delete the token and mint a new one. There is no expiration.
+
+### Delete API Token
+
+#### Endpoint: `DELETE /bodhi/v1/tokens/{token_id}`
+
+Permanently delete (hard-delete) an API token, immediately revoking it.
+
+**Authentication**: PowerUser (session-only)
+
+```typescript
+const response = await fetch('http://localhost:1135/bodhi/v1/tokens/token-123', {
+  method: 'DELETE',
+  credentials: 'include'
+});
+```
+
+This is a physical row delete (not a soft-delete or status flip) inside the tenant transaction; the token stops working immediately.
+
+- **204** No Content on success.
+- **404** (`entity_error-not_found`) if the id is missing or not owned by the caller.
+
+## Token Grants
+
+API tokens carry a per-resource **grant envelope** (`TokenGrants`) that gates which models and MCPs the token can reach — independent of its `scope` (which governs role/privilege only). Grants are set at create time and are immutable thereafter.
+
+The envelope is versioned; the `version` tag is mandatory:
+```json
+{
+  "version": "1",
+  "models_list": false,
+  "models": { "type": "specific", "ids": [] },
+  "mcps_list": false,
+  "mcps": { "type": "specific", "ids": [] }
+}
+```
+This exact value is the canonical **deny-everything default** applied when `grants` is omitted at create.
+
+- `models` / `mcps` (`ModelGrant` / `McpGrant`): `{ "type": "all" }` (wildcard, includes future resources) or `{ "type": "specific", "ids": [...] }` (explicit allowlist; empty ⇒ no access). Default is empty `specific` (deny). There is **no `none` variant**.
+- `models_list` / `mcps_list`: listing toggles. OFF ⇒ discovery endpoints return only the individually granted resources; ON ⇒ full catalog is listable including future resources. An individually granted resource is usable for inference even when not in the full catalog listing.
+
+**Enforcement** (denied behavior): inference on a non-granted model/MCP returns **403** (`token_grant_error-model_forbidden` / `token_grant_error-mcp_forbidden`); a direct GET of a non-listable resource returns **404** with existence hidden; list endpoints silently omit non-granted resources. Sessions are unrestricted.
 
 ## Settings Management
 
@@ -443,6 +522,27 @@ const response = await fetch('http://localhost:1135/bodhi/v1/logout', {
   credentials: 'include'
 });
 ```
+
+## Third-Party App Access (OAuth Access-Request Flow)
+
+External apps obtain scoped, owner-consented access via a single-step access-request flow: the app creates a Draft request, the resource owner reviews and approves it (choosing model + MCP grants and a role), a dynamic scope `scope_access_request:<id>` is minted, and the app then authenticates with Keycloak. On each call the server internally performs an RFC-8693 token exchange (there is **no** BodhiApp token-exchange/upgrade endpoint). For the full end-to-end narrative, grant-envelope semantics, and app-side integration, see **[app-to-bodhi-oauth.md](app-to-bodhi-oauth.md)**.
+
+Endpoint reference:
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | `/bodhi/v1/apps/request-access` | None | App creates Draft access request → `201 {id, status:"draft", review_url}` |
+| GET | `/bodhi/v1/apps/access-requests/{id}?app_client_id=` | None | App polls status (client mismatch hidden as 404) |
+| GET | `/bodhi/v1/access-requests/{id}/review` | Session | Owner loads review detail (`requested`, matched `mcps_info`, `auth_endpoint`) |
+| PUT | `/bodhi/v1/access-requests/{id}/approve` | Session (≥ User) | Owner approves with `{approved_role, approved}` → `200 {status:"approved", access_request_scope}` |
+| POST | `/bodhi/v1/access-requests/{id}/deny` | Session | Owner denies → `200 {status:"denied"}` |
+| GET | `/bodhi/v1/access-requests/apps` | Session | Owner lists their granted apps (with `ResourceAccess`) |
+| POST | `/bodhi/v1/access-requests/{id}/revoke` | Session | Owner revokes (immediate; evicts cached exchange) |
+| GET | `/bodhi/v1/apps/mcps` | OAuth app (User) | List MCP instances the app may reach (grant-pruned) |
+| GET | `/bodhi/v1/apps/mcps/{id}` | OAuth app (User) | Get one MCP instance (404 if not grant-listable) |
+| ANY | `/bodhi/v1/apps/mcps/{id}/mcp` | OAuth app (User) | Transparent MCP proxy (403 `token_grant_error-mcp_forbidden` if not granted) |
+
+> These `/access-requests/{id}/...` paths belong to the **app** flow. A separate **user-role** flow (`POST /bodhi/v1/access-requests`, `/access-requests/pending`, `/access-requests/{id}/reject`) is unrelated and not part of app integration.
 
 ## Development Endpoints
 

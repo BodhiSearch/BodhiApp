@@ -7,6 +7,7 @@ Quick reference guide for all BodhiApp API endpoints, including authentication r
 - **BodhiApp Native API**: `http://localhost:1135/bodhi/v1/`
 - **OpenAI Compatible API**: `http://localhost:1135/v1/`
 - **Anthropic Compatible API**: `http://localhost:1135/anthropic/v1/`
+- **Gemini Compatible API**: `http://localhost:1135/v1beta/`
 - **System Endpoints**: `http://localhost:1135/`
 
 ## Authentication
@@ -14,9 +15,11 @@ Quick reference guide for all BodhiApp API endpoints, including authentication r
 All API endpoints (except public ones) require authentication:
 
 ```http
-Authorization: Bearer sk-bodhi-your-api-token-here
+Authorization: Bearer bodhiapp_your-api-token-here.your-client-id
 Content-Type: application/json
 ```
+
+API tokens have the format `bodhiapp_<random>.<client_id>` and are shown only once at creation.
 
 ## System Endpoints
 
@@ -39,7 +42,7 @@ GET /bodhi/v1/info
 GET /bodhi/v1/user
 ```
 **Auth**: Optional  
-**Response**: User info with authentication status
+**Response**: Discriminated union on `auth_status` (`logged_out` | `logged_in` | `api_token`). Session responses carry `user_id`, `username`, `first_name?`, `last_name?`, `role?`, `id_token?`; token responses carry `role` plus an `access` envelope field (`ResourceAccessInfo` = `{ models, mcps }` of `ResourceAccess`) reflecting effective grants. `access` is present only for token-bearing principals.
 
 ## OpenAI Compatible API
 
@@ -111,6 +114,23 @@ GET /anthropic/v1/models
 ### Get Model
 ```http
 GET /anthropic/v1/models/{model_id}
+```
+**Auth**: User level
+
+## Gemini Compatible API
+
+Google Gemini generateContent format, served under the `/v1beta/` base URL. The model and action are encoded in the path (e.g. `:generateContent`, `:streamGenerateContent`).
+
+### Generate Content
+```http
+POST /v1beta/models/{model}:{action}
+```
+**Auth**: User level
+
+### List / Get Models
+```http
+GET /v1beta/models
+GET /v1beta/models/{model_id}
 ```
 **Auth**: User level
 
@@ -192,21 +212,35 @@ GET /bodhi/v1/tokens
 POST /bodhi/v1/tokens
 ```
 **Auth**: PowerUser (session only)  
-**Request**:
+**Request** (`CreateTokenRequest`): `name` optional (0–100), `scope` required, `grants` optional (omitted ⇒ deny-everything default):
 ```json
 {
   "name": "My Token",
   "scope": "scope_token_power_user",
-  "expires_at": "2024-12-31T23:59:59Z"
+  "grants": {
+    "version": "1",
+    "models_list": false,
+    "models": { "type": "specific", "ids": ["alias-1"] },
+    "mcps_list": false,
+    "mcps": { "type": "specific", "ids": [] }
+  }
 }
 ```
+**Response**: **201**, `Cache-Control: no-store`, `{ "token": "bodhiapp_<random>.<client_id>" }` — shown once. A `User`-scoped caller may mint only `scope_token_user` (else 403).
 
 #### Update API Token
 ```http
 PUT /bodhi/v1/tokens/{token_id}
 ```
 **Auth**: PowerUser (session only)  
-**Request**: `{"name": "Updated Name", "status": "inactive"}`
+**Request**: `{"name": "Updated Name", "status": "inactive"}` (only `name` + `status`; **grants are immutable** — delete + re-mint to change them)
+
+#### Delete API Token
+```http
+DELETE /bodhi/v1/tokens/{token_id}
+```
+**Auth**: PowerUser (session only)  
+Hard-deletes the token, revoking it immediately. **204** on success; **404** (`entity_error-not_found`) for an unknown/unowned id.
 
 ### Settings Management
 
@@ -266,14 +300,18 @@ POST /bodhi/v1/setup
 | `/bodhi/v1/info` | GET | None | App information |
 | `/bodhi/v1/user` | GET | Optional | User information |
 | `/v1/models` | GET | User | List OpenAI models |
-| `/v1/chat/completions` | POST | User | OpenAI chat |
-| `/v1/responses` | POST | User | Create response |
+| `/v1/chat/completions` | POST | User | OpenAI chat (grant-guarded) |
+| `/v1/embeddings` | POST | User | OpenAI embeddings (grant-guarded) |
+| `/v1/responses` | POST | User | Create response (grant-guarded) |
 | `/v1/responses/{id}` | GET/DELETE | User | Get/delete response |
 | `/v1/responses/{id}/cancel` | POST | User | Cancel response |
 | `/v1/responses/{id}/input_items` | GET | User | List input items |
-| `/anthropic/v1/messages` | POST | User | Anthropic message (also `/v1/messages`) |
+| `/anthropic/v1/messages` | POST | User | Anthropic message (also `/v1/messages`, grant-guarded) |
 | `/anthropic/v1/models` | GET | User | List Anthropic models |
 | `/anthropic/v1/models/{id}` | GET | User | Get Anthropic model |
+| `/v1beta/models` | GET | User | List Gemini models |
+| `/v1beta/models/{id}` | GET | User | Get Gemini model |
+| `/v1beta/models/{model}:{action}` | POST | User | Gemini generateContent (grant-guarded) |
 | `/bodhi/v1/models` | GET | User | List model aliases |
 | `/bodhi/v1/models/{id}` | GET | User | Get model alias |
 | `/bodhi/v1/modelfiles` | GET | User | List model files |
@@ -283,10 +321,23 @@ POST /bodhi/v1/setup
 | `/bodhi/v1/modelfiles/pull/{id}` | GET | PowerUser | Download status |
 | `/bodhi/v1/tokens` | GET | PowerUser (session) | List tokens |
 | `/bodhi/v1/tokens` | POST | PowerUser (session) | Create token |
-| `/bodhi/v1/tokens/{id}` | PUT | PowerUser (session) | Update token |
+| `/bodhi/v1/tokens/{id}` | PUT | PowerUser (session) | Update token (name + status only) |
+| `/bodhi/v1/tokens/{id}` | DELETE | PowerUser (session) | Delete token (hard delete, 204) |
 | `/bodhi/v1/settings` | GET | Admin (session) | List settings |
 | `/bodhi/v1/settings/{key}` | PUT | Admin (session) | Update setting |
 | `/bodhi/v1/settings/{key}` | DELETE | Admin (session) | Delete setting |
+| `/bodhi/v1/apps/request-access` | POST | None | App creates access request |
+| `/bodhi/v1/apps/access-requests/{id}` | GET | None | App polls request status |
+| `/bodhi/v1/access-requests/{id}/review` | GET | User (session) | Owner reviews request |
+| `/bodhi/v1/access-requests/{id}/approve` | PUT | User (session) | Owner approves (grants + role) |
+| `/bodhi/v1/access-requests/{id}/deny` | POST | User (session) | Owner denies request |
+| `/bodhi/v1/access-requests/apps` | GET | User (session) | Owner lists granted apps |
+| `/bodhi/v1/access-requests/{id}/revoke` | POST | User (session) | Owner revokes app access |
+| `/bodhi/v1/apps/mcps` | GET | OAuth app (User) | List grant-listable MCP instances |
+| `/bodhi/v1/apps/mcps/{id}` | GET | OAuth app (User) | Get MCP instance (404 if not listable) |
+| `/bodhi/v1/apps/mcps/{id}/mcp` | ANY | OAuth app (User) | MCP proxy (403 if not granted) |
+
+App-flow endpoints implement the third-party OAuth access-request flow; see **[app-to-bodhi-oauth.md](app-to-bodhi-oauth.md)**.
 
 ## Request/Response Formats
 
@@ -420,6 +471,12 @@ Bodhi management endpoints (everything except the `/v1/*` OpenAI-compatible rout
 ### Resource Errors
 - `alias_not_found`: Model alias not found
 - `entity_error-not_found`: Generic resource not found
+
+### Grant / Access Errors
+- `token_grant_error-model_forbidden` (403): Token/app lacks access to the requested model
+- `token_grant_error-mcp_forbidden` (403): Token/app lacks access to the requested MCP
+
+> **404-hidden**: a direct GET of a model or MCP that the token/app is not granted returns **404** (`entity_error-not_found` / `model_not_found` / `alias_not_found`) rather than 403 — the resource's existence is hidden. List endpoints silently omit non-granted resources. Only inference/connect attempts surface an explicit **403** `token_grant_error-*`.
 
 ### System Errors
 - `internal_server_error`: Server error

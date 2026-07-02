@@ -62,7 +62,7 @@ Prefer reading `params` when available; fall back to `JSON.parse(param)` for Ope
 | `validation_error` | 400 | Request validation failed | Invalid field values, missing required fields |
 | `invalid_request_error` | 400 | Malformed or invalid request | Invalid JSON, wrong content type, malformed data |
 | `authentication_error` | 401 | Authentication required or failed | Missing/invalid API token, expired session |
-| `forbidden_error` | 403 | Insufficient permissions | User lacks required role/scope for operation |
+| `forbidden_error` | 403 | Insufficient permissions | User lacks required role/scope, **or** a token/external-app caller lacks a grant for the requested model or MCP |
 | `not_found_error` | 404 | Resource not found | Model alias not found, endpoint doesn't exist |
 | `internal_server_error` | 500 | Server-side error | Database errors, file system issues, service failures |
 | `service_unavailable` | 503 | Service temporarily unavailable | Model loading, system maintenance, resource exhaustion |
@@ -140,6 +140,68 @@ const headers = {
 - Use token with higher scope (`scope_token_power_user` vs `scope_token_user`)
 - Use session authentication for admin operations
 - Contact admin to upgrade user role
+
+#### Model Grant Denied
+
+Returned when a token or external-app caller runs inference (`/v1/chat/completions`, `/v1/embeddings`, `/v1/responses`, `/anthropic/v1/messages`, Gemini `generateContent`) against a model outside its grant:
+
+```json
+{
+  "error": {
+    "message": "This token does not have access to model 'llama3:instruct'.",
+    "type": "forbidden_error",
+    "code": "token_grant_error-model_forbidden"
+  }
+}
+```
+
+**Causes**:
+- The caller's grant envelope does not include the requested model
+- Access model changed: grants now gate inference per-model, independent of scope
+
+**Solutions**:
+- Grant the model when minting the token, or re-mint with a broader grant (grants are immutable after creation — delete and re-create)
+- For external apps, ask the resource owner to approve the model in the access request
+
+See [Authentication](authentication.md) and [App-to-BodhiApp OAuth](app-to-bodhi-oauth.md) for how grant envelopes are defined and reflected via `GET /bodhi/v1/user`.
+
+#### MCP Grant Denied
+
+Returned when a token or external-app caller connects to or invokes an MCP instance (`ANY /bodhi/v1/apps/mcps/{id}/mcp`) outside its grant:
+
+```json
+{
+  "error": {
+    "message": "This token does not have access to MCP 'instance-uuid'.",
+    "type": "forbidden_error",
+    "code": "token_grant_error-mcp_forbidden"
+  }
+}
+```
+
+**Solutions**:
+- Grant the MCP instance when minting the token, or (external apps) have the owner approve the MCP server in the access request.
+
+#### 403 vs 404: existence hiding
+
+Grant enforcement deliberately splits denial behavior so the grant boundary does not leak which resources exist:
+
+- **Inference / connect on an ungranted resource → `403`** (`token_grant_error-model_forbidden` / `token_grant_error-mcp_forbidden`). The caller already named a resource, so the denial is explicit.
+- **Direct `GET` of an ungranted model or MCP → `404` (hidden)**, not `403`. `GET /v1/models/{id}` returns `model_not_found`; native `GET /bodhi/v1/apps/mcps/{id}` returns `entity_error-not_found`. Ungranted resources are simply absent from list endpoints (no error).
+
+#### Access-Request & Token-Management Errors
+
+The external-app access-request flow and token endpoints add privilege-guard errors, all `403` unless noted:
+
+| Code / condition | Status | Meaning |
+|---|---|---|
+| `PrivilegeEscalation` | 403 | Approver granted a role above the requested role or above their own grantable ceiling; or a `User`-scoped caller tried to mint a `power_user` token |
+| `InsufficientPrivileges` | 403 | Approver is not a session with role ≥ User (API tokens / external apps / anonymous cannot approve access requests) |
+| `NotApproved` / `AccessRequestNotApproved` | 403 | Access request is not in the `approved` state (e.g. revoked or denied) when the app token is used |
+| `AccessTokenMissing` | 403 | Session/bearer credential absent on a create-token operation |
+| App-client mismatch | **404** | `GET /bodhi/v1/apps/access-requests/{id}` with a non-matching `app_client_id` is hidden as not-found, not `403` |
+
+Token-management endpoints (`/bodhi/v1/tokens/*`) are **session-only** — API tokens cannot manage tokens, preventing privilege escalation. See [App-to-BodhiApp OAuth](app-to-bodhi-oauth.md) for the full flow.
 
 ### Validation Errors (400)
 
@@ -649,8 +711,15 @@ async function monitorMemoryUsage() {
 - `validation_errors`: Field validation failed
 
 ### Resource Errors
-- `alias_not_found`: Model alias doesn't exist
-- `entity_error-not_found`: Generic resource not found
+- `alias_not_found`: Model alias doesn't exist (native `/bodhi/v1/*`); OpenAI surfaces `model_not_found`
+- `entity_error-not_found`: Generic resource not found — also returned (as 404) for a token update/delete against a missing/unowned token id, and for a **hidden** `GET` of an MCP instance the caller has no grant for
+
+### Grant & Access-Request Errors
+- `token_grant_error-model_forbidden`: 403 — token/external-app caller ran inference against an ungranted model
+- `token_grant_error-mcp_forbidden`: 403 — token/external-app caller connected to an ungranted MCP instance
+- `PrivilegeEscalation`: 403 — role grant/mint above the allowed ceiling
+- `InsufficientPrivileges`: 403 — non-session caller attempted to approve an access request
+- `AccessTokenMissing`: 403 — missing session/bearer credential on token creation
 
 ### System Errors
 - `internal_server_error`: Server-side error occurred

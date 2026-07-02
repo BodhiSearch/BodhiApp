@@ -211,12 +211,12 @@ The chat interface is the primary interaction point for users and includes sophi
 - **Tokens Table**: List of all created API tokens
 - **Create Token**: Generate new API tokens with specific scopes
 - **Token Details**: Name, creation date, last used, status
-- **Revoke Options**: Disable or delete unused tokens
+- **Revoke Options**: Set a token inactive (status toggle) or permanently delete it — deletion is a hard delete that immediately revokes access
 
 **Token Configuration**:
 - **Token Name**: Descriptive identifier for the token
-- **Scope Selection**: Permission levels (user, power_user, manager, admin)
-- **Expiration**: Optional token expiration dates
+- **Scope Selection**: Two scopes only — User (`scope_token_user`) or Power User (`scope_token_power_user`). A User-role caller can mint only `scope_token_user`; Power User and above can mint either.
+- **Grants**: Per-model and per-MCP allow-listing (specific ids, or all). Grants are set at creation and are immutable — editing a token changes only its name and status; to change grants, delete and re-mint.
 - **Usage Tracking**: Monitor token usage and activity
 
 ### User Management (`/ui/users/`)

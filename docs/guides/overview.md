@@ -36,13 +36,31 @@ BodhiApp bridges the gap between complex AI infrastructure and user-friendly int
 
 **Role-Based Access Control**
 - Hierarchical permission system: Admin → Manager → PowerUser → User
-- Fine-grained access control for different API endpoints
+- Roles govern privilege (what a principal may administer)
 - Support for both individual and team usage scenarios
+
+**Grants-Based Per-Resource Access (Fail-Closed)**
+- API tokens carry explicit **grants** deciding which models and MCPs they can reach — role/scope alone no longer determines resource access
+- **Fail-closed by default**: a token with no grants reaches nothing (empty model lists, `403` on inference); access must be granted explicitly, per model or wildcard
+- Grants are set at token creation and are **immutable** — change them by deleting and re-minting
+- Non-granted resources are hidden from listings; direct inference on them returns `403 token_grant_error-model_forbidden`
 
 **Flexible Authentication Modes**
 - API token-based authentication for programmatic access
 - Session-based authentication for web interface
 - Integration with bodhi-auth-server for centralized identity management
+
+### 🔗 MCP & Third-Party App Integration
+
+**MCP Support**
+- Register and proxy Model Context Protocol (MCP) servers through BodhiApp
+- Per-MCP grants gate which MCP instances a token or app may connect to (non-granted connect → `403 token_grant_error-mcp_forbidden`)
+
+**Third-Party App Integration (Owner-Approved OAuth)**
+- External apps request access via an owner-consent flow (draft → approve/deny), not a self-serve token exchange
+- The owner approves a specific role plus per-model and per-MCP grants; the app receives only what was granted
+- Access is enforced through the same fail-closed grant model and can be **revoked** at any time (revocation takes effect immediately)
+- See [App-to-Bodhi OAuth](app-to-bodhi-oauth.md) for the full flow
 
 ### 🤖 Local LLM Inference
 
@@ -190,8 +208,8 @@ const appInfo: AppInfo = await response.json();
 ### Integrated Authentication
 - **Centralized Identity**: Integration with bodhi-auth-server
 - **Multi-tenant Support**: Support for team and enterprise usage
-- **API Token Management**: Long-lived tokens for automation
-- **Permission Granularity**: Fine-grained access control
+- **API Token Management**: Long-lived tokens for automation, each scoped by immutable per-resource grants
+- **Permission Granularity**: Fail-closed, per-model/per-MCP grants — access is denied unless explicitly granted
 
 ### Hybrid Architecture
 - **Desktop Native**: Full desktop application experience

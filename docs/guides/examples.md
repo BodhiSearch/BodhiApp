@@ -12,6 +12,8 @@ The examples in this guide demonstrate:
 - **Error Handling**: Robust error recovery and retry logic
 - **Performance Optimization**: Efficient API usage patterns
 
+> **Prerequisite — grant model access to your token.** Every example below uses an API token. Tokens are **fail-closed**: the token must carry a `models` grant covering the aliases it uses (either `{"type":"all"}` or a `specific` list including them). A grantless token returns **empty** model lists and **403** `token_grant_error-model_forbidden` on inference. Grants are set at token creation and are immutable. See [Authentication](authentication.md) for the full grant model.
+
 ## Basic Chat Application
 
 ### Simple Chat Interface
@@ -806,18 +808,20 @@ function ProductionChatApp({ apiToken }: { apiToken: string }) {
 ### Error Handling
 
 1. **Specific Error Types**: Handle different error codes appropriately
-2. **Retry Logic**: Implement exponential backoff for server errors
-3. **User Feedback**: Provide clear error messages to users
-4. **Logging**: Log errors with sufficient context for debugging
-5. **Graceful Degradation**: Provide fallback behaviors
+2. **Retry Logic**: Implement exponential backoff for server errors (5xx) only
+3. **Non-Retryable Grant Errors**: Treat **403** `token_grant_error-model_forbidden` and `token_grant_error-mcp_forbidden` as permanent — do **not** retry. They mean the token lacks a grant for that resource; the fix is to re-mint the token with the grant (grants are immutable)
+4. **User Feedback**: Provide clear error messages to users
+5. **Logging**: Log errors with sufficient context for debugging
+6. **Graceful Degradation**: Provide fallback behaviors
 
 ### Security
 
 1. **Token Storage**: Store API tokens securely
-2. **Token Rotation**: Regularly rotate long-lived tokens
-3. **Input Validation**: Validate all user inputs
-4. **Error Information**: Don't expose sensitive data in error messages
-5. **Rate Limiting**: Implement client-side rate limiting
+2. **Least-Privilege Grants**: Grant a token only the models (and MCPs) it needs. Prefer a `specific` grant over `{"type":"all"}` so a leaked token exposes the minimum surface. Grants are fixed at creation — mint a fresh, scoped token per integration
+3. **Token Rotation**: Regularly rotate long-lived tokens
+4. **Input Validation**: Validate all user inputs
+5. **Error Information**: Don't expose sensitive data in error messages
+6. **Rate Limiting**: Implement client-side rate limiting
 
 ### Development Workflow
 

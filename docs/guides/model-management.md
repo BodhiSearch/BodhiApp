@@ -25,6 +25,8 @@ const headers = {
 };
 ```
 
+> **Grant-gated visibility for token/external-app callers.** Which models a caller can see and run is no longer determined by scope alone — API tokens and OAuth external apps carry a per-resource **grant envelope** (defined in [Authentication](authentication.md) and [App-to-BodhiApp OAuth](app-to-bodhi-oauth.md)). `GET /bodhi/v1/models` is **grant-filtered**: ungranted aliases are silently absent from the listing. Inference is guarded on the OpenAI/Anthropic/Gemini surfaces (`403 token_grant_error-model_forbidden` for an ungranted model). Interactive session callers (the browser UI) are unrestricted.
+
 ## Model Aliases System
 
 ### What are Model Aliases?
@@ -80,6 +82,8 @@ const response = await fetch('http://localhost:1135/bodhi/v1/models', {
 const aliases = await response.json();
 ```
 
+> This native listing keys each entry by the `alias` field and returns full alias metadata; the OpenAI-compatible `GET /v1/models` reprojects the same set as `{ id, object, ... }`. For token/external-app callers both listings are grant-filtered to the same granted subset.
+
 **Response Format**:
 ```json
 {
@@ -117,6 +121,8 @@ const response = await fetch('http://localhost:1135/bodhi/v1/models/llama3:instr
 
 const alias = await response.json();
 ```
+
+> **Nuance:** unlike the OpenAI-compatible `GET /v1/models/{id}` (which 404-hides ungranted models), this native endpoint has **no grant guard** — it resolves the local user alias directly. Grant filtering applies to the native *listing* (`GET /bodhi/v1/models`) and to all inference surfaces, but not to a direct native alias fetch.
 
 #### Create Model Alias
 

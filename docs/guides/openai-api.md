@@ -24,6 +24,8 @@ const headers = {
 };
 ```
 
+> **Per-model grants for token and external-app callers.** API tokens and OAuth external apps carry a **grant envelope** that gates which models they can list and run — access is no longer determined by scope alone. Ungranted models are hidden from `GET /v1/models`, return `404` on direct `GET /v1/models/{model_id}`, and inference against them fails with `403 token_grant_error-model_forbidden`. Interactive **session** callers (the browser UI) are unrestricted. The grant model is defined in [Authentication](authentication.md) and [App-to-BodhiApp OAuth](app-to-bodhi-oauth.md).
+
 ## Chat Completions API
 
 ### Endpoint: `POST /v1/chat/completions`
@@ -205,6 +207,8 @@ for await (const chunk of stream) {
 
 List all available models (model aliases) in OpenAI format.
 
+> For API-token and external-app callers this list is **grant-filtered**: only granted models (or the full catalog when the grant enables model listing) appear. Ungranted models are silently absent — the response below shows the subset visible to the caller, not necessarily every alias on the server. Session callers see all models.
+
 #### Basic Usage
 
 ```typescript
@@ -251,6 +255,8 @@ console.log(models.data);
 
 Get details about a specific model.
 
+> For API-token and external-app callers, an ungranted model is treated as if it does not exist: this endpoint returns `404` with code `model_not_found` rather than `403`, so the grant boundary does not leak which models exist on the server.
+
 #### Basic Usage
 
 ```typescript
@@ -291,8 +297,11 @@ BodhiApp returns OpenAI-compatible error responses:
 |-------------|------------|-------------|
 | 400 | `invalid_request_error` | Invalid request format or parameters |
 | 401 | `invalid_request_error` | Invalid or missing API token |
-| 404 | `invalid_request_error` | Model not found |
+| 403 | `token_grant_error-model_forbidden` | Token/external-app caller lacks a grant for the requested model (inference endpoints) |
+| 404 | `invalid_request_error` | Model not found (also returned for an ungranted model on `GET /v1/models/{model_id}`, as `model_not_found`) |
 | 500 | `api_error` | Internal server error |
+
+Inference endpoints — `POST /v1/chat/completions`, `POST /v1/embeddings`, and `POST /v1/responses` — return `403 token_grant_error-model_forbidden` when a token or external-app caller targets a model outside its grant. See [Error Handling](error-handling.md) for the full envelope and the 403-vs-404 existence-hiding pattern.
 
 ### Error Response Format
 
@@ -475,9 +484,10 @@ const model = modelMap['gpt-3.5-turbo'] || 'llama3:instruct';
 |----------------|------------------|-------|
 | Chat Completions | ✅ Full | Complete compatibility |
 | Streaming | ✅ Full | Server-sent events format |
+| Embeddings | ✅ Full | `POST /v1/embeddings`; grant-guarded for token/external-app callers |
+| Responses | ✅ Full | `POST /v1/responses`; grant-guarded for token/external-app callers |
 | Function Calling | ❌ Not supported | Can simulate with prompting |
 | Vision | ❌ Not supported | Text-only models |
-| Embeddings | ❌ Not supported | Chat completions only |
 | Fine-tuning | ❌ Not supported | Use model aliases for customization |
 
 ## Best Practices
