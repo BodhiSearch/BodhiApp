@@ -26,61 +26,56 @@ const McpServerCard = ({
   const validInstances = mcpInfo.instances.filter((i) => i.enabled);
 
   return (
-    <Card data-testid={`review-mcp-${mcpInfo.url}`} className="mb-3">
-      <CardContent className="pt-4 pb-4">
-        <div className="flex items-start gap-3">
+    <Card data-testid={`review-mcp-${mcpInfo.url}`} className="rounded-[9px]">
+      <CardContent className="p-3">
+        <div className="flex flex-wrap items-center gap-2">
           <Checkbox
             checked={isApproved}
             onCheckedChange={(checked) => onToggleApproval(mcpInfo.url, !!checked)}
             data-testid={`review-mcp-toggle-${mcpInfo.url}`}
-            className="mt-1"
           />
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-medium text-sm">MCP Server</span>
-              <Badge variant="outline" className="text-xs">
-                {mcpInfo.url}
-              </Badge>
-            </div>
-
-            {hasInstances && validInstances.length > 0 && isApproved && (
-              <Select
-                value={selectedInstance ?? ''}
-                onValueChange={(value) => onSelectInstance(mcpInfo.url, value)}
-                data-testid={`review-mcp-select-${mcpInfo.url}`}
-              >
-                <SelectTrigger className="w-full mt-2" data-testid={`review-mcp-select-trigger-${mcpInfo.url}`}>
-                  <SelectValue placeholder="Select an MCP instance..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {validInstances.map((instance) => (
-                    <SelectItem
-                      key={instance.id}
-                      value={instance.id}
-                      data-testid={`review-mcp-instance-option-${instance.id}`}
-                    >
-                      {instance.name} ({instance.slug})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            {!hasInstances && (
-              <Alert variant="destructive" data-testid={`review-no-mcp-instances-${mcpInfo.url}`}>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>No MCP instances configured. Create one first.</AlertDescription>
-              </Alert>
-            )}
-
-            {hasInstances && validInstances.length === 0 && (
-              <Alert variant="destructive" data-testid={`review-no-valid-mcp-instances-${mcpInfo.url}`}>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>All MCP instances are disabled. Enable an instance to approve.</AlertDescription>
-              </Alert>
-            )}
-          </div>
+          <span className="font-medium text-sm">MCP Server</span>
+          <Badge variant="outline" className="text-xs">
+            {mcpInfo.url}
+          </Badge>
         </div>
+
+        {hasInstances && validInstances.length > 0 && isApproved && (
+          <Select
+            value={selectedInstance ?? ''}
+            onValueChange={(value) => onSelectInstance(mcpInfo.url, value)}
+            data-testid={`review-mcp-select-${mcpInfo.url}`}
+          >
+            <SelectTrigger className="w-full mt-3" data-testid={`review-mcp-select-trigger-${mcpInfo.url}`}>
+              <SelectValue placeholder="Select an MCP instance..." />
+            </SelectTrigger>
+            <SelectContent>
+              {validInstances.map((instance) => (
+                <SelectItem
+                  key={instance.id}
+                  value={instance.id}
+                  data-testid={`review-mcp-instance-option-${instance.id}`}
+                >
+                  {instance.name} ({instance.slug})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {!hasInstances && (
+          <Alert variant="destructive" className="mt-3" data-testid={`review-no-mcp-instances-${mcpInfo.url}`}>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>No MCP instances configured. Create one first.</AlertDescription>
+          </Alert>
+        )}
+
+        {hasInstances && validInstances.length === 0 && (
+          <Alert variant="destructive" className="mt-3" data-testid={`review-no-valid-mcp-instances-${mcpInfo.url}`}>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>All MCP instances are disabled. Enable an instance to approve.</AlertDescription>
+          </Alert>
+        )}
       </CardContent>
     </Card>
   );

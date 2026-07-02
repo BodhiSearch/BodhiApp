@@ -346,44 +346,46 @@ const ReviewContent = () => {
           {(req.mcps_list || req.mcps_access || (reviewData.mcps_info?.length ?? 0) > 0) && (
             <section className="review-section" data-testid="review-mcps-section">
               <div className="review-section-title">Connected Tools</div>
-              {(req.mcps_list || req.mcps_access) && (
-                <GrantBlock
-                  noun="tool"
-                  showListing={req.mcps_list}
-                  showAccess={req.mcps_access}
-                  listChecked={listMcps}
-                  onListToggle={() => setListMcps((v) => !v)}
-                  listLabel="Let the app see your full list of tools"
-                  listCode="/v1/mcps"
-                  listDescription="The app can see the names of all your connected tools. It still can't use a tool unless you allow it below."
-                  listTestId="review-list-mcps-toggle"
-                  mode={mcpExtraMode}
-                  onModeChange={setMcpExtraMode}
-                  items={mcpItems}
-                  selectedIds={mcpsExtra}
-                  onToggle={(itemId) => toggleSelection(mcpsExtra, setMcpsExtra, itemId)}
-                  panelTitle="Give the app extra tools"
-                  panelSubtitle="Tools the app didn't ask for, but you can add."
-                  allLabel="All tools"
-                  allDesc="Give access to every connected tool, including ones added later."
-                  specificLabel="Specific tools"
-                  specificDesc="Choose exactly which tools the app can use."
-                  testIdPrefix="review-mcp-access"
-                  disabled={isSubmitting}
-                />
-              )}
-              {reviewData.mcps_info?.map((mcpInfo) => (
-                <McpServerCard
-                  key={mcpInfo.url}
-                  mcpInfo={mcpInfo}
-                  selectedInstance={selectedMcpInstances[mcpInfo.url]}
-                  isApproved={approvedMcps[mcpInfo.url] ?? true}
-                  onSelectInstance={(url, instanceId) =>
-                    setSelectedMcpInstances((prev) => ({ ...prev, [url]: instanceId }))
-                  }
-                  onToggleApproval={(url, approved) => setApprovedMcps((prev) => ({ ...prev, [url]: approved }))}
-                />
-              ))}
+              <div className="flex flex-col gap-3">
+                {(req.mcps_list || req.mcps_access) && (
+                  <GrantBlock
+                    noun="tool"
+                    showListing={req.mcps_list}
+                    showAccess={req.mcps_access}
+                    listChecked={listMcps}
+                    onListToggle={() => setListMcps((v) => !v)}
+                    listLabel="Let the app see your full list of tools"
+                    listCode="/v1/mcps"
+                    listDescription="The app can see the names of all your connected tools. It still can't use a tool unless you allow it below."
+                    listTestId="review-list-mcps-toggle"
+                    mode={mcpExtraMode}
+                    onModeChange={setMcpExtraMode}
+                    items={mcpItems}
+                    selectedIds={mcpsExtra}
+                    onToggle={(itemId) => toggleSelection(mcpsExtra, setMcpsExtra, itemId)}
+                    panelTitle="Give the app extra tools"
+                    panelSubtitle="Tools the app didn't ask for, but you can add."
+                    allLabel="All tools"
+                    allDesc="Give access to every connected tool, including ones added later."
+                    specificLabel="Specific tools"
+                    specificDesc="Choose exactly which tools the app can use."
+                    testIdPrefix="review-mcp-access"
+                    disabled={isSubmitting}
+                  />
+                )}
+                {reviewData.mcps_info?.map((mcpInfo) => (
+                  <McpServerCard
+                    key={mcpInfo.url}
+                    mcpInfo={mcpInfo}
+                    selectedInstance={selectedMcpInstances[mcpInfo.url]}
+                    isApproved={approvedMcps[mcpInfo.url] ?? true}
+                    onSelectInstance={(url, instanceId) =>
+                      setSelectedMcpInstances((prev) => ({ ...prev, [url]: instanceId }))
+                    }
+                    onToggleApproval={(url, approved) => setApprovedMcps((prev) => ({ ...prev, [url]: approved }))}
+                  />
+                ))}
+              </div>
             </section>
           )}
 
