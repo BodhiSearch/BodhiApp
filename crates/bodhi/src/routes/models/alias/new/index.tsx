@@ -35,6 +35,7 @@ function NewModelContent() {
           id: '',
           source: 'user',
           alias: '',
+          access: true,
           repo: search.repo || '',
           filename: search.filename || '',
           snapshot: search.snapshot || '',

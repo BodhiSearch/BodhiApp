@@ -115,7 +115,7 @@ async fn test_create_api_model_handler_success(
   assert_eq!(api_response.api_format, services::ApiFormat::OpenAI);
   assert_eq!(api_response.base_url, expected_url);
   assert!(api_response.has_api_key);
-  let model_ids: Vec<&str> = api_response.models.iter().map(|m| m.id()).collect();
+  let model_ids: Vec<&str> = api_response.models.iter().map(|m| m.model.id()).collect();
   assert_eq!(model_ids, vec!["gpt-4", "gpt-3.5-turbo"]);
   assert_eq!(api_response.prefix, None);
 

@@ -176,6 +176,7 @@ describe('ModelRouterForm', () => {
       strategy: { strategy: 'fallback', cooldown_secs: 120, max_attempts: 3, honor_retry_after: false },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      access: true,
     } as ModelRouterResponse;
     render(<ModelRouterForm mode="edit" initialData={initialData} />, { wrapper: createWrapper() });
 

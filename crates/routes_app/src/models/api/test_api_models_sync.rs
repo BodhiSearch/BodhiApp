@@ -130,7 +130,7 @@ async fn test_sync_models_handler_success(
   assert_eq!(create_response.id, sync_body.id);
   assert_eq!(OpenAI, sync_body.api_format);
   // Models should be returned without prefix - UI applies prefix
-  let model_ids: Vec<&str> = sync_body.models.iter().map(|m| m.id()).collect();
+  let model_ids: Vec<&str> = sync_body.models.iter().map(|m| m.model.id()).collect();
   assert_eq!(vec!["gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"], model_ids);
   assert_eq!(Some("fwd/".to_string()), sync_body.prefix);
   assert_eq!(true, sync_body.forward_all_with_prefix);
@@ -365,7 +365,7 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
 
   let sync_body = sync_response.json::<ApiAliasResponse>().await?;
   assert_eq!(ApiFormat::AnthropicOAuth, sync_body.api_format);
-  let model_ids: Vec<&str> = sync_body.models.iter().map(|m| m.id()).collect();
+  let model_ids: Vec<&str> = sync_body.models.iter().map(|m| m.model.id()).collect();
   assert!(model_ids.contains(&"claude-sonnet-4-5-20250929"));
   assert!(model_ids.contains(&"claude-haiku-4-5-20251001"));
 

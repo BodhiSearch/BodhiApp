@@ -107,6 +107,19 @@ test.describe('App Tokens - grants, enforcement & revoke', { tag: '@oauth' }, ()
       expect(await app.rest.getResponseStatus()).toBe(403);
     });
 
+    await test.step('Model listing shows every model (list-all on) but each with access:false', async () => {
+      // The reported bug: list-all lets a token see models it cannot invoke.
+      // `access` now makes that explicit — visible, but access:false throughout
+      // (top-level alias access and per-model access inside API aliases alike).
+      await app.rest.sendRequest({ method: 'GET', url: '/bodhi/v1/models' });
+      expect(await app.rest.getResponseStatus()).toBe(200);
+      const models = await app.rest.getResponse();
+      expect(models.data.length).toBeGreaterThan(0);
+      const serialized = JSON.stringify(models.data);
+      expect(serialized).toContain('"access":false');
+      expect(serialized).not.toContain('"access":true');
+    });
+
     // Drive the owner's management UI on a second page (shares the session
     // cookie) so the test-app page stays authenticated for the token-death check.
     const ownerPage = await page.context().newPage();
@@ -248,13 +261,27 @@ test.describe('App Tokens - grants, enforcement & revoke', { tag: '@oauth' }, ()
       expect(await app.rest.getResponseStatus()).toBe(404);
     });
 
-    await test.step('MCP listing reflects the grant: granted present, restricted hidden', async () => {
+    await test.step('MCP listing reflects the grant: granted present (access:true), restricted hidden', async () => {
       await app.rest.sendRequest({ method: 'GET', url: '/bodhi/v1/apps/mcps' });
       expect(await app.rest.getResponseStatus()).toBe(200);
       const list = await app.rest.getResponse();
       const ids = (list.mcps ?? []).map((m) => m.id);
       expect(ids).toContain(grantedMcpId);
       expect(ids).not.toContain(restrictedMcpId);
+      const grantedMcp = list.mcps.find((m) => m.id === grantedMcpId);
+      expect(grantedMcp.access).toBe(true);
+    });
+
+    await test.step('Model listing marks the granted model access:true', async () => {
+      await app.rest.sendRequest({ method: 'GET', url: '/bodhi/v1/models' });
+      expect(await app.rest.getResponseStatus()).toBe(200);
+      const models = await app.rest.getResponse();
+      // The granted model is an API model, so it lives inside an API alias's `models`.
+      const grantedModel = models.data
+        .flatMap((alias) => alias.models ?? [])
+        .find((m) => m.id === grantedModelId);
+      expect(grantedModel).toBeDefined();
+      expect(grantedModel.access).toBe(true);
     });
   });
 });

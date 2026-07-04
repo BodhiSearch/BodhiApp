@@ -102,6 +102,7 @@ describe('EditAliasPage', () => {
             alias: 'owner1/repo1:file1.gguf',
             snapshot: 'main',
             source: 'model',
+            access: true,
           },
           {
             repo: 'owner1/repo1',
@@ -109,6 +110,7 @@ describe('EditAliasPage', () => {
             alias: 'owner1/repo1:file2.gguf',
             snapshot: 'main',
             source: 'model',
+            access: true,
           },
           {
             repo: 'owner2/repo2',
@@ -116,6 +118,7 @@ describe('EditAliasPage', () => {
             alias: 'owner2/repo2:file3.gguf',
             snapshot: 'main',
             source: 'model',
+            access: true,
           },
         ],
       }),

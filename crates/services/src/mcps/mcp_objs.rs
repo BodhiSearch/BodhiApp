@@ -425,6 +425,21 @@ impl From<super::mcp_entity::McpWithServerEntity> for Mcp {
   }
 }
 
+/// `Mcp` plus the request-scoped `access` verdict (kept off the domain entity).
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpResponse {
+  #[serde(flatten)]
+  pub mcp: Mcp,
+  /// Whether the current principal may invoke (connect to) this MCP.
+  pub access: bool,
+}
+
+impl McpResponse {
+  pub fn new(mcp: Mcp, access: bool) -> Self {
+    Self { mcp, access }
+  }
+}
+
 /// Input for creating or updating an MCP instance.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct McpRequest {

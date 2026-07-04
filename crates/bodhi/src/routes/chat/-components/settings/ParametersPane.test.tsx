@@ -144,6 +144,7 @@ describe('ParametersPane', () => {
             snapshot: 'abc123',
             request_params: {},
             context_params: [],
+            access: true,
           },
           {
             alias: 'model-2',
@@ -153,6 +154,7 @@ describe('ParametersPane', () => {
             snapshot: 'abc123',
             request_params: {},
             context_params: [],
+            access: true,
           },
         ],
         total: 2,

@@ -104,7 +104,7 @@ async fn test_create_forward_all_stores_all_models(
 
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert!(result.forward_all_with_prefix);
-  let stored_ids: Vec<&str> = result.models.iter().map(|m| m.id()).collect();
+  let stored_ids: Vec<&str> = result.models.iter().map(|m| m.model.id()).collect();
   let expected_stored_ids: Vec<String> =
     expected_models.iter().map(|m| m.id().to_string()).collect();
   assert_eq!(
@@ -119,7 +119,8 @@ async fn test_create_forward_all_stores_all_models(
     .get_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &result.id)
     .await?
     .expect("alias should exist");
-  assert_eq!(result.models, alias.models.to_vec());
+  let result_models: Vec<_> = result.models.iter().map(|m| m.model.clone()).collect();
+  assert_eq!(result_models, alias.models.to_vec());
   assert_eq!(extra_headers, alias.extra_headers);
   assert_eq!(extra_body, alias.extra_body);
 
@@ -174,7 +175,8 @@ async fn test_create_non_forward_all_validates_and_filters(
 
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert!(!result.forward_all_with_prefix);
-  assert_eq!(vec![expected_model], result.models);
+  let result_models: Vec<_> = result.models.iter().map(|m| m.model.clone()).collect();
+  assert_eq!(vec![expected_model], result_models);
 
   Ok(())
 }
@@ -247,7 +249,7 @@ async fn test_update_forward_all_stores_all_models(
     .update(TEST_TENANT_ID, TEST_USER_ID, &created.id, update_form)
     .await?;
   assert!(result.forward_all_with_prefix);
-  let stored_ids: Vec<&str> = result.models.iter().map(|m| m.id()).collect();
+  let stored_ids: Vec<&str> = result.models.iter().map(|m| m.model.id()).collect();
   let expected_stored_ids: Vec<String> =
     expected_models.iter().map(|m| m.id().to_string()).collect();
   assert_eq!(
@@ -401,7 +403,7 @@ async fn test_update_non_forward_all_validates_and_filters(
     .update(TEST_TENANT_ID, TEST_USER_ID, &created.id, update_form)
     .await?;
   assert!(!result.forward_all_with_prefix);
-  let mut model_ids: Vec<&str> = result.models.iter().map(|m| m.id()).collect();
+  let mut model_ids: Vec<&str> = result.models.iter().map(|m| m.model.id()).collect();
   model_ids.sort();
   assert_eq!(vec!["model-p", "model-q"], model_ids);
 
@@ -572,7 +574,7 @@ async fn test_create_gemini_preserves_bare_name(
 
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert_eq!(1, result.models.len());
-  match &result.models[0] {
+  match &result.models[0].model {
     ApiModel::Gemini(m) => {
       assert_eq!("models/gemini-2.5-flash", m.name);
       assert_eq!("gemini-2.5-flash", m.model_id());
@@ -666,7 +668,7 @@ async fn test_update_gemini_preserves_bare_name(
     .update(TEST_TENANT_ID, TEST_USER_ID, &created.id, update_form)
     .await?;
   assert_eq!(1, result.models.len());
-  match &result.models[0] {
+  match &result.models[0].model {
     ApiModel::Gemini(m) => {
       assert_eq!("models/gemini-2.5-flash", m.name);
       assert_eq!("gemini-2.5-flash", m.model_id());
@@ -728,7 +730,7 @@ async fn test_create_openai_with_prefix_no_mutation(
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert_eq!(1, result.models.len());
   // OpenAI id must remain bare — prefix is not baked in for non-Gemini formats.
-  assert_eq!("gpt-4", result.models[0].id());
+  assert_eq!("gpt-4", result.models[0].model.id());
 
   Ok(())
 }

@@ -113,6 +113,7 @@ describe('CreateAliasPage', () => {
             snapshot: 'main',
             request_params: {},
             context_params: [],
+            access: true,
           },
           {
             source: 'user',
@@ -122,6 +123,7 @@ describe('CreateAliasPage', () => {
             snapshot: 'main',
             request_params: {},
             context_params: [],
+            access: true,
           },
           {
             source: 'user',
@@ -131,6 +133,7 @@ describe('CreateAliasPage', () => {
             snapshot: 'main',
             request_params: {},
             context_params: [],
+            access: true,
           },
         ],
         total: 3,

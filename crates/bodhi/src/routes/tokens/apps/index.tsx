@@ -170,6 +170,7 @@ export function AppTokensPageContent() {
             rows={visible}
             rowKey={(a) => a.id}
             rowTestId={(a) => `app-row-${a.id}`}
+            rowAttrs={(a) => ({ 'data-test-client-id': a.app_client_id })}
             rowLabel={(a) => `Open app ${appDisplayName(a)}`}
             activeKey={selectedId}
             onSelect={(a) => selectApp(a.id)}

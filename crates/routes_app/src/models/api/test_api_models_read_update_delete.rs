@@ -45,7 +45,10 @@ fn create_expected_response(
     api_format: services::ApiFormat::from_str(api_format).unwrap(),
     base_url: base_url.to_string(),
     has_api_key,
-    models,
+    models: models
+      .into_iter()
+      .map(|m| services::ApiModelResponse::new(m, true))
+      .collect(),
     prefix,
     forward_all_with_prefix: false,
     extra_headers: None,

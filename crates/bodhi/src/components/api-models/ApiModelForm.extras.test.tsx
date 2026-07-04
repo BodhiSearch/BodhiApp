@@ -72,7 +72,7 @@ const mockApiAliasResponse: ApiAliasResponse = {
   api_format: 'openai',
   base_url: 'https://api.openai.com/v1',
   has_api_key: true,
-  models: [{ id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' }],
+  models: [{ id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai', access: true }],
   prefix: null,
   forward_all_with_prefix: false,
   created_at: '2024-01-01T00:00:00Z',

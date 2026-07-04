@@ -14,6 +14,7 @@ export function createMockUserAlias(overrides?: Partial<UserAliasResponse>): Use
     source: 'user',
     id: 'test-uuid-1',
     alias: 'test-model',
+    access: true,
     repo: 'test-repo',
     filename: 'test-file.bin',
     snapshot: 'abc123',
@@ -33,6 +34,7 @@ export function createMockOpenAIModel(id: string, overrides?: Record<string, unk
     created: 0,
     owned_by: 'openai',
     provider: 'openai' as const,
+    access: true,
     ...overrides,
   };
 }
@@ -44,6 +46,7 @@ export function createMockAnthropicModel(id: string, overrides?: Record<string, 
     created_at: '2024-01-01T00:00:00Z',
     type: 'model' as const,
     provider: 'anthropic' as const,
+    access: true,
     ...overrides,
   };
 }
@@ -52,6 +55,7 @@ export function createMockGeminiModel(name: string, overrides?: Record<string, u
   return {
     name,
     provider: 'gemini' as const,
+    access: true,
     ...overrides,
   };
 }
@@ -76,6 +80,7 @@ export function createMockModelAlias(overrides?: Partial<ModelAliasResponse>): M
   return {
     source: 'model',
     alias: 'test-model',
+    access: true,
     repo: 'test-repo',
     filename: 'test-file.bin',
     snapshot: 'abc123',

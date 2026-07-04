@@ -207,7 +207,7 @@ pub async fn models_index(
         }
         _ => AliasResponse::from(alias.clone()),
       };
-      match local_file_key(&alias) {
+      let mut response = match local_file_key(&alias) {
         Some(key) => {
           let size = size_map.get(&key).copied().flatten();
           let metadata = metadata_map
@@ -216,7 +216,9 @@ pub async fn models_index(
           response.with_size(size).with_metadata(metadata)
         }
         None => response,
-      }
+      };
+      response.stamp_access(|id| policy.model_accessible(id));
+      response
     })
     .collect();
 
@@ -434,7 +436,7 @@ pub async fn models_show(
     .flatten()
     .map(|row| row.into());
 
-  Ok(Json(
-    UserAliasResponse::from(user_alias).with_metadata(metadata),
-  ))
+  let mut response = UserAliasResponse::from(user_alias).with_metadata(metadata);
+  response.access = auth_scope.access_policy().model_accessible(&response.alias);
+  Ok(Json(response))
 }

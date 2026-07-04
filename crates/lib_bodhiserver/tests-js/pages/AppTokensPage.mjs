@@ -26,18 +26,16 @@ export class AppTokensPage extends BasePage {
     await this.expectVisible(this.selectors.page);
   }
 
-  /** Find the row id of the first app whose visible text contains `clientId`. */
+  /**
+   * Row id for the app with `clientId`. Locating by the row's `data-test-client-id`
+   * lets Playwright auto-wait for the table + row to render (no manual count/poll).
+   */
   async findRowIdByClientId(clientId) {
-    const rows = this.page.locator('[data-testid^="app-row-"]');
-    const count = await rows.count();
-    for (let i = 0; i < count; i++) {
-      const row = rows.nth(i);
-      if ((await row.textContent())?.includes(clientId)) {
-        const testId = await row.getAttribute('data-testid');
-        return testId.replace('app-row-', '');
-      }
-    }
-    return null;
+    const row = this.page
+      .getByTestId('app-tokens-table')
+      .locator(`[data-test-client-id="${clientId}"]`);
+    const testId = await row.getAttribute('data-testid');
+    return testId.replace('app-row-', '');
   }
 
   async openRail(id) {

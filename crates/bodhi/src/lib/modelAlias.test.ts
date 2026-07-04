@@ -21,6 +21,7 @@ function makeRouterAlias(): ModelRouterResponse {
     strategy: { strategy: 'fallback', cooldown_secs: 30, max_attempts: 0, honor_retry_after: true },
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
+    access: true,
   };
 }
 

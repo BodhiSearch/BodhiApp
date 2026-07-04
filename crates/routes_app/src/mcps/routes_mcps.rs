@@ -3,11 +3,11 @@ use crate::{
   AuthScope, BodhiErrorResponse, ValidatedJson, API_TAG_APPS, API_TAG_MCPS, ENDPOINT_APPS_MCPS,
 };
 use axum::{extract::Path, http::StatusCode, Json};
-use services::{Mcp, McpRequest};
+use services::{Mcp, McpRequest, McpResponse};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct ListMcpsResponse {
-  pub mcps: Vec<Mcp>,
+  pub mcps: Vec<McpResponse>,
 }
 
 /// List all MCP instances for the authenticated user
@@ -29,10 +29,14 @@ pub async fn mcps_index(
   // Grant filter — Unrestricted for sessions, grant-bound for API tokens and
   // approved app tokens alike (the app's approved grants ride on AccessPolicy).
   let policy = auth_scope.access_policy();
-  let mcps: Vec<Mcp> = entities
+  let mcps: Vec<McpResponse> = entities
     .into_iter()
     .filter(|m| policy.mcp_listable(&m.id))
-    .map(|e| e.into())
+    .map(|e| {
+      let mcp: Mcp = e.into();
+      let access = policy.mcp_accessible(&mcp.id);
+      McpResponse::new(mcp, access)
+    })
     .collect();
   Ok(Json(ListMcpsResponse { mcps }))
 }
@@ -45,7 +49,7 @@ pub async fn mcps_index(
   operation_id = "createMcp",
   request_body = McpRequest,
   responses(
-    (status = 201, description = "MCP created", body = Mcp),
+    (status = 201, description = "MCP created", body = McpResponse),
     (status = 400, description = "Validation error"),
   ),
   security(("bearer" = []))
@@ -53,15 +57,16 @@ pub async fn mcps_index(
 pub async fn mcps_create(
   auth_scope: AuthScope,
   ValidatedJson(request): ValidatedJson<McpRequest>,
-) -> Result<(StatusCode, Json<Mcp>), BodhiErrorResponse> {
+) -> Result<(StatusCode, Json<McpResponse>), BodhiErrorResponse> {
   if request.mcp_server_id.is_none() || request.mcp_server_id.as_deref() == Some("") {
     return Err(McpRouteError::Validation("mcp_server_id is required".to_string()).into());
   }
 
   let entity = auth_scope.mcps().create(request).await?;
   let mcp: Mcp = entity.into();
+  let access = auth_scope.access_policy().mcp_accessible(&mcp.id);
 
-  Ok((StatusCode::CREATED, Json(mcp)))
+  Ok((StatusCode::CREATED, Json(McpResponse::new(mcp, access))))
 }
 
 /// Get a specific MCP instance by ID
@@ -74,7 +79,7 @@ pub async fn mcps_create(
     ("id" = String, Path, description = "MCP instance UUID")
   ),
   responses(
-    (status = 200, description = "MCP instance", body = Mcp),
+    (status = 200, description = "MCP instance", body = McpResponse),
     (status = 404, description = "MCP not found"),
   ),
   security(("bearer" = []))
@@ -82,9 +87,10 @@ pub async fn mcps_create(
 pub async fn mcps_show(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<Mcp>, BodhiErrorResponse> {
+) -> Result<Json<McpResponse>, BodhiErrorResponse> {
+  let policy = auth_scope.access_policy();
   // Not-listable → 404 (don't reveal existence to a scoped token).
-  if !auth_scope.access_policy().mcp_listable(&id) {
+  if !policy.mcp_listable(&id) {
     return Err(services::EntityError::NotFound("MCP".to_string()).into());
   }
   let entity = auth_scope
@@ -93,7 +99,9 @@ pub async fn mcps_show(
     .await?
     .ok_or_else(|| services::EntityError::NotFound("MCP".to_string()))?;
 
-  Ok(Json(entity.into()))
+  let mcp: Mcp = entity.into();
+  let access = policy.mcp_accessible(&mcp.id);
+  Ok(Json(McpResponse::new(mcp, access)))
 }
 
 /// Update an MCP instance
@@ -107,7 +115,7 @@ pub async fn mcps_show(
   ),
   request_body = McpRequest,
   responses(
-    (status = 200, description = "MCP updated", body = Mcp),
+    (status = 200, description = "MCP updated", body = McpResponse),
     (status = 400, description = "Validation error"),
     (status = 404, description = "MCP not found"),
   ),
@@ -117,10 +125,12 @@ pub async fn mcps_update(
   auth_scope: AuthScope,
   Path(id): Path<String>,
   ValidatedJson(request): ValidatedJson<McpRequest>,
-) -> Result<Json<Mcp>, BodhiErrorResponse> {
+) -> Result<Json<McpResponse>, BodhiErrorResponse> {
   let entity = auth_scope.mcps().update(&id, request).await?;
 
-  Ok(Json(entity.into()))
+  let mcp: Mcp = entity.into();
+  let access = auth_scope.access_policy().mcp_accessible(&mcp.id);
+  Ok(Json(McpResponse::new(mcp, access)))
 }
 
 /// Delete an MCP instance
@@ -174,7 +184,7 @@ pub async fn apps_mcps_index(
     ("id" = String, Path, description = "MCP instance UUID")
   ),
   responses(
-    (status = 200, description = "MCP instance", body = Mcp),
+    (status = 200, description = "MCP instance", body = McpResponse),
     (status = 404, description = "MCP not found"),
   ),
   security(("bearer_oauth_token" = []))
@@ -182,7 +192,7 @@ pub async fn apps_mcps_index(
 pub async fn apps_mcps_show(
   auth_scope: AuthScope,
   path: Path<String>,
-) -> Result<Json<Mcp>, BodhiErrorResponse> {
+) -> Result<Json<McpResponse>, BodhiErrorResponse> {
   mcps_show(auth_scope, path).await
 }
 

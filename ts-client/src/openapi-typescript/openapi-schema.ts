@@ -1470,8 +1470,8 @@ export interface components {
             api_format: components["schemas"]["ApiFormat"];
             base_url: string;
             has_api_key: boolean;
-            /** @description Models available through this alias with full provider metadata */
-            models: components["schemas"]["ApiModel"][];
+            /** @description Models available through this alias with full provider metadata and per-model `access` */
+            models: components["schemas"]["ApiModelResponse"][];
             prefix?: string | null;
             forward_all_with_prefix: boolean;
             extra_headers?: unknown;
@@ -1559,6 +1559,11 @@ export interface components {
             /** @enum {string} */
             api_format: "llm_liberty_oauth";
         });
+        /** @description `ApiModel` plus the request-scoped `access` verdict (kept off the stored shape). */
+        ApiModelResponse: components["schemas"]["ApiModel"] & {
+            /** @description Whether the current principal may run inference on this model. */
+            access: boolean;
+        };
         /** @description DB-storable `Vec<ApiModel>` — stored as JSON binary in SeaORM columns. */
         ApiModelVec: components["schemas"]["ApiModel"][];
         /** @enum {string} */
@@ -2065,7 +2070,7 @@ export interface components {
             mcp_servers: components["schemas"]["McpServerResponse"][];
         };
         ListMcpsResponse: {
-            mcps: components["schemas"]["Mcp"][];
+            mcps: components["schemas"]["McpResponse"][];
         };
         /** @description List users query parameters. Intentionally omits sort fields (unlike PaginationSortParams)
          *     because user listing is fetched from the auth service which handles its own ordering. */
@@ -2319,6 +2324,11 @@ export interface components {
             /** @description OAuth token ID to link to this MCP instance (set after OAuth flow). */
             oauth_token_id?: string | null;
         };
+        /** @description `Mcp` plus the request-scoped `access` verdict (kept off the domain entity). */
+        McpResponse: components["schemas"]["Mcp"] & {
+            /** @description Whether the current principal may invoke (connect to) this MCP. */
+            access: boolean;
+        };
         /** @description Admin-managed MCP server registry entry that users create instances of. */
         McpServer: {
             id: string;
@@ -2397,6 +2407,8 @@ export interface components {
             repo: string;
             filename: string;
             snapshot: string;
+            /** @description Whether the current principal may run inference on this model. */
+            access: boolean;
             /**
              * Format: int64
              * @description Local GGUF file size in bytes (present when the file is resolvable on disk)
@@ -2464,6 +2476,8 @@ export interface components {
             source: string;
             id: string;
             alias: string;
+            /** @description Whether the current principal may run inference on this router. */
+            access: boolean;
             targets: components["schemas"]["RouterTarget"][];
             strategy: components["schemas"]["RoutingStrategyConfig"];
             /** Format: date-time */
@@ -3077,6 +3091,8 @@ export interface components {
             filename: string;
             snapshot: string;
             source: string;
+            /** @description Whether the current principal may run inference on this model. */
+            access: boolean;
             model_params: {
                 [key: string]: unknown;
             };
@@ -3952,7 +3968,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Mcp"];
+                    "application/json": components["schemas"]["McpResponse"];
                 };
             };
             /** @description Invalid request parameters */
@@ -4597,7 +4613,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Mcp"];
+                    "application/json": components["schemas"]["McpResponse"];
                 };
             };
             /** @description Invalid request parameters */
@@ -5623,7 +5639,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Mcp"];
+                    "application/json": components["schemas"]["McpResponse"];
                 };
             };
             /** @description Invalid request parameters */
@@ -5693,7 +5709,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Mcp"];
+                    "application/json": components["schemas"]["McpResponse"];
                 };
             };
             /** @description Invalid request parameters */

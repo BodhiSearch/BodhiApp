@@ -22,7 +22,7 @@ const mockApiModelResponse: ApiAliasResponse = {
   api_format: 'openai',
   base_url: 'https://api.openai.com/v1',
   has_api_key: true,
-  models: [{ id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' }],
+  models: [{ id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai', access: true }],
   prefix: null,
   forward_all_with_prefix: false,
   created_at: '2024-01-01T00:00:00Z',
@@ -101,8 +101,8 @@ describe('useUpdateApiModel', () => {
       ...mockUpdateApiModel(modelId, {
         ...mockApiModelResponse,
         models: [
-          { id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' },
-          { id: 'gpt-3.5-turbo', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' },
+          { id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai', access: true },
+          { id: 'gpt-3.5-turbo', object: 'model', created: 0, owned_by: 'openai', provider: 'openai', access: true },
         ],
       })
     );
@@ -127,8 +127,8 @@ describe('useUpdateApiModel', () => {
 
     expect(onSuccess).toHaveBeenCalled();
     expect(result.current.data?.data.models).toEqual([
-      { id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' },
-      { id: 'gpt-3.5-turbo', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' },
+      { id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai', access: true },
+      { id: 'gpt-3.5-turbo', object: 'model', created: 0, owned_by: 'openai', provider: 'openai', access: true },
     ]);
   });
 });

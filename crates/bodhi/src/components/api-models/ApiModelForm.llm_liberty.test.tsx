@@ -140,6 +140,7 @@ describe('ApiModelForm — llm_liberty_oauth edit mode (keep vs set)', () => {
         type: 'model',
         created_at: '2024-01-01T00:00:00Z',
         provider: 'anthropic' as const,
+        access: true,
       },
     ],
     prefix: 'anth/',

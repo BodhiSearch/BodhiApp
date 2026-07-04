@@ -2,8 +2,9 @@ use crate::{AccessPolicy, TokenGrantError};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use services::{
-  AppError, ApprovedResources, ApprovedResourcesV1, AuthContext, DeploymentMode, McpGrant,
-  ModelGrant, TokenGrants, TokenGrantsV1, TokenScope, UserScope,
+  AppError, ApprovalStatus, ApprovedResources, ApprovedResourcesV1, AuthContext, DeploymentMode,
+  McpApproval, McpGrant, McpInstance, ModelGrant, TokenGrants, TokenGrantsV1, TokenScope,
+  UserScope,
 };
 
 fn token(models: ModelGrant, models_list: bool, mcps: McpGrant, mcps_list: bool) -> AuthContext {
@@ -41,6 +42,8 @@ fn unrestricted_principal_passes_everything() {
   let policy = AccessPolicy::of(&ctx);
   assert!(policy.model_listable("anything"));
   assert!(policy.mcp_listable("anything"));
+  assert!(policy.model_accessible("anything"));
+  assert!(policy.mcp_accessible("anything"));
   assert!(policy.ensure_model_inference("anything").is_ok());
   assert!(policy.ensure_mcp_connect("anything").is_ok());
 }
@@ -62,6 +65,7 @@ fn model_policy_matrix(
   let ctx = token(models, models_list, McpGrant::All, false);
   let policy = AccessPolicy::of(&ctx);
   assert_eq!(expect_listable, policy.model_listable(model));
+  assert_eq!(expect_inferable, policy.model_accessible(model));
   assert_eq!(
     expect_inferable,
     policy.ensure_model_inference(model).is_ok()
@@ -95,6 +99,7 @@ fn mcp_policy_matrix(
   let ctx = token(ModelGrant::All, false, mcps, mcps_list);
   let policy = AccessPolicy::of(&ctx);
   assert_eq!(expect_listable, policy.mcp_listable(mcp));
+  assert_eq!(expect_connectable, policy.mcp_accessible(mcp));
   assert_eq!(expect_connectable, policy.ensure_mcp_connect(mcp).is_ok());
 }
 
@@ -106,6 +111,8 @@ fn external_app_without_grants_is_denied() {
   let policy = AccessPolicy::of(&ctx);
   assert!(!policy.model_listable("anything"));
   assert!(!policy.mcp_listable("anything"));
+  assert!(!policy.model_accessible("anything"));
+  assert!(!policy.mcp_accessible("anything"));
   let model_err = policy.ensure_model_inference("anything").unwrap_err();
   assert_eq!("token_grant_error-model_forbidden", model_err.code());
   let mcp_err = policy.ensure_mcp_connect("anything").unwrap_err();
@@ -134,7 +141,41 @@ fn external_app_grants_enforce_like_a_token() {
   assert!(!policy.model_listable("b"));
 
   assert!(policy.ensure_mcp_connect("x9").is_ok());
+  assert!(policy.mcp_accessible("x9"));
+  assert!(policy.model_accessible("a"));
+  assert!(!policy.model_accessible("b"));
   let err = policy.ensure_mcp_connect("y").unwrap_err();
   assert_eq!("token_grant_error-mcp_forbidden", err.code());
   assert!(!policy.mcp_listable("y"));
+  assert!(!policy.mcp_accessible("y"));
+}
+
+#[test]
+fn external_app_mcp_access_via_approved_instance_and_owner_extra() {
+  // M6/M8: an app may connect via a by-url approved instance ("i1") OR via an
+  // owner-granted mcps_access id ("x9"); a listed-but-ungranted mcp is not accessible.
+  let approved = ApprovedResources::V1(ApprovedResourcesV1 {
+    models_list: false,
+    models_access: ModelGrant::Specific { ids: vec![] },
+    mcps_list: true,
+    mcps: vec![McpApproval {
+      url: "https://mcp.example/i1".to_string(),
+      status: ApprovalStatus::Approved,
+      instance: Some(McpInstance {
+        id: "i1".to_string(),
+        path: "/bodhi/v1/apps/mcps/i1/mcp".to_string(),
+      }),
+    }],
+    mcps_access: McpGrant::Specific {
+      ids: vec!["x9".to_string()],
+    },
+  });
+  let policy_ctx = external_app(Some(approved));
+  let policy = AccessPolicy::of(&policy_ctx);
+
+  assert!(policy.mcp_accessible("i1"));
+  assert!(policy.mcp_accessible("x9"));
+  // mcps_list on ⇒ "other" is listable, but not accessible.
+  assert!(policy.mcp_listable("other"));
+  assert!(!policy.mcp_accessible("other"));
 }

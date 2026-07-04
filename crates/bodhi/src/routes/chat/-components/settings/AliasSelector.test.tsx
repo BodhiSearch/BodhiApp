@@ -41,6 +41,7 @@ const localModels: AliasResponse[] = [
     request_params: {},
     context_params: [],
     model_params: {},
+    access: true,
   } as AliasResponse,
   {
     source: 'user',
@@ -51,6 +52,7 @@ const localModels: AliasResponse[] = [
     request_params: {},
     context_params: [],
     model_params: {},
+    access: true,
   } as AliasResponse,
 ];
 

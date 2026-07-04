@@ -163,9 +163,9 @@ export type ApiAliasResponse = {
     base_url: string;
     has_api_key: boolean;
     /**
-     * Models available through this alias with full provider metadata
+     * Models available through this alias with full provider metadata and per-model `access`
      */
-    models: Array<ApiModel>;
+    models: Array<ApiModelResponse>;
     prefix?: string | null;
     forward_all_with_prefix: boolean;
     extra_headers?: unknown;
@@ -235,6 +235,16 @@ export type ApiModelRequest = (DefaultApiModelRequest & {
 }) | (LlmLibertyApiModelRequest & {
     api_format: 'llm_liberty_oauth';
 });
+
+/**
+ * `ApiModel` plus the request-scoped `access` verdict (kept off the stored shape).
+ */
+export type ApiModelResponse = ApiModel & {
+    /**
+     * Whether the current principal may run inference on this model.
+     */
+    access: boolean;
+};
 
 /**
  * DB-storable `Vec<ApiModel>` — stored as JSON binary in SeaORM columns.
@@ -737,7 +747,7 @@ export type ListMcpServersResponse = {
 };
 
 export type ListMcpsResponse = {
-    mcps: Array<Mcp>;
+    mcps: Array<McpResponse>;
 };
 
 /**
@@ -1049,6 +1059,16 @@ export type McpRequest = {
 };
 
 /**
+ * `Mcp` plus the request-scoped `access` verdict (kept off the domain entity).
+ */
+export type McpResponse = Mcp & {
+    /**
+     * Whether the current principal may invoke (connect to) this MCP.
+     */
+    access: boolean;
+};
+
+/**
  * Admin-managed MCP server registry entry that users create instances of.
  */
 export type McpServer = {
@@ -1146,6 +1166,10 @@ export type ModelAliasResponse = {
     filename: string;
     snapshot: string;
     /**
+     * Whether the current principal may run inference on this model.
+     */
+    access: boolean;
+    /**
      * Local GGUF file size in bytes (present when the file is resolvable on disk)
      */
     size?: number | null;
@@ -1227,6 +1251,10 @@ export type ModelRouterResponse = {
     source: string;
     id: string;
     alias: string;
+    /**
+     * Whether the current principal may run inference on this router.
+     */
+    access: boolean;
     targets: Array<RouterTarget>;
     strategy: RoutingStrategyConfig;
     created_at: string;
@@ -1857,6 +1885,10 @@ export type UserAliasResponse = {
     filename: string;
     snapshot: string;
     source: string;
+    /**
+     * Whether the current principal may run inference on this model.
+     */
+    access: boolean;
     model_params: {};
     request_params: OaiRequestParams;
     context_params: Array<string>;
@@ -2482,7 +2514,7 @@ export type AppsGetMcpResponses = {
     /**
      * MCP instance
      */
-    200: Mcp;
+    200: McpResponse;
 };
 
 export type AppsGetMcpResponse = AppsGetMcpResponses[keyof AppsGetMcpResponses];
@@ -2875,7 +2907,7 @@ export type CreateMcpResponses = {
     /**
      * MCP created
      */
-    201: Mcp;
+    201: McpResponse;
 };
 
 export type CreateMcpResponse = CreateMcpResponses[keyof CreateMcpResponses];
@@ -3609,7 +3641,7 @@ export type GetMcpResponses = {
     /**
      * MCP instance
      */
-    200: Mcp;
+    200: McpResponse;
 };
 
 export type GetMcpResponse = GetMcpResponses[keyof GetMcpResponses];
@@ -3655,7 +3687,7 @@ export type UpdateMcpResponses = {
     /**
      * MCP updated
      */
-    200: Mcp;
+    200: McpResponse;
 };
 
 export type UpdateMcpResponse = UpdateMcpResponses[keyof UpdateMcpResponses];

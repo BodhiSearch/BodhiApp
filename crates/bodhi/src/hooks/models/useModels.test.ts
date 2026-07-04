@@ -1,5 +1,5 @@
 import type {
-  Alias,
+  UserAliasResponse,
   UserAliasRequest,
   PaginatedAliasResponse,
   PaginatedLocalModelResponse,
@@ -48,7 +48,7 @@ import {
 import { setupMswV2, server, http, HttpResponse } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 
-const mockModelData: Alias = {
+const mockModelData: UserAliasResponse = {
   source: 'user',
   id: 'test-uuid-1',
   alias: 'test-model',
@@ -57,8 +57,10 @@ const mockModelData: Alias = {
   snapshot: 'abc123',
   request_params: {},
   context_params: [],
+  model_params: {},
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
+  access: true,
 };
 
 const mockModelsData: PaginatedAliasResponse = {

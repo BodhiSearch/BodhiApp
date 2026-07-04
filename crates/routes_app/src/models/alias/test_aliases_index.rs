@@ -12,9 +12,24 @@ use rstest::rstest;
 use serde_json::Value;
 use server_core::test_utils::{router_state_stub, ResponseTestExt};
 use services::{AliasResponse, PaginatedAliasResponse};
-use services::{AuthContext, ResourceRole};
+use services::{
+  AuthContext, McpGrant, ModelGrant, ResourceRole, TokenGrants, TokenGrantsV1, TokenScope,
+};
 use std::sync::Arc;
 use tower::ServiceExt;
+
+/// True if every alias (and every inner API model) reports the expected `access`.
+fn all_access_is(data: &[Value], expected: bool) -> bool {
+  data.iter().all(|alias| {
+    let top = alias["access"].as_bool() == Some(expected);
+    let models_ok = alias["models"].as_array().map_or(true, |models| {
+      models
+        .iter()
+        .all(|m| m["access"].as_bool() == Some(expected))
+    });
+    top && models_ok
+  })
+}
 
 fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
   Router::new()
@@ -53,6 +68,42 @@ async fn test_list_local_aliases_handler(
     "FakeFactory/fakemodel-gguf:Q4_0",
     data.first().unwrap()["alias"].as_str().unwrap(),
   );
+  // Session (Unrestricted) ⇒ every alias and every inner API model is accessible.
+  assert!(all_access_is(data, true));
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_list_aliases_scoped_token_stamps_access_false(
+  #[future] router_state_stub: Arc<dyn services::AppService>,
+) -> anyhow::Result<()> {
+  // models_list on + empty model grant ⇒ every alias is still listed (visibility), but
+  // none is inference-granted, so `access:false` is stamped across all variants.
+  let token = AuthContext::test_api_token_with_grants(
+    "test-user",
+    TokenScope::User,
+    TokenGrants::V1(TokenGrantsV1 {
+      models_list: true,
+      models: ModelGrant::Specific { ids: vec![] },
+      mcps_list: false,
+      mcps: McpGrant::Specific { ids: vec![] },
+    }),
+  );
+  let response = test_router(router_state_stub)
+    .oneshot(
+      Request::get("/api/models")
+        .body(Body::empty())?
+        .with_auth_context(token),
+    )
+    .await?
+    .json::<Value>()
+    .await?;
+  let data = response["data"].as_array().unwrap();
+  assert!(!data.is_empty());
+  assert!(all_access_is(data, false));
   Ok(())
 }
 

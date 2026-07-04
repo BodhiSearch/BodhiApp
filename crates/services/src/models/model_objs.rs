@@ -2007,6 +2007,10 @@ pub struct UserAliasResponse {
   pub snapshot: String,
   pub source: String,
 
+  /// Whether the current principal may run inference on this model.
+  #[cfg_attr(any(test, feature = "test-utils"), builder(default = "true"))]
+  pub access: bool,
+
   pub model_params: HashMap<String, Value>,
   pub request_params: OAIRequestParams,
   pub context_params: Vec<String>,
@@ -2036,6 +2040,8 @@ impl From<UserAlias> for UserAliasResponse {
       snapshot: alias.snapshot,
       alias: alias.alias,
       source: "user".to_string(),
+
+      access: true,
 
       model_params: HashMap::new(),
       request_params: alias.request_params,
@@ -2080,6 +2086,9 @@ pub struct ModelAliasResponse {
   pub filename: String,
   pub snapshot: String,
 
+  /// Whether the current principal may run inference on this model.
+  pub access: bool,
+
   /// Local GGUF file size in bytes (present when the file is resolvable on disk)
   #[serde(skip_serializing_if = "Option::is_none")]
   pub size: Option<u64>,
@@ -2097,6 +2106,7 @@ impl From<ModelAlias> for ModelAliasResponse {
       repo: alias.repo.to_string(),
       filename: alias.filename,
       snapshot: alias.snapshot,
+      access: true,
       size: None,
       metadata: None,
     }
@@ -2117,6 +2127,21 @@ impl ModelAliasResponse {
   }
 }
 
+/// `ApiModel` plus the request-scoped `access` verdict (kept off the stored shape).
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, ToSchema)]
+pub struct ApiModelResponse {
+  #[serde(flatten)]
+  pub model: ApiModel,
+  /// Whether the current principal may run inference on this model.
+  pub access: bool,
+}
+
+impl ApiModelResponse {
+  pub fn new(model: ApiModel, access: bool) -> Self {
+    Self { model, access }
+  }
+}
+
 /// API response for API model aliases - hides internal cache fields
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, ToSchema)]
 pub struct ApiAliasResponse {
@@ -2126,8 +2151,8 @@ pub struct ApiAliasResponse {
   pub api_format: ApiFormat,
   pub base_url: String,
   pub has_api_key: bool,
-  /// Models available through this alias with full provider metadata
-  pub models: Vec<ApiModel>,
+  /// Models available through this alias with full provider metadata and per-model `access`
+  pub models: Vec<ApiModelResponse>,
   pub prefix: Option<String>,
   pub forward_all_with_prefix: bool,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -2145,7 +2170,12 @@ pub struct ApiAliasResponse {
 
 impl From<ApiAlias> for ApiAliasResponse {
   fn from(alias: ApiAlias) -> Self {
-    let models = alias.get_models().to_vec();
+    let models = alias
+      .get_models()
+      .iter()
+      .cloned()
+      .map(|m| ApiModelResponse::new(m, true))
+      .collect();
     Self {
       source: "api".to_string(),
       id: alias.id,
@@ -2183,6 +2213,8 @@ pub struct ModelRouterResponse {
   pub source: String,
   pub id: String,
   pub alias: String,
+  /// Whether the current principal may run inference on this router.
+  pub access: bool,
   pub targets: Vec<RouterTarget>,
   pub strategy: RoutingStrategyConfig,
   #[schema(value_type = String, format = "date-time")]
@@ -2197,6 +2229,7 @@ impl From<ModelRouterAlias> for ModelRouterResponse {
       source: AliasSource::ModelRouter.to_string(),
       id: router.id,
       alias: router.alias,
+      access: true,
       targets: router.targets,
       strategy: router.strategy,
       created_at: router.created_at,
@@ -2234,6 +2267,22 @@ impl From<Alias> for AliasResponse {
 }
 
 impl AliasResponse {
+  /// Stamp per-model `access`. Id key mirrors [`Alias::retain_listable_models`]: single-model
+  /// aliases key on the alias name; API aliases key each model on `prefix + model.id()`.
+  pub fn stamp_access(&mut self, accessible: impl Fn(&str) -> bool) {
+    match self {
+      AliasResponse::User(r) => r.access = accessible(&r.alias),
+      AliasResponse::Model(r) => r.access = accessible(&r.alias),
+      AliasResponse::ModelRouter(r) => r.access = accessible(&r.alias),
+      AliasResponse::Api(r) => {
+        let prefix = r.prefix.clone().unwrap_or_default();
+        for m in &mut r.models {
+          m.access = accessible(&format!("{}{}", prefix, m.model.id()));
+        }
+      }
+    }
+  }
+
   /// Attach model metadata to this response (only applies to User and Model variants)
   pub fn with_metadata(self, metadata: Option<ModelMetadata>) -> Self {
     match self {

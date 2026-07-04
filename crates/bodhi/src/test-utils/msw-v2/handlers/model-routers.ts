@@ -26,6 +26,7 @@ export function mockCreateModelRouter(
         strategy,
         created_at,
         updated_at,
+        access: true,
       };
       return response(201 as const).json(body);
     }),
@@ -50,6 +51,7 @@ export function mockUpdateModelRouter(
         strategy: { strategy: 'fallback', cooldown_secs: 30, max_attempts: 0, honor_retry_after: true },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        access: true,
         ...data,
       };
       return response(200 as const).json(body);
@@ -75,6 +77,7 @@ export function mockGetModelRouter(
         strategy: { strategy: 'fallback', cooldown_secs: 30, max_attempts: 0, honor_retry_after: true },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        access: true,
         ...data,
       };
       return response(200 as const).json(body);

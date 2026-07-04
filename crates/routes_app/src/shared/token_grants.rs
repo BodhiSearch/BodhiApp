@@ -59,6 +59,24 @@ impl<'a> AccessPolicy<'a> {
     }
   }
 
+  /// Whether the principal may run inference on `model_id` (the listing `access` flag).
+  pub fn model_accessible(&self, model_id: &str) -> bool {
+    match self {
+      AccessPolicy::Unrestricted => true,
+      AccessPolicy::Deny => false,
+      AccessPolicy::Grants(grants) => grants.allows_model_inference(model_id),
+    }
+  }
+
+  /// Whether the principal may invoke `mcp_id` (the listing `access` flag).
+  pub fn mcp_accessible(&self, mcp_id: &str) -> bool {
+    match self {
+      AccessPolicy::Unrestricted => true,
+      AccessPolicy::Deny => false,
+      AccessPolicy::Grants(grants) => grants.allows_mcp_connect(mcp_id),
+    }
+  }
+
   /// Guard inference on `model_id`; `Err(ModelForbidden)` (403) when not granted.
   pub fn ensure_model_inference(&self, model_id: &str) -> Result<(), TokenGrantError> {
     match self {

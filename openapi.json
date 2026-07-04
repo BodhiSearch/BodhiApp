@@ -1068,7 +1068,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Mcp"
+                  "$ref": "#/components/schemas/McpResponse"
                 }
               }
             }
@@ -1872,7 +1872,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Mcp"
+                  "$ref": "#/components/schemas/McpResponse"
                 }
               }
             }
@@ -3134,7 +3134,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Mcp"
+                  "$ref": "#/components/schemas/McpResponse"
                 }
               }
             }
@@ -3222,7 +3222,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Mcp"
+                  "$ref": "#/components/schemas/McpResponse"
                 }
               }
             }
@@ -8233,9 +8233,9 @@
           "models": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ApiModel"
+              "$ref": "#/components/schemas/ApiModelResponse"
             },
-            "description": "Models available through this alias with full provider metadata"
+            "description": "Models available through this alias with full provider metadata and per-model `access`"
           },
           "prefix": {
             "type": [
@@ -8559,6 +8559,26 @@
           ],
           "prefix": "openai"
         }
+      },
+      "ApiModelResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiModel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "access"
+            ],
+            "properties": {
+              "access": {
+                "type": "boolean",
+                "description": "Whether the current principal may run inference on this model."
+              }
+            }
+          }
+        ],
+        "description": "`ApiModel` plus the request-scoped `access` verdict (kept off the stored shape)."
       },
       "ApiModelVec": {
         "type": "array",
@@ -9900,7 +9920,7 @@
           "mcps": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Mcp"
+              "$ref": "#/components/schemas/McpResponse"
             }
           }
         }
@@ -10713,6 +10733,26 @@
           }
         }
       },
+      "McpResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Mcp"
+          },
+          {
+            "type": "object",
+            "required": [
+              "access"
+            ],
+            "properties": {
+              "access": {
+                "type": "boolean",
+                "description": "Whether the current principal may invoke (connect to) this MCP."
+              }
+            }
+          }
+        ],
+        "description": "`Mcp` plus the request-scoped `access` verdict (kept off the domain entity)."
+      },
       "McpServer": {
         "type": "object",
         "description": "Admin-managed MCP server registry entry that users create instances of.",
@@ -10942,7 +10982,8 @@
           "alias",
           "repo",
           "filename",
-          "snapshot"
+          "snapshot",
+          "access"
         ],
         "properties": {
           "source": {
@@ -10959,6 +11000,10 @@
           },
           "snapshot": {
             "type": "string"
+          },
+          "access": {
+            "type": "boolean",
+            "description": "Whether the current principal may run inference on this model."
           },
           "size": {
             "type": [
@@ -11175,6 +11220,7 @@
           "source",
           "id",
           "alias",
+          "access",
           "targets",
           "strategy",
           "created_at",
@@ -11189,6 +11235,10 @@
           },
           "alias": {
             "type": "string"
+          },
+          "access": {
+            "type": "boolean",
+            "description": "Whether the current principal may run inference on this router."
           },
           "targets": {
             "type": "array",
@@ -12929,6 +12979,7 @@
           "filename",
           "snapshot",
           "source",
+          "access",
           "model_params",
           "request_params",
           "context_params",
@@ -12953,6 +13004,10 @@
           },
           "source": {
             "type": "string"
+          },
+          "access": {
+            "type": "boolean",
+            "description": "Whether the current principal may run inference on this model."
           },
           "model_params": {
             "type": "object",

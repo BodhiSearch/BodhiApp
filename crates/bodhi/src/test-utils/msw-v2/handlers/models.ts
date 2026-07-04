@@ -185,6 +185,7 @@ export function mockCreateModel(
         source,
         created_at,
         updated_at,
+        access: true,
         ...rest,
       };
       return response(201 as const).json(responseData);
@@ -279,6 +280,7 @@ export function mockGetModel(
         source,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        access: true,
         ...rest,
       };
       return response(200 as const).json(responseData);
@@ -379,6 +381,7 @@ export function mockUpdateModel(
         source,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        access: true,
         ...rest,
       };
       return response(200 as const).json(responseData);
@@ -519,6 +522,7 @@ export function mockRefreshSingleMetadata(
         snapshot,
         source: 'model',
         metadata,
+        access: true,
         ...rest,
       };
       return response(200 as const).json(responseData);
