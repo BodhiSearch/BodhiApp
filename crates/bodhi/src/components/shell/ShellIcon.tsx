@@ -1,6 +1,8 @@
 import { Circle, type LucideIcon } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 
+import { McpIcon } from './McpIcon';
+
 export interface ShellIconProps {
   /** kebab-case lucide name, e.g. 'message-circle', 'key-round', 'panel-left'. */
   name: string;
@@ -8,6 +10,11 @@ export interface ShellIconProps {
   color?: string;
   strokeWidth?: number;
 }
+
+// Custom (non-lucide) glyphs keyed by name, resolved before the lucide registry.
+const customRegistry: Record<string, LucideIcon> = {
+  mcp: McpIcon as unknown as LucideIcon,
+};
 
 const lucideRegistry = LucideIcons as unknown as Record<string, LucideIcon | undefined>;
 
@@ -26,7 +33,7 @@ function toPascalCase(name: string): string {
 function resolveIcon(name: string): LucideIcon {
   const cached = cache.get(name);
   if (cached) return cached;
-  const icon = lucideRegistry[toPascalCase(name)] ?? Circle;
+  const icon = customRegistry[name] ?? lucideRegistry[toPascalCase(name)] ?? Circle;
   cache.set(name, icon);
   return icon;
 }

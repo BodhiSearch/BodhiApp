@@ -70,7 +70,7 @@ export const SHELL_NAV: ShellNavItem[] = [
   {
     id: 'mcp',
     label: 'MCP',
-    icon: 'plug',
+    icon: 'mcp',
     href: ROUTE_MCPS,
     subPages: [
       { id: 'my-mcps', label: 'My MCPs', icon: 'globe-2', href: ROUTE_MCPS },
