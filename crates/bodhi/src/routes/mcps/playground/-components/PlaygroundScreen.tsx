@@ -184,6 +184,7 @@ export function PlaygroundScreen() {
     rail,
     headerActions,
     railDefaultOpen: showRail,
+    mainScroll: false,
   });
 
   if (!id) {

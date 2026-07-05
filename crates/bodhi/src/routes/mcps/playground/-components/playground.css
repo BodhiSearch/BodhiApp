@@ -365,10 +365,15 @@
 
 /* ── center column ─────────────────────────────────────────────── */
 
+/* The one scroll region — the shell body runs in fill mode (mainScroll: false),
+   so the whole detail column (header + inputs + result) scrolls here as a unit
+   and each section keeps its natural height instead of being squeezed. */
 .pg-center {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
+  overflow-y: auto;
   padding: 20px 24px 32px;
   gap: 12px;
 }
@@ -570,8 +575,6 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-height: 0;
-  flex: 1;
 }
 
 .pg-dh {
@@ -711,8 +714,6 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-height: 0;
-  flex: 1;
 }
 
 .pg-run-card {
@@ -864,7 +865,6 @@
   background: hsl(var(--card));
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 
 .pg-result-idle,
@@ -967,7 +967,7 @@
 
 .pg-result-body {
   padding: 16px;
-  overflow-y: auto;
+  min-height: 120px;
   font-size: 13.5px;
   line-height: 1.5;
 }
