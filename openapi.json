@@ -1201,7 +1201,7 @@
           "auth"
         ],
         "summary": "Create Access Request",
-        "description": "Create an access request for an app to access user resources. Always creates a draft for user review. Unauthenticated endpoint.",
+        "description": "Create an access request for an app to access user resources. Always creates a draft for user review. Anonymous, except `exchange: true` requires the app's current token in the Authorization header.",
         "operationId": "createAccessRequest",
         "requestBody": {
           "description": "Access request details",
@@ -7832,6 +7832,17 @@
           "auth_endpoint": {
             "type": "string",
             "description": "Canonical Keycloak authorize endpoint the review page validates the app-supplied `auth_url` against."
+          },
+          "previous_grant": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PreviousGrantInfo",
+                "description": "Grant the app's current token already holds, for the review form to pre-select (upgrade only)."
+              }
+            ]
           }
         }
       },
@@ -9105,6 +9116,10 @@
           "requested": {
             "$ref": "#/components/schemas/RequestedResources",
             "description": "Resources requested (tools, etc.)"
+          },
+          "exchange": {
+            "type": "boolean",
+            "description": "Upgrade the app's current token: the caller must present it in the `Authorization`\nheader; the server derives the prior request from the token, never the body."
           }
         },
         "example": {
@@ -11783,6 +11798,21 @@
         },
         "example": {
           "message": "pong"
+        }
+      },
+      "PreviousGrantInfo": {
+        "type": "object",
+        "required": [
+          "approved_role",
+          "approved"
+        ],
+        "properties": {
+          "approved_role": {
+            "$ref": "#/components/schemas/UserScope"
+          },
+          "approved": {
+            "$ref": "#/components/schemas/ApprovedResources"
+          }
         }
       },
       "QueueStatusResponse": {

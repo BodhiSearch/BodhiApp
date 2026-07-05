@@ -253,7 +253,7 @@ export interface paths {
         put?: never;
         /**
          * Create Access Request
-         * @description Create an access request for an app to access user resources. Always creates a draft for user review. Unauthenticated endpoint.
+         * @description Create an access request for an app to access user resources. Always creates a draft for user review. Anonymous, except `exchange: true` requires the app's current token in the Authorization header.
          */
         post: operations["createAccessRequest"];
         delete?: never;
@@ -1340,6 +1340,7 @@ export interface components {
             mcps_info?: components["schemas"]["McpServerReviewInfo"][];
             /** @description Canonical Keycloak authorize endpoint the review page validates the app-supplied `auth_url` against. */
             auth_endpoint: string;
+            previous_grant?: null | components["schemas"]["PreviousGrantInfo"];
         };
         /** @example {
          *       "access_request_scope": "scope_access_request:550e8400-e29b-41d4-a716-446655440000",
@@ -1825,6 +1826,9 @@ export interface components {
             requested_role: components["schemas"]["UserScope"];
             /** @description Resources requested (tools, etc.) */
             requested: components["schemas"]["RequestedResources"];
+            /** @description Upgrade the app's current token: the caller must present it in the `Authorization`
+             *     header; the server derives the prior request from the token, never the body. */
+            exchange?: boolean;
         };
         /** @example {
          *       "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -2660,6 +2664,10 @@ export interface components {
              * @example pong
              */
             message: string;
+        };
+        PreviousGrantInfo: {
+            approved_role: components["schemas"]["UserScope"];
+            approved: components["schemas"]["ApprovedResources"];
         };
         QueueStatusResponse: {
             /** @description Queue status ("idle" or "processing") */

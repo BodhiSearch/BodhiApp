@@ -67,6 +67,7 @@ impl AccessRequestRepository for DefaultDbService {
       requested_role: Set(row.requested_role.clone()),
       approved_role: Set(row.approved_role.clone()),
       access_request_scope: Set(row.access_request_scope.clone()),
+      source_access_request_id: Set(row.source_access_request_id.clone()),
       error_message: Set(row.error_message.clone()),
       expires_at: Set(row.expires_at),
       created_at: Set(row.created_at),

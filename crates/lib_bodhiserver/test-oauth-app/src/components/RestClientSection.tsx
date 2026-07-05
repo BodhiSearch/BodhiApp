@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Label, Textarea, Select, Checkbox } from '@/components/ui';
-import { loadToken, loadConfig } from '@/lib/storage';
+import { loadToken, loadConfig, saveConfig } from '@/lib/storage';
 import { useAuth } from '@/context/AuthContext';
+import {
+  buildAuthUrl,
+  buildReviewRedirect,
+  generateCodeChallenge,
+  generateCodeVerifier,
+  generateState,
+} from '@/lib/oauth';
 
 interface RestResponse {
   status: number;
@@ -24,6 +31,23 @@ export function RestClientSection() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<RestResponse | null>(null);
+  // When a request-access POST succeeds, mint a fresh PKCE authorize URL (this window owns
+  // the verifier) and expose a link to the Bodhi review page so approve → callback → exchange
+  // completes here. Drives both manual use and the exchange/upgrade e2e.
+  const [reviewLink, setReviewLink] = useState<string | null>(null);
+
+  const buildReviewLink = async (reviewUrl: string) => {
+    const base = contextConfig || fallbackConfig || loadConfig();
+    if (!base) return;
+    const codeVerifier = generateCodeVerifier();
+    const state = generateState();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+    const config = { ...base, codeVerifier, state };
+    saveConfig(config);
+    const authUrl = buildAuthUrl(config, codeChallenge, state);
+    const errorUrl = config.redirectUri || `${window.location.origin}/callback`;
+    setReviewLink(buildReviewRedirect(reviewUrl, authUrl, errorUrl));
+  };
 
   const parseHeaders = (headerText: string): Record<string, string> => {
     const result: Record<string, string> = {};
@@ -47,6 +71,7 @@ export function RestClientSection() {
     setLoading(true);
     setError(null);
     setResponse(null);
+    setReviewLink(null);
     try {
       if (!url) throw new Error('URL is required');
 
@@ -95,6 +120,11 @@ export function RestClientSection() {
         body: parsedBody,
         raw,
       });
+
+      const reviewUrl = (parsedBody as { review_url?: string } | null)?.review_url;
+      if (res.ok && url.includes('/apps/request-access') && reviewUrl) {
+        await buildReviewLink(reviewUrl);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -203,6 +233,12 @@ export function RestClientSection() {
               {typeof response.body === 'string' ? response.body : JSON.stringify(response.body, null, 2)}
             </pre>
           </div>
+        )}
+
+        {reviewLink && (
+          <a data-testid="link-rest-review" href={reviewLink} className="text-sm text-primary underline">
+            Go to Access Request Review
+          </a>
         )}
       </CardContent>
     </Card>

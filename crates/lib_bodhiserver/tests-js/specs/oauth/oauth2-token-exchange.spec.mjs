@@ -160,6 +160,106 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
     });
   });
 
+  test.describe('Exchange / Upgrade Flow', () => {
+    let testData;
+
+    test.beforeEach(async () => {
+      testData = OAuth2Fixtures.getOAuth2TestData();
+    });
+
+    test('exchange pre-populates the review from the source grant and elevates the token', async ({
+      page,
+      sharedServerUrl,
+    }) => {
+      const appClient = getPreConfiguredAppClient();
+      const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
+      const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
+      // The app asks for model + MCP access + both listings; the owner grants concretely.
+      const requested = JSON.stringify({
+        version: '1',
+        models_list: true,
+        models_access: true,
+        mcps_list: true,
+        mcps_access: true,
+      });
+
+      await test.step('Login to Bodhi server', async () => {
+        const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+        await loginPage.performOAuthLogin();
+      });
+
+      await test.step('Grant an initial token (source grant): all models + all MCPs, role user', async () => {
+        await app.navigate();
+        await app.config.configureOAuthForm({
+          bodhiServerUrl: sharedServerUrl,
+          authServerUrl: authServerConfig.authUrl,
+          realm: authServerConfig.authRealm,
+          clientId: appClient.clientId,
+          redirectUri,
+          scope: testData.scopes,
+          requested,
+        });
+        await app.config.submitAccessRequest();
+        await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
+        const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
+        await reviewPage.approveWithGrants({ listModels: true, allModels: true, listMcps: true, allMcps: true });
+        await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
+      });
+
+      await test.step('Source token reflects the granted access (role user, all models/MCPs)', async () => {
+        await app.rest.navigateTo();
+        await app.rest.sendRequest({ method: 'GET', url: '/bodhi/v1/user' });
+        expect(await app.rest.getResponseStatus()).toBe(200);
+        const info = await app.rest.getResponse();
+        expect(info.role).toBe('scope_user_user');
+        expect(info.access.models.type).toBe('all');
+        expect(info.access.mcps.type).toBe('all');
+      });
+
+      await test.step('Submit an exchange request (elevate to power_user) with the current token', async () => {
+        await app.rest.sendRequest({
+          method: 'POST',
+          url: '/bodhi/v1/apps/request-access',
+          useAuth: true,
+          body: {
+            exchange: true,
+            app_client_id: appClient.clientId,
+            requested_role: 'scope_user_power_user',
+            requested: JSON.parse(requested),
+          },
+        });
+        expect(await app.rest.getResponseStatus()).toBe(201);
+      });
+
+      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
+      await test.step('Review is pre-populated from the source grant', async () => {
+        await app.rest.clickReviewLink();
+        await reviewPage.waitForReviewPage();
+        // Listings held by the source grant load pre-checked.
+        expect(await reviewPage.isListModelsChecked()).toBe(true);
+        expect(await reviewPage.isListMcpsChecked()).toBe(true);
+      });
+
+      await test.step('Approve the upgrade — role defaults to the elevated power_user', async () => {
+        // Grants are already pre-populated (all models/MCPs, listings on); role defaults to
+        // the requested power_user. Approve commits the remaining set.
+        await reviewPage.clickApprove();
+        await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
+      });
+
+      await test.step('New token reflects the elevated grant (role power_user)', async () => {
+        await app.rest.navigateTo();
+        await app.rest.sendRequest({ method: 'GET', url: '/bodhi/v1/user' });
+        expect(await app.rest.getResponseStatus()).toBe(200);
+        const info = await app.rest.getResponse();
+        expect(info.auth_status).toBe('logged_in');
+        expect(info.role).toBe('scope_user_power_user');
+        expect(info.access.models.type).toBe('all');
+        expect(info.access.mcps.type).toBe('all');
+      });
+    });
+  });
+
   test.describe('Error Handling', () => {
     let serverManager;
     let baseUrl;

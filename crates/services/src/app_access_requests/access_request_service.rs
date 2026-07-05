@@ -24,12 +24,14 @@ use crate::UserScope;
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
-  /// tenant_id is NULL — bound at approval time
+  /// tenant_id is NULL — bound at approval time. `source_access_request_id` is the
+  /// prior request an upgrade elevates (handler resolves it from the caller's token).
   async fn create_draft(
     &self,
     app_client_id: String,
     requested: RequestedResources,
     requested_role: UserScope,
+    source_access_request_id: Option<String>,
   ) -> Result<AppAccessRequest>;
 
   async fn get_request(&self, id: &str) -> Result<Option<AppAccessRequest>>;
@@ -118,6 +120,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     app_client_id: String,
     requested: RequestedResources,
     requested_role: UserScope,
+    source_access_request_id: Option<String>,
   ) -> Result<AppAccessRequest> {
     let access_request_id = new_ulid();
 
@@ -141,6 +144,7 @@ impl AccessRequestService for DefaultAccessRequestService {
       requested_role: requested_role.to_string(),
       approved_role: None,
       access_request_scope: None,
+      source_access_request_id,
       error_message: None,
       expires_at,
       created_at: now,

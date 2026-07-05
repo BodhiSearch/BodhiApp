@@ -76,6 +76,7 @@ async fn test_create_draft_valid(
         ..Default::default()
       }),
       UserScope::User,
+      None,
     )
     .await?;
 
@@ -85,6 +86,7 @@ async fn test_create_draft_valid(
   assert_eq!(None, result.approved_role);
   assert_eq!(None, result.user_id);
   assert_eq!(None, result.tenant_id);
+  assert_eq!(None, result.source_access_request_id);
   assert!(
     result.requested.contains(r#""version":"1""#),
     "Expected serialized requested to contain version tag, got: {}",

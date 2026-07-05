@@ -25,6 +25,7 @@ import { safeNavigate } from '@/lib/safeNavigate';
 
 import McpServerCard from './-components/McpServerCard';
 import { appendScopeToAuthUrl, buildErrorRedirect, readState, validateAuthUrl } from './-shared/authUrl';
+import { previousGrantToState } from './-shared/previousGrantToState';
 import { toApproveBody } from './-shared/toApproveBody';
 import '@/components/shell/api-keys.css';
 
@@ -152,20 +153,34 @@ const ReviewContent = () => {
     return computeRoleOptions(reviewData.requested_role, userRole);
   }, [reviewData, userData]);
 
+  // Default to the highest grantable role. In exchange mode this is the elevated
+  // (requested) role — we intentionally do NOT clamp to the source grant's role.
   useEffect(() => {
     if (roleOptions.length > 0) {
       setApprovedRole(roleOptions[0].value as UserScope);
     }
   }, [roleOptions]);
 
+  // Upgrade/exchange: pre-select the grant the app's current token already holds;
+  // otherwise default requested MCP servers to approved (fail-closed elsewhere).
   useEffect(() => {
-    if (reviewData?.mcps_info) {
-      const initial: Record<string, boolean> = {};
-      reviewData.mcps_info.forEach((mcp) => {
-        initial[mcp.url] = true;
-      });
-      setApprovedMcps(initial);
+    if (!reviewData) return;
+    const approvedInit: Record<string, boolean> = {};
+    (reviewData.mcps_info ?? []).forEach((mcp) => {
+      approvedInit[mcp.url] = true;
+    });
+    if (reviewData.previous_grant) {
+      const s = previousGrantToState(reviewData.previous_grant);
+      setListModels(s.listModels);
+      setModelMode(s.modelMode);
+      setModels(s.models);
+      setListMcps(s.listMcps);
+      setMcpExtraMode(s.mcpExtraMode);
+      setMcpsExtra(s.mcpsExtra);
+      Object.assign(approvedInit, s.approvedMcps);
+      setSelectedMcpInstances(s.selectedMcpInstances);
     }
+    setApprovedMcps(approvedInit);
   }, [reviewData]);
 
   const canApprove = useMemo(() => {

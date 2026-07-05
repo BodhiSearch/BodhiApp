@@ -25,6 +25,7 @@ mod m20250101_000023_api_alias_name;
 mod m20250101_000024_download_archived_at;
 mod m20250101_000025_token_grants;
 mod m20250101_000026_drop_app_access_request_flow_columns;
+mod m20250101_000027_app_access_request_source_id;
 use sea_orm_migration::prelude::*;
 
 pub struct Migrator;
@@ -61,6 +62,7 @@ impl MigratorTrait for Migrator {
       Box::new(m20250101_000024_download_archived_at::Migration),
       Box::new(m20250101_000025_token_grants::Migration),
       Box::new(m20250101_000026_drop_app_access_request_flow_columns::Migration),
+      Box::new(m20250101_000027_app_access_request_source_id::Migration),
     ]
   }
 }

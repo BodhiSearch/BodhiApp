@@ -18,10 +18,17 @@ export class RESTPage {
     terminal:
       '[data-testid="section-rest-client"][data-test-state="success"], [data-testid="section-rest-client"][data-test-state="error"]',
     navLink: '[data-testid="nav-rest"]',
+    reviewLink: '[data-testid="link-rest-review"]',
   };
 
   constructor(page) {
     this.page = page;
+  }
+
+  /** Follow the review link shown after a successful request-access POST (exchange flow). */
+  async clickReviewLink() {
+    await this.page.locator(this.selectors.reviewLink).waitFor();
+    await this.page.click(this.selectors.reviewLink);
   }
 
   async navigateTo() {

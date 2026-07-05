@@ -27,6 +27,7 @@ export type AccessRequestReviewResponse = {
      * Canonical Keycloak authorize endpoint the review page validates the app-supplied `auth_url` against.
      */
     auth_endpoint: string;
+    previous_grant?: null | PreviousGrantInfo;
 };
 
 export type AccessRequestStatusResponse = {
@@ -465,6 +466,11 @@ export type CreateAccessRequest = {
      * Resources requested (tools, etc.)
      */
     requested: RequestedResources;
+    /**
+     * Upgrade the app's current token: the caller must present it in the `Authorization`
+     * header; the server derives the prior request from the token, never the body.
+     */
+    exchange?: boolean;
 };
 
 export type CreateAccessRequestResponse = {
@@ -1433,6 +1439,11 @@ export type PingResponse = {
      * Simple ping response message
      */
     message: string;
+};
+
+export type PreviousGrantInfo = {
+    approved_role: UserScope;
+    approved: ApprovedResources;
 };
 
 export type QueueStatusResponse = {

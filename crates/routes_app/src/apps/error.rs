@@ -36,6 +36,10 @@ pub enum AppsRouteError {
   #[error_meta(error_type = ErrorType::Forbidden)]
   InsufficientPrivileges,
 
+  #[error("Exchange requires the app's current token in the Authorization header.")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  ExchangeRequiresAuth,
+
   #[error("Approved role '{approved}' exceeds allowed maximum '{max_allowed}' for this user.")]
   #[error_meta(error_type = ErrorType::Forbidden)]
   PrivilegeEscalation {

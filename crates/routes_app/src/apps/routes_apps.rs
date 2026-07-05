@@ -37,7 +37,7 @@ pub struct AccessRequestStatusQuery {
     tag = API_TAG_AUTH,
     operation_id = "createAccessRequest",
     summary = "Create Access Request",
-    description = "Create an access request for an app to access user resources. Always creates a draft for user review. Unauthenticated endpoint.",
+    description = "Create an access request for an app to access user resources. Always creates a draft for user review. Anonymous, except `exchange: true` requires the app's current token in the Authorization header.",
     request_body(
         content = CreateAccessRequest,
         description = "Access request details"
@@ -53,12 +53,24 @@ pub async fn apps_create_access_request(
   auth_scope: AuthScope,
   ValidatedJson(request): ValidatedJson<CreateAccessRequest>,
 ) -> Result<(StatusCode, Json<CreateAccessRequestResponse>), BodhiErrorResponse> {
-  // App info is fetched later during review (this endpoint is unauthenticated, so no user
-  // token is available and the KC app-info endpoint cannot be called yet).
   debug!(
     "Creating access request for app_client_id: {}",
     request.app_client_id
   );
+
+  // Exchange: derive the prior request from the caller's own app token (never the body).
+  let source_access_request_id = if request.exchange {
+    match auth_scope.auth_context() {
+      services::AuthContext::ExternalApp {
+        app_client_id,
+        access_request_id: Some(source_id),
+        ..
+      } if *app_client_id == request.app_client_id => Some(source_id.clone()),
+      _ => return Err(AppsRouteError::ExchangeRequiresAuth)?,
+    }
+  } else {
+    None
+  };
 
   let access_request_service = auth_scope.access_request_service();
   let created = access_request_service
@@ -66,6 +78,7 @@ pub async fn apps_create_access_request(
       request.app_client_id,
       request.requested,
       request.requested_role,
+      source_access_request_id,
     )
     .await?;
 
@@ -192,6 +205,13 @@ pub async fn apps_get_access_request_review(
     }
   }
 
+  let previous_grant = match &request.source_access_request_id {
+    Some(source_id) => {
+      resolve_previous_grant(&*access_request_service, source_id, &request.app_client_id).await
+    }
+    None => None,
+  };
+
   Ok(Json(AccessRequestReviewResponse {
     id: request.id,
     app_client_id: request.app_client_id,
@@ -202,7 +222,27 @@ pub async fn apps_get_access_request_review(
     requested,
     mcps_info,
     auth_endpoint: access_request_service.build_authorize_endpoint(),
+    previous_grant,
   }))
+}
+
+/// Prior grant for an upgrade review; `None` (form uses defaults) when the source is
+/// missing, not approved, from a different app, or unparsable.
+async fn resolve_previous_grant(
+  service: &dyn services::AccessRequestService,
+  source_id: &str,
+  app_client_id: &str,
+) -> Option<crate::apps::PreviousGrantInfo> {
+  let source = service.get_request(source_id).await.ok().flatten()?;
+  if source.status != AppAccessRequestStatus::Approved || source.app_client_id != app_client_id {
+    return None;
+  }
+  let approved: ApprovedResources = serde_json::from_str(source.approved.as_deref()?).ok()?;
+  let approved_role: UserScope = source.approved_role.as_deref()?.parse().ok()?;
+  Some(crate::apps::PreviousGrantInfo {
+    approved_role,
+    approved,
+  })
 }
 
 /// Approve access request (PUT /access-requests/:id/approve)

@@ -55,6 +55,15 @@ pub struct AccessRequestReviewResponse {
   pub mcps_info: Vec<McpServerReviewInfo>,
   /// Canonical Keycloak authorize endpoint the review page validates the app-supplied `auth_url` against.
   pub auth_endpoint: String,
+  /// Grant the app's current token already holds, for the review form to pre-select (upgrade only).
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub previous_grant: Option<PreviousGrantInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct PreviousGrantInfo {
+  pub approved_role: UserScope,
+  pub approved: ApprovedResources,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]

@@ -86,6 +86,7 @@ async fn seed_draft_request(
     requested_role: requested_role.to_string(),
     approved_role: None,
     access_request_scope: None,
+    source_access_request_id: None,
     error_message: None,
     expires_at: now + chrono::Duration::seconds(600),
     created_at: now,
@@ -166,6 +167,7 @@ async fn seed_approved_request(
     requested_role: "scope_user_user".to_string(),
     approved_role: Some("scope_user_user".to_string()),
     access_request_scope: Some(format!("scope_access_request:{request_id}")),
+    source_access_request_id: None,
     error_message: None,
     expires_at: now + chrono::Duration::seconds(600),
     created_at: now,
@@ -1117,6 +1119,7 @@ async fn test_review_access_request_invalid_requested_json() -> anyhow::Result<(
     requested_role: "scope_user_user".to_string(),
     approved_role: None,
     access_request_scope: None,
+    source_access_request_id: None,
     error_message: None,
     expires_at: now + chrono::Duration::seconds(600),
     created_at: now,
@@ -1170,6 +1173,7 @@ fn app_access_summary_clamps_tampered_approved_role() {
     requested_role: "scope_user_power_user".to_string(),
     approved_role: approved_role.map(|s| s.to_string()),
     access_request_scope: None,
+    source_access_request_id: None,
     error_message: None,
     expires_at: ts,
     created_at: ts,
@@ -1187,4 +1191,256 @@ fn app_access_summary_clamps_tampered_approved_role() {
   // No ceiling (non-session principal) ⇒ no clamp.
   let s = crate::AppAccessSummary::from_row(row(Some("scope_user_power_user")), None);
   assert_eq!(Some(UserScope::PowerUser), s.approved_role);
+}
+
+// ============================================================================
+// apps_create_access_request - exchange / upgrade mode
+// ============================================================================
+
+/// Seed a Draft whose `source_access_request_id` points at a prior request.
+async fn seed_draft_with_source(
+  db_service: &dyn DbService,
+  request_id: &str,
+  app_client_id: &str,
+  source_id: Option<&str>,
+) -> anyhow::Result<AppAccessRequest> {
+  let now = chrono::Utc::now();
+  let row = AppAccessRequest {
+    id: request_id.to_string(),
+    tenant_id: None,
+    app_client_id: app_client_id.to_string(),
+    app_name: Some("Upgrade App".to_string()),
+    app_description: None,
+    status: AppAccessRequestStatus::Draft,
+    requested: r#"{"version":"1","models_access":true,"mcp_servers":[]}"#.to_string(),
+    approved: None,
+    user_id: None,
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
+    access_request_scope: None,
+    source_access_request_id: source_id.map(|s| s.to_string()),
+    error_message: None,
+    expires_at: now + chrono::Duration::seconds(600),
+    created_at: now,
+    updated_at: now,
+  };
+  Ok(db_service.create(&row).await?)
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_access_request_exchange_stores_source_id() -> anyhow::Result<()> {
+  let harness = build_test_harness(MockAuthService::default()).await?;
+  let router = Router::new()
+    .route(
+      crate::ENDPOINT_APPS_REQUEST_ACCESS,
+      post(crate::apps_create_access_request),
+    )
+    .with_state(harness.state);
+
+  let body = json!({
+    "app_client_id": "test-app-client",
+    "requested_role": "scope_user_user",
+    "requested": {"version": "1", "mcp_servers": []},
+    "exchange": true
+  });
+  let request = axum::http::Request::builder()
+    .method("POST")
+    .uri("/bodhi/v1/apps/request-access")
+    .header("Content-Type", "application/json")
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_external_app(
+      "user-1",
+      services::UserScope::User,
+      "test-app-client",
+      Some("ar-source-1"),
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::CREATED, response.status());
+  let created = response.json::<Value>().await?;
+  let created_id = created["id"].as_str().unwrap().to_string();
+
+  let draft = harness
+    .db_service
+    .get("", &created_id)
+    .await?
+    .expect("draft persisted");
+  assert_eq!(
+    Some("ar-source-1".to_string()),
+    draft.source_access_request_id
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_access_request_exchange_without_auth_rejected() -> anyhow::Result<()> {
+  let harness = build_test_harness(MockAuthService::default()).await?;
+  let router = Router::new()
+    .route(
+      crate::ENDPOINT_APPS_REQUEST_ACCESS,
+      post(crate::apps_create_access_request),
+    )
+    .with_state(harness.state);
+
+  let body = json!({
+    "app_client_id": "test-app-client",
+    "requested_role": "scope_user_user",
+    "requested": {"version": "1", "mcp_servers": []},
+    "exchange": true
+  });
+  // No auth context populated (anonymous) — exchange must be rejected.
+  let request = axum::http::Request::builder()
+    .method("POST")
+    .uri("/bodhi/v1/apps/request-access")
+    .header("Content-Type", "application/json")
+    .body(Body::from(serde_json::to_string(&body)?))?;
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "apps_route_error-exchange_requires_auth",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_access_request_exchange_app_client_mismatch_rejected() -> anyhow::Result<()> {
+  let harness = build_test_harness(MockAuthService::default()).await?;
+  let router = Router::new()
+    .route(
+      crate::ENDPOINT_APPS_REQUEST_ACCESS,
+      post(crate::apps_create_access_request),
+    )
+    .with_state(harness.state);
+
+  let body = json!({
+    "app_client_id": "test-app-client",
+    "requested_role": "scope_user_user",
+    "requested": {"version": "1", "mcp_servers": []},
+    "exchange": true
+  });
+  // Token belongs to a different app than the one named in the request body.
+  let request = axum::http::Request::builder()
+    .method("POST")
+    .uri("/bodhi/v1/apps/request-access")
+    .header("Content-Type", "application/json")
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_external_app(
+      "user-1",
+      services::UserScope::User,
+      "other-app-client",
+      Some("ar-source-1"),
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+  Ok(())
+}
+
+// ============================================================================
+// apps_get_access_request_review - previous_grant embedding (upgrade)
+// ============================================================================
+
+fn review_router(state: Arc<dyn services::AppService>) -> Router {
+  Router::new()
+    .route(
+      crate::ENDPOINT_ACCESS_REQUESTS_REVIEW,
+      get(crate::apps_get_access_request_review),
+    )
+    .with_state(state)
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_review_embeds_previous_grant_for_exchange() -> anyhow::Result<()> {
+  let mut mock_auth = MockAuthService::default();
+  mock_auth
+    .expect_authorize_url()
+    .return_const("https://kc.example.com/auth".to_string());
+  let harness = build_test_harness(mock_auth).await?;
+
+  let approved_json = r#"{"version":"1","models_list":true,"models_access":{"type":"specific","ids":["model-a"]},"mcps_list":true,"mcps":[],"mcps_access":{"type":"specific","ids":[]}}"#;
+  seed_approved_request(
+    harness.db_service.as_ref(),
+    "ar-source-1",
+    "user-1",
+    "test-app-client",
+    approved_json,
+  )
+  .await?;
+  seed_draft_with_source(
+    harness.db_service.as_ref(),
+    "ar-upgrade-1",
+    "test-app-client",
+    Some("ar-source-1"),
+  )
+  .await?;
+
+  let request = axum::http::Request::builder()
+    .method("GET")
+    .uri("/bodhi/v1/access-requests/ar-upgrade-1/review")
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session(
+      "user-1",
+      "user@test.com",
+      ResourceRole::User,
+    ));
+
+  let response = review_router(harness.state).oneshot(request).await?;
+  assert_eq!(StatusCode::OK, response.status());
+  let body = response.json::<Value>().await?;
+  let prev = &body["previous_grant"];
+  assert_eq!("scope_user_user", prev["approved_role"].as_str().unwrap());
+  assert_eq!(true, prev["approved"]["models_list"].as_bool().unwrap());
+  assert_eq!(
+    "model-a",
+    prev["approved"]["models_access"]["ids"][0]
+      .as_str()
+      .unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_review_omits_previous_grant_when_source_missing() -> anyhow::Result<()> {
+  let mut mock_auth = MockAuthService::default();
+  mock_auth
+    .expect_authorize_url()
+    .return_const("https://kc.example.com/auth".to_string());
+  let harness = build_test_harness(mock_auth).await?;
+
+  seed_draft_with_source(
+    harness.db_service.as_ref(),
+    "ar-upgrade-2",
+    "test-app-client",
+    Some("does-not-exist"),
+  )
+  .await?;
+
+  let request = axum::http::Request::builder()
+    .method("GET")
+    .uri("/bodhi/v1/access-requests/ar-upgrade-2/review")
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session(
+      "user-1",
+      "user@test.com",
+      ResourceRole::User,
+    ));
+
+  let response = review_router(harness.state).oneshot(request).await?;
+  assert_eq!(StatusCode::OK, response.status());
+  let body = response.json::<Value>().await?;
+  assert!(body["previous_grant"].is_null());
+  Ok(())
 }

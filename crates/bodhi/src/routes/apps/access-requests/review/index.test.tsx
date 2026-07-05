@@ -18,6 +18,7 @@ import {
   mockDraftReviewResponsePowerUser,
   mockDraftWithGrantFlagsResponse,
   mockExpiredReviewResponse,
+  mockUpgradeReviewResponse,
 } from '@/test-fixtures/apps';
 import {
   mockAppAccessRequestApprove,
@@ -1030,5 +1031,56 @@ describe('ReviewAccessRequestPage - Model & MCP grant sections', () => {
     expect(body.approved.mcps[0].status).toBe('approved');
     // No owner-extra MCPs selected → empty specific grant.
     expect(body.approved.mcps_access).toEqual({ type: 'specific', ids: [] });
+  });
+});
+
+describe('ReviewAccessRequestPage - Upgrade / exchange preselect', () => {
+  it('pre-selects the prior grant and approves without re-picking', async () => {
+    const user = userEvent.setup();
+    mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
+    let capturedBody: unknown = null;
+    server.use(
+      ...mockAppInfoReady(),
+      // A reviewer who can grant power_user, so the elevated default is offered.
+      ...mockUserLoggedIn({ role: 'resource_power_user' }),
+      ...mockModelsDefault(),
+      mockListMcps(),
+      ...mockAppAccessRequestReview(mockUpgradeReviewResponse),
+      ...mockAppAccessRequestApprove(MOCK_REQUEST_ID, { onBody: (body) => (capturedBody = body) })
+    );
+    setupWindowLocation();
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    // The prior grant had "list all models" on — the toggle loads checked.
+    await waitFor(() => {
+      expect(screen.getByTestId('review-list-models-toggle')).toBeChecked();
+    });
+    expect(screen.getByTestId('review-list-mcps-toggle')).toBeChecked();
+
+    // The by-url MCP instance was pre-selected, so approve is enabled with no extra clicks.
+    const approveButton = screen.getByTestId('review-approve-button');
+    await waitFor(() => expect(approveButton).not.toBeDisabled());
+    await user.click(approveButton);
+
+    await waitFor(() => expect(capturedBody).not.toBeNull());
+    const body = capturedBody as {
+      approved_role: string;
+      approved: {
+        models_list: boolean;
+        models_access: { type: string; ids?: string[] };
+        mcps_list: boolean;
+        mcps: Array<{ url: string; status: string; instance?: { id: string } }>;
+      };
+    };
+    // Role defaults to the elevated (requested) role, not the source grant's role.
+    expect(body.approved_role).toBe('scope_user_power_user');
+    expect(body.approved.models_list).toBe(true);
+    expect(body.approved.models_access).toEqual({ type: 'specific', ids: ['model-a'] });
+    expect(body.approved.mcps_list).toBe(true);
+    expect(body.approved.mcps[0].status).toBe('approved');
+    expect(body.approved.mcps[0].instance?.id).toBe('mcp-instance-1');
   });
 });

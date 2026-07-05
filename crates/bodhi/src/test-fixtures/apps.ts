@@ -483,6 +483,32 @@ export const mockDraftWithGrantFlagsResponse: AccessRequestReviewResponse = {
     },
   ],
 };
+// Upgrade/exchange draft: same requested surface as mockDraftWithGrantFlagsResponse,
+// plus a `previous_grant` the review form should pre-select.
+export const mockUpgradeReviewResponse: AccessRequestReviewResponse = {
+  ...mockDraftWithGrantFlagsResponse,
+  app_name: 'Upgrade App',
+  // The app asks to elevate to power_user; the source grant was a plain user.
+  requested_role: 'scope_user_power_user',
+  previous_grant: {
+    approved_role: 'scope_user_user',
+    approved: {
+      version: '1' as const,
+      models_list: true,
+      models_access: { type: 'specific', ids: ['model-a'] },
+      mcps_list: true,
+      mcps: [
+        {
+          url: 'https://mcp.deepwiki.com/mcp',
+          status: 'approved',
+          instance: { id: 'mcp-instance-1', path: '/mcp/deepwiki-prod' },
+        },
+      ],
+      mcps_access: { type: 'specific', ids: [] },
+    },
+  },
+};
+
 export const mockDraftReviewResponsePowerUser: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,

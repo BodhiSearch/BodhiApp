@@ -17,6 +17,8 @@ pub struct AppAccessRequest {
   pub requested_role: String,
   pub approved_role: Option<String>,
   pub access_request_scope: Option<String>,
+  /// Prior approved request this upgrade elevates; `None` for a fresh request.
+  pub source_access_request_id: Option<String>,
   pub error_message: Option<String>,
   pub expires_at: chrono::DateTime<chrono::Utc>,
   pub created_at: chrono::DateTime<chrono::Utc>,
@@ -294,6 +296,10 @@ pub struct CreateAccessRequest {
   pub requested_role: crate::UserScope,
   /// Resources requested (tools, etc.)
   pub requested: RequestedResources,
+  /// Upgrade the app's current token: the caller must present it in the `Authorization`
+  /// header; the server derives the prior request from the token, never the body.
+  #[serde(default)]
+  pub exchange: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, validator::Validate, ToSchema)]

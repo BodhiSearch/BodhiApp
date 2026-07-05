@@ -25,6 +25,7 @@ fn make_request(id: &str, now: chrono::DateTime<chrono::Utc>) -> AppAccessReques
     requested_role: "scope_user_user".to_string(),
     approved_role: None,
     access_request_scope: None,
+    source_access_request_id: None,
     error_message: None,
     expires_at: now + Duration::hours(1),
     created_at: now,

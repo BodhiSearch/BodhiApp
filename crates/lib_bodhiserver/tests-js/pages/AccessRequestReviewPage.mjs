@@ -51,6 +51,20 @@ export class AccessRequestReviewPage extends BasePage {
     await this.page.click('[data-testid="review-list-mcps-toggle"]');
   }
 
+  /** True when the "list all models" toggle is on (pre-populated in exchange mode). */
+  async isListModelsChecked() {
+    return (
+      (await this.page.locator('[data-testid="review-list-models-toggle"]').getAttribute('aria-checked')) === 'true'
+    );
+  }
+
+  /** True when the "list all MCPs" toggle is on. */
+  async isListMcpsChecked() {
+    return (
+      (await this.page.locator('[data-testid="review-list-mcps-toggle"]').getAttribute('aria-checked')) === 'true'
+    );
+  }
+
   /** Wait for an open Specific picker panel (prefix `review-model-access` |
    *  `review-mcp-access`), click each grant id, then close it. Empty `ids` leaves
    *  the grant empty — a deterministic "no access" grant. */
@@ -86,6 +100,11 @@ export class AccessRequestReviewPage extends BasePage {
     await this.pickFromOpenPanel('review-mcp-access', ids);
   }
 
+  /** Grant ALL owner-extra MCPs at consent. */
+  async grantAllMcps() {
+    await this.page.click('[data-testid="review-mcp-access-mode-all"]');
+  }
+
   /**
    * Approve after configuring the model/MCP grant controls.
    * @param {Object} opts
@@ -99,14 +118,18 @@ export class AccessRequestReviewPage extends BasePage {
     allModels = false,
     modelIds = null,
     listMcps = false,
+    allMcps = false,
     mcpIds = null,
+    role = null,
   } = {}) {
     await this.waitForReviewPage();
     if (listModels) await this.toggleListModels();
     if (allModels) await this.grantAllModels();
     if (modelIds) await this.grantSpecificModels(modelIds);
     if (listMcps) await this.toggleListMcps();
+    if (allMcps) await this.grantAllMcps();
     if (mcpIds) await this.grantSpecificMcps(mcpIds);
+    if (role) await this.selectApprovedRole(role);
     await this.clickApprove();
   }
 

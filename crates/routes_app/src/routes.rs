@@ -116,17 +116,18 @@ pub async fn build_routes(
     .route(ENDPOINT_APP_SETUP, post(setup_create))
     // TODO: having as api/ui/logout coz of status code as 200 instead of 302 because of automatic follow redirect by axios
     .route(ENDPOINT_LOGOUT, post(auth_logout))
-    // App access request endpoints (unauthenticated)
-    .route(
-      ENDPOINT_APPS_REQUEST_ACCESS,
-      post(apps_create_access_request),
-    )
+    // App access request status poll (unauthenticated)
     .route(
       ENDPOINT_APPS_ACCESS_REQUESTS_ID,
       get(apps_get_access_request_status),
     );
 
   let mut optional_auth = Router::new()
+    // Anonymous for a fresh request; reads the app's current token when `exchange: true`.
+    .route(
+      ENDPOINT_APPS_REQUEST_ACCESS,
+      post(apps_create_access_request),
+    )
     .route(ENDPOINT_APP_INFO, get(setup_show))
     .route(ENDPOINT_USER_INFO, get(users_info))
     .route(ENDPOINT_AUTH_INITIATE, post(auth_initiate))
