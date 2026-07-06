@@ -32,7 +32,7 @@ export function BareLayout({ children }: BareLayoutProps) {
           />
           <span className="bare-brand-text">
             <span className="bare-brand-word">Bodhi</span>
-            <span className="bare-brand-sub">AI Gateway</span>
+            <span className="bare-brand-sub">AI Operating System</span>
           </span>
         </a>
         <ThemeToggle />

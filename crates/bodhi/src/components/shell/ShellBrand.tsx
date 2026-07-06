@@ -20,7 +20,7 @@ export function ShellBrand({ collapsed }: ShellBrandProps) {
             Bodhi
           </span>
           <span className="shell-brand-s" style={{ display: 'block' }}>
-            AI Gateway
+            AI Operating System
           </span>
         </span>
       )}
