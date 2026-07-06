@@ -53,8 +53,7 @@ export class ChatFixtures {
         unicodeCharacters: '🤖 こんにちは 🌟 café naïve résumé',
         multilineMessage: 'Line 1\nLine 2\nLine 3\n\nLine 5',
         codeSnippet: '```javascript\nconst x = 1;\nconsole.log(x);\n```',
-        markdownContent:
-          '# Header\n\n**Bold text** and *italic text*\n\n- List item 1\n- List item 2',
+        markdownContent: '# Header\n\n**Bold text** and *italic text*\n\n- List item 1\n- List item 2',
         htmlLikeContent: '<div>This is not HTML but looks like it</div>',
         sqlLikeContent: 'SELECT * FROM users WHERE id = 1;',
       },
@@ -249,7 +248,6 @@ export class ChatFixtures {
           '[data-testid="send-button"]',
           '[data-testid="user-message"]',
           '[data-testid="assistant-message"]',
-          '[data-testid="settings-toggle-button"]',
         ],
       },
 
@@ -347,13 +345,7 @@ export class ChatFixtures {
   static getCleanupPatterns() {
     return {
       // Patterns for test data that should be cleaned up
-      testChatTitlePatterns: [
-        /^Test Chat \d+/,
-        /^test-\d+/,
-        /^lifecycle-test/,
-        /^mobile-test/,
-        /^responsive-test/,
-      ],
+      testChatTitlePatterns: [/^Test Chat \d+/, /^test-\d+/, /^lifecycle-test/, /^mobile-test/, /^responsive-test/],
 
       // Test messages that indicate test data
       testMessagePatterns: [

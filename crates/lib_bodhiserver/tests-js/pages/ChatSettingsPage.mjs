@@ -8,12 +8,11 @@ export class ChatSettingsPage extends BasePage {
   selectors = {
     // Settings panel
     settingsSidebar: '[data-testid="settings-sidebar"]',
-    settingsToggle: '[data-testid="settings-toggle-button"]',
 
     // Model selection
     modelSelectorLoaded: '[data-testid="model-selector-loaded"]',
     comboboxTrigger: '[data-testid="model-selector-trigger"]', // Desktop version (no prefix)
-    comboboxOption: (modelName) => `[data-testid="combobox-option-${modelName}"]`,
+    comboboxOption: modelName => `[data-testid="combobox-option-${modelName}"]`,
 
     // Settings controls
     streamModeSwitch: '#stream-mode',
@@ -50,12 +49,11 @@ export class ChatSettingsPage extends BasePage {
   }
 
   /**
-   * Close settings panel (Note: Currently settings panel doesn't close properly in UI)
+   * The settings rail is open by default; hiding it is a shell-level concern with no dedicated
+   * page control, so this is a no-op kept for call-site symmetry.
    */
   async closeSettings() {
-    await this.page.click(this.selectors.settingsToggle);
     await this.waitForSPAReady();
-    // Note: Settings panel stays visible due to current UI implementation
   }
 
   // Model selection
@@ -380,10 +378,7 @@ export class ChatSettingsPage extends BasePage {
     }
 
     if (expectedSettings.apiToken !== undefined) {
-      await this.verifyApiTokenSettings(
-        expectedSettings.apiToken.enabled,
-        expectedSettings.apiToken.hasValue
-      );
+      await this.verifyApiTokenSettings(expectedSettings.apiToken.enabled, expectedSettings.apiToken.hasValue);
     }
 
     if (expectedSettings.systemPrompt !== undefined) {
@@ -401,16 +396,12 @@ export class ChatSettingsPage extends BasePage {
     await this.openSettings();
 
     // Look for reset button (this might not be implemented)
-    const resetButton = this.page.locator(
-      '[data-testid="reset-settings"], button:has-text("Reset")'
-    );
+    const resetButton = this.page.locator('[data-testid="reset-settings"], button:has-text("Reset")');
     if (await resetButton.isVisible()) {
       await resetButton.click();
 
       // Handle confirmation if needed
-      const confirmButton = this.page.locator(
-        'button:has-text("Confirm"), button:has-text("Reset")'
-      );
+      const confirmButton = this.page.locator('button:has-text("Confirm"), button:has-text("Reset")');
       if (await confirmButton.isVisible()) {
         await confirmButton.click();
       }
@@ -422,27 +413,9 @@ export class ChatSettingsPage extends BasePage {
   /**
    * Test responsive settings panel
    */
-  async testResponsiveSettings(viewportWidth) {
-    if (viewportWidth < 768) {
-      // Mobile: settings should be in drawer/modal
-      await this.page.click(this.selectors.settingsToggle);
-
-      const settingsPanel = this.page.locator(this.selectors.settingsSidebar);
-      await expect(settingsPanel).toBeVisible();
-
-      // Should be able to close by clicking toggle or outside
-      await this.page.click(this.selectors.settingsToggle);
-      await expect(settingsPanel).not.toBeVisible();
-    } else {
-      // Desktop: settings should be a sidebar
-      const settingsPanel = this.page.locator(this.selectors.settingsSidebar);
-
-      // May be visible by default on desktop
-      if (!(await settingsPanel.isVisible())) {
-        await this.page.click(this.selectors.settingsToggle);
-        await expect(settingsPanel).toBeVisible();
-      }
-    }
+  async testResponsiveSettings() {
+    // Settings rail is published to the shell and open by default across viewports.
+    await expect(this.page.locator(this.selectors.settingsSidebar)).toBeVisible();
   }
 
   /**

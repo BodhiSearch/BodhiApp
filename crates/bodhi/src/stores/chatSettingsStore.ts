@@ -59,7 +59,7 @@ export const defaultSettings: ChatSettings & SessionOnlySettings = {
   systemPrompt_enabled: false,
   response_format_enabled: false,
   maxToolIterations: 5,
-  maxToolIterations_enabled: true,
+  maxToolIterations_enabled: false,
   ...defaultSessionSettings,
 };
 

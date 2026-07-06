@@ -7,47 +7,31 @@ export class ChatHistoryPage extends BasePage {
     historyContainer: '[data-testid="chat-history-container"]',
 
     // Chat items
-    chatHistoryItem: (id) => `[data-testid="chat-history-item-${id}"]`,
-    chatHistoryButton: (id) => `[data-testid="chat-history-button-${id}"]`,
-    deleteChatButton: (id) => `[data-testid="delete-chat-${id}"]`,
+    chatHistoryItem: id => `[data-testid="chat-history-item-${id}"]`,
+    chatHistoryButton: id => `[data-testid="chat-history-button-${id}"]`,
+    deleteChatButton: id => `[data-testid="delete-chat-${id}"]`,
 
     // History groups
     todayGroup: 'text=TODAY',
     yesterdayGroup: 'text=YESTERDAY',
     previousGroup: 'text=PREVIOUS 7 DAYS',
 
-    // Toggle
-    historyToggle: '[data-testid="chat-history-toggle"]',
-
     // New chat button
     newChatButton: '[data-testid="new-chat-button"]',
   };
 
   /**
-   * Open chat history sidebar if not already open
+   * Wait for the history sidebar (published to the shell, open by default)
    */
   async openHistorySidebar() {
-    const historyContainer = this.page.locator(this.selectors.historyContainer);
-    const isVisible = await historyContainer.isVisible();
-
-    if (!isVisible) {
-      await this.page.click(this.selectors.historyToggle);
-      await expect(historyContainer).toBeVisible();
-    }
+    await expect(this.page.locator(this.selectors.historyContainer)).toBeVisible();
   }
 
   /**
-   * Close chat history sidebar if open
+   * The history sidebar is open by default; collapsing it is a shell-level concern with no
+   * dedicated page control, so this is a no-op kept for call-site symmetry.
    */
-  async closeHistorySidebar() {
-    const historyContainer = this.page.locator(this.selectors.historyContainer);
-    const isVisible = await historyContainer.isVisible();
-
-    if (isVisible) {
-      await this.page.click(this.selectors.historyToggle);
-      await expect(historyContainer).not.toBeVisible();
-    }
-  }
+  async closeHistorySidebar() {}
 
   /**
    * Select a chat from history by chat title
@@ -144,9 +128,7 @@ export class ChatHistoryPage extends BasePage {
 
     // Wait for the chat with the specific title to appear in history
     // This uses Playwright's built-in waiting with timeout
-    const chatButton = this.page.locator(
-      `[data-testid^="chat-history-button-"]:has-text("${chatTitle}")`
-    );
+    const chatButton = this.page.locator(`[data-testid^="chat-history-button-"]:has-text("${chatTitle}")`);
     await expect(chatButton).toBeVisible();
   }
 
@@ -230,11 +212,7 @@ export class ChatHistoryPage extends BasePage {
     await this.openHistorySidebar();
 
     // Check if groups are present (they may not all be visible depending on chat ages)
-    const groups = [
-      this.selectors.todayGroup,
-      this.selectors.yesterdayGroup,
-      this.selectors.previousGroup,
-    ];
+    const groups = [this.selectors.todayGroup, this.selectors.yesterdayGroup, this.selectors.previousGroup];
 
     for (const group of groups) {
       const groupElement = this.page.locator(group);
@@ -248,28 +226,9 @@ export class ChatHistoryPage extends BasePage {
   /**
    * Test responsive behavior of chat history
    */
-  async testResponsiveHistory(viewportWidth) {
-    if (viewportWidth < 768) {
-      // Mobile: history should be in drawer/overlay
-      await this.page.click(this.selectors.historyToggle);
-
-      // Verify history appears as overlay/drawer
-      const historyContainer = this.page.locator(this.selectors.historyContainer);
-      await expect(historyContainer).toBeVisible();
-
-      // Should be able to close by clicking toggle again or outside
-      await this.page.click(this.selectors.historyToggle);
-      await expect(historyContainer).not.toBeVisible();
-    } else {
-      // Desktop: history should be a sidebar
-      const historyContainer = this.page.locator(this.selectors.historyContainer);
-
-      // May be visible by default on desktop
-      if (!(await historyContainer.isVisible())) {
-        await this.page.click(this.selectors.historyToggle);
-        await expect(historyContainer).toBeVisible();
-      }
-    }
+  async testResponsiveHistory() {
+    // History sidebar is published to the shell and open by default across viewports.
+    await expect(this.page.locator(this.selectors.historyContainer)).toBeVisible();
   }
 
   /**
@@ -285,9 +244,7 @@ export class ChatHistoryPage extends BasePage {
     await deleteButton.click();
 
     // If there's a confirmation dialog, handle it
-    const confirmButton = this.page.locator(
-      'button:has-text("Delete"), button:has-text("Confirm")'
-    );
+    const confirmButton = this.page.locator('button:has-text("Delete"), button:has-text("Confirm")');
     if (await confirmButton.isVisible()) {
       await confirmButton.click();
     }
@@ -302,9 +259,7 @@ export class ChatHistoryPage extends BasePage {
     await this.openHistorySidebar();
 
     // Look for search input (this might not be implemented yet)
-    const searchInput = this.page.locator(
-      '[data-testid="chat-search"], input[placeholder*="search" i]'
-    );
+    const searchInput = this.page.locator('[data-testid="chat-search"], input[placeholder*="search" i]');
     if (await searchInput.isVisible()) {
       await searchInput.fill(searchTerm);
       await this.page.waitForTimeout(500); // Wait for search results

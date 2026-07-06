@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
-import { PanelLeftClose, PanelLeftOpen, Settings2, X } from 'lucide-react';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
 import { useShellChrome } from '@/components/shell/ShellChromeContext';
 import { useChatMcp } from '@/hooks/chat/useChatMcp';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useViewTransition } from '@/hooks/useViewTransition';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -70,11 +68,8 @@ function ChatScreen() {
   const model = search.model;
   const chatIdFromUrl = search.id;
 
-  // History / settings panels are published into the shell's sidebar + rail slots. We own their
-  // open state (persisted) so the legacy header toggles below — which the E2E page objects key on —
-  // can hide/show the panel content without touching the shell's own nav-collapse.
-  const [historyOpen, setHistoryOpen] = useLocalStorage('sidebar-history-open', true);
-  const [settingsOpen, setSettingsOpen] = useLocalStorage('sidebar-settings-open', true);
+  // History / settings panels are published into the shell's sidebar + rail slots; the shell's own
+  // sidepanel toggles handle showing/hiding them, so the panel content is always provided here.
   const [railTab, setRailTab] = useState<ChatRailTab>('parameters');
   const withViewTransition = useViewTransition();
 
@@ -88,25 +83,21 @@ function ChatScreen() {
     }
   }, [model]);
 
-  const toggleHistory = useCallback(() => setHistoryOpen((o) => !o), [setHistoryOpen]);
-  const toggleSettings = useCallback(() => setSettingsOpen((o) => !o), [setSettingsOpen]);
-
   // Cross-fade only the rail PANE on tab swap (reduced-motion aware); never the grid columns.
   const selectRailTab = useCallback(
     (tab: ChatRailTab) => withViewTransition(() => setRailTab(tab)),
     [withViewTransition]
   );
 
-  const sidebar = useMemo(() => <ChatHistorySidebar listOpen={historyOpen} />, [historyOpen]);
+  const sidebar = useMemo(() => <ChatHistorySidebar />, []);
 
   const railHeader = useMemo(
-    () => (settingsOpen ? <ChatRailTabs value={railTab} onChange={selectRailTab} mcpCount={mcp.mcpCount} /> : null),
-    [settingsOpen, railTab, selectRailTab, mcp.mcpCount]
+    () => <ChatRailTabs value={railTab} onChange={selectRailTab} mcpCount={mcp.mcpCount} />,
+    [railTab, selectRailTab, mcp.mcpCount]
   );
 
-  const rail = useMemo(() => {
-    if (!settingsOpen) return null;
-    return (
+  const rail = useMemo(
+    () => (
       <div className="chat-rail-vt" style={{ viewTransitionName: 'chat-rail-pane' }}>
         {railTab === 'parameters' ? (
           <ParametersPane />
@@ -122,38 +113,12 @@ function ChatScreen() {
           />
         )}
       </div>
-    );
-  }, [settingsOpen, railTab, mcp]);
-
-  const headerActions = useMemo(
-    () => (
-      <>
-        <button
-          type="button"
-          className="shell-icon-btn"
-          aria-label="Toggle history"
-          data-testid="chat-history-toggle"
-          onClick={toggleHistory}
-        >
-          {historyOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-        </button>
-        <button
-          type="button"
-          className="shell-icon-btn"
-          aria-label="Toggle settings"
-          data-testid="settings-toggle-button"
-          onClick={toggleSettings}
-        >
-          {settingsOpen ? <X className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
-        </button>
-      </>
     ),
-    [historyOpen, settingsOpen, toggleHistory, toggleSettings]
+    [railTab, mcp]
   );
 
   useShellChrome({
     breadcrumb: CHAT_BREADCRUMB,
-    headerActions,
     sidebar,
     rail,
     railHeader,
