@@ -78,7 +78,12 @@ impl NativeCommand {
 
     let host = setting_service.host().await;
     let port = setting_service.port().await;
-    let addr = setting_service.public_server_url().await;
+    let mut addr = setting_service.public_server_url().await;
+    if addr.starts_with("http://0.0.0.0") {
+      // replace 0.0.0.0 with 127.0.0.1, mcp servers callback url for 0.0.0.0 requires https
+      // temporary fix till we follow up with notion, clickup allowing 0.0.0.0 as callback on http
+      addr = addr.replace("0.0.0.0", "127.0.0.1");
+    }
     let browser_url = addr.clone();
 
     tauri::Builder::default()
