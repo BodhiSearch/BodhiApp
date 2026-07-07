@@ -1,6 +1,6 @@
 [package]
 name = "llama_server_proc"
-version = "0.0.54-dev"
+version = "0.0.55-dev"
 edition = "2021"
 
 [dependencies]
