@@ -202,7 +202,12 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
         await app.config.submitAccessRequest();
         await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
         const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-        await reviewPage.approveWithGrants({ listModels: true, allModels: true, listMcps: true, allMcps: true });
+        await reviewPage.approveWithGrants({
+          listModels: true,
+          allModels: true,
+          listMcps: true,
+          allMcps: true,
+        });
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
       });
 

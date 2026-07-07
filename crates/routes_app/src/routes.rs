@@ -704,8 +704,7 @@ async fn apply_ui_router(
     _ => {
       if let Some(dir) = static_dir {
         debug!("serving ui from embedded assets under /ui");
-        let csp: Arc<str> =
-          crate::build_csp(&setting_service.reference_api_url().await).into();
+        let csp: Arc<str> = crate::build_csp(&setting_service.reference_api_url().await).into();
         router.merge(build_ui_spa_router(dir, csp))
       } else {
         router

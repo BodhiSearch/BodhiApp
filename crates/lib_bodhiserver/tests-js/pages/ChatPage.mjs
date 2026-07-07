@@ -32,7 +32,7 @@ export class ChatPage extends BasePage {
     // Model selection (in settings panel)
     modelSelectorLoaded: '[data-testid="model-selector-loaded"]',
     comboboxTrigger: '[data-testid="model-selector-trigger"]',
-    comboboxOption: modelName => `[data-testid="combobox-option-${modelName}"]`,
+    comboboxOption: (modelName) => `[data-testid="combobox-option-${modelName}"]`,
 
     // Settings
     settingsSidebar: '[data-testid="settings-sidebar"]',
@@ -53,11 +53,11 @@ export class ChatPage extends BasePage {
     mcpsEmptyState: '[data-testid="mcps-empty-state"]',
     // Servers are ADDED to the chat via a combobox, then appear as rows; tools toggle within a row.
     mcpAddTrigger: '[data-testid="mcp-add-trigger"]',
-    mcpAddOption: id => `[data-testid="mcp-add-option-${id}"]`,
-    mcpRemove: id => `[data-testid="mcp-remove-${id}"]`,
-    mcpRow: id => `[data-testid="mcp-row-${id}"]`,
-    mcpExpand: id => `[data-testid="mcp-expand-${id}"]`,
-    mcpItem: id => `[data-testid="mcp-item-${id}"]`,
+    mcpAddOption: (id) => `[data-testid="mcp-add-option-${id}"]`,
+    mcpRemove: (id) => `[data-testid="mcp-remove-${id}"]`,
+    mcpRow: (id) => `[data-testid="mcp-row-${id}"]`,
+    mcpExpand: (id) => `[data-testid="mcp-expand-${id}"]`,
+    mcpItem: (id) => `[data-testid="mcp-item-${id}"]`,
     mcpToolRow: (mcpId, toolName) => `[data-testid="mcp-tool-row-${mcpId}-${toolName}"]`,
     mcpToolCheckbox: (mcpId, toolName) => `[data-testid="mcp-tool-checkbox-${mcpId}-${toolName}"]`,
 
@@ -116,7 +116,9 @@ export class ChatPage extends BasePage {
   async waitForResponse(expectedContent) {
     if (expectedContent) {
       // Wait for assistant message with specific content
-      await expect(this.page.locator(this.selectors.assistantMessage).last()).toContainText(expectedContent);
+      await expect(this.page.locator(this.selectors.assistantMessage).last()).toContainText(
+        expectedContent
+      );
     } else {
       // Wait for any assistant message
       await expect(this.page.locator(this.selectors.assistantMessage).last()).toBeVisible();
@@ -273,7 +275,7 @@ export class ChatPage extends BasePage {
   }
 
   async expectChatPage() {
-    await this.page.waitForURL(url => url.pathname === '/ui/chat/');
+    await this.page.waitForURL((url) => url.pathname === '/ui/chat/');
     await this.waitForChatPageLoad();
   }
 
@@ -285,7 +287,9 @@ export class ChatPage extends BasePage {
    */
   async waitForApiFormat(expectedFormatText) {
     await this.openSettingsPanel();
-    await expect(this.page.locator('[data-testid="api-format-label"]')).toContainText(expectedFormatText);
+    await expect(this.page.locator('[data-testid="api-format-label"]')).toContainText(
+      expectedFormatText
+    );
   }
 
   /**
@@ -315,7 +319,10 @@ export class ChatPage extends BasePage {
    */
   async verifyMessageInHistory(role, expectedContent) {
     await expect(
-      this.page.locator(`[data-testid="${role}-message-content"]`).filter({ hasText: expectedContent }).first()
+      this.page
+        .locator(`[data-testid="${role}-message-content"]`)
+        .filter({ hasText: expectedContent })
+        .first()
     ).toBeVisible();
   }
 
@@ -409,7 +416,7 @@ export class ChatPage extends BasePage {
    * Simulate network failure
    */
   async simulateNetworkFailure() {
-    await this.page.route('**/v1/chat/completions', route => route.abort());
+    await this.page.route('**/v1/chat/completions', (route) => route.abort());
   }
 
   /**

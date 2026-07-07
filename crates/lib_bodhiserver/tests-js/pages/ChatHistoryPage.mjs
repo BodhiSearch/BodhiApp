@@ -7,9 +7,9 @@ export class ChatHistoryPage extends BasePage {
     historyContainer: '[data-testid="chat-history-container"]',
 
     // Chat items
-    chatHistoryItem: id => `[data-testid="chat-history-item-${id}"]`,
-    chatHistoryButton: id => `[data-testid="chat-history-button-${id}"]`,
-    deleteChatButton: id => `[data-testid="delete-chat-${id}"]`,
+    chatHistoryItem: (id) => `[data-testid="chat-history-item-${id}"]`,
+    chatHistoryButton: (id) => `[data-testid="chat-history-button-${id}"]`,
+    deleteChatButton: (id) => `[data-testid="delete-chat-${id}"]`,
 
     // History groups
     todayGroup: 'text=TODAY',
@@ -128,7 +128,9 @@ export class ChatHistoryPage extends BasePage {
 
     // Wait for the chat with the specific title to appear in history
     // This uses Playwright's built-in waiting with timeout
-    const chatButton = this.page.locator(`[data-testid^="chat-history-button-"]:has-text("${chatTitle}")`);
+    const chatButton = this.page.locator(
+      `[data-testid^="chat-history-button-"]:has-text("${chatTitle}")`
+    );
     await expect(chatButton).toBeVisible();
   }
 
@@ -212,7 +214,11 @@ export class ChatHistoryPage extends BasePage {
     await this.openHistorySidebar();
 
     // Check if groups are present (they may not all be visible depending on chat ages)
-    const groups = [this.selectors.todayGroup, this.selectors.yesterdayGroup, this.selectors.previousGroup];
+    const groups = [
+      this.selectors.todayGroup,
+      this.selectors.yesterdayGroup,
+      this.selectors.previousGroup,
+    ];
 
     for (const group of groups) {
       const groupElement = this.page.locator(group);
@@ -244,7 +250,9 @@ export class ChatHistoryPage extends BasePage {
     await deleteButton.click();
 
     // If there's a confirmation dialog, handle it
-    const confirmButton = this.page.locator('button:has-text("Delete"), button:has-text("Confirm")');
+    const confirmButton = this.page.locator(
+      'button:has-text("Delete"), button:has-text("Confirm")'
+    );
     if (await confirmButton.isVisible()) {
       await confirmButton.click();
     }
@@ -259,7 +267,9 @@ export class ChatHistoryPage extends BasePage {
     await this.openHistorySidebar();
 
     // Look for search input (this might not be implemented yet)
-    const searchInput = this.page.locator('[data-testid="chat-search"], input[placeholder*="search" i]');
+    const searchInput = this.page.locator(
+      '[data-testid="chat-search"], input[placeholder*="search" i]'
+    );
     if (await searchInput.isVisible()) {
       await searchInput.fill(searchTerm);
       await this.page.waitForTimeout(500); // Wait for search results

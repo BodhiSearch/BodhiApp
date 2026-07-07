@@ -139,12 +139,18 @@ mod tests {
   static TEST_DIR: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/src/test_spa_assets");
 
   #[rstest]
-  #[case::prod("https://api.getbodhi.app", "connect-src 'self' https://api.getbodhi.app;")]
+  #[case::prod(
+    "https://api.getbodhi.app",
+    "connect-src 'self' https://api.getbodhi.app;"
+  )]
   #[case::dev(
     "https://dev-api.getbodhi.app",
     "connect-src 'self' https://dev-api.getbodhi.app;"
   )]
-  #[case::with_path("https://api.getbodhi.app/api/v1", "connect-src 'self' https://api.getbodhi.app;")]
+  #[case::with_path(
+    "https://api.getbodhi.app/api/v1",
+    "connect-src 'self' https://api.getbodhi.app;"
+  )]
   #[case::invalid("not a url", "connect-src 'self';")]
   fn test_build_csp(#[case] reference_api_url: &str, #[case] expected_connect_src: &str) {
     let csp = build_csp(reference_api_url);

@@ -12,7 +12,7 @@ export class ChatSettingsPage extends BasePage {
     // Model selection
     modelSelectorLoaded: '[data-testid="model-selector-loaded"]',
     comboboxTrigger: '[data-testid="model-selector-trigger"]', // Desktop version (no prefix)
-    comboboxOption: modelName => `[data-testid="combobox-option-${modelName}"]`,
+    comboboxOption: (modelName) => `[data-testid="combobox-option-${modelName}"]`,
 
     // Settings controls
     streamModeSwitch: '#stream-mode',
@@ -378,7 +378,10 @@ export class ChatSettingsPage extends BasePage {
     }
 
     if (expectedSettings.apiToken !== undefined) {
-      await this.verifyApiTokenSettings(expectedSettings.apiToken.enabled, expectedSettings.apiToken.hasValue);
+      await this.verifyApiTokenSettings(
+        expectedSettings.apiToken.enabled,
+        expectedSettings.apiToken.hasValue
+      );
     }
 
     if (expectedSettings.systemPrompt !== undefined) {
@@ -396,12 +399,16 @@ export class ChatSettingsPage extends BasePage {
     await this.openSettings();
 
     // Look for reset button (this might not be implemented)
-    const resetButton = this.page.locator('[data-testid="reset-settings"], button:has-text("Reset")');
+    const resetButton = this.page.locator(
+      '[data-testid="reset-settings"], button:has-text("Reset")'
+    );
     if (await resetButton.isVisible()) {
       await resetButton.click();
 
       // Handle confirmation if needed
-      const confirmButton = this.page.locator('button:has-text("Confirm"), button:has-text("Reset")');
+      const confirmButton = this.page.locator(
+        'button:has-text("Confirm"), button:has-text("Reset")'
+      );
       if (await confirmButton.isVisible()) {
         await confirmButton.click();
       }

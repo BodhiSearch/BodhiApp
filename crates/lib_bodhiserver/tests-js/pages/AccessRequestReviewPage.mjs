@@ -54,14 +54,18 @@ export class AccessRequestReviewPage extends BasePage {
   /** True when the "list all models" toggle is on (pre-populated in exchange mode). */
   async isListModelsChecked() {
     return (
-      (await this.page.locator('[data-testid="review-list-models-toggle"]').getAttribute('aria-checked')) === 'true'
+      (await this.page
+        .locator('[data-testid="review-list-models-toggle"]')
+        .getAttribute('aria-checked')) === 'true'
     );
   }
 
   /** True when the "list all MCPs" toggle is on. */
   async isListMcpsChecked() {
     return (
-      (await this.page.locator('[data-testid="review-list-mcps-toggle"]').getAttribute('aria-checked')) === 'true'
+      (await this.page
+        .locator('[data-testid="review-list-mcps-toggle"]')
+        .getAttribute('aria-checked')) === 'true'
     );
   }
 
