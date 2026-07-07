@@ -1,37 +1,37 @@
 {
   "desktop": {
-    "version": "0.0.54",
-    "tag": "app/v0.0.54",
-    "released_at": "2026-07-07T00:39:21Z",
+    "version": "0.0.55",
+    "tag": "app/v0.0.55",
+    "released_at": "2026-07-07T02:15:21Z",
     "platforms": {
       "macos": {
         "silicon": {
-          "version": "0.0.54",
-          "tag": "app/v0.0.54",
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.54/Bodhi_App.dmg",
+          "version": "0.0.55",
+          "tag": "app/v0.0.55",
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.55/Bodhi_App.dmg",
           "filename": "Bodhi_App.dmg",
-          "size": 23147323,
-          "sha256": "7b2501e18e78d201d63948a5fe60206a7b9b8553bb7d647e79189279579c6cd6"
+          "size": 23463728,
+          "sha256": "e5e087c88f75d6ae9a354ce09421ba8aa7c1afb0c04520183c6807e311a11db8"
         }
       },
       "windows": {
         "x64": {
-          "version": "0.0.54",
-          "tag": "app/v0.0.54",
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.54/Bodhi_App.msi",
+          "version": "0.0.55",
+          "tag": "app/v0.0.55",
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.55/Bodhi_App.msi",
           "filename": "Bodhi_App.msi",
           "size": 17002496,
-          "sha256": "373783b20a3a4a51c58b91781732d13d22e598fc8800d38ff46b9b5b060fb151"
+          "sha256": "65c71e744894d4ca47a7cdab02cb978a3c64ffbb9214b67e9ed9f796a1c03627"
         }
       },
       "linux": {
         "x64": {
-          "version": "0.0.54",
-          "tag": "app/v0.0.54",
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.54/Bodhi_App.rpm",
+          "version": "0.0.55",
+          "tag": "app/v0.0.55",
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.55/Bodhi_App.rpm",
           "filename": "Bodhi_App.rpm",
-          "size": 20197042,
-          "sha256": "5e553828b80922e27b7f2af2eddc1276428a96548b2be29355e8826be3eb8923"
+          "size": 20197615,
+          "sha256": "fd45c2ce7399cf08d197287deb44f71d02a4995ede7d3a12be9ad93e347aff56"
         }
       }
     }
