@@ -2,7 +2,6 @@ import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
-import { MultiTenantGuard } from '@/routes/models/explore/-shared/MultiTenantGuard';
 import { arrayParam } from '@/routes/models/explore/-shared/search-params';
 
 import { ExploreProvidersScreen } from './-components/ExploreProvidersScreen';
@@ -38,9 +37,7 @@ export const Route = createFileRoute('/models/explore/providers/')({
 export default function ExploreProvidersPage() {
   return (
     <AppInitializer allowedStatus="ready" authenticated={true}>
-      <MultiTenantGuard>
-        <ExploreProvidersScreen />
-      </MultiTenantGuard>
+      <ExploreProvidersScreen />
     </AppInitializer>
   );
 }

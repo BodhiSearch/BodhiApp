@@ -64,15 +64,19 @@ describe('AppShell', () => {
     expect(active).toHaveClass('on');
   });
 
-  it('hides the Explore · Local Models sub-page in multi-tenant deployments', async () => {
+  it('hides local-model sub-pages in multi-tenant deployments; API catalogs stay', async () => {
     server.use(...mockAppInfo({ deployment: 'multi_tenant' }, { stub: true }));
     render(
       <AppShell section="models" subPage="my-models">
         <div>page content</div>
       </AppShell>
     );
-    // The local-catalog feature is hidden (no downloads in multi-tenant); siblings remain.
+    // Local-model features are hidden (no downloads in multi-tenant): browse + create.
     await waitFor(() => expect(screen.queryByTestId('shell-sub-explore-local')).not.toBeInTheDocument());
+    expect(screen.queryByTestId('shell-sub-new-local-model')).not.toBeInTheDocument();
+    // The API-model / API-provider catalogs are served by the external reference API — still shown.
+    expect(screen.getByTestId('shell-sub-explore-api')).toBeInTheDocument();
+    expect(screen.getByTestId('shell-sub-explore-api-providers')).toBeInTheDocument();
     expect(screen.getByTestId('shell-sub-my-models')).toBeInTheDocument();
     expect(screen.getByTestId('shell-sub-new-api-model')).toBeInTheDocument();
   });

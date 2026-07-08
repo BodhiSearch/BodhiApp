@@ -6,9 +6,11 @@ import { useGetAppInfo } from '@/hooks/info';
 import { ROUTE_MODELS } from '@/lib/constants';
 
 /**
- * Explore catalogs (API Models, API Providers, Local Models) are browse-and-configure surfaces tied
- * to local-model/download features that HubService rejects in MultiTenant. Hide them there — redirect
- * to My Models if a multi-tenant user reaches the route.
+ * Guards local-model surfaces that depend on downloads HubService rejects in MultiTenant — Explore ·
+ * Local Models (browse-and-pull) and New Local Model (create-from-GGUF). Hide there — redirect to My
+ * Models if a multi-tenant user reaches the route.
+ * (The API Models / API Providers catalogs are served by the external reference API and stay available
+ * in multi-tenant, so they no longer use this guard.)
  */
 export function MultiTenantGuard({ children }: { children: React.ReactNode }) {
   const { data: appInfo } = useGetAppInfo();

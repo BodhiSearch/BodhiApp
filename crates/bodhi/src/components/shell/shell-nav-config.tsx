@@ -48,21 +48,23 @@ export const SHELL_NAV: ShellNavItem[] = [
         // Catalog browse-and-pull relies on local downloads, which HubService rejects in MultiTenant.
         hideInMultiTenant: true,
       },
-      {
-        id: 'explore-api',
-        label: 'Explore · API Models',
-        icon: 'sparkles',
-        href: ROUTE_MODELS_EXPLORE_API,
-        hideInMultiTenant: true,
-      },
+      // API-model catalog is served by the external reference API — no local downloads — so it works
+      // in multi-tenant. Only Explore · Local Models is gated (above).
+      { id: 'explore-api', label: 'Explore · API Models', icon: 'sparkles', href: ROUTE_MODELS_EXPLORE_API },
       {
         id: 'explore-api-providers',
         label: 'Explore · API Providers',
         icon: 'at-sign',
         href: ROUTE_MODELS_EXPLORE_PROVIDERS,
+      },
+      // Creating a local alias needs a downloaded GGUF, which HubService rejects in MultiTenant.
+      {
+        id: 'new-local-model',
+        label: 'New Local Model',
+        icon: 'plus-circle',
+        href: '/models/alias/new/',
         hideInMultiTenant: true,
       },
-      { id: 'new-local-model', label: 'New Local Model', icon: 'plus-circle', href: '/models/alias/new/' },
       { id: 'new-api-model', label: 'New API Model', icon: 'plug-zap', href: '/models/api/new/' },
       { id: 'new-fallback-model', label: 'New Model Router', icon: 'route', href: '/models/router/new/' },
     ],

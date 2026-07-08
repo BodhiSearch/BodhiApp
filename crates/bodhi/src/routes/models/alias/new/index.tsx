@@ -8,6 +8,7 @@ import { z } from 'zod';
 import AppInitializer from '@/components/AppInitializer';
 import { useShellChrome } from '@/components/shell';
 import AliasForm from '@/routes/models/alias/-components/AliasForm';
+import { MultiTenantGuard } from '@/routes/models/explore/-shared/MultiTenantGuard';
 
 export const Route = createFileRoute('/models/alias/new/')({
   staticData: { section: 'models', subPage: 'new-local-model' },
@@ -57,7 +58,9 @@ function NewModelContent() {
 export default function NewModel() {
   return (
     <AppInitializer allowedStatus="ready" authenticated={true}>
-      <NewModelContent />
+      <MultiTenantGuard>
+        <NewModelContent />
+      </MultiTenantGuard>
     </AppInitializer>
   );
 }
