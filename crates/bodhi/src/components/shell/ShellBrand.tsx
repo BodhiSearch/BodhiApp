@@ -1,3 +1,5 @@
+import { Link } from '@tanstack/react-router';
+
 import { BASE_PATH, ROUTE_CHAT } from '@/lib/constants';
 
 export interface ShellBrandProps {
@@ -6,7 +8,7 @@ export interface ShellBrandProps {
 
 export function ShellBrand({ collapsed }: ShellBrandProps) {
   return (
-    <a href={ROUTE_CHAT} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <Link to={ROUTE_CHAT} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <img
         src={`${BASE_PATH}/bodhi-logo/bodhi-logo-60.svg`}
         alt="Bodhi"
@@ -24,6 +26,6 @@ export function ShellBrand({ collapsed }: ShellBrandProps) {
           </span>
         </span>
       )}
-    </a>
+    </Link>
   );
 }

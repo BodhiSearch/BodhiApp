@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { type ReactNode } from 'react';
 
 import { BASE_PATH, ROUTE_CHAT } from '@/lib/constants';
@@ -21,7 +22,7 @@ export function BareLayout({ children }: BareLayoutProps) {
   return (
     <div className="bare-page" data-testid="bare-layout">
       <header className="bare-topbar">
-        <a className="bare-brand" href={ROUTE_CHAT}>
+        <Link className="bare-brand" to={ROUTE_CHAT}>
           <img
             className="bare-brand-mark"
             src={`${BASE_PATH}/bodhi-logo/bodhi-logo-60.svg`}
@@ -34,7 +35,7 @@ export function BareLayout({ children }: BareLayoutProps) {
             <span className="bare-brand-word">Bodhi</span>
             <span className="bare-brand-sub">AI Operating System</span>
           </span>
-        </a>
+        </Link>
         <ThemeToggle />
       </header>
       <main className="bare-main">{children}</main>

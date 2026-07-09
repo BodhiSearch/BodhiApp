@@ -1,7 +1,19 @@
 import { BareLayout } from '@/components/shell/BareLayout';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode } & Record<string, unknown>) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+  };
+});
 
 describe('BareLayout', () => {
   it('renders a slim topbar with brand + theme toggle and the children, no shell sidebar', () => {
