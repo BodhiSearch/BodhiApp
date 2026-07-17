@@ -14,12 +14,12 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::test_utils::RequestTestExt;
-use services::test_utils::temp_bodhi_home;
-use services::AuthContext;
+use services::test_utils::{build_token_with_exp, temp_bodhi_home, FrozenTimeService};
 use services::{
   test_utils::{AppServiceStubBuilder, SettingServiceStub},
   AppService, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_DEPLOYMENT, BODHI_MULTITENANT_CLIENT_ID,
 };
+use services::{AuthContext, TimeService, DASHBOARD_ACCESS_TOKEN_KEY, DASHBOARD_REFRESH_TOKEN_KEY};
 use services::{BODHI_HOST, BODHI_PORT, BODHI_SCHEME};
 use std::{collections::HashMap, sync::Arc};
 use tempfile::TempDir;
@@ -310,6 +310,114 @@ async fn test_dashboard_auth_callback_validates_state_mismatch(
   assert_eq!(
     "dashboard_auth_route_error-state_digest_mismatch",
     body["error"]["code"].as_str().unwrap()
+  );
+
+  Ok(())
+}
+
+async fn seed_dashboard_session(
+  app_service: &Arc<dyn AppService>,
+  access_token: &str,
+) -> anyhow::Result<tower_sessions::session::Id> {
+  let id = tower_sessions::session::Id::default();
+  let mut record = tower_sessions::session::Record {
+    id,
+    data: maplit::hashmap! {
+      DASHBOARD_ACCESS_TOKEN_KEY.to_string() => Value::String(access_token.to_string()),
+      DASHBOARD_REFRESH_TOKEN_KEY.to_string() => Value::String("stale-refresh-token".to_string()),
+    },
+    expiry_date: time::OffsetDateTime::now_utc() + time::Duration::days(1),
+  };
+  app_service
+    .session_service()
+    .get_session_store()
+    .create(&mut record)
+    .await?;
+  Ok(record.id)
+}
+
+/// A dashboard token that is expired (or inside the 30s refresh skew) must NOT short-circuit to
+/// `/ui/login` — that bounces the client back to the page it is already on, with no way to log in.
+#[rstest]
+#[case::expired(-3600, StatusCode::CREATED)]
+#[case::within_refresh_skew(10, StatusCode::CREATED)]
+#[case::valid(3600, StatusCode::OK)]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_dashboard_auth_initiate_only_short_circuits_for_unexpired_token(
+  temp_bodhi_home: TempDir,
+  #[case] exp_offset_secs: i64,
+  #[case] expected_status: StatusCode,
+) -> anyhow::Result<()> {
+  let app_service = build_multitenant_app_service(&temp_bodhi_home).await?;
+  let now = FrozenTimeService::default().utc_now().timestamp();
+  let (token, _) = build_token_with_exp(now + exp_offset_secs)?;
+  let session_id = seed_dashboard_session(&app_service, &token).await?;
+
+  let router = build_dashboard_router(app_service).await;
+  let resp = router
+    .oneshot(
+      Request::post(ENDPOINT_DASHBOARD_AUTH_INITIATE)
+        .header("Cookie", format!("bodhiapp_session_id={session_id}"))
+        .json(json! {{}})?
+        .with_auth_context(AuthContext::Anonymous {
+          deployment: services::DeploymentMode::MultiTenant,
+        }),
+    )
+    .await?;
+
+  assert_eq!(expected_status, resp.status());
+  let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
+  let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
+
+  if expected_status == StatusCode::OK {
+    assert_eq!("/ui/login", body.location);
+  } else {
+    assert!(
+      body
+        .location
+        .starts_with("http://test-id.getbodhi.app/realms/test-realm"),
+      "expected a fresh authorize URL, got '{}'",
+      body.location
+    );
+  }
+
+  Ok(())
+}
+
+/// The stale token/refresh pair must be evicted, otherwise the next initiate re-reads it.
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_dashboard_auth_initiate_clears_stale_dashboard_tokens(
+  temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
+  let app_service = build_multitenant_app_service(&temp_bodhi_home).await?;
+  let now = FrozenTimeService::default().utc_now().timestamp();
+  let (expired_token, _) = build_token_with_exp(now - 3600)?;
+  let session_id = seed_dashboard_session(&app_service, &expired_token).await?;
+  let session_service = app_service.session_service();
+  let session_store = session_service.get_session_store();
+
+  let router = build_dashboard_router(app_service).await;
+  let resp = router
+    .oneshot(
+      Request::post(ENDPOINT_DASHBOARD_AUTH_INITIATE)
+        .header("Cookie", format!("bodhiapp_session_id={session_id}"))
+        .json(json! {{}})?
+        .with_auth_context(AuthContext::Anonymous {
+          deployment: services::DeploymentMode::MultiTenant,
+        }),
+    )
+    .await?;
+  assert_eq!(StatusCode::CREATED, resp.status());
+
+  let record = session_store.load(&session_id).await?.expect("session");
+  assert_eq!(None, record.data.get(DASHBOARD_ACCESS_TOKEN_KEY));
+  assert_eq!(None, record.data.get(DASHBOARD_REFRESH_TOKEN_KEY));
+  assert!(
+    record.data.contains_key("dashboard_oauth_state"),
+    "a fresh OAuth flow should have been started"
   );
 
   Ok(())

@@ -67,6 +67,9 @@ Per-group CORS — no global CorsLayer. Session-only APIs have restrictive CORS;
 ### CRUD Conventions
 Uniform architecture across all domains. Full reference (Entity Alias Index, Request/Response types, Service/Route handler patterns) in `crates/services/CLAUDE.md`.
 
+### Database Migrations
+Production is deployed. Committed migrations in `crates/services/src/db/sea_migrations/` are immutable — never edit one in place. Every schema change is a new forward migration, and existing rows are real data that must be migrated/backfilled. Full rules in `crates/services/src/db/CLAUDE.md`.
+
 ### Multi-Tenant Transactions
 All mutating `DbService` operations use `begin_tenant_txn(tenant_id)` from `DbCore` trait. PostgreSQL sets RLS via `SET LOCAL app.current_tenant_id`. SQLite returns plain transaction.
 

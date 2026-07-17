@@ -15,16 +15,7 @@
     <meta name="twitter:description" content="Bodhi App - Run LLMs Locally" />
     <link rel="icon" href="/ui/favicon.ico" />
     <title>Bodhi App - Run LLMs Locally</title>
-    <script>
-      // Theme initialization - must run before first paint to avoid FOUC
-      (function () {
-        var theme = window.localStorage.getItem('bodhi-ui-theme');
-        if (!theme) {
-          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-        document.documentElement.classList.add(theme);
-      })();
-    </script>
+    <script src="/ui/theme-init.js"></script>
   </head>
   <body class="min-h-screen bg-background font-sans antialiased">
     <div id="root"></div>

@@ -218,7 +218,7 @@ All requests start as drafts. Status: `draft` → `approved` | `denied` | `faile
 - SeaORM with dual SQLite/PostgreSQL support
 - ID generation: ULID (`ulid::Ulid::new()`)
 - Entity fields use typed enums via `DeriveValueType`
-- Migrations in `src/db/sea_migrations/`
+- Migrations in `src/db/sea_migrations/` — committed migrations are immutable; schema changes need a new forward migration + backfill. See `src/db/CLAUDE.md` → Migration Governance.
 
 ## Service Initialization Order
 

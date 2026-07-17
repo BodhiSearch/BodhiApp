@@ -119,6 +119,7 @@ Three dev loops depending on what you're validating:
 
 ## Backwards Compatibility
 - Do not plan for backwards compatibility unless specifically mentioned — BodhiApp prioritizes architectural improvement
+- **The database is the exception.** BodhiApp is deployed in production. Committed migrations are immutable, and existing rows are real user data. Every schema change goes through a new forward migration, with data migration/backfill where existing rows need it. See `crates/services/src/db/CLAUDE.md` → Migration Governance.
 
 ## Git Workflow (Trunk-Based Development)
 

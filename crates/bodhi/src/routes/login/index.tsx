@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { AppStatus, RedirectResponse, TenantListItem } from '@bodhiapp/ts-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { AxiosResponse } from 'axios';
@@ -26,6 +27,20 @@ export const Route = createFileRoute('/login/')({
   component: LoginPage,
 });
 
+const stripTrailingSlash = (path: string) => path.replace(/\/+$/, '');
+
+function isCurrentLocation(location: string): boolean {
+  try {
+    const target = new URL(location, window.location.origin);
+    return (
+      target.origin === window.location.origin &&
+      stripTrailingSlash(target.pathname) === stripTrailingSlash(window.location.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 function MultiTenantLoginContent() {
   const { data: appInfo } = useGetAppInfo();
   const { data: userInfo, isLoading: userLoading } = useGetUser();
@@ -35,6 +50,7 @@ function MultiTenantLoginContent() {
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [autoLoginFailed, setAutoLoginFailed] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const search = useSearch({ from: '/login/' });
 
   // Stash the ?invite client_id in sessionStorage so it survives the OAuth redirect round-trip,
@@ -53,13 +69,19 @@ function MultiTenantLoginContent() {
   const { mutate: initiateDashboardOAuth, isPending: isDashboardLoading } = useDashboardOAuthInitiate({
     onSuccess: (response: AxiosResponse<RedirectResponse>) => {
       setError(null);
-      setRedirecting(true);
       const location = response.data?.location;
       if (!location) {
         setError('Auth URL not found in response. Please try again.');
-        setRedirecting(false);
         return;
       }
+      // The server answers with the login page itself when the session already holds a valid
+      // dashboard token. Navigating to the page we are on is a no-op, so refetch and let the
+      // page re-render into the tenant step instead of hanging on "Redirecting...".
+      if (isCurrentLocation(location)) {
+        queryClient.invalidateQueries();
+        return;
+      }
+      setRedirecting(true);
       handleSmartRedirect(location, navigate);
     },
     onError: (message: string) => {

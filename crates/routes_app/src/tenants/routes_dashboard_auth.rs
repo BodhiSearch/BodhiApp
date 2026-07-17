@@ -55,7 +55,14 @@ pub async fn dashboard_auth_initiate(
     .await
     .map_err(DashboardAuthRouteError::from)?
   {
-    if extract_claims::<Claims>(&existing_token).is_ok() {
+    // Same 30s skew as token_service::get_valid_dashboard_token, so a token the auth middleware
+    // would have refreshed is never treated as usable here.
+    let now = auth_scope.time().utc_now().timestamp();
+    let is_usable = matches!(
+      extract_claims::<Claims>(&existing_token),
+      Ok(claims) if now < claims.exp as i64 - 30
+    );
+    if is_usable {
       return Ok((
         StatusCode::OK,
         Json(RedirectResponse {
@@ -63,6 +70,18 @@ pub async fn dashboard_auth_initiate(
         }),
       ));
     }
+    // Expired or undecodable: the auth middleware already tried and failed to refresh it. Drop the
+    // stale keys and fall through to a fresh OAuth flow, otherwise the client is bounced back to
+    // /ui/login forever with no way to re-authenticate.
+    session
+      .remove::<String>(DASHBOARD_ACCESS_TOKEN_KEY)
+      .await
+      .map_err(DashboardAuthRouteError::from)?;
+    session
+      .remove::<String>(DASHBOARD_REFRESH_TOKEN_KEY)
+      .await
+      .map_err(DashboardAuthRouteError::from)?;
+    warn!("discarded stale dashboard token, restarting dashboard OAuth flow");
   }
 
   let (code_verifier, code_challenge) = generate_pkce();
