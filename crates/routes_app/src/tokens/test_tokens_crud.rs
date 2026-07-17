@@ -20,7 +20,7 @@ use services::{
     access_token_claims, build_token, test_db_service, AppServiceStub, AppServiceStubBuilder,
     TestDbService, TEST_TENANT_ID,
   },
-  AppService, {TokenEntity, TokenRepository, TokenStatus},
+  AppService, BODHIAPP_TOKEN_PREFIX, {TokenEntity, TokenRepository, TokenStatus},
 };
 use services::{McpGrant, ModelGrant, ResourceRole, TokenGrants, TokenGrantsV1, TokenScope};
 use sha2::{Digest, Sha256};
@@ -64,7 +64,7 @@ async fn test_list_tokens_pagination(
       tenant_id: TEST_TENANT_ID.to_string(),
       user_id: user_id.to_string(),
       name: format!("Test Token {}", i),
-      token_prefix: format!("bodhiapp_test{:02}", i),
+      token_prefix: format!("sk-bodhiapp_test{:02}", i),
       token_hash: "token_hash".to_string(),
       scopes: "scope_token_user".to_string(),
       status: TokenStatus::Active,
@@ -239,11 +239,11 @@ async fn test_create_token_handler_role_scope_mapping(
 
   let token_response = response.json::<TokenCreated>().await?;
   assert!(
-    token_response.token.starts_with("bodhiapp_"),
-    "Token should start with 'bodhiapp_' prefix"
+    token_response.token.starts_with(BODHIAPP_TOKEN_PREFIX),
+    "Token should start with 'sk-bodhiapp_' prefix"
   );
 
-  let token_prefix = &token_response.token[.."bodhiapp_".len() + 8];
+  let token_prefix = &token_response.token[..BODHIAPP_TOKEN_PREFIX.len() + 8];
   let db_token = test_db_service
     .get_api_token_by_prefix(token_prefix)
     .await?
@@ -310,15 +310,15 @@ async fn test_create_token_handler_success(
   let token_str = &token_response.token;
 
   assert!(
-    token_str.starts_with("bodhiapp_"),
-    "Token should start with 'bodhiapp_' prefix"
+    token_str.starts_with(BODHIAPP_TOKEN_PREFIX),
+    "Token should start with 'sk-bodhiapp_' prefix"
   );
   assert!(
     token_str.len() > 50,
     "Token should be sufficiently long (prefix + base64)"
   );
 
-  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let token_prefix = &token_str[..BODHIAPP_TOKEN_PREFIX.len() + 8];
 
   let db_token = test_db_service
     .get_api_token_by_prefix(token_prefix)
@@ -381,7 +381,7 @@ async fn test_create_token_handler_without_name(
   assert_eq!(StatusCode::CREATED, response.status());
 
   let token_response = response.json::<TokenCreated>().await?;
-  let token_prefix = &token_response.token[.."bodhiapp_".len() + 8];
+  let token_prefix = &token_response.token[..BODHIAPP_TOKEN_PREFIX.len() + 8];
 
   let db_token = test_db_service
     .get_api_token_by_prefix(token_prefix)
@@ -529,7 +529,7 @@ async fn test_update_token_handler_success(
     tenant_id: TEST_TENANT_ID.to_string(),
     user_id: user_id.to_string(),
     name: "Initial Name".to_string(),
-    token_prefix: "bodhiapp_test123".to_string(),
+    token_prefix: "sk-bodhiapp_test123".to_string(),
     token_hash: "token_hash".to_string(),
     scopes: "scope_token_user".to_string(),
     status: TokenStatus::Active,

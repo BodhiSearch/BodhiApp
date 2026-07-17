@@ -40,7 +40,7 @@ export async function registerApiModelViaUI(modelsPage, formPage, apiKey, format
  * @param {import('@playwright/test').Page} page
  * @param {string} name - Token name
  * @param {string} scope - Token scope (e.g. 'scope_token_user')
- * @returns {Promise<string>} The minted token (bodhiapp_...)
+ * @returns {Promise<string>} The minted token (sk-bodhiapp_...)
  */
 export async function mintApiToken(tokensPage, page, name, scope) {
   await tokensPage.navigateToTokens();
@@ -79,7 +79,7 @@ export async function mintApiTokenWithGrants(tokensPage, page, name, scope, gran
  * Make a POST request to a BodhiApp API endpoint using a Bearer token.
  *
  * @param {string} serverUrl - BodhiApp server base URL
- * @param {string} token - Bearer token (bodhiapp_... or OAuth access token)
+ * @param {string} token - Bearer token (sk-bodhiapp_... or OAuth access token)
  * @param {string} endpoint - API endpoint path (e.g. '/v1/chat/completions')
  * @param {object} body - Request body
  * @returns {{ resp: Response, data: any }}
@@ -156,7 +156,7 @@ export async function fetchWithBearerSSE(serverUrl, token, endpoint, body) {
  * x-api-key to Authorization: Bearer before passing to api_auth_middleware.
  *
  * @param {string} serverUrl - BodhiApp server base URL
- * @param {string} token - BodhiApp API token (bodhiapp_...)
+ * @param {string} token - BodhiApp API token (sk-bodhiapp_...)
  * @param {string} endpoint - API endpoint path (e.g. '/anthropic/v1/messages')
  * @param {object} body - Request body
  * @returns {{ resp: Response, data: any }}

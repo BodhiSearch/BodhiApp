@@ -31,7 +31,7 @@ All timestamps must go through `TimeService`. Tests use `FrozenTimeService` (def
 All mutating DbService operations on tenant-scoped rows use `begin_tenant_txn(tenant_id)` from `DbCore` trait (`src/db/db_core.rs`). On PostgreSQL this sets RLS via `SET LOCAL app.current_tenant_id`. On SQLite returns plain transaction. Settings are global (no tenant_id) — use `DefaultDbService` directly.
 
 ### API Token Format
-`bodhiapp_<base64url_random>.<client_id>` — prefix lookup is cross-tenant by design; tenant resolved from `client_id` suffix after hash verification.
+`sk-bodhiapp_<base64url_random><checksum>.<client_id>` — `sk-` is the industry secret-key convention (GitHub secret-scanning friendly); `<checksum>` is a 6-char base64url CRC32 over the random segment, verified offline in middleware before any DB lookup (see `tokens/token_format.rs`: `BODHIAPP_TOKEN_PREFIX`, `TOKEN_CHECKSUM_LEN`, `token_checksum`). Prefix lookup (`sk-bodhiapp_` + first 8 random chars) is cross-tenant by design; tenant resolved from `client_id` suffix after hash verification. **Hard migration** — legacy `bodhiapp_` tokens no longer validate (no dual-prefix path).
 
 ### `api_format` Is Immutable on Edit
 `ApiModelService::update` rejects any change to `api_format` with `ObjValidationError::ApiFormatImmutableOnEdit`. The `LlmLibertyOauth` variant has a sibling-table credentials row that would orphan on switch-out (FK CASCADE only fires on alias DELETE) and silently 404 on switch-in; locking the contract for all formats eliminates a class of state-coherence bugs. To change format, delete and recreate the alias.

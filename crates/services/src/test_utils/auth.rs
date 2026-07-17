@@ -121,6 +121,22 @@ pub fn build_token(claims: Value) -> anyhow::Result<(String, String)> {
   sign_token(&PRIVATE_KEY, &PUBLIC_KEY, &claims)
 }
 
+/// Build a v2 API token string + its stored `token_prefix`, mirroring production
+/// generation (`token_service.rs`): `sk-bodhiapp_<random><checksum>.<client_id>`.
+/// `random` must be at least 8 chars (used for the lookup prefix).
+pub fn make_api_token(random: &str, client_id: &str) -> (String, String) {
+  let checksum = crate::tokens::token_checksum(random);
+  let token_str = format!(
+    "{}{}{}.{}",
+    crate::tokens::BODHIAPP_TOKEN_PREFIX,
+    random,
+    checksum,
+    client_id
+  );
+  let token_prefix = format!("{}{}", crate::tokens::BODHIAPP_TOKEN_PREFIX, &random[..8]);
+  (token_str, token_prefix)
+}
+
 pub fn sign_token(
   private_key: &RsaPrivateKey,
   public_key: &RsaPublicKey,

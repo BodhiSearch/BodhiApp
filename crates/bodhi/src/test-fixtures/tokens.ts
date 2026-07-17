@@ -10,7 +10,7 @@ export function createMockToken(overrides?: Partial<TokenDetail>): TokenDetail {
     id: 'token-1',
     name: 'Test Token 1',
     status: 'active',
-    token_prefix: 'bodhiapp_test01',
+    token_prefix: 'sk-bodhiapp_test01',
     scopes: 'scope_token_user',
     user_id: 'user-123',
     grants: {

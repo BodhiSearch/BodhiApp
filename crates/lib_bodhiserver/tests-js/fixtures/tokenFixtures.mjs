@@ -25,9 +25,9 @@ export class TokenFixtures {
   static getInvalidTokens() {
     return {
       invalidFormat: 'invalid_token',
-      nonExistent: 'bodhiapp_nonexistent123',
+      nonExistent: 'sk-bodhiapp_nonexistent123',
       empty: '',
-      malformed: 'bodhiapp_',
+      malformed: 'sk-bodhiapp_',
       wrongPrefix: 'wrong_prefix_abc123',
     };
   }

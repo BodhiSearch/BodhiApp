@@ -152,7 +152,7 @@ The response returns the raw secret **once** (with `Cache-Control: no-store`):
 
 ```json
 {
-  "token": "bodhiapp_<random>.<client_id>"
+  "token": "sk-bodhiapp_<random><checksum>.<client_id>"
 }
 ```
 
@@ -165,7 +165,7 @@ The response returns the raw secret **once** (with `Cache-Control: no-store`):
   "id": "…",
   "user_id": "…",
   "name": "My API Token",
-  "token_prefix": "bodhiapp_ab…",
+  "token_prefix": "sk-bodhiapp_ab…",
   "scopes": "scope_token_power_user",
   "status": "active",
   "grants": {

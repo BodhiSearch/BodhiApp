@@ -116,7 +116,7 @@ Session keys are namespaced by `client_id` to support multiple tenants per sessi
 **Dependencies**: `AuthService`, `TenantService`, `CacheService`, `DbService`, `SettingService`, `ConcurrencyService`, `TimeService`.
 
 **Key methods**:
-- `validate_bearer_token()` -- routes to API token (`bodhiapp_*` prefix) or external token path
+- `validate_bearer_token()` -- routes to API token (`sk-bodhiapp_*` prefix) or external token path
 - `get_valid_session_token(session, access_token, &Tenant)` -- validates with auto-refresh, distributed lock via `ConcurrencyService`. Caller resolves tenant from JWT `azp` and passes it in.
 - `get_valid_dashboard_token(session, dashboard_token) -> Result<String, AuthError>` -- validates JWT expiry, refreshes with distributed lock if expired. Dashboard token refresh uses `DASHBOARD_REFRESH_TOKEN_KEY` from session. Previously, dashboard token validation was done in route handlers via a now-deleted `ensure_valid_dashboard_token()` function; it now lives in the middleware layer via `try_resolve_dashboard_token()`.
 - `handle_external_client_token()` -- resolves tenant from JWT `aud` claim via `get_tenant_by_client_id()`, validates issuer, looks up access request, performs RFC 8693 exchange, derives `role` from DB `approved_role`
@@ -129,7 +129,7 @@ Cached under `exchanged_token:{token_digest}` (first 12 chars of SHA-256 hex).
 
 - **Session tokens**: Middleware extracts `azp` from JWT, calls `get_tenant_by_client_id(azp)` to resolve tenant
 - **External tokens**: `handle_external_client_token` extracts `aud` from JWT, calls `get_tenant_by_client_id(aud)` to resolve tenant
-- **API tokens**: `validate_bearer_token` extracts `client_id` suffix from token format `bodhiapp_<random>.<client_id>`
+- **API tokens**: `validate_bearer_token` verifies the offline CRC32 checksum, then extracts the `client_id` suffix from token format `sk-bodhiapp_<random><checksum>.<client_id>`
 - No `get_standalone_app()` calls in middleware — works identically for standalone and multi-tenant deployments
 
 ## ExternalApp Role Derivation

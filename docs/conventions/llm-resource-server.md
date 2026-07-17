@@ -30,7 +30,7 @@ Role hierarchy (`ResourceRole`, see `crates/services/CLAUDE.md`): `Anonymous < G
 ### Tokens
 
 - Stateless JWT tokens, independent of sessions, with configurable expiry/idle timeouts.
-- API token format `bodhiapp_<random>.<client_id>` (see `crates/services/CLAUDE.md`).
+- API token format `sk-bodhiapp_<random><checksum>.<client_id>` (see `crates/services/CLAUDE.md`).
 - Scope validation, token caching with invalidation, full revocation.
 
 ### OAuth2 Client Integration

@@ -1731,7 +1731,7 @@ export type ThinkingTypes = {
 
 export type TokenCreated = {
     /**
-     * API token with bodhiapp_ prefix for programmatic access
+     * API token with sk-bodhiapp_ prefix for programmatic access
      */
     token: string;
 };

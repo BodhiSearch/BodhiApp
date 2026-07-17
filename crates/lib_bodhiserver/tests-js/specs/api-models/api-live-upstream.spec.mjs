@@ -128,7 +128,7 @@ test.describe('Live upstream - API token', () => {
           'live-upstream-api-token',
           'scope_token_user'
         );
-        expect(apiToken).toMatch(/^bodhiapp_/);
+        expect(apiToken).toMatch(/^sk-bodhiapp_/);
       });
 
       // Verify each format's native (primary) endpoint(s)

@@ -130,7 +130,7 @@ test.describe('SDK compatibility — provider endpoints × auth tokens', () => {
       'sdk-compat-api-token',
       'scope_token_user'
     );
-    expect(state.apiToken).toMatch(/^bodhiapp_/);
+    expect(state.apiToken).toMatch(/^sk-bodhiapp_/);
 
     // OAuth app token via full PKCE flow (same pattern as api-live-upstream.spec.mjs).
     const appClient = getPreConfiguredAppClient();

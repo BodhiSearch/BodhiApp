@@ -39,7 +39,7 @@ use utoipa::OpenApi;
 
 Use the standard OpenAI SDKs against these routes. Authentication options:
 
-- **API Token** — `Authorization: Bearer bodhiapp_<token>` (created via the Bodhi web UI)
+- **API Token** — `Authorization: Bearer sk-bodhiapp_<token>` (created via the Bodhi web UI)
 - **OAuth Token Exchange** — `Authorization: Bearer <oauth_exchanged_token>`
 - **Browser Session** — login via `/bodhi/v1/auth/initiate`
 

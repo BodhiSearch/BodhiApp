@@ -8,12 +8,12 @@ use serde_json::json;
 use services::AuthContext;
 use services::{
   test_utils::{
-    build_token, test_db_service, AppServiceStubBuilder, SettingServiceStub, TestDbService, ISSUER,
-    TEST_CLIENT_ID, TEST_CLIENT_SECRET, TEST_TENANT_ID,
+    build_token, make_api_token, test_db_service, AppServiceStubBuilder, SettingServiceStub,
+    TestDbService, ISSUER, TEST_CLIENT_ID, TEST_CLIENT_SECRET, TEST_TENANT_ID,
   },
-  AppService, AppStatus, AuthServiceError, CacheService, DefaultTenantService,
+  token_checksum, AppService, AppStatus, AuthServiceError, CacheService, DefaultTenantService,
   LocalConcurrencyService, MockAuthService, MockSettingService, MokaCacheService, Tenant,
-  TenantRepository, TenantService, TokenError, TOKEN_TYPE_OFFLINE,
+  TenantRepository, TenantService, TokenError, BODHIAPP_TOKEN_PREFIX, TOKEN_TYPE_OFFLINE,
   {AppAccessRequestStatus, TokenEntity, TokenRepository, TokenStatus},
 };
 use services::{McpGrant, ModelGrant, TokenGrants, TokenGrantsV1, TokenScope, UserScope};
@@ -37,8 +37,7 @@ async fn test_validate_bodhiapp_token_scope_variations(
   #[case] expected_scope: TokenScope,
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let token_str = "bodhiapp_test1234.test-client";
-  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let (token_str, token_prefix) = make_api_token("test1234", "test-client");
 
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
@@ -105,8 +104,7 @@ async fn test_validate_bodhiapp_token_scope_variations(
 async fn test_validate_bodhiapp_token_parses_grants(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let token_str = "bodhiapp_grant123.test-client";
-  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let (token_str, token_prefix) = make_api_token("grant123", "test-client");
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
   let token_hash = format!("{:x}", hasher.finalize());
@@ -171,8 +169,7 @@ async fn test_validate_bodhiapp_token_parses_grants(
 async fn test_validate_bodhiapp_token_rejects_malformed_grants(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let token_str = "bodhiapp_badgrnt.test-client";
-  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let (token_str, token_prefix) = make_api_token("badgrnt1", "test-client");
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
   let token_hash = format!("{:x}", hasher.finalize());
@@ -226,9 +223,7 @@ async fn test_validate_bodhiapp_token_rejects_malformed_grants(
 async fn test_validate_bodhiapp_token_success(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let token_str = "bodhiapp_test1234.test-client";
-  // token_prefix is first 9 chars ("bodhiapp_") + next 8 chars = 17 chars total
-  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let (token_str, token_prefix) = make_api_token("test1234", "test-client");
 
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
@@ -295,9 +290,7 @@ async fn test_validate_bodhiapp_token_success(
 async fn test_validate_bodhiapp_token_inactive(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let token_str = "bodhiapp_test1234.test-client";
-  // token_prefix is first 9 chars ("bodhiapp_") + next 8 chars = 17 chars total
-  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let (token_str, token_prefix) = make_api_token("test1234", "test-client");
 
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
@@ -352,10 +345,10 @@ async fn test_validate_bodhiapp_token_inactive(
 async fn test_validate_bodhiapp_token_invalid_hash(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let stored_token_str = "bodhiapp_test1234abc.test-client";
-  let different_token_str = "bodhiapp_test1234xyz.test-client";
-  // token_prefix is first 9 chars ("bodhiapp_") + next 8 chars = 17 chars total
-  let token_prefix = &stored_token_str[.."bodhiapp_".len() + 8];
+  // Both share the same 8-char random head ("test1234"), so the lookup prefix
+  // matches, but the full strings differ → hash mismatch.
+  let (stored_token_str, token_prefix) = make_api_token("test1234abc", "test-client");
+  let (different_token_str, _) = make_api_token("test1234xyz", "test-client");
 
   let mut hasher = Sha256::new();
   hasher.update(stored_token_str.as_bytes());
@@ -402,6 +395,136 @@ async fn test_validate_bodhiapp_token_invalid_hash(
 
   assert!(result.is_err());
   assert!(matches!(result, Err(AuthError::Token(_))));
+  Ok(())
+}
+
+// Legacy `bodhiapp_` tokens are no longer valid after the hard migration: the
+// `sk-bodhiapp_` prefix strip fails and the token falls through to the JWT path,
+// which rejects it.
+#[rstest]
+#[awt]
+#[tokio::test]
+async fn test_validate_legacy_bodhiapp_prefix_rejected(
+  #[future] test_db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let tenant_svc = AppServiceStubBuilder::default()
+    .with_tenant(Tenant::test_default())
+    .await
+    .build()
+    .await?
+    .tenant_service();
+  let token_service = DefaultTokenService::new(
+    Arc::new(MockAuthService::default()),
+    tenant_svc,
+    Arc::new(MokaCacheService::default()),
+    Arc::new(test_db_service),
+    Arc::new(MockSettingService::default()),
+    Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::DefaultTimeService),
+  );
+
+  let result = token_service
+    .validate_bearer_token("Bearer bodhiapp_test1234.test-client")
+    .await;
+  assert!(result.is_err());
+  Ok(())
+}
+
+// A token whose embedded checksum does not match its random segment is rejected
+// offline, even when a row with the same lookup prefix exists in the DB.
+#[rstest]
+#[awt]
+#[tokio::test]
+async fn test_validate_bodhiapp_token_bad_checksum_rejected(
+  #[future] test_db_service: TestDbService,
+) -> anyhow::Result<()> {
+  // Store a valid token so a row with prefix `sk-bodhiapp_test1234` exists.
+  let (token_str, token_prefix) = make_api_token("test1234", "test-client");
+  let mut hasher = Sha256::new();
+  hasher.update(token_str.as_bytes());
+  let token_hash = format!("{:x}", hasher.finalize());
+  let mut api_token = TokenEntity {
+    id: Uuid::new_v4().to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
+    user_id: "test-user".to_string(),
+    name: "Test Token".to_string(),
+    token_prefix: token_prefix.to_string(),
+    token_hash,
+    scopes: "scope_token_user".to_string(),
+    status: TokenStatus::Active,
+    grants: services::default_grants_json(),
+    last_used_at: None,
+    created_at: Utc::now(),
+    updated_at: Utc::now(),
+  };
+  test_db_service
+    .create_api_token(TEST_TENANT_ID, &mut api_token)
+    .await?;
+
+  // Same random head + client, but a checksum computed from a different random.
+  let bad_checksum = token_checksum("XXXXXXXX");
+  assert_ne!(token_checksum("test1234"), bad_checksum);
+  let bad_token = format!(
+    "{}test1234{}.test-client",
+    BODHIAPP_TOKEN_PREFIX, bad_checksum
+  );
+
+  let tenant_svc = AppServiceStubBuilder::default()
+    .with_tenant(Tenant::test_default())
+    .await
+    .build()
+    .await?
+    .tenant_service();
+  let token_service = DefaultTokenService::new(
+    Arc::new(MockAuthService::default()),
+    tenant_svc,
+    Arc::new(MokaCacheService::default()),
+    Arc::new(test_db_service),
+    Arc::new(MockSettingService::default()),
+    Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::DefaultTimeService),
+  );
+
+  let result = token_service
+    .validate_bearer_token(&format!("Bearer {}", bad_token))
+    .await;
+  assert!(matches!(
+    result,
+    Err(AuthError::Token(TokenError::InvalidToken(_)))
+  ));
+  Ok(())
+}
+
+// A `sk-bodhiapp_` token whose body is shorter than checksum + 8 random chars is
+// rejected as too short.
+#[rstest]
+#[awt]
+#[tokio::test]
+async fn test_validate_bodhiapp_token_too_short(
+  #[future] test_db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let tenant_svc = AppServiceStubBuilder::default()
+    .with_tenant(Tenant::test_default())
+    .await
+    .build()
+    .await?
+    .tenant_service();
+  let token_service = DefaultTokenService::new(
+    Arc::new(MockAuthService::default()),
+    tenant_svc,
+    Arc::new(MokaCacheService::default()),
+    Arc::new(test_db_service),
+    Arc::new(MockSettingService::default()),
+    Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::DefaultTimeService),
+  );
+
+  let short = format!("Bearer {}abc.test-client", BODHIAPP_TOKEN_PREFIX);
+  let result = token_service.validate_bearer_token(&short).await;
+  assert!(matches!(
+    result,
+    Err(AuthError::Token(TokenError::InvalidToken(_)))
+  ));
   Ok(())
 }
 

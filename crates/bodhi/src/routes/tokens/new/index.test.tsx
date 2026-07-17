@@ -68,7 +68,7 @@ describe('NewTokenPage', () => {
 
   it('creates a token via the real mutation, shows the reveal dialog, and returns to the list on done', async () => {
     const user = userEvent.setup();
-    const createdToken = 'bodhiapp_abc123def456';
+    const createdToken = 'sk-bodhiapp_abc123def456';
     server.use(...mockCreateToken({ token: createdToken }));
 
     await renderPage();

@@ -139,11 +139,11 @@ pub struct UpdateTokenRequest {
 // Returned only on create; contains the raw token string shown once.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
-    "token": "bodhiapp_1234567890abcdef"
+    "token": "sk-bodhiapp_pMwZ1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-AB3n7Qz.client-id"
 }))]
 pub struct TokenCreated {
-  /// API token with bodhiapp_ prefix for programmatic access
-  #[schema(example = "bodhiapp_1234567890abcdef")]
+  /// API token with sk-bodhiapp_ prefix for programmatic access
+  #[schema(example = "sk-bodhiapp_pMwZ1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-AB3n7Qz.client-id")]
   pub token: String,
 }
 
@@ -296,7 +296,7 @@ mod tests {
       tenant_id: "tenant".to_string(),
       user_id: "u1".to_string(),
       name: "n".to_string(),
-      token_prefix: "bodhiapp_x".to_string(),
+      token_prefix: "sk-bodhiapp_x".to_string(),
       token_hash: "h".to_string(),
       scopes: "scope_token_user".to_string(),
       status: TokenStatus::Active,

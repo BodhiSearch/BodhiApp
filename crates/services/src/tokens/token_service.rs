@@ -9,8 +9,8 @@ use crate::new_ulid;
 use super::TokenEntity;
 use crate::db::{DbService, TimeService};
 use crate::tokens::{
-  default_grants_json, CreateTokenRequest, PaginatedTokenResponse, TokenCreated, TokenDetail,
-  TokenServiceError, UpdateTokenRequest,
+  default_grants_json, token_checksum, CreateTokenRequest, PaginatedTokenResponse, TokenCreated,
+  TokenDetail, TokenServiceError, UpdateTokenRequest, BODHIAPP_TOKEN_PREFIX,
 };
 use crate::TokenStatus;
 
@@ -113,11 +113,16 @@ impl TokenService for DefaultTokenService {
     let mut random_bytes = [0u8; 32];
     rand::rng().fill_bytes(&mut random_bytes);
     let random_string = general_purpose::URL_SAFE_NO_PAD.encode(random_bytes);
-    // Format: bodhiapp_<random>.<client_id> for tenant-scoped tokens
-    let token_str = format!("bodhiapp_{}.{}", random_string, client_id);
+    let checksum = token_checksum(&random_string);
+    // Format: sk-bodhiapp_<random><checksum>.<client_id> for tenant-scoped tokens
+    let token_str = format!(
+      "{}{}{}.{}",
+      BODHIAPP_TOKEN_PREFIX, random_string, checksum, client_id
+    );
 
-    // Extract prefix (first 8 chars after "bodhiapp_") from the random part only
-    let token_prefix = format!("bodhiapp_{}", &random_string[..8]);
+    // Prefix stored for DB lookup = constant prefix + first 8 chars of the random
+    // part (before the checksum), independent of checksum length.
+    let token_prefix = format!("{}{}", BODHIAPP_TOKEN_PREFIX, &random_string[..8]);
 
     // Hash full token with SHA-256 (including .<client_id> suffix)
     let mut hasher = Sha256::new();

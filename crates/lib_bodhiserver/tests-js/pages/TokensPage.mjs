@@ -318,7 +318,7 @@ export class TokensPage extends BasePage {
         tokenValue = await this.page.evaluate(() => window.clipboardData);
         return tokenValue;
       })
-      .toMatch(/^bodhiapp_/);
+      .toMatch(/^sk-bodhiapp_/);
     return tokenValue;
   }
 

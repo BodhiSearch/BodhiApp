@@ -2,7 +2,7 @@
 // surface: { chat, toolCall, listModels, embed }. Each BodhiApp proxy endpoint
 // is driven through the SDK its upstream provider ships, so compatibility is
 // validated end-to-end. All adapters assume the token is a BodhiApp bearer
-// (either `bodhiapp_...` API token or an OAuth JWT); the per-format auth
+// (either `sk-bodhiapp_...` API token or an OAuth JWT); the per-format auth
 // middleware on the server rewrites SDK-native auth headers (x-api-key,
 // x-goog-api-key) to `Authorization: Bearer`.
 //

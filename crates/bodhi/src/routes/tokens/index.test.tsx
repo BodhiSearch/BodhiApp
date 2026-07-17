@@ -33,7 +33,7 @@ const TOKENS = [
   {
     id: 'token-1',
     name: 'Production API',
-    token_prefix: 'bodhiapp_prod001',
+    token_prefix: 'sk-bodhiapp_prod001',
     scopes: 'scope_token_power_user',
     user_id: 'user-1',
     status: 'active' as const,
@@ -50,7 +50,7 @@ const TOKENS = [
   {
     id: 'token-2',
     name: 'Dev API',
-    token_prefix: 'bodhiapp_dev002',
+    token_prefix: 'sk-bodhiapp_dev002',
     scopes: 'scope_token_user',
     user_id: 'user-1',
     status: 'inactive' as const,
@@ -188,7 +188,7 @@ describe('TokenPage V2', () => {
     await user.click(screen.getByTestId('token-row-token-1'));
     const rail = await screen.findByTestId('token-detail-rail');
     // prefix (Token ID) + scope + the created date are shown in the rail Details
-    expect(within(rail).getByText('bodhiapp_prod001')).toBeInTheDocument();
+    expect(within(rail).getByText('sk-bodhiapp_prod001')).toBeInTheDocument();
     expect(within(rail).getByText('scope_token_power_user')).toBeInTheDocument();
   });
 
@@ -251,7 +251,7 @@ describe('TokenPage V2', () => {
     window.history.replaceState({}, '', '/?select=token-2');
     await renderReady();
     const rail = await screen.findByTestId('token-detail-rail');
-    expect(within(rail).getByText('bodhiapp_dev002')).toBeInTheDocument();
+    expect(within(rail).getByText('sk-bodhiapp_dev002')).toBeInTheDocument();
   });
 });
 

@@ -24,8 +24,8 @@ use services::ReqwestError;
 use services::TokenScope;
 use services::{
   test_utils::{
-    access_token_claims, build_token, expired_token, AppServiceStubBuilder, TEST_CLIENT_ID,
-    TEST_CLIENT_SECRET, TEST_TENANT_ID,
+    access_token_claims, build_token, expired_token, make_api_token, AppServiceStubBuilder,
+    TEST_CLIENT_ID, TEST_CLIENT_SECRET, TEST_TENANT_ID,
   },
   AppService, AppStatus, AuthServiceError, DefaultSessionService, MockAuthService, SessionService,
   Tenant, {TokenEntity, TokenStatus},
@@ -683,8 +683,7 @@ async fn test_auth_middleware_bodhiapp_token_scope_variations(
   let mut random_bytes = [0u8; 32];
   rand::rng().fill_bytes(&mut random_bytes);
   let random_string = general_purpose::URL_SAFE_NO_PAD.encode(random_bytes);
-  let token_str = format!("bodhiapp_{}.{}", random_string, TEST_CLIENT_ID);
-  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let (token_str, token_prefix) = make_api_token(&random_string, TEST_CLIENT_ID);
 
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
@@ -747,8 +746,7 @@ async fn test_auth_middleware_bodhiapp_token_success() -> anyhow::Result<()> {
   let mut random_bytes = [0u8; 32];
   rand::rng().fill_bytes(&mut random_bytes);
   let random_string = general_purpose::URL_SAFE_NO_PAD.encode(random_bytes);
-  let token_str = format!("bodhiapp_{}.{}", random_string, TEST_CLIENT_ID);
-  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let (token_str, token_prefix) = make_api_token(&random_string, TEST_CLIENT_ID);
 
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
@@ -810,8 +808,7 @@ async fn test_auth_middleware_bodhiapp_token_inactive() -> anyhow::Result<()> {
   let mut random_bytes = [0u8; 32];
   rand::rng().fill_bytes(&mut random_bytes);
   let random_string = general_purpose::URL_SAFE_NO_PAD.encode(random_bytes);
-  let token_str = format!("bodhiapp_{}.{}", random_string, TEST_CLIENT_ID);
-  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let (token_str, token_prefix) = make_api_token(&random_string, TEST_CLIENT_ID);
 
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
@@ -877,12 +874,11 @@ async fn test_auth_middleware_bodhiapp_token_invalid_hash() -> anyhow::Result<()
   let mut random_bytes = [0u8; 32];
   rand::rng().fill_bytes(&mut random_bytes);
   let random_string = general_purpose::URL_SAFE_NO_PAD.encode(random_bytes);
-  let token_str = format!("bodhiapp_{}.{}", random_string, TEST_CLIENT_ID);
-  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let (token_str, token_prefix) = make_api_token(&random_string, TEST_CLIENT_ID);
 
   // Hash a DIFFERENT token for storage
   let different_token = format!(
-    "bodhiapp_{}.{}",
+    "sk-bodhiapp_{}.{}",
     general_purpose::URL_SAFE_NO_PAD.encode([1u8; 32]),
     TEST_CLIENT_ID
   );

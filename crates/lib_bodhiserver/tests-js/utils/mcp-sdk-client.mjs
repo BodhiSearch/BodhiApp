@@ -9,7 +9,7 @@ export const BODHI_MCP_PROXY_PATH = (mcpId) => `/bodhi/v1/apps/mcps/${mcpId}/mcp
 
 /**
  * Build and connect an MCP Client against BodhiApp's proxy for the given
- * instance. Accepts both OAuth app JWTs and `bodhiapp_` API tokens; access is
+ * instance. Accepts both OAuth app JWTs and `sk-bodhiapp_` API tokens; access is
  * grant-enforced by AccessPolicy, so a token without a grant for this MCP makes
  * `connect()` reject with an HTTP 401/403 from the transport's fetch layer.
  *

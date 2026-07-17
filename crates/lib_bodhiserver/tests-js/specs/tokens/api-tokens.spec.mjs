@@ -54,7 +54,7 @@ test.describe('API Tokens - Complete Integration', () => {
       await tokensPage.expectTokenHidden();
       await tokensPage.toggleShowToken();
       const tokenValue = await tokensPage.getTokenValue();
-      expect(tokenValue).toMatch(/^bodhiapp_/);
+      expect(tokenValue).toMatch(/^sk-bodhiapp_/);
       await tokensPage.expectTokenVisible(tokenValue);
       await tokensPage.toggleShowToken();
       await tokensPage.expectTokenHidden();

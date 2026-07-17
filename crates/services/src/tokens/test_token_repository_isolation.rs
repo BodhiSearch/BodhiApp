@@ -19,8 +19,8 @@ async fn test_cross_tenant_token_isolation(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let mut token_a = token_entity(&crate::new_ulid(), TEST_USER_ID, "bodhiapp_xa", ctx.now);
-  let mut token_b = token_entity(&crate::new_ulid(), TEST_USER_ID, "bodhiapp_xb", ctx.now);
+  let mut token_a = token_entity(&crate::new_ulid(), TEST_USER_ID, "sk-bodhiapp_xa", ctx.now);
+  let mut token_b = token_entity(&crate::new_ulid(), TEST_USER_ID, "sk-bodhiapp_xb", ctx.now);
   token_b.tenant_id = TEST_TENANT_B_ID.to_string();
 
   ctx
@@ -66,11 +66,11 @@ async fn test_intra_tenant_user_token_isolation(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let mut token_user_a = token_entity(&crate::new_ulid(), TEST_USER_ID, "bodhiapp_ua", ctx.now);
+  let mut token_user_a = token_entity(&crate::new_ulid(), TEST_USER_ID, "sk-bodhiapp_ua", ctx.now);
   let mut token_user_b = token_entity(
     &crate::new_ulid(),
     TEST_TENANT_A_USER_B_ID,
-    "bodhiapp_ub",
+    "sk-bodhiapp_ub",
     ctx.now,
   );
 
@@ -111,7 +111,7 @@ async fn test_cross_tenant_token_delete_blocked(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let mut token_b = token_entity(&crate::new_ulid(), TEST_USER_ID, "bodhiapp_db", ctx.now);
+  let mut token_b = token_entity(&crate::new_ulid(), TEST_USER_ID, "sk-bodhiapp_db", ctx.now);
   token_b.tenant_id = TEST_TENANT_B_ID.to_string();
   ctx
     .service

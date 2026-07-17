@@ -15,11 +15,11 @@ Quick reference guide for all BodhiApp API endpoints, including authentication r
 All API endpoints (except public ones) require authentication:
 
 ```http
-Authorization: Bearer bodhiapp_your-api-token-here.your-client-id
+Authorization: Bearer sk-bodhiapp_your-api-token-here.your-client-id
 Content-Type: application/json
 ```
 
-API tokens have the format `bodhiapp_<random>.<client_id>` and are shown only once at creation.
+API tokens have the format `sk-bodhiapp_<random><checksum>.<client_id>` and are shown only once at creation.
 
 ## System Endpoints
 
@@ -226,7 +226,7 @@ POST /bodhi/v1/tokens
   }
 }
 ```
-**Response**: **201**, `Cache-Control: no-store`, `{ "token": "bodhiapp_<random>.<client_id>" }` — shown once. A `User`-scoped caller may mint only `scope_token_user` (else 403).
+**Response**: **201**, `Cache-Control: no-store`, `{ "token": "sk-bodhiapp_<random><checksum>.<client_id>" }` — shown once. A `User`-scoped caller may mint only `scope_token_user` (else 403).
 
 #### Update API Token
 ```http

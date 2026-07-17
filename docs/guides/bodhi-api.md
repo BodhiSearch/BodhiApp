@@ -180,7 +180,7 @@ const tokens = await response.json();
       "id": "token-123",
       "user_id": "550e8400-e29b-41d4-a716-446655440000",
       "name": "Development Token",
-      "token_prefix": "bodhiapp_abc12",
+      "token_prefix": "sk-bodhiapp_abc12",
       "scopes": "scope_token_power_user",
       "status": "active",
       "grants": {
@@ -254,7 +254,7 @@ const newToken = await response.json();
 **Response Format** — **201 Created**, `Cache-Control: no-store`:
 ```json
 {
-  "token": "bodhiapp_<base64url-random>.<client_id>"
+  "token": "sk-bodhiapp_<base64url-random><checksum>.<client_id>"
 }
 ```
 
@@ -264,7 +264,7 @@ const newToken = await response.json();
 
 **Privilege ceiling**: a caller with `ResourceRole::User` may mint only `scope_token_user`; requesting a higher scope returns **403** (`TokenRouteError::PrivilegeEscalation`). PowerUser+ callers may mint `scope_token_user` or `scope_token_power_user`.
 
-**Important**: The raw token (format `bodhiapp_<random>.<client_id>`) is returned **only once** at creation and never again. Store it securely!
+**Important**: The raw token (format `sk-bodhiapp_<random><checksum>.<client_id>`) is returned **only once** at creation and never again. Store it securely!
 
 ### Update API Token
 

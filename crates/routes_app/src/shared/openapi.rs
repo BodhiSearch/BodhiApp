@@ -150,7 +150,7 @@ Bodhi App supports three sophisticated authentication methods:
 
 ### 1. API Token Authentication (Recommended for API access)
 - **Method**: Bearer token in Authorization header
-- **Format**: `Authorization: Bearer bodhiapp_<random_string>`
+- **Format**: `Authorization: Bearer sk-bodhiapp_<random_string>`
 - **Obtain**: Create via web interface at Menu > Settings > API Tokens
 - **Scopes**: Token-based scopes with hierarchical permissions
   - `scope_token_user`: Basic API access (read operations, OpenAI APIs)
@@ -210,7 +210,7 @@ Admin > Manager > PowerUser > User
 
 ### API Token Usage:
 ```bash
-curl -H "Authorization: Bearer bodhiapp_1234567890abcdef" \
+curl -H "Authorization: Bearer sk-bodhiapp_1234567890abcdef" \
      https://api.example.com/v1/models
 ```
 
@@ -549,8 +549,8 @@ fn apply_security_schemes(components: &mut utoipa::openapi::Components) {
     SecurityScheme::Http(
       HttpBuilder::new()
         .scheme(HttpAuthScheme::Bearer)
-        .bearer_format("bodhiapp_<token>")
-        .description(Some("API token authentication. Create tokens via web interface at Menu > Settings > API Tokens. Format: 'bodhiapp_<random>'. Use as: Authorization: Bearer <token>\n\nScopes:\n- scope_token_user: Basic API access - read operations\n- scope_token_power_user: Advanced operations - create/update models, downloads\n- scope_token_manager: User management operations\n- scope_token_admin: Full administrative access"))
+        .bearer_format("sk-bodhiapp_<token>")
+        .description(Some("API token authentication. Create tokens via web interface at Menu > Settings > API Tokens. Format: 'sk-bodhiapp_<random>'. Use as: Authorization: Bearer <token>\n\nScopes:\n- scope_token_user: Basic API access - read operations\n- scope_token_power_user: Advanced operations - create/update models, downloads\n- scope_token_manager: User management operations\n- scope_token_admin: Full administrative access"))
         .build()
     ),
   );

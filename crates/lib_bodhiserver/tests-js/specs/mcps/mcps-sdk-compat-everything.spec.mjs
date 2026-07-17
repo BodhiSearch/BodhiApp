@@ -23,7 +23,7 @@
 //   • Bidirectional (server→client via SSE): sampling/createMessage,
 //     elicitation/create, roots/list — each relayed to a client-side
 //     handler registered before connect
-//   • Auth: OAuth JWT happy path; `bodhiapp_` API-token grant enforcement on
+//   • Auth: OAuth JWT happy path; `sk-bodhiapp_` API-token grant enforcement on
 //     the proxy (mcps_access: All connects, empty-Specific is denied 403,
 //     Specific-this-instance connects)
 //
@@ -110,18 +110,18 @@ test.describe(
         expect(mcpId).toBeTruthy();
       });
 
-      // ── Phase 2: Mint a default (all-access) bodhiapp_ API token ──
+      // ── Phase 2: Mint a default (all-access) sk-bodhiapp_ API token ──
       // Default grants are all-access, so this token is the positive
       // `mcps_access: All` case exercised against the proxy in Phase 5.
 
-      await test.step('Mint all-access bodhiapp_ API token for grant-enforcement coverage', async () => {
+      await test.step('Mint all-access sk-bodhiapp_ API token for grant-enforcement coverage', async () => {
         apiToken = await mintApiToken(
           tokensPage,
           page,
           `mcp-sdk-compat-${Date.now()}`,
           'scope_token_user'
         );
-        expect(apiToken).toMatch(/^bodhiapp_/);
+        expect(apiToken).toMatch(/^sk-bodhiapp_/);
       });
 
       // ── Phase 3: OAuth access request + app token via test-oauth-app ──
@@ -582,7 +582,7 @@ test.describe(
 
       // ── Phase 5: API-token grant enforcement on the MCP proxy ──
       //
-      // `bodhiapp_` API tokens are now first-class on /bodhi/v1/apps/mcps/* (the
+      // `sk-bodhiapp_` API tokens are now first-class on /bodhi/v1/apps/mcps/* (the
       // apps router accepts TokenScope::User) and are grant-enforced by
       // AccessPolicy in the proxy handler (`ensure_mcp_connect`). This proves the
       // three mcps_access shapes through the official SDK transport:

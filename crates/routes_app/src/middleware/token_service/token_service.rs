@@ -4,9 +4,9 @@ use services::AuthContext;
 use services::{access_token_key, refresh_token_key};
 use services::{
   db::{DbService, TimeService},
-  extract_claims, ApprovedResources, AuthService, CacheService, Claims, ConcurrencyService,
-  ExpClaims, ScopeClaims, SettingService, Tenant, TenantError, TenantService, TokenError,
-  TokenStatus,
+  extract_claims, token_checksum, ApprovedResources, AuthService, CacheService, Claims,
+  ConcurrencyService, ExpClaims, ScopeClaims, SettingService, Tenant, TenantError, TenantService,
+  TokenError, TokenStatus, BODHIAPP_TOKEN_PREFIX, TOKEN_CHECKSUM_LEN,
 };
 use services::{ResourceRole, TokenGrants, TokenScope, UserScope};
 use sha2::{Digest, Sha256};
@@ -14,7 +14,6 @@ use std::{str::FromStr, sync::Arc};
 use tower_sessions::Session;
 
 const BEARER_PREFIX: &str = "Bearer ";
-const BODHIAPP_TOKEN_PREFIX: &str = "bodhiapp_";
 
 /// TTL for cached exchange results in seconds (5 minutes)
 const EXCHANGE_CACHE_TTL_SECS: i64 = 300;
@@ -89,19 +88,30 @@ impl DefaultTokenService {
     }
 
     if let Some(after_prefix) = bearer_token.strip_prefix(BODHIAPP_TOKEN_PREFIX) {
-      // Format: bodhiapp_<random>.<client_id>
-      // Split on last '.' to extract random_part and client_id
+      // Format: sk-bodhiapp_<random><checksum>.<client_id>
+      // Split on last '.' to extract <random><checksum> and client_id
       let dot_pos = after_prefix
         .rfind('.')
         .ok_or_else(|| TokenError::InvalidToken("Token missing client_id suffix".to_string()))?;
-      let random_part = &after_prefix[..dot_pos];
+      let rand_and_sum = &after_prefix[..dot_pos];
       let token_client_id = &after_prefix[dot_pos + 1..];
 
-      if random_part.len() < 8 {
+      // Need at least 8 random chars (for the prefix) plus the checksum.
+      if rand_and_sum.len() < TOKEN_CHECKSUM_LEN + 8 {
         return Err(TokenError::InvalidToken("Token too short".to_string()))?;
       }
+      let split = rand_and_sum.len() - TOKEN_CHECKSUM_LEN;
+      let (random_part, checksum) = (&rand_and_sum[..split], &rand_and_sum[split..]);
 
-      // Extract prefix from the random part (not including .<client_id>)
+      // Verify the format-integrity checksum offline — reject malformed/corrupted
+      // tokens before any DB lookup.
+      if token_checksum(random_part) != checksum {
+        return Err(TokenError::InvalidToken(
+          "Invalid token checksum".to_string(),
+        ))?;
+      }
+
+      // Extract prefix from the random part (not including checksum or .<client_id>)
       let token_prefix = format!("{}{}", BODHIAPP_TOKEN_PREFIX, &random_part[..8]);
 
       let api_token = self

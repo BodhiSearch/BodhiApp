@@ -5,7 +5,7 @@
 //!   match the Anthropic spec (`x-api-key` + `anthropic-version`)
 //! - client-sent `anthropic-*` headers are extracted by the route handler and
 //!   forwarded to upstream
-//! - the `anthropic_auth_middleware` accepts `x-api-key: bodhiapp_<token>` as
+//! - the `anthropic_auth_middleware` accepts `x-api-key: sk-bodhiapp_<token>` as
 //!   an alternative to `Authorization: Bearer`
 //! - `/anthropic/v1/models` aggregates models from DB without calling upstream
 

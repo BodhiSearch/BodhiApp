@@ -18,7 +18,7 @@ async fn test_create_and_list_api_token(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
   let user_id = new_ulid();
-  let mut token = token_entity(&new_ulid(), &user_id, "bodhiapp_t01", ctx.now);
+  let mut token = token_entity(&new_ulid(), &user_id, "sk-bodhiapp_t01", ctx.now);
 
   ctx
     .service
@@ -47,7 +47,7 @@ async fn test_get_api_token_by_id(
   let ctx = sea_context(db_type).await;
   let user_id = new_ulid();
   let token_id = new_ulid();
-  let mut token = token_entity(&token_id, &user_id, "bodhiapp_t02", ctx.now);
+  let mut token = token_entity(&token_id, &user_id, "sk-bodhiapp_t02", ctx.now);
 
   ctx
     .service
@@ -80,14 +80,17 @@ async fn test_get_api_token_by_prefix(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
   let user_id = new_ulid();
-  let mut token = token_entity(&new_ulid(), &user_id, "bodhiapp_t03", ctx.now);
+  let mut token = token_entity(&new_ulid(), &user_id, "sk-bodhiapp_t03", ctx.now);
 
   ctx
     .service
     .create_api_token(TEST_TENANT_ID, &mut token)
     .await?;
 
-  let fetched = ctx.service.get_api_token_by_prefix("bodhiapp_t03").await?;
+  let fetched = ctx
+    .service
+    .get_api_token_by_prefix("sk-bodhiapp_t03")
+    .await?;
   assert!(fetched.is_some());
   assert_eq!(token, fetched.unwrap());
 
@@ -111,7 +114,7 @@ async fn test_update_api_token(
   let ctx = sea_context(db_type).await;
   let user_id = new_ulid();
   let token_id = new_ulid();
-  let mut token = token_entity(&token_id, &user_id, "bodhiapp_t04", ctx.now);
+  let mut token = token_entity(&token_id, &user_id, "sk-bodhiapp_t04", ctx.now);
 
   ctx
     .service
@@ -155,14 +158,14 @@ async fn test_list_api_tokens_user_scoped(
   let user1_id = new_ulid();
   let user2_id = new_ulid();
 
-  let mut token1 = token_entity(&new_ulid(), &user1_id, "bodhiapp_t05", ctx.now);
+  let mut token1 = token_entity(&new_ulid(), &user1_id, "sk-bodhiapp_t05", ctx.now);
   token1.name = "User1 Token".to_string();
   ctx
     .service
     .create_api_token(TEST_TENANT_ID, &mut token1)
     .await?;
 
-  let mut token2 = token_entity(&new_ulid(), &user2_id, "bodhiapp_t06", ctx.now);
+  let mut token2 = token_entity(&new_ulid(), &user2_id, "sk-bodhiapp_t06", ctx.now);
   token2.name = "User2 Token".to_string();
   ctx
     .service
@@ -202,7 +205,7 @@ async fn test_update_api_token_user_scoped(
   let user1_id = new_ulid();
   let user2_id = new_ulid();
 
-  let mut token = token_entity(&new_ulid(), &user1_id, "bodhiapp_t07", ctx.now);
+  let mut token = token_entity(&new_ulid(), &user1_id, "sk-bodhiapp_t07", ctx.now);
   token.name = "Initial Name".to_string();
   ctx
     .service
@@ -259,7 +262,7 @@ async fn test_grants_column_default_backfill(_setup_env: ()) -> anyhow::Result<(
     tenant_id: Set(TEST_TENANT_ID.to_string()),
     user_id: Set(user_id.clone()),
     name: Set("backfill".to_string()),
-    token_prefix: Set("bodhiapp_bf".to_string()),
+    token_prefix: Set("sk-bodhiapp_bf".to_string()),
     token_hash: Set("hash_bf".to_string()),
     scopes: Set("scope_token_user".to_string()),
     status: Set(TokenStatus::Active),
@@ -294,7 +297,7 @@ async fn test_delete_api_token(
   let ctx = sea_context(db_type).await;
   let user_id = new_ulid();
   let token_id = new_ulid();
-  let mut token = token_entity(&token_id, &user_id, "bodhiapp_del", ctx.now);
+  let mut token = token_entity(&token_id, &user_id, "sk-bodhiapp_del", ctx.now);
   ctx
     .service
     .create_api_token(TEST_TENANT_ID, &mut token)

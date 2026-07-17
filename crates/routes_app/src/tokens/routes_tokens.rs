@@ -37,7 +37,7 @@ use services::{ResourceRole, TokenScope};
     responses(
         (status = 201, description = "API token created successfully", body = TokenCreated,
          example = json!({
-             "token": "bodhiapp_1234567890abcdef"
+             "token": "sk-bodhiapp_1234567890abcdef"
          })),
         (status = 403, description = "Forbidden - Session authentication required (API tokens cannot create tokens)", body = BodhiErrorResponse),
     ),

@@ -2935,12 +2935,12 @@ export interface components {
             enabled: components["schemas"]["CapabilitySupport"];
         };
         /** @example {
-         *       "token": "bodhiapp_1234567890abcdef"
+         *       "token": "sk-bodhiapp_pMwZ1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-AB3n7Qz.client-id"
          *     } */
         TokenCreated: {
             /**
-             * @description API token with bodhiapp_ prefix for programmatic access
-             * @example bodhiapp_1234567890abcdef
+             * @description API token with sk-bodhiapp_ prefix for programmatic access
+             * @example sk-bodhiapp_pMwZ1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-AB3n7Qz.client-id
              */
             token: string;
         };
@@ -8351,7 +8351,7 @@ export interface operations {
                 };
                 content: {
                     /** @example {
-                     *       "token": "bodhiapp_1234567890abcdef"
+                     *       "token": "sk-bodhiapp_1234567890abcdef"
                      *     } */
                     "application/json": components["schemas"]["TokenCreated"];
                 };

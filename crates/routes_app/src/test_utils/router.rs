@@ -6,8 +6,8 @@ use services::{
   db::DbService,
   inference::LocalLlama,
   test_utils::{
-    access_token_claims, build_token, AppServiceStubBuilder, StubNetworkService, StubQueue,
-    TEST_CLIENT_ID, TEST_TENANT_ID,
+    access_token_claims, build_token, make_api_token, AppServiceStubBuilder, StubNetworkService,
+    StubQueue, TEST_CLIENT_ID, TEST_TENANT_ID,
   },
   AppService, DefaultAiApiClientFactory, SessionService, Tenant, {TokenEntity, TokenStatus},
 };
@@ -200,11 +200,12 @@ pub async fn build_live_test_router() -> anyhow::Result<(
   Ok((router, app_service, ctx, temp_home))
 }
 
-/// Token follows the production format: prefix `bodhiapp_` + 8 chars (DB lookup key),
-/// SHA-256 of the full token stored in the DB. Returns the raw token for `Bearer` use.
+/// Token follows the production v2 format `sk-bodhiapp_<random><checksum>.<client_id>`:
+/// prefix + first 8 random chars is the DB lookup key, SHA-256 of the full token is stored.
+/// Returns the raw token for `Bearer` use.
 pub async fn create_test_api_token(db_service: &dyn DbService) -> anyhow::Result<String> {
-  let token_str = format!("bodhiapp_testtoken_{}", Uuid::new_v4());
-  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+  let random = format!("testtoken{}", Uuid::new_v4().simple());
+  let (token_str, token_prefix) = make_api_token(&random, TEST_CLIENT_ID);
 
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());

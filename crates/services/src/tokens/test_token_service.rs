@@ -4,7 +4,9 @@ use crate::test_utils::{
 };
 use crate::TokenScope;
 use crate::TokenStatus;
-use crate::{CreateTokenRequest, UpdateTokenRequest};
+use crate::{
+  token_checksum, CreateTokenRequest, UpdateTokenRequest, BODHIAPP_TOKEN_PREFIX, TOKEN_CHECKSUM_LEN,
+};
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
@@ -130,20 +132,28 @@ async fn test_create_token_generates_valid_token(
 
   let raw_token = &token_created.token;
 
-  assert!(raw_token.starts_with("bodhiapp_"));
+  assert!(raw_token.starts_with(BODHIAPP_TOKEN_PREFIX));
 
   assert!(
     raw_token.contains('.'),
     "Token should contain '.' separator"
   );
 
-  let random_part = raw_token
-    .strip_prefix("bodhiapp_")
+  // <random><checksum> segment before the .<client_id> suffix
+  let rand_and_sum = raw_token
+    .strip_prefix(BODHIAPP_TOKEN_PREFIX)
     .unwrap()
     .split('.')
     .next()
     .unwrap();
-  let token_prefix = format!("bodhiapp_{}", &random_part[..8]);
+  let split = rand_and_sum.len() - TOKEN_CHECKSUM_LEN;
+  let (random_part, checksum) = (&rand_and_sum[..split], &rand_and_sum[split..]);
+  assert_eq!(
+    token_checksum(random_part),
+    checksum,
+    "embedded checksum should verify against the random segment"
+  );
+  let token_prefix = format!("{}{}", BODHIAPP_TOKEN_PREFIX, &random_part[..8]);
 
   let retrieved = token_service.get_api_token_by_prefix(&token_prefix).await?;
   assert!(retrieved.is_some());

@@ -6558,6 +6558,7 @@ dependencies = [
  "chrono",
  "clap 4.5.57",
  "cookie",
+ "crc32fast",
  "derive-new",
  "derive_builder 0.20.2",
  "dirs",
