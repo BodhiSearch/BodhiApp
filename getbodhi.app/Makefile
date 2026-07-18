@@ -46,10 +46,12 @@ release: release.precheck ## Create and push tag for website release
 	@echo "==> Preparing website release..."
 	$(call check_git_branch)
 	@echo ""
-	@echo "==> Fetching current deployed version from https://getbodhi.app/version.json..."
-	@CURRENT_VERSION=$$(node scripts/get-version.js) && \
+	@echo "==> Determining current version from pushed getbodhi.app/v* tags..."
+	@git fetch origin --tags --quiet && \
+	CURRENT_VERSION=$$(git ls-remote --tags origin 'getbodhi.app/v*' | sed -E 's|.*refs/tags/getbodhi.app/v||' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$$' | sort -V | tail -1) && \
+	CURRENT_VERSION=$${CURRENT_VERSION:-0.0.0} && \
 	NEXT_VERSION=$$(node ../scripts/increment_version.js $$CURRENT_VERSION) && \
-	echo "Current deployed version: $$CURRENT_VERSION" && \
+	echo "Highest released tag version: $$CURRENT_VERSION" && \
 	echo "Next version to release: $$NEXT_VERSION" && \
 	echo "" && \
 	TAG_NAME="getbodhi.app/v$$NEXT_VERSION" && \
