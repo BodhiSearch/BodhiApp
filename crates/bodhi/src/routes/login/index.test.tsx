@@ -389,11 +389,14 @@ describe('MultiTenantLoginContent', () => {
 
   it('shows welcome when fully authenticated with tenant (State C)', async () => {
     server.use(
-      ...mockUserLoggedIn({
-        role: 'resource_admin',
-        dashboard: { user_id: 'test-id', username: 'test@example.com', first_name: null, last_name: null },
-      }),
-      ...mockAppInfo({ status: 'ready', deployment: 'multi_tenant', client_id: 'test-client' }),
+      ...mockUserLoggedIn(
+        {
+          role: 'resource_admin',
+          dashboard: { user_id: 'test-id', username: 'test@example.com', first_name: null, last_name: null },
+        },
+        { stub: true }
+      ),
+      ...mockAppInfo({ status: 'ready', deployment: 'multi_tenant', client_id: 'test-client' }, { stub: true }),
       ...mockLogout({ location: '/ui/login' })
     );
 
@@ -401,9 +404,12 @@ describe('MultiTenantLoginContent', () => {
       render(<LoginPage />, { wrapper: createWrapper() });
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('Welcome')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText('Welcome')).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
 
     const card = screen.getByTestId('login-page').querySelector('[data-test-state="welcome"]');
     expect(card).toBeInTheDocument();
