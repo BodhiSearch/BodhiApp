@@ -26,3 +26,25 @@ Standalone-only, locks not held across `.await`. Low risk but should migrate to 
 
 ## PostgreSQL RLS Integration Tests
 Only `api_tokens` table covered. Missing: all other tenant-scoped tables, cross-tenant mutation prevention, concurrent request isolation.
+
+## Fold NetworkService into SettingService (drop the paired dependency)
+`NetworkService` is a tiny, stateless utility — one method `get_server_ip() -> Option<String>`
+(`DefaultNetworkService` is a zero-field unit struct using a UDP-socket egress-interface trick).
+Its only consumers are host/URL resolution: `routes_setup.rs` (OAuth redirect URIs) and
+`DefaultAccessRequestService` (review URL). This forces callers to inject a **paired**
+`SettingService` + `NetworkService` (see `DefaultAccessRequestService::new`,
+`AppServiceBuilder::build_access_request_service`).
+
+Proposal: `SettingService` owns the network lookup.
+- `DefaultSettingService` holds an `Arc<dyn NetworkService>` that is **optionally injectable**
+  (for tests / stubbing the detected IP) and otherwise defaults to `DefaultNetworkService`.
+- `resolve_public_server_url(request_host)` drops its `server_ip` parameter and fetches the
+  detected IP internally, so consumers pass only the request host.
+- `DefaultAccessRequestService` then depends on `SettingService` alone (revert the
+  `network_service` field/ctor arg added for the review-URL fix).
+- Keep the `AppService::network_service()` accessor if `routes_setup.rs` still wants direct
+  access, or migrate it to `setting_service.resolve_public_server_url(...)` too and remove the
+  standalone accessor.
+
+Net effect: one fewer cross-service dependency to thread through the builder and every test
+construction site, and server-IP validation logic lives in one place (SettingService).

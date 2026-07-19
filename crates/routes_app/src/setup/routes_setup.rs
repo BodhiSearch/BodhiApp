@@ -6,9 +6,7 @@ use crate::{BodhiErrorResponse, JsonRejectionError};
 use crate::{API_TAG_SETUP, API_TAG_SYSTEM, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP};
 use axum::Json;
 use axum_extra::extract::WithRejection;
-use services::{AppStatus, AuthContext, DeploymentMode, LOGIN_CALLBACK_PATH};
-
-pub const LOOPBACK_HOSTS: &[&str] = &["localhost", "127.0.0.1", "0.0.0.0"];
+use services::{AppStatus, AuthContext, DeploymentMode, LOGIN_CALLBACK_PATH, LOOPBACK_HOSTS};
 
 #[utoipa::path(
     get,

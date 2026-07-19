@@ -5,7 +5,10 @@ use crate::{
     ApprovedResourcesV1, RequestedResources, RequestedResourcesV1,
   },
   db::DbService,
-  test_utils::{test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID},
+  test_utils::{
+    test_db_service, FrozenTimeService, SettingServiceStub, StubNetworkService, TestDbService,
+    TEST_TENANT_ID,
+  },
   AccessRequestService, AuthServiceError, DefaultAccessRequestService, MockAuthService,
   RegisterAccessRequestConsentResponse, UserScope,
 };
@@ -31,7 +34,8 @@ async fn access_request_service(
     db.clone() as Arc<dyn DbService>,
     Arc::new(mock_auth),
     Arc::new(FrozenTimeService::default()),
-    "http://localhost:1135".to_string(),
+    Arc::new(SettingServiceStub::default()),
+    Arc::new(StubNetworkService { ip: None }),
   );
   (db, service)
 }
@@ -91,6 +95,49 @@ async fn test_create_draft_valid(
     result.requested.contains(r#""version":"1""#),
     "Expected serialized requested to contain version tag, got: {}",
     result.requested
+  );
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_build_review_url_reflects_request_host(
+  #[future] access_request_service: (Arc<TestDbService>, DefaultAccessRequestService),
+) -> anyhow::Result<()> {
+  let (db, service) = access_request_service;
+
+  // Loopback request host is reflected (fixture network service detects no IP).
+  assert_eq!(
+    "http://127.0.0.1:1135/ui/apps/access-requests/review?id=ar-1",
+    service.build_review_url(Some("127.0.0.1"), "ar-1").await
+  );
+
+  // No request host → falls back to the configured public server URL (localhost default).
+  assert_eq!(
+    "http://localhost:1135/ui/apps/access-requests/review?id=ar-2",
+    service.build_review_url(None, "ar-2").await
+  );
+
+  // A LAN IP that matches the detected server IP is reflected; a mismatch falls back.
+  let with_ip = DefaultAccessRequestService::new(
+    db.clone() as Arc<dyn DbService>,
+    Arc::new(MockAuthService::new()),
+    Arc::new(FrozenTimeService::default()),
+    Arc::new(SettingServiceStub::default()),
+    Arc::new(StubNetworkService {
+      ip: Some("192.168.1.42".to_string()),
+    }),
+  );
+  assert_eq!(
+    "http://192.168.1.42:1135/ui/apps/access-requests/review?id=ar-3",
+    with_ip.build_review_url(Some("192.168.1.42"), "ar-3").await
+  );
+  assert_eq!(
+    "http://localhost:1135/ui/apps/access-requests/review?id=ar-4",
+    with_ip.build_review_url(Some("10.0.0.9"), "ar-4").await
   );
 
   Ok(())

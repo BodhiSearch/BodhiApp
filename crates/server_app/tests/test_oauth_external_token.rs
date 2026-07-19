@@ -15,6 +15,42 @@ use services::{
 };
 use utils::{start_test_live_server, ExternalTokenSimulator};
 
+/// The review_url returned by POST /bodhi/v1/apps/request-access reflects the request's
+/// Host (here reqwest's loopback 127.0.0.1) rather than the bind host (0.0.0.0), so the
+/// link the app opens is same-origin with the caller. Anonymous endpoint — no token needed.
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_create_access_request_review_url_reflects_request_host() -> anyhow::Result<()> {
+  let server = start_test_live_server().await?;
+  let client = reqwest::Client::new();
+
+  let response = client
+    .post(format!("{}/bodhi/v1/apps/request-access", server.base_url))
+    .json(&serde_json::json!({
+      "app_client_id": "app-live-1",
+      "requested_role": "scope_user_user",
+      "requested": { "version": "1", "mcp_servers": [] }
+    }))
+    .send()
+    .await?;
+
+  assert_eq!(StatusCode::CREATED, response.status());
+  let body: Value = response.json().await?;
+  let id = body["id"].as_str().expect("id present");
+  let review_url = body["review_url"].as_str().expect("review_url present");
+  assert_eq!(
+    format!(
+      "http://127.0.0.1:51135/ui/apps/access-requests/review?id={}",
+      id
+    ),
+    review_url
+  );
+
+  server.handle.shutdown().await?;
+  Ok(())
+}
+
 /// External token with approved role can access GET /bodhi/v1/apps/mcps
 #[anyhow_trace]
 #[tokio::test]

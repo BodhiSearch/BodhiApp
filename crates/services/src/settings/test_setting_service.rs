@@ -703,6 +703,102 @@ async fn test_public_settings_explicit_override(temp_dir: TempDir) -> anyhow::Re
 
 #[rstest]
 #[tokio::test]
+async fn test_resolve_public_server_url_local(temp_dir: TempDir) -> anyhow::Result<()> {
+  let path = temp_dir.path().join("settings.yaml");
+  let env_wrapper = EnvWrapperStub::new(HashMap::new());
+  // Defaults: scheme=http, host=0.0.0.0, port=1135 (browser-hostile bind host).
+  let service = make_service_from_parts(
+    Arc::new(env_wrapper),
+    bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
+    vec![],
+    HashMap::new(),
+    path,
+    noop_settings_repo(),
+  );
+
+  // Loopback request hosts are reflected regardless of detected server IP.
+  for host in ["localhost", "127.0.0.1", "0.0.0.0"] {
+    assert_eq!(
+      format!("http://{}:1135", host),
+      service.resolve_public_server_url(Some(host), None).await
+    );
+  }
+
+  // A non-loopback host is reflected only when it equals the detected server IP.
+  assert_eq!(
+    "http://192.168.1.5:1135",
+    service
+      .resolve_public_server_url(Some("192.168.1.5"), Some("192.168.1.5"))
+      .await
+  );
+
+  // Non-loopback host with no / mismatched detected IP → reject, fall back to public URL.
+  assert_eq!(
+    "http://0.0.0.0:1135",
+    service
+      .resolve_public_server_url(Some("192.168.1.5"), None)
+      .await
+  );
+  assert_eq!(
+    "http://0.0.0.0:1135",
+    service
+      .resolve_public_server_url(Some("192.168.1.5"), Some("10.0.0.9"))
+      .await
+  );
+
+  // Arbitrary/injected host is never reflected (open-redirect guard).
+  assert_eq!(
+    "http://0.0.0.0:1135",
+    service
+      .resolve_public_server_url(Some("evil.example.com"), Some("192.168.1.5"))
+      .await
+  );
+
+  // No request host → unchanged fallback behavior.
+  assert_eq!(
+    "http://0.0.0.0:1135",
+    service.resolve_public_server_url(None, None).await
+  );
+
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+async fn test_resolve_public_server_url_explicit_host_wins(
+  temp_dir: TempDir,
+) -> anyhow::Result<()> {
+  let path = temp_dir.path().join("settings.yaml");
+  let env_wrapper = EnvWrapperStub::new(HashMap::new());
+  let service = make_service_from_parts(
+    Arc::new(env_wrapper),
+    bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
+    vec![],
+    HashMap::new(),
+    path,
+    noop_settings_repo(),
+  );
+
+  service
+    .set_setting(BODHI_PUBLIC_HOST, "public.example.com")
+    .await?;
+  service.set_setting(BODHI_PUBLIC_SCHEME, "https").await?;
+  service.set_setting(BODHI_PUBLIC_PORT, "443").await?;
+
+  // Explicitly-configured public host always wins; the request host is ignored (a loopback
+  // review URL would be a dead end — loopbacks aren't registered as OAuth redirect URIs).
+  for host in [Some("localhost"), Some("127.0.0.1"), None] {
+    assert_eq!(
+      "https://public.example.com",
+      service.resolve_public_server_url(host, None).await
+    );
+  }
+
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
 async fn test_public_settings_metadata_validation(temp_dir: TempDir) -> anyhow::Result<()> {
   let path = temp_dir.path().join("settings.yaml");
   let env_wrapper = EnvWrapperStub::new(HashMap::new());

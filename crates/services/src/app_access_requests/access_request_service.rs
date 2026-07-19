@@ -9,6 +9,8 @@ use super::{
 use crate::db::{DbService, TimeService};
 use crate::new_ulid;
 use crate::AuthService;
+use crate::NetworkService;
+use crate::SettingService;
 use crate::UserScope;
 
 /// App access request lifecycle service.
@@ -65,7 +67,14 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     user_id: &str,
   ) -> Result<AppAccessRequest>;
 
-  fn build_review_url(&self, access_request_id: &str) -> String;
+  /// Review URL for the app to open in the user's browser. `request_host` is the validated
+  /// `Host` header of the originating request, reflected into the URL when it is one of the
+  /// server's known-valid hosts (see `SettingService::resolve_public_server_url`).
+  async fn build_review_url<'a>(
+    &self,
+    request_host: Option<&'a str>,
+    access_request_id: &str,
+  ) -> String;
 
   /// Canonical authorize endpoint the review page validates the app-supplied `auth_url` against.
   fn build_authorize_endpoint(&self) -> String;
@@ -76,7 +85,8 @@ pub struct DefaultAccessRequestService {
   db_service: Arc<dyn DbService>,
   auth_service: Arc<dyn AuthService>,
   time_service: Arc<dyn TimeService>,
-  frontend_url: String,
+  setting_service: Arc<dyn SettingService>,
+  network_service: Arc<dyn NetworkService>,
 }
 
 impl DefaultAccessRequestService {
@@ -84,13 +94,15 @@ impl DefaultAccessRequestService {
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
     time_service: Arc<dyn TimeService>,
-    frontend_url: String,
+    setting_service: Arc<dyn SettingService>,
+    network_service: Arc<dyn NetworkService>,
   ) -> Self {
     Self {
       db_service,
       auth_service,
       time_service,
-      frontend_url,
+      setting_service,
+      network_service,
     }
   }
 
@@ -281,10 +293,19 @@ impl AccessRequestService for DefaultAccessRequestService {
     Ok(updated_row)
   }
 
-  fn build_review_url(&self, access_request_id: &str) -> String {
+  async fn build_review_url<'a>(
+    &self,
+    request_host: Option<&'a str>,
+    access_request_id: &str,
+  ) -> String {
+    let server_ip = self.network_service.get_server_ip();
+    let base = self
+      .setting_service
+      .resolve_public_server_url(request_host, server_ip.as_deref())
+      .await;
     format!(
       "{}/ui/apps/access-requests/review?id={}",
-      self.frontend_url, access_request_id
+      base, access_request_id
     )
   }
 

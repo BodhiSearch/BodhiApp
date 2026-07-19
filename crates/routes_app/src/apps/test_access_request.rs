@@ -1,9 +1,13 @@
 use crate::test_utils::RequestAuthContextExt;
 use crate::{
-  apps::{AccessRequestActionResponse, AppAccessSummary, ListAppAccessResponse},
-  apps_approve_access_request, apps_deny_access_request, apps_list_user_access,
-  apps_revoke_access_request, ResourceAccess, ENDPOINT_ACCESS_REQUESTS_APPROVE,
-  ENDPOINT_ACCESS_REQUESTS_APPS, ENDPOINT_ACCESS_REQUESTS_DENY, ENDPOINT_ACCESS_REQUESTS_REVOKE,
+  apps::{
+    AccessRequestActionResponse, AppAccessSummary, CreateAccessRequestResponse,
+    ListAppAccessResponse,
+  },
+  apps_approve_access_request, apps_create_access_request, apps_deny_access_request,
+  apps_list_user_access, apps_revoke_access_request, ResourceAccess,
+  ENDPOINT_ACCESS_REQUESTS_APPROVE, ENDPOINT_ACCESS_REQUESTS_APPS, ENDPOINT_ACCESS_REQUESTS_DENY,
+  ENDPOINT_ACCESS_REQUESTS_REVOKE, ENDPOINT_APPS_REQUEST_ACCESS,
 };
 use anyhow_trace::anyhow_trace;
 use axum::{body::Body, http::StatusCode, routing::put};
@@ -19,7 +23,10 @@ use services::AppAccessRequestStatus;
 use services::AuthContext;
 use services::ResourceRole;
 use services::{
-  test_utils::{AppServiceStubBuilder, FrozenTimeService, TEST_TENANT_ID},
+  test_utils::{
+    AppServiceStubBuilder, FrozenTimeService, SettingServiceStub, StubNetworkService,
+    TEST_TENANT_ID,
+  },
   AppAccessRequest, DbService, DefaultAccessRequestService, MockAuthService,
   RegisterAccessRequestConsentResponse,
 };
@@ -48,7 +55,8 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
       db_service.clone(),
       auth_service.clone(),
       time_service.clone(),
-      "http://localhost:1135".to_string(),
+      Arc::new(SettingServiceStub::default()),
+      Arc::new(StubNetworkService { ip: None }),
     ));
 
   let app_service = builder
@@ -422,6 +430,66 @@ async fn test_approve_access_request_success() -> anyhow::Result<()> {
   assert_eq!(
     Some("scope_access_request:ar-approve-ok".to_string()),
     result.access_request_scope
+  );
+
+  Ok(())
+}
+
+// ============================================================================
+// apps_create_access_request - review_url reflects the request Host header
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_access_request_review_url_reflects_host() -> anyhow::Result<()> {
+  let harness = build_test_harness(MockAuthService::default()).await?;
+  let router = Router::new()
+    .route(
+      ENDPOINT_APPS_REQUEST_ACCESS,
+      post(apps_create_access_request),
+    )
+    .with_state(harness.state);
+
+  let body = json!({
+    "app_client_id": "app-client-1",
+    "requested_role": "scope_user_user",
+    "requested": { "version": "1", "mcp_servers": [] }
+  });
+
+  // A loopback Host is reflected into the review URL (fixes the default 0.0.0.0 link).
+  let request = axum::http::Request::builder()
+    .method("POST")
+    .uri(ENDPOINT_APPS_REQUEST_ACCESS)
+    .header("Content-Type", "application/json")
+    .header("Host", "127.0.0.1:1135")
+    .body(Body::from(serde_json::to_string(&body)?))?;
+  let response = router.clone().oneshot(request).await?;
+  assert_eq!(StatusCode::CREATED, response.status());
+  let created = response.json::<CreateAccessRequestResponse>().await?;
+  assert_eq!(
+    format!(
+      "http://127.0.0.1:1135/ui/apps/access-requests/review?id={}",
+      created.id
+    ),
+    created.review_url
+  );
+
+  // No Host header → falls back to the configured public server URL (localhost default).
+  let request = axum::http::Request::builder()
+    .method("POST")
+    .uri(ENDPOINT_APPS_REQUEST_ACCESS)
+    .header("Content-Type", "application/json")
+    .body(Body::from(serde_json::to_string(&body)?))?;
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::CREATED, response.status());
+  let created = response.json::<CreateAccessRequestResponse>().await?;
+  assert_eq!(
+    format!(
+      "http://localhost:1135/ui/apps/access-requests/review?id={}",
+      created.id
+    ),
+    created.review_url
   );
 
   Ok(())

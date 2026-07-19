@@ -51,6 +51,7 @@ pub struct AccessRequestStatusQuery {
 )]
 pub async fn apps_create_access_request(
   auth_scope: AuthScope,
+  headers: axum::http::HeaderMap,
   ValidatedJson(request): ValidatedJson<CreateAccessRequest>,
 ) -> Result<(StatusCode, Json<CreateAccessRequestResponse>), BodhiErrorResponse> {
   debug!(
@@ -82,7 +83,10 @@ pub async fn apps_create_access_request(
     )
     .await?;
 
-  let review_url = access_request_service.build_review_url(&created.id);
+  let request_host = crate::shared::utils::extract_request_host(&headers);
+  let review_url = access_request_service
+    .build_review_url(request_host.as_deref(), &created.id)
+    .await;
   info!(
     "Access request {} created with review_url: {}",
     created.id, review_url

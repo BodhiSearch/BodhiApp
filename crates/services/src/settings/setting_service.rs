@@ -8,7 +8,7 @@ use super::{
   BODHI_ON_RUNPOD, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME,
   BODHI_REFERENCE_API_URL, BODHI_SCHEME, BODHI_SESSION_DB_URL, BODHI_TEST_MODE, BODHI_VERSION,
   DEFAULT_CANONICAL_REDIRECT, DEFAULT_PORT, DEFAULT_REFERENCE_API_URL_PROD, HF_HOME,
-  LOGIN_CALLBACK_PATH, LOGIN_DASHBOARD_CALLBACK_PATH, PROD_DB, RUNPOD_POD_ID,
+  LOGIN_CALLBACK_PATH, LOGIN_DASHBOARD_CALLBACK_PATH, LOOPBACK_HOSTS, PROD_DB, RUNPOD_POD_ID,
 };
 use serde_yaml::Value;
 use std::{path::Path, path::PathBuf, sync::Arc};
@@ -430,6 +430,35 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
       ("http", 80) | ("https", 443) => format!("{}://{}", scheme, host),
       _ => format!("{}://{}:{}", scheme, host, port),
     }
+  }
+
+  /// Base URL to embed in user-facing links (e.g. the access-request review URL), resolved
+  /// for the host the request actually arrived on.
+  ///
+  /// - Explicit public host (Docker/RunPod/configured `BODHI_PUBLIC_HOST`) always wins.
+  /// - Local/network install: reflect `request_host` only when it is a known-valid host
+  ///   (a `LOOPBACK_HOSTS` entry or the detected `server_ip`) — guards against Host-header
+  ///   injection into user-facing links.
+  /// - Otherwise fall back to `public_server_url()`.
+  async fn resolve_public_server_url<'a>(
+    &self,
+    request_host: Option<&'a str>,
+    server_ip: Option<&'a str>,
+  ) -> String {
+    if self.get_public_host_explicit().await.is_some() {
+      return self.public_server_url().await;
+    }
+    if let Some(host) = request_host {
+      if LOOPBACK_HOSTS.contains(&host) || server_ip == Some(host) {
+        let scheme = self.public_scheme().await;
+        let port = self.public_port().await;
+        return match (scheme.as_str(), port) {
+          ("http", 80) | ("https", 443) => format!("{}://{}", scheme, host),
+          _ => format!("{}://{}:{}", scheme, host, port),
+        };
+      }
+    }
+    self.public_server_url().await
   }
 
   async fn hf_cache(&self) -> PathBuf {

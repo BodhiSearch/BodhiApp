@@ -161,14 +161,14 @@ impl AppServiceBuilder {
     let ai_api_client_factory =
       Self::build_ai_api_client_factory(db_service.clone(), local_llama.clone())?;
     let concurrency_service = Self::build_concurrency_service();
+    let network_service = Self::build_network_service();
     let access_request_service = Self::build_access_request_service(
-      &setting_service,
+      setting_service.clone(),
       db_service.clone(),
       auth_service.clone(),
       time_service.clone(),
-    )
-    .await;
-    let network_service = Self::build_network_service();
+      network_service.clone(),
+    );
     let mcp_service = Self::build_mcp_service(db_service.clone(), time_service.clone())?;
 
     let queue = Arc::new(InMemoryQueue::new());
@@ -326,18 +326,19 @@ impl AppServiceBuilder {
     Arc::new(LocalConcurrencyService::new())
   }
 
-  async fn build_access_request_service(
-    setting_service: &Arc<dyn SettingService>,
+  fn build_access_request_service(
+    setting_service: Arc<dyn SettingService>,
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
     time_service: Arc<dyn TimeService>,
+    network_service: Arc<dyn NetworkService>,
   ) -> Arc<dyn AccessRequestService> {
-    let frontend_url = setting_service.public_server_url().await;
     Arc::new(DefaultAccessRequestService::new(
       db_service,
       auth_service,
       time_service,
-      frontend_url,
+      setting_service,
+      network_service,
     ))
   }
 

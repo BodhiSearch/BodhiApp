@@ -47,6 +47,11 @@ pub const LOGIN_CALLBACK_PATH: &str = "/ui/auth/callback";
 pub const LOGIN_DASHBOARD_CALLBACK_PATH: &str = "/ui/auth/dashboard/callback";
 pub const CHAT_PATH: &str = "/ui/chat";
 
+/// Loopback/all-interfaces hosts a local install is equivalently reachable at. Used to
+/// build the comprehensive OAuth redirect-URI list and to validate a request's Host header
+/// before reflecting it into user-facing URLs (e.g. the access-request review URL).
+pub const LOOPBACK_HOSTS: &[&str] = &["localhost", "127.0.0.1", "0.0.0.0"];
+
 pub const PROD_DB: &str = "bodhi.sqlite";
 pub const SESSION_DB: &str = "session.sqlite";
 
