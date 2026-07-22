@@ -12,6 +12,7 @@ interface McpFormState {
 
   setSelectedAuthConfig: (id: string | null, type: string | null) => void;
   completeOAuthFlow: (tokenId: string) => void;
+  setConnected: (connected: boolean) => void;
   disconnect: () => void;
   setCredentialValue: (key: string, value: string) => void;
   clearCredentialValues: () => void;
@@ -39,6 +40,10 @@ export const useMcpFormStore = create<McpFormState>((set, get) => ({
       oauthTokenId: tokenId,
       isConnected: true,
     }),
+
+  // Mark an already-connected MCP without a known token id (edit-load): McpResponse does not expose
+  // the real oauth_token_id, so we surface the connected state without spoofing oauthTokenId.
+  setConnected: (connected) => set({ isConnected: connected }),
 
   disconnect: () =>
     set({

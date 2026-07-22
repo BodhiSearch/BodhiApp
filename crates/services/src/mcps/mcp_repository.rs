@@ -1336,8 +1336,12 @@ impl McpRepository for DefaultDbService {
           }
 
           if let Some(token_id) = oauth_token_id_owned {
+            // Clear stale sibling tokens for this MCP but keep the one being linked; on reconnect the
+            // freshly exchanged token is already stored with this mcp_id, so deleting it here would
+            // make the find_by_id below return None (ItemNotFound).
             mcp_oauth_token_entity::Entity::delete_many()
               .filter(mcp_oauth_token_entity::Column::McpId.eq(&mcp_id))
+              .filter(mcp_oauth_token_entity::Column::Id.ne(&token_id))
               .exec(txn)
               .await
               .map_err(DbError::from)?;

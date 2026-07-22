@@ -124,6 +124,10 @@ function NewMcpPageContent() {
   const [selectedServer, setSelectedServer] = useState<McpServerResponse | null>(null);
   const [showNewAuthRedirect, setShowNewAuthRedirect] = useState(false);
   const [pendingDeleteTokenId, setPendingDeleteTokenId] = useState<string | null>(null);
+  // Tracks an explicit disconnect of an already-connected OAuth MCP. Decoupled from the token id
+  // because McpResponse does not expose oauth_token_id (see edit-load setConnected), yet the submit
+  // path still needs to know the user cleared the connection.
+  const [oauthDisconnected, setOauthDisconnected] = useState(false);
   const [visibleCredentials, setVisibleCredentials] = useState<Set<string>>(new Set());
 
   const { data: authConfigsData } = useListAuthConfigs(selectedServer?.id || '', {
@@ -248,7 +252,10 @@ function NewMcpPageContent() {
         store.setSelectedAuthConfig(existingMcp.auth_config_id, 'header');
       }
       if (existingMcp.auth_type === 'oauth' && existingMcp.auth_config_id) {
-        store.completeOAuthFlow(existingMcp.auth_config_id);
+        // Mark connected without a token id: auth_config_id is NOT an oauth_token_id, and sending it
+        // as one on Update raises ItemNotFound. A plain edit omits oauth_token_id (keeps the link);
+        // a reconnect overwrites oauthTokenId with the real token via session restore.
+        store.setConnected(true);
       }
     }
     // Run only on edit-record load; store/form helpers are stable and would loop if listed.
@@ -299,6 +306,7 @@ function NewMcpPageContent() {
       store.setSelectedAuthConfig(null, null);
       form.setValue('auth_type', 'public');
       setShowNewAuthRedirect(false);
+      setOauthDisconnected(false);
       setComboboxOpen(false);
     },
     [form, store]
@@ -349,6 +357,7 @@ function NewMcpPageContent() {
 
   const handleAuthConfigChange = (val: string) => {
     setShowNewAuthRedirect(false);
+    setOauthDisconnected(false);
     if (val === '__public__') {
       store.setSelectedAuthConfig(null, null);
       form.setValue('auth_type', 'public');
@@ -389,6 +398,7 @@ function NewMcpPageContent() {
     }
 
     try {
+      setOauthDisconnected(false);
       await deletePendingToken();
       store.saveToSession(
         { ...form.getValues(), mcp_id: editId || '' },
@@ -415,6 +425,7 @@ function NewMcpPageContent() {
     if (store.oauthTokenId) {
       setPendingDeleteTokenId(store.oauthTokenId);
     }
+    setOauthDisconnected(true);
     store.disconnect();
   };
 
@@ -454,7 +465,7 @@ function NewMcpPageContent() {
         (authPayload as Record<string, unknown>).credentials = credentials;
       }
     } else if (authType === 'oauth') {
-      if (editId && !store.isConnected && pendingDeleteTokenId) {
+      if (editId && !store.isConnected && oauthDisconnected) {
         await deletePendingToken();
         authPayload = { auth_type: 'oauth' };
       } else {

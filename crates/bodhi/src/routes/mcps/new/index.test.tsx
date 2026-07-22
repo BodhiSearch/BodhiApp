@@ -535,6 +535,40 @@ describe('NewMcpPage - Edit with OAuth auth', () => {
     });
     expect(screen.getByTestId('oauth-connected-badge')).toHaveTextContent('Connected');
   });
+
+  it('plain Update does not send auth_config_id as oauth_token_id', async () => {
+    // Regression (Defect C): edit-load must not stuff auth_config_id into oauthTokenId. A plain
+    // Update (no reconnect) must omit oauth_token_id so the backend keeps the existing link.
+    const updateCalled = vi.fn();
+    server.use(
+      http.put(`${BODHI_API_BASE}/mcps/:id`, async ({ request }) => {
+        updateCalled(await request.json());
+        return HttpResponse.json(mockMcpWithOAuth);
+      })
+    );
+
+    const user = userEvent.setup();
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('oauth-connected-card')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('mcp-update-button'));
+
+    await waitFor(() => {
+      expect(updateCalled).toHaveBeenCalled();
+    });
+
+    const body = updateCalled.mock.calls[0][0];
+    expect(body.auth_type).toBe('oauth');
+    expect(body.auth_config_id).toBe(mockMcpWithOAuth.auth_config_id);
+    expect(body.oauth_token_id).toBeUndefined();
+    // The store must never surface the auth-config id as a token id.
+    expect(useMcpFormStore.getState().oauthTokenId).toBeNull();
+  });
 });
 
 describe('NewMcpPage - Edit with DCR OAuth auth', () => {

@@ -75,7 +75,9 @@ describe('OAuthCallbackPage - Success flow', () => {
     });
   });
 
-  it('redirects to return_url when present (edit mode)', async () => {
+  it('redirects to return_url splitting path and search (edit mode)', async () => {
+    // Regression: a combined "/mcps/new/?id=..." string passed to navigate({ to }) would let
+    // trailingSlash:'always' append "/" after the id value. handleSmartRedirect must split them.
     sessionStorage.setItem(
       'mcp_oauth_form_state',
       JSON.stringify({
@@ -97,7 +99,7 @@ describe('OAuthCallbackPage - Success flow', () => {
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/new/?id=existing-mcp-id' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/new/', search: { id: 'existing-mcp-id' } });
     });
   });
 });

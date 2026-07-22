@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useOAuthTokenExchange } from '@/hooks/mcps';
 import { extractErrorMessage } from '@/lib/errorUtils';
+import { handleSmartRedirect } from '@/lib/utils';
 import { OAUTH_FORM_STORAGE_KEY } from '@/stores/mcpFormStore';
 
 export const Route = createFileRoute('/mcps/oauth/callback/')({
@@ -96,7 +97,10 @@ function OAuthCallbackContent() {
         sessionStorage.setItem(OAUTH_FORM_STORAGE_KEY, JSON.stringify(formState));
         setStatus('success');
         const returnUrl = formState.return_url || '/mcps/new/';
-        navigate({ to: returnUrl });
+        // Route through handleSmartRedirect so pathname/search are split before navigate; passing a
+        // combined "/mcps/new/?id=X" string to `to` would let trailingSlash:'always' append "/" after
+        // the id value, corrupting the query param.
+        handleSmartRedirect(returnUrl, navigate);
       })
       .catch((err) => {
         sessionStorage.removeItem(OAUTH_FORM_STORAGE_KEY);
@@ -146,7 +150,7 @@ function OAuthCallbackContent() {
                   } catch {
                     /* ignore parse errors */
                   }
-                  navigate({ to: returnUrl });
+                  handleSmartRedirect(returnUrl, navigate);
                 }}
                 data-testid="oauth-callback-back"
               >

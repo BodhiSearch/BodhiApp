@@ -666,6 +666,100 @@ async fn test_update_mcp_changes_oauth_token(
   Ok(())
 }
 
+// Reconnect regression: the freshly exchanged token is stored already linked to this mcp_id, so
+// updating with that same token id must NOT delete-then-fail-to-find it. Stale siblings still go.
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_update_mcp_relinks_already_linked_token(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+
+  ctx
+    .service
+    .create_mcp_server(
+      TEST_TENANT_ID,
+      &make_server("s1", "https://mcp.example.com", ctx.now),
+    )
+    .await?;
+
+  let config = make_auth_config_row("ac-oauth-1", "s1", "oauth", ctx.now);
+  let detail = make_oauth_config_detail("ac-oauth-1", ctx.now);
+  ctx
+    .service
+    .create_auth_config_oauth(TEST_TENANT_ID, &config, &detail)
+    .await?;
+
+  let mcp = McpEntity {
+    auth_type: McpAuthType::Oauth,
+    auth_config_id: Some("ac-oauth-1".to_string()),
+    ..make_mcp("m1", "s1", "oauth-mcp", TEST_USER_ID, ctx.now)
+  };
+  ctx.service.create_mcp(TEST_TENANT_ID, &mcp).await?;
+
+  // Stale sibling token linked to the same MCP (should be cleared on update).
+  let stale = make_oauth_token(
+    "tok-stale",
+    Some("m1"),
+    "ac-oauth-1",
+    TEST_USER_ID,
+    "stale-access",
+    None,
+    ctx.now,
+  );
+  ctx.service.create_mcp_oauth_token(&stale).await?;
+
+  // The reconnect token: minted already linked to this MCP (mirrors store_oauth_token with mcp_id set).
+  let reconnect_time = ctx.now + chrono::Duration::seconds(10);
+  let reconnect = make_oauth_token(
+    "tok-reconnect",
+    Some("m1"),
+    "ac-oauth-1",
+    TEST_USER_ID,
+    "reconnect-access",
+    Some("reconnect-refresh"),
+    reconnect_time,
+  );
+  ctx.service.create_mcp_oauth_token(&reconnect).await?;
+
+  let updated_at = ctx.now + chrono::Duration::seconds(30);
+  let updated_mcp = McpEntity {
+    updated_at,
+    ..mcp.clone()
+  };
+
+  // Previously raised ItemNotFound because the delete-by-mcp_id removed the token before find_by_id.
+  ctx
+    .service
+    .update_mcp_with_auth(
+      TEST_TENANT_ID,
+      &updated_mcp,
+      None,
+      Some("tok-reconnect".to_string()),
+      TEST_USER_ID,
+    )
+    .await?;
+
+  // The linked token survives and stays linked.
+  let reconnect_fetched = ctx
+    .service
+    .get_mcp_oauth_token(TEST_TENANT_ID, TEST_USER_ID, "tok-reconnect")
+    .await?;
+  assert!(reconnect_fetched.is_some());
+  assert_eq!(Some("m1".to_string()), reconnect_fetched.unwrap().mcp_id);
+
+  // The stale sibling is cleared.
+  let stale_fetched = ctx
+    .service
+    .get_mcp_oauth_token(TEST_TENANT_ID, TEST_USER_ID, "tok-stale")
+    .await?;
+  assert_eq!(None, stale_fetched);
+  Ok(())
+}
+
 // ============================================================================
 // Encryption Round-Trip Tests
 // ============================================================================
