@@ -106,7 +106,12 @@ function CatalogRow<T, S extends string>({
             </LinkRow>
           </td>
         ) : (
-          <td key={col.key} className={col.align === 'right' ? 'cat-td--right' : undefined}>
+          <td
+            key={col.key}
+            className={
+              col.key === 'logo' ? 'cat-logo-td' : col.align === 'right' ? 'cat-td--right' : undefined
+            }
+          >
             {col.cell(row, idx)}
           </td>
         )

@@ -316,6 +316,14 @@
   /* `#` is a number — center it so the index column reads as a tidy gutter. */
   text-align: center;
 }
+/* The logo tile (30px) is wider than some logo columns' content box (col width minus the shared
+   10px/10px cell padding), so the generic `.cat-screen .l-listrow > td` rule below (overflow:hidden;
+   text-overflow:ellipsis) clips it and renders a stray ellipsis-mark artifact next to the icon. Logo
+   tiles have no text to truncate, so opt this column out like the `#` column above — the extra
+   `.cat-screen .l-listrow > td` prefix matches that rule's specificity so this override actually wins. */
+.cat-screen .l-listrow > td.cat-logo-td {
+  overflow: visible;
+}
 /* The `#` cell anchor fills its cell so the whole index column is the link/hint target. Overrides
    the base `.l-rowlink` absolute stretch (list.css) back to normal in-flow positioning. */
 .l-rowlink--cell {
