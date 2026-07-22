@@ -1,4 +1,5 @@
 import { BasePage } from '@/pages/BasePage.mjs';
+import { withRetry } from '@/utils/retry.mjs';
 import { expect } from '@playwright/test';
 
 export class LoginPage extends BasePage {
@@ -23,32 +24,35 @@ export class LoginPage extends BasePage {
   }
 
   async performOAuthLogin(expectedRedirectPath = '/ui/chat/') {
-    // Navigate to login page if not already there
-    if (!this.page.url().includes('/ui/login')) {
+    await withRetry((attempt) => this.oauthLoginAttempt(expectedRedirectPath, attempt), {
+      label: 'OAuth login',
+    });
+  }
+
+  async oauthLoginAttempt(expectedRedirectPath, attempt) {
+    // Retries re-navigate to reset the flow; the first attempt reuses the login page if already there.
+    if (attempt > 1 || !this.page.url().includes('/ui/login')) {
       await this.navigate('/ui/login');
     }
 
-    // Click login button to initiate OAuth flow
     const loginButton = this.page.locator(this.selectors.loginButton);
     await loginButton.first().click();
 
-    // Wait for redirect to auth server
-    await this.page.waitForURL((url) => url.origin === this.authServerConfig.authUrl);
+    // `commit` (not `load`): the auth server's login page can stall its load event on a
+    // slow subresource while still interactive; the fill() below auto-waits for #username.
+    await this.page.waitForURL((url) => url.origin === this.authServerConfig.authUrl, {
+      waitUntil: 'commit',
+    });
 
-    // Fill in credentials on auth server
     await this.page.fill(this.selectors.usernameField, this.testCredentials.username);
     await this.page.fill(this.selectors.passwordField, this.testCredentials.password);
-
-    // Submit and wait for redirect back to app
     await this.page.click(this.selectors.signInButton);
 
-    // Wait for redirect back to app - allow flexible redirect path
     if (expectedRedirectPath) {
       await this.page.waitForURL(
         (url) => url.origin === this.baseUrl && url.pathname === expectedRedirectPath
       );
     } else {
-      // Just wait for any redirect back to the app
       await this.page.waitForURL((url) => url.origin === this.baseUrl);
     }
 
@@ -75,7 +79,10 @@ export class LoginPage extends BasePage {
   }
 
   async waitForAuthServer() {
-    await this.page.waitForURL((url) => url.origin === this.authServerConfig.authUrl);
+    // `commit`: the auth server's login page can stall its load event on a slow subresource.
+    await this.page.waitForURL((url) => url.origin === this.authServerConfig.authUrl, {
+      waitUntil: 'commit',
+    });
   }
 
   async fillCredentials(username = null, password = null) {

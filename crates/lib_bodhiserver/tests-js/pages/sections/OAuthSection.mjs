@@ -20,7 +20,10 @@ export class OAuthSection {
   }
 
   async waitForAuthServerRedirect(authServerUrl) {
-    await this.page.waitForURL((url) => new URL(url).origin === authServerUrl);
+    // `commit`: the auth server's login page can stall its load event on a slow subresource.
+    await this.page.waitForURL((url) => new URL(url).origin === authServerUrl, {
+      waitUntil: 'commit',
+    });
   }
 
   async handleLogin(username, password) {

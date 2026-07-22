@@ -1,4 +1,5 @@
 import { SetupBasePage } from '@/pages/SetupBasePage.mjs';
+import { withRetry } from '@/utils/retry.mjs';
 
 export class SetupResourceAdminPage extends SetupBasePage {
   constructor(page, baseUrl, authServerConfig, testCredentials) {
@@ -33,8 +34,10 @@ export class SetupResourceAdminPage extends SetupBasePage {
   async clickContinueWithLogin() {
     await this.expectVisible(this.selectors.continueWithLoginButton);
     await this.page.click(this.selectors.continueWithLoginButton);
-    // Wait for redirect to auth server
-    await this.page.waitForURL((url) => url.origin === this.authServerConfig.authUrl);
+    // `commit`: the auth server's login page can stall its load event on a slow subresource.
+    await this.page.waitForURL((url) => url.origin === this.authServerConfig.authUrl, {
+      waitUntil: 'commit',
+    });
   }
 
   async expectAuthServerLogin() {
@@ -59,10 +62,19 @@ export class SetupResourceAdminPage extends SetupBasePage {
   }
 
   async performCompleteLogin() {
-    await this.clickContinueWithLogin();
-    await this.expectAuthServerLogin();
-    await this.fillAuthCredentials();
-    await this.submitLogin();
-    await this.page.waitForURL((url) => !url.pathname.includes('/ui/setup/download-models/'));
+    await withRetry(
+      async (attempt) => {
+        // Retries re-navigate to reset the flow back to the resource-admin page.
+        if (attempt > 1) {
+          await this.navigateToResourceAdmin();
+        }
+        await this.clickContinueWithLogin();
+        await this.expectAuthServerLogin();
+        await this.fillAuthCredentials();
+        await this.submitLogin();
+        await this.page.waitForURL((url) => !url.pathname.includes('/ui/setup/download-models/'));
+      },
+      { label: 'resource-admin login' }
+    );
   }
 }

@@ -108,9 +108,7 @@ function CatalogRow<T, S extends string>({
         ) : (
           <td
             key={col.key}
-            className={
-              col.key === 'logo' ? 'cat-logo-td' : col.align === 'right' ? 'cat-td--right' : undefined
-            }
+            className={col.key === 'logo' ? 'cat-logo-td' : col.align === 'right' ? 'cat-td--right' : undefined}
           >
             {col.cell(row, idx)}
           </td>
