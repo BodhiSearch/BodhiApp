@@ -1,6 +1,6 @@
 {
   "name": "bodhi",
-  "version": "0.0.58-dev",
+  "version": "0.0.59-dev",
   "private": true,
   "type": "module",
   "scripts": {
