@@ -8,6 +8,7 @@ hf-home/
 changelogs/
 design/.thumbnail
 .commandcode/
+.mcp.json
 
 **/.vscode/**/*
 !/.vscode/keybindings-mac.json
