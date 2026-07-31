@@ -9,6 +9,10 @@ changelogs/
 design/.thumbnail
 .commandcode/
 .mcp.json
+docs/research/accelerator/
+docs/research/platform-gtm/
+docs/marketing/
+deep-research/
 
 **/.vscode/**/*
 !/.vscode/keybindings-mac.json
