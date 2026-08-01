@@ -421,3 +421,61 @@ async fn test_api_model_alias_gemini_prefixed_roundtrip(
 
   Ok(())
 }
+
+/// Unlike `tenants`, API-model keys get no legacy read path — a pre-v2 row must surface as a
+/// distinct, user-actionable error telling the user to re-enter the key, never as an opaque
+/// 500 and never as a silently-missing credential.
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_get_api_key_for_alias_rejects_legacy_row(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  use crate::db::encryption::encrypt_api_key_legacy;
+  use crate::models::api_model_alias_entity;
+  use crate::test_utils::TEST_ENCRYPTION_MASTER_KEY;
+  use errmeta::AppError;
+  use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+
+  let ctx = sea_context(db_type).await;
+  let alias = ApiAlias {
+    id: new_ulid(),
+    name: "legacy-alias".to_string(),
+    api_format: ApiFormat::OpenAI,
+    base_url: "https://api.openai.com/v1".to_string(),
+    models: vec![openai_model("gpt-4")].into(),
+    prefix: None,
+    forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
+    created_at: ctx.now,
+    updated_at: ctx.now,
+  };
+  ctx
+    .service
+    .create_api_model_alias("", "", &alias, Some("sk-test-key".to_string()))
+    .await?;
+
+  let (enc, salt, nonce) = encrypt_api_key_legacy(TEST_ENCRYPTION_MASTER_KEY, "sk-test-key")?;
+  let row = api_model_alias_entity::Entity::find_by_id(alias.id.clone())
+    .one(ctx.service.db())
+    .await?
+    .expect("alias row should exist");
+  let mut active: api_model_alias_entity::ActiveModel = row.into();
+  active.encrypted_api_key = Set(Some(enc));
+  active.salt = Set(Some(salt));
+  active.nonce = Set(Some(nonce));
+  active.update(ctx.service.db()).await?;
+
+  let err = ctx
+    .service
+    .get_api_key_for_alias("", "", &alias.id)
+    .await
+    .unwrap_err();
+  assert_eq!("db_error-legacy_encryption", err.code());
+  assert_eq!("unprocessable_entity_error", err.error_type());
+
+  Ok(())
+}

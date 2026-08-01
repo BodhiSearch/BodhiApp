@@ -1,6 +1,8 @@
 use super::temp_dir;
 use crate::app_access_requests::{AccessRequestRepository, AppAccessRequest};
-use crate::db::{sea_migrations::Migrator, DbCore, DbError, DefaultDbService, TimeService};
+use crate::db::{
+  sea_migrations::Migrator, DbCore, DbError, DefaultDbService, EncryptionKeys, TimeService,
+};
 use crate::tenants::{TenantRepository, TenantRow};
 
 pub const TEST_TENANT_ID: &str = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
@@ -44,9 +46,17 @@ pub async fn test_db_service_with_temp_dir(shared_temp_dir: Arc<TempDir>) -> Tes
   Migrator::fresh(&db).await.unwrap();
   let time_service = FrozenTimeService::default();
   let now = time_service.utc_now();
-  let encryption_key = b"01234567890123456789012345678901".to_vec();
+  let encryption_key = test_encryption_keys();
   let db_service = DefaultDbService::new(db, Arc::new(time_service), encryption_key.clone());
   TestDbService::new(shared_temp_dir, db_service, now, encryption_key)
+}
+
+/// Single source of truth for the master key used across every test fixture — the MCP
+/// helpers build encrypted rows by hand and must derive the identical key.
+pub const TEST_ENCRYPTION_MASTER_KEY: &[u8] = b"01234567890123456789012345678901";
+
+pub fn test_encryption_keys() -> EncryptionKeys {
+  EncryptionKeys::for_test(TEST_ENCRYPTION_MASTER_KEY.to_vec())
 }
 
 #[derive(Debug)]
@@ -114,7 +124,7 @@ pub struct TestDbService {
   inner: DefaultDbService,
   event_sender: Sender<String>,
   now: DateTime<Utc>,
-  pub encryption_key: Vec<u8>,
+  pub encryption_key: EncryptionKeys,
 }
 
 impl TestDbService {
@@ -122,7 +132,7 @@ impl TestDbService {
     _temp_dir: Arc<TempDir>,
     inner: DefaultDbService,
     now: DateTime<Utc>,
-    encryption_key: Vec<u8>,
+    encryption_key: EncryptionKeys,
   ) -> Self {
     let (event_sender, _) = channel(100);
     TestDbService {
@@ -157,7 +167,7 @@ impl DbCore for TestDbService {
     self.now
   }
 
-  fn encryption_key(&self) -> &[u8] {
+  fn encryption_key(&self) -> &EncryptionKeys {
     &self.encryption_key
   }
 
@@ -1533,7 +1543,7 @@ mockall::mock! {
   impl DbCore for DbService {
     async fn migrate(&self) -> Result<(), DbError>;
     fn now(&self) -> DateTime<Utc>;
-    fn encryption_key(&self) -> &[u8];
+    fn encryption_key(&self) -> &EncryptionKeys;
     async fn reset_all_tables(&self) -> Result<(), DbError>;
     async fn begin_tenant_txn(&self, tenant_id: &str) -> Result<sea_orm::DatabaseTransaction, DbError>;
     async fn reset_tenants(&self) -> Result<(), DbError>;

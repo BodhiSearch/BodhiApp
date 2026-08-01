@@ -2,30 +2,23 @@
 
 This document records all known security vulnerabilities, architectural limitations, and the reasoning for their current status. It serves as the authoritative reference for security posture decisions.
 
-**Last updated:** 2026-03-23
+**Last updated:** 2026-08-01
 
 ---
 
 ## Accepted Risks
 
-### PBKDF2 Key Derivation Uses 1,000 Iterations (OWASP Recommends 600,000+)
+### Master Key From the OS Keyring Is Not Password-Stretched
 
-- **Location:** `crates/services/src/db/encryption.rs:13` — `const PBKDF2_ITERATIONS: u32 = 1000`
-- **Severity context:** Medium (requires DB file access + master encryption key)
-- **Status:** Accepted risk
+- **Location:** `crates/lib_bodhiserver/src/app_service_builder.rs` — `build_encryption_key`, keyring branch
+- **Severity context:** Low
+- **Status:** By design
 
-**Reasoning:** The application uses AES-256-GCM encryption with PBKDF2-HMAC-SHA256 key derivation to protect 11 encrypted field types across 3 database tables (MCP OAuth configs, MCP OAuth tokens, tenant secrets). A single MCP OAuth operation can trigger 3+ decrypt calls (client_secret + access_token + refresh_token).
+**Reasoning:** On desktop (Tauri) no `BODHI_ENCRYPTION_KEY` is set, so the master key comes from `SystemKeyringStore::get_or_generate`, which returns 32 CSPRNG bytes (`crates/services/src/utils/keyring_service.rs`). This is the same argument as *API Tokens Hashed with SHA-256* below: key stretching exists to compensate for low-entropy human-chosen input, and a uniform 256-bit key has no such deficit. Brute force is infeasible at any iteration count.
 
-At OWASP-recommended 600,000 iterations, each decrypt call would take ~200ms, adding ~600ms+ latency to a single request. This is unacceptable for application responsiveness.
+The KEK derivation still runs PBKDF2 on this path — one code path is simpler to reason about than two, and the cost is a one-time ~70 ms at startup.
 
-The threat model for this encryption is: an attacker who has obtained the database file (SQLite or PostgreSQL dump) but NOT the master encryption key needs to brute-force the key derivation to recover plaintext secrets. However:
-1. The master key is a server-side secret, never stored in the database
-2. If an attacker has filesystem access to steal the DB, they likely also have access to the master key (stored in the same environment)
-3. The partial-compromise scenario (DB stolen, key not) is unlikely in practice
-
-Given the performance impact vs. the narrow threat scenario, 1,000 iterations is accepted.
-
-**Mitigation:** If the threat model changes (e.g., database backups stored separately from the key), increase iterations and run a data migration.
+**Related risk:** if the OS keychain entry is lost (machine change, keychain reset), `get_or_generate` mints a *new* key and all previously encrypted data becomes unrecoverable. This is inherent to keychain-backed storage and is not mitigated.
 
 ---
 
@@ -199,3 +192,24 @@ The following vulnerabilities have been fixed as part of the security remediatio
 | Path traversal | Filesystem existence oracle via `../` in filename | Filename character rejection (reject `..`, `/`, `\`) |
 | Session security | Dashboard session fixation (no ID rotation after dashboard OAuth) | `session.cycle_id()` in dashboard auth callback |
 | Transport | Missing Cache-Control on token creation response | `Cache-Control: no-store` + `Pragma: no-cache` on `tokens_create` response |
+| Cryptography | PBKDF2 key derivation used 1,000 iterations | Two-tier KEK: PBKDF2-HMAC-SHA256 at 600,000 iterations once at startup, HKDF-SHA256 per row (see below) |
+| Cryptography | `BODHI_ENCRYPTION_KEY` accepted any value, and the placeholder guard checked a string `.env.example` did not ship | Length floor (20) + both placeholder strings rejected at boot |
+
+## Key Derivation (v2 scheme)
+
+Secrets are encrypted with AES-256-GCM under a per-row key. Since v2 the key derivation is two-tier:
+
+```
+KEK      = PBKDF2-HMAC-SHA256(master_key, "bodhiapp:kek:v2", 600_000)   # once, at startup
+row key  = HKDF-SHA256(ikm = KEK, salt = per-row salt, info = "bodhiapp:row:v2")
+```
+
+The original scheme ran the full PBKDF2 stretch *per row* against the row salt, which is what made the OWASP iteration count look unaffordable. Per-row stretching buys nothing when there is a single global master key — an attacker's work is per-candidate-key, not per-row, so cracking one row cracks all of them. Moving the stretch to a once-per-process KEK and using HKDF (~1 µs) per row gives the full OWASP work factor at no per-request cost, and keeps a 70 ms blocking computation out of the async request path.
+
+**On-disk format.** v2 ciphertext carries a `v2:` prefix. Base64's alphabet never contains `:`, so an unprefixed value is unambiguously a pre-v2 row — legacy detection is a string check, never a failed decrypt. This kept the change free of any schema migration.
+
+**Legacy rows.** Only `tenants.encrypted_client_secret` has a legacy read path: it is decrypted on *every* tenant read, so an unreadable row 500s every request and leaves the UI with no login and no setup wizard. `DefaultDbService::reencrypt_legacy_tenant_secrets` upgrades those rows at startup (idempotent, skips `v2:`), and aborts boot on a genuine key mismatch rather than stranding the deployment in a 500 loop.
+
+Every other table surfaces `DbError::LegacyEncryption` (`db_error-legacy_encryption`, HTTP 422) when a pre-v2 secret is used, prompting the user to recreate that one resource. This is deliberate: the deployment footprint at the time of the change was small enough that coordinated recreation beat carrying a dual-decrypt path across six tables indefinitely.
+
+**Operator requirement.** `BODHI_ENCRYPTION_KEY` must be at least 20 characters and must not be a placeholder; boot fails otherwise. Generate one with `openssl rand -base64 32`. There is no previous-key fallback — **changing the key makes every existing encrypted secret unrecoverable.**

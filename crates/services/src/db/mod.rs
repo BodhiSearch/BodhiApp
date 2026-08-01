@@ -11,6 +11,7 @@ mod time_service;
 
 pub use db_core::*;
 pub use default_service::*;
+pub use encryption::{EncryptionError, EncryptionKeys};
 pub use error::*;
 pub use service::*;
 pub use time_service::*;

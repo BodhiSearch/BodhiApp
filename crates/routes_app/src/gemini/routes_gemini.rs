@@ -69,7 +69,7 @@ async fn resolve_gemini_alias(
     .find(|alias| alias.matchable_models().iter().any(|m| m == model))
     .ok_or_else(|| BodhiErrorResponse::from(DataServiceError::AliasNotFound(model.to_string())))?;
 
-  let api_key = crate::providers::resolve_api_key_for_alias(auth_scope, &api_alias.id).await;
+  let api_key = crate::providers::resolve_api_key_for_alias(auth_scope, &api_alias.id).await?;
   Ok((api_alias, api_key))
 }
 

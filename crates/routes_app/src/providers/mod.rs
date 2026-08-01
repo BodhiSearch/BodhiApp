@@ -1,26 +1,40 @@
 use crate::shared::AuthScope;
 use services::ai_apis::llm_liberty::{ensure_fresh_credentials, LlmLibertyRefreshError};
+use services::db::DbError;
 use services::models::llm_liberty_envelope::ResolvedLlmLibertyCredentials;
 
-/// None if no key is configured or the lookup fails. Used by oai and anthropic route handlers.
+/// `Ok(None)` if no key is configured or the lookup fails. Used by oai and anthropic route
+/// handlers.
+///
+/// A legacy-encrypted key is the one failure that propagates: swallowing it would forward
+/// the request upstream with no credential, and the user would see a provider 401 instead of
+/// being told to re-enter the key.
 pub(crate) async fn resolve_api_key_for_alias(
   auth_scope: &AuthScope,
   api_alias_id: &str,
-) -> Option<String> {
+) -> Result<Option<String>, DbError> {
   let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
   let user_id = auth_scope
     .auth_context()
     .user_id()
     .unwrap_or("")
     .to_string();
-  auth_scope
+  match auth_scope
     .db()
     .get_api_key_for_alias(&tenant_id, &user_id, api_alias_id)
     .await
-    .unwrap_or_else(|e| {
-      tracing::warn!("Failed to fetch API key for alias {}: {}", api_alias_id, e);
-      None
-    })
+  {
+    Ok(key) => Ok(key),
+    Err(err @ DbError::LegacyEncryption { .. }) => Err(err),
+    Err(err) => {
+      tracing::warn!(
+        "Failed to fetch API key for alias {}: {}",
+        api_alias_id,
+        err
+      );
+      Ok(None)
+    }
+  }
 }
 
 /// Resolve fresh LLM Liberty OAuth credentials for the given alias. Delegates to

@@ -11,7 +11,7 @@ impl AppOptionsBuilder {
       .auth_url("https://test-id.getbodhi.app")
       .auth_realm("bodhi")
       .deployment_mode(DeploymentMode::Standalone)
-      .set_env(BODHI_ENCRYPTION_KEY, "test-encryption-key")
+      .set_env(BODHI_ENCRYPTION_KEY, "bodhi-integration-test-enc-key")
   }
 
   pub fn with_bodhi_home(bodhi_home: &str) -> Self {

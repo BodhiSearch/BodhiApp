@@ -356,7 +356,7 @@ impl ApiAliasRepository for DefaultDbService {
             Some(m) => match (m.encrypted_api_key, m.salt, m.nonce) {
               (Some(encrypted), Some(salt), Some(nonce)) => {
                 let api_key = decrypt_api_key(&encryption_key, &encrypted, &salt, &nonce)
-                  .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+                  .map_err(|e| DbError::from_encryption("this API model's key", e))?;
                 Ok(Some(api_key))
               }
               (None, None, None) => Ok(None),

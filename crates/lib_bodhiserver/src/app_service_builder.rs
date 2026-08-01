@@ -9,11 +9,11 @@ use services::{
   AccessRequestService, AiApiClientFactory, AuthService, BootstrapParts, CacheService, DataService,
   DefaultAccessRequestService, DefaultAiApiClientFactory, DefaultAppService, DefaultMcpService,
   DefaultNetworkService, DefaultSessionService, DefaultSettingService, DefaultTenantService,
-  DeploymentMode, HfHubService, HubService, InMemoryQueue, KeycloakAuthService, KeyringStore,
-  LocalConcurrencyService, LocalDataService, McpService, MokaCacheService, MultiTenantDataService,
-  NetworkService, QueueConsumer, QueueProducer, RefreshWorker, SessionService, SettingService,
-  SystemKeyringStore, TenantService, BODHI_APP_DB_URL, BODHI_DEPLOYMENT, BODHI_ENCRYPTION_KEY,
-  BODHI_ENV_TYPE, HF_TOKEN, PROD_DB,
+  DeploymentMode, EncryptionKeys, HfHubService, HubService, InMemoryQueue, KeycloakAuthService,
+  KeyringStore, LocalConcurrencyService, LocalDataService, McpService, MokaCacheService,
+  MultiTenantDataService, NetworkService, QueueConsumer, QueueProducer, RefreshWorker,
+  SessionService, SettingService, SystemKeyringStore, TenantService, BODHI_APP_DB_URL,
+  BODHI_DEPLOYMENT, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, HF_TOKEN, PROD_DB,
 };
 use std::result::Result;
 use std::sync::Arc;
@@ -262,7 +262,7 @@ impl AppServiceBuilder {
   async fn build_db_service(
     db_url: &str,
     time_service: Arc<dyn TimeService>,
-    encryption_key: Vec<u8>,
+    encryption_key: EncryptionKeys,
     env_type: services::EnvType,
   ) -> Result<Arc<dyn DbService>, BootstrapError> {
     // For SQLite URLs, append ?mode=rwc to create the file if missing
@@ -281,6 +281,9 @@ impl AppServiceBuilder {
     let db_service =
       DefaultDbService::new(db, time_service, encryption_key).with_env_type(env_type);
     db_service.migrate().await?;
+    // Must run before anything reads a tenant: the secret is decrypted on every tenant read,
+    // so a legacy row would 500 every request with no in-app recovery.
+    db_service.reencrypt_legacy_tenant_secrets().await?;
     Ok(Arc::new(db_service))
   }
 
@@ -359,18 +362,41 @@ impl AppServiceBuilder {
   }
 }
 
+/// Minimum length for an operator-supplied `BODHI_ENCRYPTION_KEY`. Below this the key
+/// derivation's work factor is the only thing standing between a stolen database and the
+/// plaintext secrets, and a short key makes that work factor irrelevant.
+const MIN_ENCRYPTION_KEY_LEN: usize = 20;
+
+/// Both the current and the previously-shipped `.env.example` placeholders. The legacy one
+/// is 24 chars and would otherwise pass the length floor.
+const ENCRYPTION_KEY_PLACEHOLDERS: [&str; 2] = [
+  "your-strong-encryption-key-here",
+  "your-encryption-key-here",
+];
+
+fn validate_encryption_key(key: &str) -> Result<(), BootstrapError> {
+  if ENCRYPTION_KEY_PLACEHOLDERS.contains(&key) {
+    return Err(BootstrapError::PlaceholderValue(key.to_string()));
+  }
+  if key.len() < MIN_ENCRYPTION_KEY_LEN {
+    return Err(BootstrapError::WeakEncryptionKey {
+      min: MIN_ENCRYPTION_KEY_LEN,
+      actual: key.len(),
+    });
+  }
+  Ok(())
+}
+
 async fn build_encryption_key(
   is_production: bool,
   encryption_key_value: Option<String>,
-) -> Result<Vec<u8>, BootstrapError> {
+) -> Result<EncryptionKeys, BootstrapError> {
   let app_suffix = if is_production { "" } else { " - Dev" };
   let app_name = format!("Bodhi App{app_suffix}");
   if let Some(ref key) = encryption_key_value {
-    if key == "your-strong-encryption-key-here" {
-      return Err(BootstrapError::PlaceholderValue(key.to_string()));
-    }
+    validate_encryption_key(key)?;
   }
-  let encryption_key = encryption_key_value
+  let master = encryption_key_value
     .map(|key| Ok(hash_key(&key)))
     .unwrap_or_else(|| {
       let result = SystemKeyringStore::new(&app_name)
@@ -384,7 +410,10 @@ async fn build_encryption_key(
       }
       result
     })?;
-  Ok(encryption_key)
+  // ~70ms of PBKDF2, paid once per process. Off-thread so it cannot stall the runtime.
+  tokio::task::spawn_blocking(move || EncryptionKeys::derive(master))
+    .await
+    .map_err(|e| BootstrapError::UnexpectedError("key_derivation_panic".to_string(), e.to_string()))
 }
 
 pub async fn build_app_service(

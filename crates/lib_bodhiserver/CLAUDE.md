@@ -23,7 +23,7 @@ Also hosts:
 - `AppServiceBuilder::new(bootstrap_parts: BootstrapParts)` -- sole constructor (NOT `BootstrapService`)
 - Injectable services: `time_service`, `cache_service` (return `Err(ServiceAlreadySet)` on double-set)
 - `build()` -- two-phase async build returning `DefaultAppService`
-  - **Phase 1**: Extract `is_production`, build encryption key (keyring or hash), build `DbService`, build `DefaultSettingService::from_parts()`
+  - **Phase 1**: Extract `is_production`, build encryption key (keyring or validated+hashed `BODHI_ENCRYPTION_KEY`, then a one-time KEK derivation off-thread), build `DbService` (migrate + re-encrypt legacy tenant secrets), build `DefaultSettingService::from_parts()`
   - **Phase 2**: Build remaining services using `setting_service` for config. Multi-tenant mode: `MultiTenantDataService` + `MultitenantInferenceService`; standalone: `LocalDataService` + `StandaloneInferenceService`
 - `build_app_service(bootstrap_parts)` -- convenience wrapper
 
@@ -52,7 +52,7 @@ Re-exports curated surface from `services`, `routes_app`, `server_app` so downst
 
 ### Error Types (`src/error.rs`)
 `BootstrapError` -- unified enum with variants:
-`BodhiHomeNotResolved`, `DirCreate`, `BodhiHomeNotSet`, `ValidationError`, `Parse`, `UnknownSystemSetting`, `ServiceAlreadySet`, `PlaceholderValue`, `MissingBootstrapParts`, `SettingNotFound`, `Db`, `Tenant`, `SessionService`, `Keyring`, `Io`
+`BodhiHomeNotResolved`, `DirCreate`, `BodhiHomeNotSet`, `ValidationError`, `Parse`, `UnknownSystemSetting`, `ServiceAlreadySet`, `PlaceholderValue`, `WeakEncryptionKey`, `MissingBootstrapParts`, `SettingNotFound`, `Db`, `Tenant`, `SessionService`, `Keyring`, `Io`
 
 ## Test Utils (`src/test_utils/`, feature-gated)
 - `AppOptionsBuilder::development()` -- dev defaults (Development, Container, test auth URL)

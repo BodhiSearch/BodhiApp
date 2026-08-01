@@ -418,3 +418,117 @@ async fn test_list_user_tenants(
 
   Ok(())
 }
+
+/// Rewrites a tenant's stored secret in the pre-v2 format, simulating a row written before
+/// the KEK/HKDF scheme landed.
+async fn downgrade_tenant_secret_to_v1(
+  db: &sea_orm::DatabaseConnection,
+  tenant_id: &str,
+  secret: &str,
+) -> anyhow::Result<()> {
+  use crate::db::encryption::encrypt_api_key_legacy;
+  use crate::tenants::tenant_entity;
+  use crate::test_utils::TEST_ENCRYPTION_MASTER_KEY;
+  use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+
+  let (enc, salt, nonce) = encrypt_api_key_legacy(TEST_ENCRYPTION_MASTER_KEY, secret)?;
+  let row = tenant_entity::Entity::find_by_id(tenant_id.to_string())
+    .one(db)
+    .await?
+    .expect("tenant row should exist");
+  let mut active: tenant_entity::ActiveModel = row.into();
+  active.encrypted_client_secret = Set(Some(enc));
+  active.salt_client_secret = Set(Some(salt));
+  active.nonce_client_secret = Set(Some(nonce));
+  active.update(db).await?;
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_reencrypt_legacy_tenant_secrets_upgrades_and_is_idempotent(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let secret = "legacy-tenant-secret-value";
+
+  let created = ctx
+    .service
+    .create_tenant(
+      "legacy-client-id",
+      secret,
+      "Legacy App",
+      None,
+      &AppStatus::ResourceAdmin,
+      None,
+    )
+    .await?;
+
+  downgrade_tenant_secret_to_v1(ctx.service.db(), &created.id, secret).await?;
+
+  // Before the pass the row is unreadable, and it reads as "legacy", not "wrong key".
+  let err = ctx.service.get_tenant().await.unwrap_err();
+  assert_eq!("db_error-legacy_encryption", err.code());
+
+  assert_eq!(1, ctx.service.reencrypt_legacy_tenant_secrets().await?);
+
+  let row = ctx.service.get_tenant().await?.expect("row should exist");
+  assert_eq!(secret, row.client_secret);
+
+  // Re-running is a no-op, so a crashed pass simply resumes.
+  assert_eq!(0, ctx.service.reencrypt_legacy_tenant_secrets().await?);
+
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_reencrypt_legacy_tenant_secrets_aborts_on_key_mismatch(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  use crate::db::encryption::encrypt_api_key_legacy;
+  use crate::tenants::tenant_entity;
+  use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+
+  let ctx = sea_context(db_type).await;
+  let created = ctx
+    .service
+    .create_tenant(
+      "mismatch-client-id",
+      "some-secret",
+      "Mismatch App",
+      None,
+      &AppStatus::ResourceAdmin,
+      None,
+    )
+    .await?;
+
+  // A v1 row written under a *different* master key: not a legacy-scheme problem but a
+  // genuine key mismatch, which must be fatal rather than silently skipped.
+  let (enc, salt, nonce) = encrypt_api_key_legacy(b"a-completely-different-master-key", "x")?;
+  let row = tenant_entity::Entity::find_by_id(created.id.clone())
+    .one(ctx.service.db())
+    .await?
+    .expect("tenant row should exist");
+  let mut active: tenant_entity::ActiveModel = row.into();
+  active.encrypted_client_secret = Set(Some(enc));
+  active.salt_client_secret = Set(Some(salt));
+  active.nonce_client_secret = Set(Some(nonce));
+  active.update(ctx.service.db()).await?;
+
+  let err = ctx
+    .service
+    .reencrypt_legacy_tenant_secrets()
+    .await
+    .unwrap_err();
+  assert_eq!("db_error-tenant_secret_undecryptable", err.code());
+  assert!(err.to_string().contains("mismatch-client-id"));
+
+  Ok(())
+}

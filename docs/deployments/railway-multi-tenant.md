@@ -1,3 +1,9 @@
+> **`BODHI_ENCRYPTION_KEY`**: must be at least 20 characters and not a placeholder, or the app
+> refuses to start. Generate with `openssl rand -base64 32`. There is no previous-key fallback —
+> **changing this value makes every stored secret (provider API keys, MCP OAuth tokens, tenant
+> client secrets) permanently unrecoverable.** See `docs/architecture/security.md` → Key Derivation.
+
+```env
 BODHI_ENCRYPTION_KEY="<secret>"
 BODHI_LOG_STDOUT="true"
 BODHI_LOG_LEVEL="info"
@@ -15,3 +21,4 @@ BODHI_APP_DB_URL="postgresql://postgres:<secret>@postgres-app-db.railway.interna
 BODHI_SESSION_DB_URL="postgresql://postgres:<secret>@postgres-session-db.railway.internal:5432/railway"
 BODHI_MULTITENANT_CLIENT_ID="dashboard-client-<secret>"
 BODHI_MULTITENANT_CLIENT_SECRET="<secret>"
+```

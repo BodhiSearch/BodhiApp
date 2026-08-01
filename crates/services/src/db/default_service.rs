@@ -1,4 +1,4 @@
-use crate::db::{DbCore, DbError, TimeService};
+use crate::db::{encryption::EncryptionKeys, DbCore, DbError, TimeService};
 use crate::EnvType;
 use chrono::{DateTime, Utc};
 use sea_orm::{
@@ -13,7 +13,7 @@ use std::sync::Arc;
 pub struct DefaultDbService {
   pub(crate) db: DatabaseConnection,
   pub(crate) time_service: Arc<dyn TimeService>,
-  pub(crate) encryption_key: Vec<u8>,
+  pub(crate) encryption_key: EncryptionKeys,
   pub(crate) env_type: EnvType,
 }
 
@@ -21,7 +21,7 @@ impl DefaultDbService {
   pub fn new(
     db: DatabaseConnection,
     time_service: Arc<dyn TimeService>,
-    encryption_key: Vec<u8>,
+    encryption_key: EncryptionKeys,
   ) -> Self {
     DefaultDbService {
       db,
@@ -65,7 +65,7 @@ impl DbCore for DefaultDbService {
     self.time_service.utc_now()
   }
 
-  fn encryption_key(&self) -> &[u8] {
+  fn encryption_key(&self) -> &EncryptionKeys {
     &self.encryption_key
   }
 

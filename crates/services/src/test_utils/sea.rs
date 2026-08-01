@@ -1,6 +1,6 @@
 use crate::{
   db::{sea_migrations::Migrator, DefaultDbService, TimeService},
-  test_utils::FrozenTimeService,
+  test_utils::{test_encryption_keys, FrozenTimeService},
 };
 use chrono::{DateTime, Utc};
 use sea_orm::{ConnectOptions, Database};
@@ -25,7 +25,7 @@ pub async fn sea_context(db_type: &str) -> SeaTestContext {
 
       let time_service = FrozenTimeService::default();
       let now = time_service.utc_now();
-      let encryption_key = b"01234567890123456789012345678901".to_vec();
+      let encryption_key = test_encryption_keys();
 
       let service = DefaultDbService::new(db, Arc::new(time_service), encryption_key);
       SeaTestContext {
@@ -48,7 +48,7 @@ pub async fn sea_context(db_type: &str) -> SeaTestContext {
 
       let time_service = FrozenTimeService::default();
       let now = time_service.utc_now();
-      let encryption_key = b"01234567890123456789012345678901".to_vec();
+      let encryption_key = test_encryption_keys();
 
       let service = DefaultDbService::new(db, Arc::new(time_service), encryption_key);
       SeaTestContext {

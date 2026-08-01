@@ -46,6 +46,14 @@ pub enum DbError {
   #[error("Encryption error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   EncryptionError(String),
+  /// Kept distinct from `EncryptionError` so "recreate this resource" is never confused
+  /// with "the encryption key is wrong" — the two need opposite operator responses.
+  #[error("The stored credential for {entity} uses an unsupported legacy encryption scheme and must be recreated.")]
+  #[error_meta(error_type = ErrorType::UnprocessableEntity)]
+  LegacyEncryption { entity: String },
+  #[error("Could not decrypt the stored secret for tenant client_id(s): {client_ids}. The BODHI_ENCRYPTION_KEY does not match the one these rows were written with.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  TenantSecretUndecryptable { client_ids: String },
   #[error("Prefix '{0}' is already used by another API model.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   PrefixExists(String),
@@ -70,6 +78,19 @@ pub enum DbError {
   #[error("Validation error: {0}.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   ValidationError(String),
+}
+
+impl DbError {
+  /// Preserves the legacy-scheme signal instead of flattening every crypto failure into an
+  /// opaque 500. `entity` names the row so the message tells the user what to recreate.
+  pub fn from_encryption(entity: impl Into<String>, err: crate::db::EncryptionError) -> Self {
+    match err {
+      crate::db::EncryptionError::LegacyCiphertextUnsupported => DbError::LegacyEncryption {
+        entity: entity.into(),
+      },
+      other => DbError::EncryptionError(other.to_string()),
+    }
+  }
 }
 
 impl_error_from!(

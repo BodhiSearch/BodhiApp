@@ -66,7 +66,7 @@ export function buildEnvFromConfig(options = {}) {
     authUrl = 'https://main-id.getbodhi.app',
     authRealm = 'bodhi',
     deployment = 'standalone',
-    encryptionKey = 'dummy-key',
+    encryptionKey = 'bodhi-integration-test-enc-key',
     appStatus = 'ready',
     // The model-catalog Reference API the UI reads (Explore · Local Models). Point E2E at the
     // deployed dev API (prod api.getbodhi.app is not yet live), so the discovery list renders.

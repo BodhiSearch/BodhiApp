@@ -55,7 +55,6 @@ impl MigratorTrait for Migrator {
       Box::new(m20250101_000018_drop_mcp_tools_columns::Migration),
       Box::new(m20250101_000019_drop_models_cache::Migration),
       Box::new(m20250101_000020_api_alias_extra_fields::Migration),
-      // ---- prod deployment boundary (see ../CLAUDE.md); below not yet deployed ----
       Box::new(m20250101_000021_api_model_oauth_credentials::Migration),
       Box::new(m20250101_000022_model_router_aliases::Migration),
       Box::new(m20250101_000023_api_alias_name::Migration),

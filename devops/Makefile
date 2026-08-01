@@ -139,7 +139,7 @@ run: ## Run locally built image (specify VARIANT)
 	docker run --rm -it \
 		-e BODHI_LOG_STDOUT=true \
 		-e BODHI_LOG_LEVEL=debug \
-		-e BODHI_ENCRYPTION_KEY=local-dev-key \
+		-e BODHI_ENCRYPTION_KEY=bodhi-integration-test-enc-key \
 		-e BODHI_PUBLIC_HOST=localhost \
 		-e BODHI_PUBLIC_PORT=8080 \
 		-p 8080:8080 \

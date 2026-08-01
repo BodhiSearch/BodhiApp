@@ -172,7 +172,10 @@ impl SettingServiceStub {
       (BODHI_PORT.to_string(), "1135".to_string()),
       (BODHI_LOG_LEVEL.to_string(), "warn".to_string()),
       (BODHI_LOG_STDOUT.to_string(), "true".to_string()),
-      (BODHI_ENCRYPTION_KEY.to_string(), "testkey".to_string()),
+      (
+        BODHI_ENCRYPTION_KEY.to_string(),
+        "bodhi-integration-test-enc-key".to_string(),
+      ),
       (
         BODHI_EXEC_LOOKUP_PATH.to_string(),
         exec_lookup_path.display().to_string(),

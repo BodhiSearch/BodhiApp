@@ -177,7 +177,9 @@ pub async fn chat_completions_handler(
 
   let api_key = match &alias {
     Alias::Api(api_alias) => {
-      crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await
+      crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id)
+        .await
+        .map_err(OaiApiError::from)?
     }
     _ => None,
   };
@@ -270,7 +272,9 @@ pub async fn embeddings_handler(
 
   let api_key = match &alias {
     Alias::Api(api_alias) => {
-      crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await
+      crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id)
+        .await
+        .map_err(OaiApiError::from)?
     }
     _ => None,
   };

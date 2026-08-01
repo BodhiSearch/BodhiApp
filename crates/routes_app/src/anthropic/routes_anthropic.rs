@@ -98,7 +98,9 @@ async fn resolve_anthropic_alias(
     });
   }
 
-  let api_key = crate::providers::resolve_api_key_for_alias(auth_scope, &api_alias.id).await;
+  let api_key = crate::providers::resolve_api_key_for_alias(auth_scope, &api_alias.id)
+    .await
+    .map_err(BodhiErrorResponse::from)?;
   Ok(AnthropicAliasResolution::Native {
     alias: api_alias,
     api_key,

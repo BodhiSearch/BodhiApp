@@ -10,8 +10,8 @@ use rstest::rstest;
 use serial_test::serial;
 
 use crate::mcps::test_helpers::{
-  make_auth_config_param_row, make_auth_config_row, make_auth_param_row, make_mcp, make_server,
-  ENCRYPTION_KEY,
+  encryption_keys, make_auth_config_param_row, make_auth_config_row, make_auth_param_row, make_mcp,
+  make_server,
 };
 
 fn make_oauth_token(
@@ -23,10 +23,10 @@ fn make_oauth_token(
   refresh_token: Option<&str>,
   now: chrono::DateTime<chrono::Utc>,
 ) -> McpOAuthTokenEntity {
-  let (enc_at, salt_at, nonce_at) = encrypt_api_key(ENCRYPTION_KEY, access_token).unwrap();
+  let (enc_at, salt_at, nonce_at) = encrypt_api_key(&encryption_keys(), access_token).unwrap();
   let (enc_rt, salt_rt, nonce_rt) = match refresh_token {
     Some(rt) => {
-      let (e, s, n) = encrypt_api_key(ENCRYPTION_KEY, rt).unwrap();
+      let (e, s, n) = encrypt_api_key(&encryption_keys(), rt).unwrap();
       (Some(e), Some(s), Some(n))
     }
     None => (None, None, None),

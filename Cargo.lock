@@ -6567,6 +6567,7 @@ dependencies = [
  "errmeta_derive",
  "fs_extra",
  "hf-hub",
+ "hkdf",
  "http-body-util",
  "include_dir",
  "jsonwebtoken",

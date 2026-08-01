@@ -31,6 +31,7 @@ dirs = { workspace = true }
 dotenv = { workspace = true }
 jsonwebtoken = { workspace = true }
 hf-hub = { workspace = true, features = ["tokio"] }
+hkdf = { workspace = true }
 include_dir = { workspace = true }
 keyring = { workspace = true, default-features = false }
 mini-moka = { workspace = true }

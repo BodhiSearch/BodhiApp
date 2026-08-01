@@ -60,7 +60,7 @@ pub fn test_config(temp_dir: TempDir) -> (NapiAppOptions, TempDir) {
   config = set_env_var(
     config,
     BODHI_ENCRYPTION_KEY.to_string(),
-    "test-encryption-key".to_string(),
+    "bodhi-integration-test-enc-key".to_string(),
   );
   (config, temp_dir)
 }

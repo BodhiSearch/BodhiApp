@@ -11,7 +11,7 @@ use server_app::{ServeCommand, ServerShutdownHandle};
 use server_core::{DefaultSharedContext, LocalLlamaImpl};
 use services::test_utils::TEST_CLIENT_ID;
 use services::{
-  db::{DbCore, DefaultDbService, DefaultTimeService},
+  db::{DbCore, DefaultDbService, DefaultTimeService, EncryptionKeys},
   extract_claims, hash_key,
   inference::LocalLlama,
   test_utils::{
@@ -73,7 +73,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   );
   env_vars.insert(
     BODHI_ENCRYPTION_KEY.to_string(),
-    "test-encryption-key".to_string(),
+    "bodhi-integration-test-enc-key".to_string(),
   );
 
   let auth_server_url = std::env::var("INTEG_TEST_AUTH_URL")
@@ -132,7 +132,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
 
   // Build DB service with pool (needed by setting_service)
   let encryption_key_raw = env_wrapper.var(BODHI_ENCRYPTION_KEY).unwrap();
-  let encryption_key = hash_key(&encryption_key_raw);
+  let encryption_key = EncryptionKeys::for_test(hash_key(&encryption_key_raw));
   let app_db_url = format!("sqlite:{}?mode=rwc", app_db_path.display());
   let db = sea_orm::Database::connect(&app_db_url).await?;
   let db_service = Arc::new(DefaultDbService::new(
@@ -463,7 +463,7 @@ pub async fn setup_test_app_service_with_time(
   );
   env_vars.insert(
     BODHI_ENCRYPTION_KEY.to_string(),
-    "test-encryption-key".to_string(),
+    "bodhi-integration-test-enc-key".to_string(),
   );
 
   // Fake auth URL — no real Keycloak calls (ExternalTokenSimulator seeds cache).
@@ -522,7 +522,7 @@ pub async fn setup_test_app_service_with_time(
 
   // Build DB service with pool (needed by setting_service)
   let encryption_key_raw = env_wrapper.var(BODHI_ENCRYPTION_KEY).unwrap();
-  let encryption_key = hash_key(&encryption_key_raw);
+  let encryption_key = EncryptionKeys::for_test(hash_key(&encryption_key_raw));
   let app_db_url = format!("sqlite:{}?mode=rwc", app_db_path.display());
   let db = sea_orm::Database::connect(&app_db_url).await?;
   let db_service = Arc::new(DefaultDbService::new(
@@ -837,7 +837,7 @@ pub async fn setup_multitenant_app_service(
   );
   env_vars.insert(
     BODHI_ENCRYPTION_KEY.to_string(),
-    "test-encryption-key".to_string(),
+    "bodhi-integration-test-enc-key".to_string(),
   );
 
   let auth_server_url = std::env::var("INTEG_TEST_AUTH_URL")
@@ -916,7 +916,7 @@ pub async fn setup_multitenant_app_service(
 
   // Build DB service with pool (needed by setting_service)
   let encryption_key_raw = env_wrapper.var(BODHI_ENCRYPTION_KEY).unwrap();
-  let encryption_key = hash_key(&encryption_key_raw);
+  let encryption_key = EncryptionKeys::for_test(hash_key(&encryption_key_raw));
   let app_db_url = format!("sqlite:{}?mode=rwc", app_db_path.display());
   let db = sea_orm::Database::connect(&app_db_url).await?;
   let db_service = Arc::new(DefaultDbService::new(

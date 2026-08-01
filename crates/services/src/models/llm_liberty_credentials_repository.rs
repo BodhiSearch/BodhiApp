@@ -296,14 +296,14 @@ impl LlmLibertyCredentialsRepository for DefaultDbService {
             &row.access_salt,
             &row.access_nonce,
           )
-          .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+          .map_err(|e| DbError::from_encryption("this provider's OAuth credentials", e))?;
           let refresh_token = decrypt_api_key(
             &encryption_key,
             &row.encrypted_refresh_token,
             &row.refresh_salt,
             &row.refresh_nonce,
           )
-          .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+          .map_err(|e| DbError::from_encryption("this provider's OAuth credentials", e))?;
 
           Ok(Some(ResolvedLlmLibertyCredentials {
             access_token,

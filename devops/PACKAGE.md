@@ -107,7 +107,7 @@ Runtime configuration through environment variables (`devops/Makefile:86-101`):
 # Container runtime configuration
 docker run --rm -it \
   -e BODHI_LOG_STDOUT=true \
-  -e BODHI_ENCRYPTION_KEY=local-dev-key \
+  -e BODHI_ENCRYPTION_KEY=$$(openssl rand -base64 32) \
   -p 8080:8080 \
   -v $(PROJECT_ROOT)/docker-data/bodhi_home:/data/bodhi_home
 ```

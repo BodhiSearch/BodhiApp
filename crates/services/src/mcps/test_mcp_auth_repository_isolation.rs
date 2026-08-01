@@ -10,7 +10,7 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
 
-use crate::mcps::test_helpers::ENCRYPTION_KEY;
+use crate::mcps::test_helpers::encryption_keys;
 
 fn make_server_for(tenant_id: &str, id: &str, url: &str, now: DateTime<Utc>) -> McpServerEntity {
   McpServerEntity {
@@ -105,7 +105,7 @@ fn make_auth_param_for(
   value: &str,
   now: DateTime<Utc>,
 ) -> crate::mcps::McpAuthParamEntity {
-  let (encrypted, salt, nonce) = encrypt_api_key(ENCRYPTION_KEY, value).unwrap();
+  let (encrypted, salt, nonce) = encrypt_api_key(&encryption_keys(), value).unwrap();
   crate::mcps::McpAuthParamEntity {
     id: id.to_string(),
     tenant_id: tenant_id.to_string(),
@@ -128,7 +128,7 @@ fn make_oauth_token_for(
   user_id: &str,
   now: DateTime<Utc>,
 ) -> McpOAuthTokenEntity {
-  let (enc_at, salt_at, nonce_at) = encrypt_api_key(ENCRYPTION_KEY, "access-token").unwrap();
+  let (enc_at, salt_at, nonce_at) = encrypt_api_key(&encryption_keys(), "access-token").unwrap();
   McpOAuthTokenEntity {
     id: id.to_string(),
     tenant_id: tenant_id.to_string(),

@@ -98,3 +98,33 @@ fn test_service_already_set_errors(empty_bodhi_home: TempDir) -> anyhow::Result<
 
   Ok(())
 }
+
+#[rstest]
+#[case("your-strong-encryption-key-here")] // current .env.example placeholder
+#[case("your-encryption-key-here")] // legacy placeholder, 24 chars — passes the length floor
+fn test_validate_encryption_key_rejects_placeholders(#[case] key: &str) {
+  let err = super::validate_encryption_key(key).unwrap_err();
+  assert!(matches!(err, BootstrapError::PlaceholderValue(v) if v == key));
+}
+
+#[rstest]
+#[case("dummy-key")]
+#[case("testkey")]
+#[case("local-dev-key")]
+#[case("test-encryption-key")] // 19 chars — one under the floor
+fn test_validate_encryption_key_rejects_short_keys(#[case] key: &str) {
+  let err = super::validate_encryption_key(key).unwrap_err();
+  assert!(matches!(
+    err,
+    BootstrapError::WeakEncryptionKey { min: 20, actual } if actual == key.len()
+  ));
+}
+
+#[rstest]
+#[case("bodhi-integration-test-enc-key")] // the fixture key
+#[case("NORMAL6puzzle8rusting7dada")] // generated passphrase, 26 chars
+#[case("cmVwbGFjZS1tZS13aXRoLW9wZW5zc2wtcmFuZC1iYXNlNjQ=")] // openssl rand -base64 32 shape
+fn test_validate_encryption_key_accepts_strong_keys(#[case] key: &str) -> anyhow::Result<()> {
+  super::validate_encryption_key(key)?;
+  Ok(())
+}

@@ -739,7 +739,7 @@ impl McpRepository for DefaultDbService {
                 &model.client_secret_nonce,
               ) {
                 let secret = decrypt_api_key(&encryption_key, enc, salt, nonce)
-                  .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+                  .map_err(|e| DbError::from_encryption("this MCP OAuth configuration", e))?;
                 Ok(Some((model.client_id.clone(), secret)))
               } else {
                 Ok(None)
@@ -860,7 +860,7 @@ impl McpRepository for DefaultDbService {
               &param.value_salt,
               &param.value_nonce,
             )
-            .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+            .map_err(|e| DbError::from_encryption("this MCP server's credentials", e))?;
 
             match param.param_type.as_str() {
               "header" => headers.push((param.param_key, value)),
@@ -1087,7 +1087,7 @@ impl McpRepository for DefaultDbService {
                 &model.refresh_token_nonce,
               ) {
                 let token = decrypt_api_key(&encryption_key, enc, salt, nonce)
-                  .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+                  .map_err(|e| DbError::from_encryption("this MCP server's OAuth token", e))?;
                 Ok(Some(token))
               } else {
                 Ok(None)
@@ -1126,7 +1126,7 @@ impl McpRepository for DefaultDbService {
                 &model.access_token_salt,
                 &model.access_token_nonce,
               )
-              .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+              .map_err(|e| DbError::from_encryption("this MCP server's OAuth token", e))?;
               Ok(Some(token))
             }
             None => Ok(None),

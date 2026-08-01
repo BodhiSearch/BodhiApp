@@ -1,7 +1,7 @@
 use super::tenant_entity::{self, TenantRow};
 use super::tenant_user_entity;
 use crate::db::{
-  encryption::{decrypt_api_key, encrypt_api_key},
+  encryption::{decrypt_api_key, decrypt_api_key_legacy, encrypt_api_key, is_legacy_ciphertext},
   DbCore, DbError, DefaultDbService,
 };
 use crate::AppStatus;
@@ -12,6 +12,76 @@ use sea_orm::sea_query::OnConflict;
 use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, Set};
 
 impl DefaultDbService {
+  /// Re-encrypts pre-v2 tenant secrets under the current KEK.
+  ///
+  /// `tenants` is the only table that gets a legacy read path. Its secret is decrypted on
+  /// *every* tenant read, so an unreadable row 500s every request and leaves the UI with no
+  /// login and no setup wizard — there is no in-app way to recover. Every other table
+  /// surfaces `DbError::LegacyEncryption` on use so the user can recreate that one resource.
+  ///
+  /// Idempotent: rows already carrying the `v2:` marker are skipped, so a crashed run simply
+  /// resumes. Runs on the raw connection rather than `begin_tenant_txn` — `tenants` carries no
+  /// RLS policy (only `tenants_users` does), so every row is visible.
+  ///
+  /// A row that fails to decrypt is not a legacy row but a genuine key mismatch, and is fatal:
+  /// booting anyway would strand the deployment in an unrecoverable 500 loop.
+  pub async fn reencrypt_legacy_tenant_secrets(&self) -> Result<usize, DbError> {
+    let rows = tenant_entity::Entity::find()
+      .all(&self.db)
+      .await
+      .map_err(DbError::from)?;
+
+    let mut migrated = 0usize;
+    let mut undecryptable: Vec<String> = Vec::new();
+
+    for row in rows {
+      let (Some(enc), Some(salt), Some(nonce)) = (
+        row.encrypted_client_secret.as_deref(),
+        row.salt_client_secret.as_deref(),
+        row.nonce_client_secret.as_deref(),
+      ) else {
+        continue;
+      };
+      if !is_legacy_ciphertext(enc) {
+        continue;
+      }
+
+      let Ok(plaintext) = decrypt_api_key_legacy(self.encryption_key.master(), enc, salt, nonce)
+      else {
+        undecryptable.push(row.client_id.clone());
+        continue;
+      };
+
+      let (new_enc, new_salt, new_nonce) = encrypt_api_key(&self.encryption_key, &plaintext)
+        .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+
+      let mut active: tenant_entity::ActiveModel = row.into();
+      active.encrypted_client_secret = Set(Some(new_enc));
+      active.salt_client_secret = Set(Some(new_salt));
+      active.nonce_client_secret = Set(Some(new_nonce));
+      tenant_entity::Entity::update(active)
+        .exec(&self.db)
+        .await
+        .map_err(DbError::from)?;
+
+      migrated += 1;
+    }
+
+    if !undecryptable.is_empty() {
+      return Err(DbError::TenantSecretUndecryptable {
+        client_ids: undecryptable.join(", "),
+      });
+    }
+
+    if migrated > 0 {
+      tracing::info!(
+        count = migrated,
+        "reencrypt_legacy_tenant_secrets: upgraded tenant secrets to the v2 encryption scheme"
+      );
+    }
+    Ok(migrated)
+  }
+
   /// Upsert a tenant-user membership within an existing transaction.
   async fn upsert_tenant_user_on_txn(
     txn: &impl ConnectionTrait,
@@ -53,7 +123,7 @@ impl DefaultDbService {
           error = %e,
           "decrypt_tenant_row: failed to decrypt tenant secret — encryption key mismatch?"
         );
-        DbError::EncryptionError(e.to_string())
+        DbError::from_encryption("this tenant's client secret", e)
       })?
     } else {
       String::new()

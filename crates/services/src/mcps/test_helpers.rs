@@ -1,14 +1,17 @@
 //! Shared test helper factories for MCP repository tests.
 use crate::db::encryption::encrypt_api_key;
+use crate::db::EncryptionKeys;
 use crate::mcps::{
   McpAuthConfigEntity, McpAuthConfigParamEntity, McpAuthParamEntity, McpAuthType, McpEntity,
   McpServerEntity,
 };
-use crate::test_utils::TEST_TENANT_ID;
+use crate::test_utils::{test_encryption_keys, TEST_TENANT_ID};
 use chrono::DateTime;
 use chrono::Utc;
 
-pub(crate) const ENCRYPTION_KEY: &[u8] = b"01234567890123456789012345678901";
+pub(crate) fn encryption_keys() -> EncryptionKeys {
+  test_encryption_keys()
+}
 
 pub(crate) fn make_server(id: &str, url: &str, now: DateTime<Utc>) -> McpServerEntity {
   McpServerEntity {
@@ -92,7 +95,8 @@ pub(crate) fn make_auth_param_row(
   value: &str,
   now: DateTime<Utc>,
 ) -> McpAuthParamEntity {
-  let (encrypted, salt, nonce) = encrypt_api_key(ENCRYPTION_KEY, value).expect("encryption failed");
+  let (encrypted, salt, nonce) =
+    encrypt_api_key(&encryption_keys(), value).expect("encryption failed");
   McpAuthParamEntity {
     id: id.to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),

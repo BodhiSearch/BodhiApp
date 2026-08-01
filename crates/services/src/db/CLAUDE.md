@@ -2,6 +2,15 @@
 
 SeaORM data layer: `DbService` implementations, encryption, RLS, and the migration chain in `sea_migrations/`.
 
+## Encryption (`encryption.rs`)
+
+Two-tier derivation. `EncryptionKeys::derive` stretches the master key into a KEK once at startup (PBKDF2-HMAC-SHA256, 600k iterations, ~70 ms); each row's key is `HKDF-SHA256(KEK, row_salt)`. Never call `derive` per request — that is the mistake the v1 scheme made.
+
+- **Tests must use `EncryptionKeys::for_test`** (via `test_utils::test_encryption_keys`). Every test constructs a `DbService`, so a real 600k derivation would add ~70 ms per test. `TEST_ENCRYPTION_MASTER_KEY` in `test_utils/db.rs` is the single source of truth for the fixture key.
+- **v2 ciphertext carries a `v2:` prefix.** Base64 never contains `:`, so `is_legacy_ciphertext` is a string check rather than a failed decrypt. `encrypt_api_key` always emits v2.
+- **`decrypt_api_key` rejects pre-v2 rows** with `EncryptionError::LegacyCiphertextUnsupported` → `DbError::LegacyEncryption` (422). Map crypto failures with `DbError::from_encryption(entity, err)`, never `DbError::EncryptionError(e.to_string())` — the latter flattens "recreate this resource" into an opaque 500.
+- **`decrypt_api_key_legacy` has exactly one caller**: `DefaultDbService::reencrypt_legacy_tenant_secrets`. Do not add more. `tenants` is migrated because its secret is decrypted on every tenant read, so an unreadable row 500s the whole app; every other table intentionally fails on use instead.
+
 ## Migration Governance
 
 **Every committed migration is IMMUTABLE. There is no in-place editing, ever.**

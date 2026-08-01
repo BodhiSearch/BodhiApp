@@ -42,6 +42,10 @@ pub enum BootstrapError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   PlaceholderValue(String),
 
+  #[error("BODHI_ENCRYPTION_KEY is too weak: needs at least {min} characters, got {actual}. Generate one with `openssl rand -base64 32`.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  WeakEncryptionKey { min: usize, actual: usize },
+
   #[error("AppServiceBuilder::build() called without BootstrapParts.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   MissingBootstrapParts,

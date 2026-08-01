@@ -89,7 +89,7 @@
 - `src/db/time_service.rs` — `TimeService` trait, `DefaultTimeService`
 - `src/db/default_service.rs` — `DefaultDbService` (SeaORM, sole implementation)
 - `src/db/db_core.rs` — `DbCore` trait with `begin_tenant_txn()`
-- `src/db/encryption.rs` — API key encryption utilities
+- `src/db/encryption.rs` — AES-256-GCM secret encryption: `EncryptionKeys` (PBKDF2 600k KEK + HKDF per row), `v2:` ciphertext marker, legacy read path (tenants only). See `src/db/CLAUDE.md`.
 - `src/db/error.rs` — `DbError`
 - `src/db/objs.rs` — `ApiKeyUpdate`
 - `src/db/entities/` — SeaORM entity definitions with `Relation` enums

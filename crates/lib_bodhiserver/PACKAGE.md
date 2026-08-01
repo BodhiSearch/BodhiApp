@@ -46,7 +46,7 @@ All error enums derive `thiserror::Error` + `errmeta_derive::ErrorMeta`. See `sr
 
 | Enum | Variants | ErrorType |
 |------|----------|-----------|
-| `BootstrapError` | `BodhiHomeNotResolved`, `DirCreate { source, path }`, `BodhiHomeNotSet`, `ValidationError(String)`, `Parse(strum::ParseError)`, `UnknownSystemSetting(String)`, `ServiceAlreadySet(String)`, `PlaceholderValue(String)`, `MissingBootstrapParts`, `SettingNotFound(String)`, `Db(DbError)`, `Tenant(TenantError)`, `SessionService(SessionServiceError)`, `Keyring(KeyringError)`, `Io(IoError)` | InternalServer / BadRequest |
+| `BootstrapError` | `BodhiHomeNotResolved`, `DirCreate { source, path }`, `BodhiHomeNotSet`, `ValidationError(String)`, `Parse(strum::ParseError)`, `UnknownSystemSetting(String)`, `ServiceAlreadySet(String)`, `PlaceholderValue(String)`, `WeakEncryptionKey { min, actual }`, `MissingBootstrapParts`, `SettingNotFound(String)`, `Db(DbError)`, `Tenant(TenantError)`, `SessionService(SessionServiceError)`, `Keyring(KeyringError)`, `Io(IoError)` | InternalServer / BadRequest |
 
 ## Commands
 
