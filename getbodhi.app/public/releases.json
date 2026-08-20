@@ -1,50 +1,50 @@
 {
   "desktop": {
-    "version": "0.0.58",
-    "tag": "app/v0.0.58",
-    "released_at": "2026-07-25T07:17:20Z",
+    "version": "0.0.59",
+    "tag": "app/v0.0.59",
+    "released_at": "2026-08-19T00:24:15Z",
     "platforms": {
       "macos": {
         "silicon": {
-          "version": "0.0.58",
-          "tag": "app/v0.0.58",
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.58/Bodhi_App.dmg",
+          "version": "0.0.59",
+          "tag": "app/v0.0.59",
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.59/Bodhi_App.dmg",
           "filename": "Bodhi_App.dmg",
-          "size": 23148743,
-          "sha256": "97e9ea2371818471a738121f3fa3eddc5595af8305d1a1e5dc422b519c1a871d"
+          "size": 23164918,
+          "sha256": "9b56770c550d91fa5bcaca2f67aa63b32be9d440dbe400ea4ca4a3e3c200cb6a"
         }
       },
       "windows": {
         "x64": {
-          "version": "0.0.58",
-          "tag": "app/v0.0.58",
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.58/Bodhi_App.msi",
+          "version": "0.0.59",
+          "tag": "app/v0.0.59",
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.59/Bodhi_App.msi",
           "filename": "Bodhi_App.msi",
-          "size": 17022976,
-          "sha256": "363eded84b98167371495a8ca775a39a03f90fcc43f1050d5e2416995f591e55"
+          "size": 17035264,
+          "sha256": "d13f242c8c8970f7b8319c39834c1b50105869aff620e3fe69dfc279efa8f126"
         }
       },
       "linux": {
         "x64": {
-          "version": "0.0.58",
-          "tag": "app/v0.0.58",
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.58/Bodhi_App.rpm",
+          "version": "0.0.59",
+          "tag": "app/v0.0.59",
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.59/Bodhi_App.rpm",
           "filename": "Bodhi_App.rpm",
-          "size": 20196773,
-          "sha256": "b8d048b8d07629314956048fc801cdd0d690a532242125e04fc618ec40d2a525"
+          "size": 20216151,
+          "sha256": "8bf96d1d09d99a890d88cebfdcc0b1116024c6da8e9cacbf9aa6269b56a9739e"
         }
       }
     }
   },
   "docker": {
-    "version": "0.0.22",
-    "tag": "docker/v0.0.22",
-    "released_at": "2026-07-25T07:08:08Z",
+    "version": "0.0.24",
+    "tag": "docker/v0.0.24",
+    "released_at": "2026-08-19T00:25:26Z",
     "registry": "ghcr.io/bodhisearch/bodhiapp",
     "variants": {
       "cpu": {
-        "version": "0.0.22",
-        "tag": "docker/v0.0.22",
+        "version": "0.0.24",
+        "tag": "docker/v0.0.24",
         "latest_tag": "latest-cpu",
         "platforms": [
           "linux/amd64",
@@ -55,8 +55,8 @@
         "description": "Multi-platform: AMD64 + ARM64"
       },
       "cuda": {
-        "version": "0.0.22",
-        "tag": "docker/v0.0.22",
+        "version": "0.0.24",
+        "tag": "docker/v0.0.24",
         "latest_tag": "latest-cuda",
         "platforms": [
           "linux/amd64"
@@ -69,8 +69,8 @@
         "gpu_type": "NVIDIA"
       },
       "rocm": {
-        "version": "0.0.22",
-        "tag": "docker/v0.0.22",
+        "version": "0.0.24",
+        "tag": "docker/v0.0.24",
         "latest_tag": "latest-rocm",
         "platforms": [
           "linux/amd64"
@@ -85,8 +85,8 @@
         "gpu_type": "AMD"
       },
       "vulkan": {
-        "version": "0.0.22",
-        "tag": "docker/v0.0.22",
+        "version": "0.0.24",
+        "tag": "docker/v0.0.24",
         "latest_tag": "latest-vulkan",
         "platforms": [
           "linux/amd64"
@@ -99,8 +99,8 @@
         "gpu_type": "Vulkan"
       },
       "intel": {
-        "version": "0.0.22",
-        "tag": "docker/v0.0.22",
+        "version": "0.0.24",
+        "tag": "docker/v0.0.24",
         "latest_tag": "latest-intel",
         "platforms": [
           "linux/amd64"
@@ -113,8 +113,8 @@
         "gpu_type": "Intel"
       },
       "cann": {
-        "version": "0.0.22",
-        "tag": "docker/v0.0.22",
+        "version": "0.0.24",
+        "tag": "docker/v0.0.24",
         "latest_tag": "latest-cann",
         "platforms": [
           "linux/amd64",
@@ -131,8 +131,8 @@
         "gpu_type": "Huawei Ascend"
       },
       "musa": {
-        "version": "0.0.22",
-        "tag": "docker/v0.0.22",
+        "version": "0.0.24",
+        "tag": "docker/v0.0.24",
         "latest_tag": "latest-musa",
         "platforms": [
           "linux/amd64"
