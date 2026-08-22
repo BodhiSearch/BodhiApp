@@ -1,6 +1,6 @@
 # Bodhi App
 
-[![Mac/Linux Build](https://github.com/BodhiSearch/BodhiApp/actions/workflows/build.yml/badge.svg)](https://github.com/BodhiSearch/BodhiApp/actions) [![Windows Build](https://github.com/BodhiSearch/BodhiApp/actions/workflows/build-windows.yml/badge.svg)](https://github.com/BodhiSearch/BodhiApp/actions) [![Release](https://github.com/BodhiSearch/BodhiApp/actions/workflows/release.yml/badge.svg)](https://github.com/BodhiSearch/BodhiApp/actions) [![Coverage](https://codecov.io/gh/BodhiSearch/BodhiApp/branch/main/graph/badge.svg)](https://codecov.io/gh/BodhiSearch/BodhiApp)
+[![Mac/Linux Build](https://github.com/BodhiSearch/BodhiApp/actions/workflows/build.yml/badge.svg)](https://github.com/BodhiSearch/BodhiApp/actions) [![Windows Build](https://github.com/BodhiSearch/BodhiApp/actions/workflows/build-windows.yml/badge.svg)](https://github.com/BodhiSearch/BodhiApp/actions) [![Release](https://github.com/BodhiSearch/BodhiApp/actions/workflows/release.yml/badge.svg)](https://github.com/BodhiSearch/BodhiApp/actions) [![Coverage](https://codecov.io/gh/BodhiSearch/BodhiApp/branch/main/graph/badge.svg)](https://codecov.io/gh/BodhiSearch/BodhiApp) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/BodhiSearch/BodhiApp)
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/BodhiSearch/BodhiApp/main/crates/bodhi/public/bodhi-logo/bodhi-logo-480.svg" alt="Bodhi App Logo" width="240" />
