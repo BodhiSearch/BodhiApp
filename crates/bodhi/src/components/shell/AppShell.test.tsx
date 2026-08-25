@@ -42,7 +42,6 @@ describe('AppShell', () => {
     expect(modelsNav).toBeInTheDocument();
     expect(modelsNav).toHaveClass('on');
 
-    // a non-active section is also present but not highlighted
     const chatNav = screen.getByTestId('shell-nav-chat');
     expect(chatNav).not.toHaveClass('on');
   });
@@ -138,10 +137,8 @@ describe('AppShell', () => {
         <div>page content</div>
       </AppShell>
     );
-    // no rail content yet
     expect(screen.queryByTestId('the-rail')).not.toBeInTheDocument();
 
-    // a screen publishes rail content → the rail column should open and show it
     rerender(
       <AppShell section="api-keys" railDefaultOpen={false} rail={<div data-testid="the-rail">details</div>}>
         <div>page content</div>
@@ -205,8 +202,6 @@ describe('AppShell', () => {
       </AppShell>
     );
 
-    // Force AppShell to re-render via its own state (collapse toggle) and confirm openRail's identity
-    // survives across the re-render.
     await user.click(screen.getByTitle('Collapse sidebar'));
     await waitFor(() => expect(openRails.length).toBeGreaterThan(1));
     const unique = new Set(openRails);

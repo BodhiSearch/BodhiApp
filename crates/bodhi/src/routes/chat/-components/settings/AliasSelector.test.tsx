@@ -211,7 +211,6 @@ describe('AliasSelector (free-text autocomplete)', () => {
 
     it('opens the list on ArrowDown when closed', () => {
       renderSelector();
-      // Not opened yet — options absent.
       expect(screen.queryByTestId('combobox-option-gpt-4')).not.toBeInTheDocument();
       fireEvent.keyDown(input(), { key: 'ArrowDown' });
       expect(screen.getByTestId('combobox-option-gpt-4')).toBeInTheDocument();
@@ -222,7 +221,6 @@ describe('AliasSelector (free-text autocomplete)', () => {
       fireEvent.change(input(), { target: { value: 'free-typed' } });
       setModel.mockClear();
       fireEvent.keyDown(input(), { key: 'Enter' });
-      // No option was highlighted, so Enter does not re-commit a list value.
       expect(setModel).not.toHaveBeenCalled();
     });
   });

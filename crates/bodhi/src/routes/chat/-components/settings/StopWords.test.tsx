@@ -119,7 +119,6 @@ describe('StopWords', () => {
       const switchElement = screen.getByRole('switch');
 
       expect(switchElement).toHaveAttribute('aria-checked', 'false');
-      // Control is hidden when the setting is off.
       expect(screen.queryByPlaceholderText('Type and press Enter to add stop words...')).not.toBeInTheDocument();
     });
   });

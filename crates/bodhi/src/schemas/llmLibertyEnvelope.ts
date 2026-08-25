@@ -55,11 +55,7 @@ const envelopeSchema = z
     }
   });
 
-/**
- * Validate the JSON output of `npx @bodhiapp/llm-liberty@latest login` against
- * BodhiApp's supported envelope contract. Returns `{ ok: true, envelope, summary }`
- * on success, `{ ok: false, error }` with a human-readable message otherwise.
- */
+// Validates the JSON output of `npx @bodhiapp/llm-liberty@latest login` against BodhiApp's envelope contract.
 export function validateLlmLibertyEnvelope(text: string): EnvelopeValidation {
   let parsed: unknown;
   try {

@@ -5,9 +5,6 @@ import { useToastMessages } from '@/hooks/useToastMessages';
 import { ROUTE_DEFAULT, ROUTE_LOGIN } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
 
-// Logout wiring shared by both login variants: redirect to the server-provided
-// location on success; on failure, hard-clear local/session storage + cookies,
-// surface the error, and fall back to the login page.
 export function useLogoutWithCleanup() {
   const navigate = useNavigate();
   const { showError } = useToastMessages();

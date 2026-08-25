@@ -28,7 +28,6 @@ export function RouteToModelField({ alias, value, onChange, testId }: RouteToMod
   }
 
   if (!isApiAlias(alias)) {
-    // Local user/model alias: model is fixed to the alias's own name, read-only.
     return <Input data-testid={testId} value={value} disabled />;
   }
 

@@ -114,8 +114,7 @@ describe('RequestAccessPage Authentication and Access Control', () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
     });
 
-    // Since we mocked AppInitializer, the page will render but with mocked redirect logic
-    // The actual redirect logic is tested in AppInitializer's own tests
+    // AppInitializer's redirect logic is mocked here and tested in its own suite.
     expect(screen.getByTestId('request-access-page')).toBeInTheDocument();
   });
 });
@@ -194,9 +193,8 @@ describe('RequestAccessPage UI Interactions', () => {
 
     await user.click(requestButton);
 
-    // Should trigger request submission - the button state change might be async
-    // We can't reliably test the disabled state due to race conditions
-    // The mutation hook handles preventing double submissions internally
+    // Disabled state is async and race-prone to assert here; the mutation hook itself
+    // prevents double submissions.
     expect(requestButton).toBeInTheDocument();
   });
 

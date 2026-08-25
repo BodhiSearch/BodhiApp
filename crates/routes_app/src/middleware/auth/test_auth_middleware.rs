@@ -322,7 +322,6 @@ async fn test_auth_middleware_with_expired_session_token(
   assert_eq!(Some(expected_role.to_string()), body.role);
   assert_eq!(true, body.is_authenticated);
 
-  // Verify that the session was updated with the new tokens
   let updated_record = session_service
     .get_session_store()
     .load(&id)
@@ -404,7 +403,6 @@ async fn test_auth_middleware_token_refresh_persists_to_session(
   let app_service = Arc::new(app_service);
   let state = app_service.clone();
 
-  // First request should trigger refresh
   let req1 = Request::get("/with_auth")
     .header("Cookie", format!("bodhiapp_session_id={}", id))
     .header("Sec-Fetch-Site", "same-origin")
@@ -414,7 +412,6 @@ async fn test_auth_middleware_token_refresh_persists_to_session(
   let response1 = router.clone().oneshot(req1).await?;
   assert_eq!(StatusCode::IM_A_TEAPOT, response1.status());
 
-  // Verify session was updated with new tokens
   let updated_record = session_service
     .get_session_store()
     .load(&id)
@@ -439,7 +436,6 @@ async fn test_auth_middleware_token_refresh_persists_to_session(
       .unwrap()
   );
 
-  // Second request should use the refreshed token without another refresh
   let req2 = Request::get("/with_auth")
     .header("Cookie", format!("bodhiapp_session_id={}", id))
     .header("Sec-Fetch-Site", "same-origin")
@@ -461,7 +457,6 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
   let dbfile = temp_bodhi_home.path().join("test.db");
   let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
 
-  // Create mock auth service that fails to refresh the token
   let mut mock_auth_service = MockAuthService::default();
   mock_auth_service
     .expect_refresh_token()
@@ -526,7 +521,6 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
     }},
     actual
   );
-  // Verify that the session was not updated
   let updated_record = session_service
     .get_session_store()
     .load(&id)
@@ -652,7 +646,6 @@ async fn test_session_ignored_when_cross_site(temp_bodhi_home: TempDir) -> anyho
     .await?;
   let state: Arc<dyn AppService> = Arc::new(app_service);
   let router = test_router(state);
-  // cross-site header
   let req = Request::get("/with_auth")
     .header("Cookie", format!("bodhiapp_session_id={}", id))
     .header("Sec-Fetch-Site", "cross-site")
@@ -933,9 +926,7 @@ async fn test_auth_middleware_bodhiapp_token_invalid_hash() -> anyhow::Result<()
   Ok(())
 }
 
-// ============================================================================
 // evaluate_same_origin unit tests (P0-6)
-// ============================================================================
 
 #[rstest]
 #[case::same_origin(Some("example.com"), Some("same-origin"), true)]

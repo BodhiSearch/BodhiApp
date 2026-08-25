@@ -41,8 +41,6 @@ impl NativeCommand {
     Self { service, ui }
   }
 
-  // TODO: modbile entry point as marked by default tauri app generator
-  // #[cfg_attr(mobile, tauri::mobile_entry_point)]
   pub async fn aexecute(
     &self,
     static_dir: Option<&'static include_dir::Dir<'static>>,
@@ -52,8 +50,7 @@ impl NativeCommand {
     let ui = self.ui;
 
     // Native mode reads log config from async SettingService (can access DB), unlike
-    // server/NAPI modes which read from BootstrapService (env + yaml only). This is
-    // intentional: tauri configures logging inside the async context.
+    // server/NAPI modes which read from BootstrapService (env + yaml only).
     let log_level: LogLevel = setting_service.log_level().await;
     let mut log_plugin = tauri_plugin_log::Builder::default()
       .level(log_level)

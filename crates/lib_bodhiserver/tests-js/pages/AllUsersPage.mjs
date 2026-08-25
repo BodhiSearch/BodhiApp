@@ -24,7 +24,6 @@ export class AllUsersPage extends BasePage {
     currentUserIndicator: '[data-testid="current-user-indicator"]',
     restrictedUserIndicator: '[data-testid="restricted-user-indicator"]',
 
-    // filters / empty
     filterAll: '[data-testid="users-filter-all"]',
     noUsers: '[data-testid="no-users"]',
   };
@@ -62,7 +61,6 @@ export class AllUsersPage extends BasePage {
     await expect(roleEl).toHaveText(expectedRole);
   }
 
-  /** Open a user's detail rail by clicking the row (no rail must already be open). */
   async openUser(username) {
     await this.closeRail();
     const row = this.page.locator(this.selectors.row(username));
@@ -71,7 +69,6 @@ export class AllUsersPage extends BasePage {
     await this.expectVisible(this.selectors.rail(username));
   }
 
-  /** Close any open detail rail and wait for the view-transition to fully remove it. */
   async closeRail() {
     const close = this.page.locator(this.selectors.railClose);
     // The rail open/close is a view transition; the close button detaches mid-animation.
@@ -82,7 +79,6 @@ export class AllUsersPage extends BasePage {
     await expect(close).toHaveCount(0);
   }
 
-  /** Change a user's role via the rail's native select + Save. */
   async changeUserRole(username, newRoleValue, expectedLabel) {
     await this.closeRail();
     await this.openUser(username);
@@ -104,7 +100,6 @@ export class AllUsersPage extends BasePage {
     await this.waitForSPAReady();
   }
 
-  /** Remove a user via the rail's two-click confirm. */
   async removeUser(username) {
     await this.openUser(username);
     const removeBtn = this.page.locator(this.selectors.removeBtn(username));
@@ -141,7 +136,6 @@ export class AllUsersPage extends BasePage {
     await this.closeRail();
   }
 
-  /** A modifiable user: rail shows the role select + remove button. */
   async expectActionsForUser(username) {
     await this.openUser(username);
     await expect(this.page.locator(this.selectors.roleSelect(username))).toBeVisible();
@@ -167,7 +161,6 @@ export class AllUsersPage extends BasePage {
     await this.closeRail();
   }
 
-  /** Roles the actor may assign to a user, read from the rail's native <option>s. */
   async getAvailableRolesForUser(username) {
     await this.openUser(username);
     const options = await this.page

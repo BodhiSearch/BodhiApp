@@ -19,13 +19,12 @@ export interface McpJoinedRow extends McpServerSummary {
   registered?: McpServerResponse;
 }
 
-/** Normalize an endpoint URL for matching: lowercase, strip a single trailing slash. */
 export function normalizeEndpoint(url: string | null | undefined): string {
   if (!url) return '';
   return url.trim().toLowerCase().replace(/\/+$/, '');
 }
 
-/** Index the user's instances by normalized server URL. A disabled instance still counts as installed. */
+/** A disabled instance still counts as installed. */
 export function indexInstances(mcps: Mcp[] | undefined): Map<string, Mcp> {
   const map = new Map<string, Mcp>();
   for (const m of mcps ?? []) {
@@ -35,7 +34,6 @@ export function indexInstances(mcps: Mcp[] | undefined): Map<string, Mcp> {
   return map;
 }
 
-/** Index the registered servers (admin allowlist) by normalized URL, for the catalog→registered join. */
 export function indexRegisteredServers(servers: McpServerResponse[] | undefined): Map<string, McpServerResponse> {
   const map = new Map<string, McpServerResponse>();
   for (const s of servers ?? []) {
@@ -45,7 +43,6 @@ export function indexRegisteredServers(servers: McpServerResponse[] | undefined)
   return map;
 }
 
-/** Derive each catalog row's install state + registered-server match from the indexes. */
 export function joinInstances(
   servers: McpServerSummary[],
   byUrl: Map<string, Mcp>,

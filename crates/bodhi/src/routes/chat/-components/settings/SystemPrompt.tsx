@@ -16,7 +16,6 @@ export function SystemPrompt({ isLoading = false, tooltip }: SystemPromptProps) 
   const setSystemPrompt = useChatSettingsStore((s) => s.setSystemPrompt);
   const setSystemPromptEnabled = useChatSettingsStore((s) => s.setSystemPromptEnabled);
 
-  // Control is shown only when the setting is switched on (design: off → control hidden).
   const showControl = systemPrompt_enabled;
 
   return (

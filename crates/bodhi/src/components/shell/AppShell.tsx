@@ -132,11 +132,8 @@ export function AppShell({
   const hasBand = Boolean(toolbar || sidebarToolbar || railToolbar);
   const effCollapsed = collapsed && !isMobile;
 
-  // When a screen publishes rail content (e.g. selecting a row), open the rail so
-  // it's actually visible; clear it when the content goes away. Without this the
-  // column stays at the initial collapsed width and the panel never shows.
-  // On mobile the rail is a fixed drawer: open it whenever content is present (not just
-  // on the false→true edge), so re-selecting a row after a manual close still opens it.
+  // Opens the rail whenever content is published (e.g. row select); closes it when content clears.
+  // On mobile, re-checks on every render (not just the false→true edge) so a manual close then re-select still opens the drawer.
   useEffect(() => {
     if (hasRail) {
       if (isMobile) setRailOpen(true);
@@ -146,7 +143,7 @@ export function AppShell({
     }
   }, [hasRail, isMobile]);
 
-  /* ── column resize (widths persist; collapse does not) ── */
+  // Column resize: widths persist to localStorage; collapse state does not.
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -200,9 +197,8 @@ export function AppShell({
     if (isMobile) setRailOpen((o) => !o);
     else setRailCollapsed((c) => !c);
   };
-  // Stable rail actions: consumers (e.g. a screen's `select` callback) put these in dependency
-  // arrays, so recreating them every render would churn the screen's memoized slot nodes and make
-  // useShellChrome's publish effect loop. State setters are stable, so these useCallbacks never change.
+  // Must stay referentially stable — screens put these in dependency arrays, and churn here
+  // loops useShellChrome's publish effect ("Maximum update depth exceeded").
   const openRail = useCallback(() => {
     setRailCollapsed(false);
     setRailOpen(true);
@@ -314,7 +310,7 @@ export function AppShell({
           </aside>
         )}
 
-        {/* ══ RESIZE HANDLES (hover-reveal) ══ */}
+        {/* visibility is hover-revealed via CSS, not state */}
         {!isMobile && (
           <div
             className="shell-resize left"
@@ -336,7 +332,6 @@ export function AppShell({
           </div>
         )}
 
-        {/* ══ TOOLTIP + DRAWER SCRIM ══ */}
         <GlobalTooltip />
         <div
           className="shell-scrim"

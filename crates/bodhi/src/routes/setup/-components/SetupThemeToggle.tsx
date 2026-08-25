@@ -4,9 +4,8 @@ import { Moon, Sun } from 'lucide-react';
 
 import { useTheme } from '@/components/ThemeProvider';
 
-/** Fixed top-right light/dark toggle for the bare setup wizard.
- *  Theme is owned by ThemeProvider (it toggles the `.dark` class on <html>);
- *  we read that class to pick the icon, and flip to the opposite explicit theme. */
+// ThemeProvider owns the theme and toggles `.dark` on <html>; this reads that class to pick
+// the icon rather than subscribing to the provider's state.
 export function SetupThemeToggle() {
   const { setTheme } = useTheme();
   const [isDark, setIsDark] = useState(false);

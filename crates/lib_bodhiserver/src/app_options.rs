@@ -7,7 +7,6 @@ use services::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// Configuration options for setting up application directories and settings.
 #[derive(Debug, Clone, derive_new::new)]
 pub struct AppOptions {
   pub env_wrapper: Arc<dyn EnvWrapper>,

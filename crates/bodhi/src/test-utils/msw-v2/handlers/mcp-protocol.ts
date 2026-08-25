@@ -74,23 +74,18 @@ export interface MockResourceReadResult {
 }
 
 export interface MockMcpServerConfig {
-  /** The endpoint path, e.g. '/bodhi/v1/apps/mcps/test-id/mcp' */
+  /** e.g. '/bodhi/v1/apps/mcps/test-id/mcp' */
   endpoint: string;
-  /** Tools the mock server advertises via tools/list */
   tools?: MockMcpTool[];
-  /** Prompts the mock server advertises via prompts/list. Pass `undefined` to NOT advertise the prompts capability. */
+  /** `undefined` means the prompts capability is NOT advertised. */
   prompts?: MockMcpPrompt[];
-  /** Resources the mock server advertises via resources/list. Pass `undefined` to NOT advertise the resources capability. */
+  /** `undefined` means the resources capability is NOT advertised. */
   resources?: MockMcpResource[];
-  /** Resource templates the mock server advertises via resources/templates/list. Implies the resources capability is advertised. */
+  /** Implies the resources capability is advertised. */
   resourceTemplates?: MockMcpResourceTemplate[];
-  /** Server name reported in initialize result (default: 'mock-mcp') */
   serverName?: string;
-  /** Custom handler for tools/call requests */
   toolCallHandler?: (toolName: string, args: Record<string, unknown>) => { text: string; isError?: boolean };
-  /** Custom handler for prompts/get requests */
   promptGetHandler?: (name: string, args: Record<string, string>) => MockPromptGetResult;
-  /** Custom handler for resources/read requests */
   resourceReadHandler?: (uri: string) => MockResourceReadResult;
 }
 

@@ -190,7 +190,6 @@ export function McpServersPane({
 
   const isAdded = (mcp: Mcp) => Boolean(enabledMcpTools[mcp.id]);
   const added = mcps.filter(isAdded);
-  // Offer only configured, available, not-yet-added servers in the combobox.
   const available = mcps.filter((m) => !isAdded(m) && isMcpAvailable(m));
 
   if (mcps.length === 0) {

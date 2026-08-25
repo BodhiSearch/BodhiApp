@@ -8,18 +8,15 @@ export interface ApiModelGatingInput {
   llm_liberty_envelope?: string;
 }
 
-/** True when the form is creating (not editing) an LLM Liberty OAuth alias, where the
- * pasted envelope replaces base_url/api_key/extras as the connection source. */
+/** True when creating an LLM Liberty OAuth alias, where the pasted envelope replaces base_url/api_key/extras. */
 export function isLlmLibertyCreate(apiFormat: string | undefined, isEditMode: boolean): boolean {
   return apiFormat === 'llm_liberty_oauth' && !isEditMode;
 }
 
-/** Whether the LLM Liberty envelope textarea has non-whitespace content. */
 export function hasEnvelope(envelope: string | undefined): boolean {
   return Boolean(envelope?.trim());
 }
 
-/** Whether the Test Connection action should be enabled. */
 export function computeCanTest(values: ApiModelGatingInput, isEditMode: boolean): boolean {
   if (isLlmLibertyCreate(values.api_format, isEditMode)) {
     return hasEnvelope(values.llm_liberty_envelope) && Boolean(values.models?.[0]);
@@ -27,7 +24,6 @@ export function computeCanTest(values: ApiModelGatingInput, isEditMode: boolean)
   return Boolean(values.base_url);
 }
 
-/** Whether the Fetch Models action should be enabled. */
 export function computeCanFetch(values: ApiModelGatingInput, isEditMode: boolean): boolean {
   if (isLlmLibertyCreate(values.api_format, isEditMode)) {
     return hasEnvelope(values.llm_liberty_envelope);
@@ -35,8 +31,7 @@ export function computeCanFetch(values: ApiModelGatingInput, isEditMode: boolean
   return Boolean(values.base_url);
 }
 
-/** LLM-Liberty-create-specific disabled reason for Test Connection. Returns null when the
- * generic (non-liberty) path should compute the reason instead. */
+/** Returns null when the generic (non-liberty) path should compute the disabled reason instead. */
 export function llmLibertyTestDisabledReason(values: ApiModelGatingInput, isEditMode: boolean): string | null {
   if (!isLlmLibertyCreate(values.api_format, isEditMode)) return null;
   if (!hasEnvelope(values.llm_liberty_envelope)) {
@@ -48,8 +43,7 @@ export function llmLibertyTestDisabledReason(values: ApiModelGatingInput, isEdit
   return '';
 }
 
-/** LLM-Liberty-create-specific disabled reason for Fetch Models. Returns null when the
- * generic (non-liberty) path should compute the reason instead. */
+/** Returns null when the generic (non-liberty) path should compute the disabled reason instead. */
 export function llmLibertyFetchDisabledReason(values: ApiModelGatingInput, isEditMode: boolean): string | null {
   if (!isLlmLibertyCreate(values.api_format, isEditMode)) return null;
   return hasEnvelope(values.llm_liberty_envelope) ? '' : 'Paste the LLM Liberty envelope to fetch models';
@@ -63,8 +57,7 @@ export function computeShowExtras(apiFormat: string | undefined): boolean {
   return 'defaultHeaders' in preset || 'defaultBody' in preset;
 }
 
-/** Serialized default headers/body for a preset, used to seed the form on format change.
- * Returns empty strings when the preset declares no defaults. */
+/** Serialized default headers/body for a preset ('' when the preset declares no defaults). */
 export function presetExtras(apiFormat: string): { headers: string; body: string } {
   const preset = API_FORMAT_PRESETS[apiFormat as keyof typeof API_FORMAT_PRESETS];
   const headers =

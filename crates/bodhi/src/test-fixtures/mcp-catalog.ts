@@ -1,6 +1,6 @@
 import type { ListMcpServersResponse, McpServerDetail, McpServerSummary } from '@bodhiapp/reference-api-types';
 
-/** Build an MCP-server summary (the reference-catalog list row), overridable per-field. */
+/** The reference-catalog list row shape. */
 export function createMcpServerSummary(overrides: Partial<McpServerSummary> = {}): McpServerSummary {
   return {
     id: 'notion',
@@ -19,7 +19,6 @@ export function createMcpServerSummary(overrides: Partial<McpServerSummary> = {}
   };
 }
 
-/** A small default catalog used by the list stub. */
 export function createMcpServerList(): McpServerSummary[] {
   return [
     createMcpServerSummary(),
@@ -47,7 +46,7 @@ export function createMcpServerList(): McpServerSummary[] {
   ];
 }
 
-/** Build a full list response (envelope + facets). */
+/** Envelope + facets. */
 export function createMcpServersListResponse(overrides: Partial<ListMcpServersResponse> = {}): ListMcpServersResponse {
   const items = overrides.items ?? createMcpServerList();
   return {
@@ -60,7 +59,7 @@ export function createMcpServersListResponse(overrides: Partial<ListMcpServersRe
   };
 }
 
-/** Build an MCP-server detail (list fields + enrichment, all null in v1). */
+/** List fields + enrichment fields, all null in v1. */
 export function createMcpServerDetail(overrides: Partial<McpServerDetail> = {}): McpServerDetail {
   return {
     ...createMcpServerSummary(),

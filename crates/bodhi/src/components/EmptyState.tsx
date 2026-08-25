@@ -12,11 +12,7 @@ interface EmptyStateProps {
   testId?: string;
 }
 
-/**
- * Shared list/catalog empty state — the `.empty-state` / `.empty-icon` / `.empty-title`
- * / `.empty-sub` block that the V2 screens render when a filtered list has no rows.
- * Styling lives in the existing CSS classes (unchanged); this only de-duplicates the markup.
- */
+/** Shared list/catalog empty state; styling lives in the existing `.empty-*` CSS classes. */
 export function EmptyState({ icon, iconSize = 28, title, sub, testId }: EmptyStateProps) {
   return (
     <div className="empty-state" data-testid={testId}>

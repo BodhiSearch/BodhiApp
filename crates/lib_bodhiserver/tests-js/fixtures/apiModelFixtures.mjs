@@ -28,7 +28,6 @@ export class ApiModelFixtures {
       chatExpected: 'tuesday',
       chatEndpoint: '/v1/chat/completions',
       mockResponse: 'David Smith is from Chicago',
-      // Native endpoint(s) this format is served on
       primaryEndpoints: () => ['/v1/chat/completions'],
       buildPrimaryBody: (model, question) => ({
         model,
@@ -41,7 +40,6 @@ export class ApiModelFixtures {
       multiTestPrefix: 'oai/',
       // BodhiApp routes /v1/chat/completions to OpenAI | Anthropic aliases only.
       supportsUniversalChatCompletions: true,
-      // Embedding model to register alongside the chat model for SDK-compat tests.
       embeddingModel: 'text-embedding-3-small',
     },
     openai_responses: {
@@ -165,7 +163,6 @@ export class ApiModelFixtures {
       },
       multiTestPrefix: 'gmn/',
       supportsUniversalChatCompletions: false,
-      // Embedding model to register alongside the chat model for SDK-compat tests.
       embeddingModel: 'gemini-embedding-001',
       // Mock-specific fields for api-models-no-key.spec.mjs
       mockBaseUrlSuffix: '/v1beta',
@@ -210,7 +207,6 @@ export class ApiModelFixtures {
     return { apiKey };
   }
 
-  // Test data validation
   static validateModelData(data) {
     const required = ['name', 'api_format', 'baseUrl', 'models'];
     const missing = required.filter((field) => !data[field]);
@@ -230,7 +226,6 @@ export class ApiModelFixtures {
     return true;
   }
 
-  // Common test scenarios
   static scenarios = {
     BASIC_OPENAI: () => ApiModelFixtures.createModelData(),
 

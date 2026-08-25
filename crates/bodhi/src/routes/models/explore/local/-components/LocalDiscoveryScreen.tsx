@@ -257,7 +257,6 @@ export function LocalDiscoveryScreen() {
     [selectedModel, pullModel]
   );
 
-  // ── Downloads panel ──────────────────────────────────────────────
   const { data: downloadsData, isLoading: downloadsLoading } = useListDownloads(1, 100, {
     enablePolling: downloadsOpen,
   });

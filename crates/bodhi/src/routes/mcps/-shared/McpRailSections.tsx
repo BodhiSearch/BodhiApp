@@ -10,10 +10,9 @@ import '@/routes/mcps/-components/my-mcps.css';
 import '@/routes/mcps/-shared/auth-badges.css';
 
 /**
- * The connect/instance/configure sections shared by the My MCPs rail and the Explore rail. Both
- * surface the same per-server actions once a catalog entry resolves to a registered server:
- * My Instances (play/edit/delete), Connect with (auth mechanisms → New-Instance deep-link), and the
- * admin Configure-server footer. `prefix` namespaces the testids per host screen.
+ * Sections shared by the My MCPs and Explore rails: My Instances (play/edit/delete), Connect with
+ * (auth mechanisms → New-Instance deep-link), and the admin Configure-server footer. `prefix`
+ * namespaces the testids per host screen.
  */
 
 export function McpInstancesSection({

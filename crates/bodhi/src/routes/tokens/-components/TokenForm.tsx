@@ -80,9 +80,7 @@ export function TokenForm({ onTokenCreated, onCancel }: TokenFormProps) {
   const { data: modelsData, isLoading: modelsLoading } = useListModels(1, 100, 'alias', 'asc');
   const { data: mcpsData, isLoading: mcpsLoading } = useListMcps();
 
-  // The model/MCP access pickers re-render when these queries settle; expose a
-  // ready marker so tests interact only after the grantable lists have loaded
-  // (clicking a picker mid-load drops the event).
+  // Ready marker so tests wait for the grantable lists to load — clicking a picker mid-load drops the event.
   const grantsState = modelsLoading || mcpsLoading ? 'loading' : 'ready';
 
   const canPowerUser = userInfo?.auth_status === 'logged_in' && userInfo.role !== 'resource_user';
@@ -123,7 +121,6 @@ export function TokenForm({ onTokenCreated, onCancel }: TokenFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} data-testid="token-form" data-test-state={grantsState}>
-        {/* §1 Token Identity */}
         <div className="nt-section">
           <div className="nt-section-title">Token Identity</div>
           <FormField
@@ -149,7 +146,6 @@ export function TokenForm({ onTokenCreated, onCancel }: TokenFormProps) {
           />
         </div>
 
-        {/* §2 Model Access */}
         <div className="nt-section">
           <div className="nt-section-title">Model Access</div>
           <GrantBlock
@@ -172,7 +168,6 @@ export function TokenForm({ onTokenCreated, onCancel }: TokenFormProps) {
           />
         </div>
 
-        {/* §3 MCP Access */}
         <div className="nt-section">
           <div className="nt-section-title">MCP Access</div>
           <GrantBlock
@@ -199,7 +194,6 @@ export function TokenForm({ onTokenCreated, onCancel }: TokenFormProps) {
           />
         </div>
 
-        {/* §4 Token Scope */}
         <div className="nt-section">
           <div className="nt-section-title">Token Scope</div>
           <div className="nt-role-grid">
@@ -230,7 +224,6 @@ export function TokenForm({ onTokenCreated, onCancel }: TokenFormProps) {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="nt-footer">
           <Button
             type="button"

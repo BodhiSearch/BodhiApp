@@ -545,7 +545,6 @@ describe('agentStore', () => {
     it('drops structurally-incomplete stored assistant messages missing api/provider fields', async () => {
       const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-      // Incomplete message: has role but missing api and provider
       const incompleteMsg = { role: 'assistant', content: [{ type: 'text', text: 'hi' }] };
       useChatStore.setState({
         chats: [

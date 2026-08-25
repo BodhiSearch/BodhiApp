@@ -10,7 +10,6 @@ export function compact(n: number | null | undefined): string {
   return String(n);
 }
 
-/** The REPOSITORY cell: org/repo, verified + multimodal badges, and the tag/quant/license chips. */
 export function LocalRepoCell({ model }: { model: Model }) {
   const tags = model.tags ?? model.specialisation ?? [];
   const isMultimodal = model.pipeline_tag === 'image-text-to-text';

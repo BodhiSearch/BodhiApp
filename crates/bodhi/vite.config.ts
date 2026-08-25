@@ -29,14 +29,12 @@ export default defineConfig({
     port: devProxyPort,
     strictPort: true,
     hmr: {
-      // When running behind Rust proxy (make app.run.live), the browser loads from port 1135
-      // but HMR WebSocket needs to reach Vite directly since the proxy only handles /ui/* paths.
-      // This tells the HMR client to connect to Vite's port (default 3000) instead of the proxy.
+      // Behind the Rust proxy (make app.run.live) only /ui/* is proxied, so HMR must
+      // connect directly to Vite's port instead of the browser's page origin.
       clientPort: devProxyPort,
     },
-    // Pre-bundle the SPA entry on startup so the first browser navigation does
-    // not race against Vite's lazy dep optimization (without this, E2E sees a
-    // blank page on the first navigation while Vite is still optimizing deps).
+    // Pre-bundle the SPA entry on startup so the first navigation doesn't race
+    // Vite's lazy dep optimization (E2E otherwise sees a blank first page).
     warmup: {
       clientFiles: ['./src/main.tsx', './src/routeTree.gen.ts'],
     },

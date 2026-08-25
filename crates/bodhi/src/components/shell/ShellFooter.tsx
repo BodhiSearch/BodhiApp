@@ -4,10 +4,9 @@ import { useTheme } from '@/components/ThemeProvider';
 
 import { ShellIcon } from './ShellIcon';
 
-/* ── User footer chip ──────────────────────
-   The parent (RootShell in `__root.tsx`) wires the real `user` via `useGetUser` and the
-   `onLogout` handler via `useLogoutHandler`. The fallback placeholder values are kept only as
-   a safety net so the chip still renders if a screen mounts ShellFooter without props. */
+// RootShell (`__root.tsx`) wires the real `user` via `useGetUser` and `onLogout` via
+// `useLogoutHandler`. The placeholder fallbacks below are a safety net for a screen that
+// mounts ShellFooter without props.
 export interface ShellFooterUser {
   initials?: string;
   name?: string;
@@ -74,7 +73,6 @@ export function ShellFooter({ user, collapsed, onLogout, logoutPending }: ShellF
 
   return (
     <>
-      {/* Always-visible theme switch, above the user chip. Collapsed: icon-only stack. */}
       <ThemeSwitch collapsed={collapsed} />
       {chip}
       <UserMenuPop open={open} anchorRef={anchorRef} collapsed={collapsed} onClose={() => setOpen(false)}>
@@ -101,9 +99,8 @@ export function ShellFooter({ user, collapsed, onLogout, logoutPending }: ShellF
   );
 }
 
-/* ── Theme switch — always visible in the sidebar footer, above the user chip ──
-   A 3-segment Light/Dark/System control (icon-only when the sidebar is collapsed),
-   so migrated screens are easy to eyeball in both modes. Uses ThemeProvider. */
+// 3-segment Light/Dark/System control (icon-only when collapsed) so migrated screens
+// are easy to eyeball in both modes.
 const THEME_OPTIONS: { id: 'light' | 'dark' | 'system'; label: string; icon: string }[] = [
   { id: 'light', label: 'Light', icon: 'sun' },
   { id: 'dark', label: 'Dark', icon: 'moon' },
@@ -153,7 +150,7 @@ function ThemeSwitch({ collapsed }: { collapsed?: boolean }) {
   );
 }
 
-/* ── User menu popover (fixed; opens UP from the chip, RIGHT when collapsed) ── */
+// User menu popover: fixed-position, opens up from the chip, right when collapsed.
 interface UserMenuPopProps {
   open: boolean;
   anchorRef: RefObject<HTMLElement | null>;

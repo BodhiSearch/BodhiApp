@@ -23,7 +23,6 @@ const fromGrant = (g: ModelGrant | McpGrant | undefined): { mode: AccessMode; id
   return grant.type === 'all' ? { mode: 'all', ids: [] } : { mode: 'specific', ids: grant.ids };
 };
 
-/** Map a prior approved grant onto the review form's initial state. */
 export function previousGrantToState(previous: PreviousGrantInfo): PreselectState {
   const approved = previous.approved;
   const modelGrant = fromGrant(approved.models_access);

@@ -935,11 +935,8 @@ describe('ReviewAccessRequestPage V2', () => {
       expect(screen.getByTestId('review-access-page')).toBeInTheDocument();
     });
 
-    // V2 consent header treatment
     expect(screen.getByText('Decide which of your resources this 3rd-party app can use.')).toBeInTheDocument();
-    // V2 root carries the api-keys-screen V2 class
     expect(screen.getByTestId('review-access-page')).toHaveClass('api-keys-screen');
-    // real-data testids preserved
     expect(screen.getByTestId('review-app-name')).toBeInTheDocument();
     expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     expect(screen.getByTestId('review-deny-button')).toBeInTheDocument();
@@ -967,7 +964,7 @@ describe('ReviewAccessRequestPage - Model & MCP grant sections', () => {
 
   it('omits the grant sections when the app does not request them', async () => {
     mockSearch = { id: MOCK_REQUEST_ID, auth_url: VALID_AUTH_URL, error_url: ERROR_URL };
-    setupHandlers(mockDraftReviewResponse); // no model flags
+    setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
       render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });

@@ -169,7 +169,6 @@ describe('ExploreMcpScreen (Phase 3 — facets + reset + columns)', () => {
     expect(within(sidebar).getByTestId('cat-mcp-auth-http')).toBeInTheDocument();
     // Category group is hidden while facets.category is empty.
     expect(within(sidebar).queryByTestId('cat-mcp-category-Productivity')).not.toBeInTheDocument();
-    // Verified pill is always present.
     expect(within(sidebar).getByTestId('cat-mcp-verified')).toBeInTheDocument();
   });
 

@@ -1,10 +1,6 @@
 export class ChatFixtures {
-  /**
-   * Create basic chat test scenarios
-   */
   static createChatScenarios() {
     return {
-      // Basic Q&A for quick validation
       basicQuestions: [
         { input: 'What day comes after Monday?', expectedContains: 'Tuesday' },
         { input: 'What is 2+2?', expectedContains: '4' },
@@ -16,7 +12,6 @@ export class ChatFixtures {
         { input: 'How many days are in a week?', expectedContains: ['7', 'seven'] },
       ],
 
-      // Multi-turn conversations for testing conversation flow
       conversationFlows: [
         {
           name: 'Technical Discussion',
@@ -44,7 +39,6 @@ export class ChatFixtures {
         },
       ],
 
-      // Edge cases and validation scenarios
       edgeCases: {
         emptyMessage: '',
         whitespaceOnly: '   \n  \t  ',
@@ -61,31 +55,20 @@ export class ChatFixtures {
     };
   }
 
-  /**
-   * Get test models for different scenarios
-   */
   static getTestModels() {
     return {
-      // API models that should be available for testing
       apiModels: ['gpt-4', 'gpt-3.5-turbo'],
 
-      // Local models that might be available
       localModels: ['local-model-test', 'test-model-alias'],
 
-      // Models for switching tests
       switchingModels: ['gpt-4', 'gpt-3.5-turbo'],
 
-      // Default model for most tests
       defaultModel: 'gpt-4',
     };
   }
 
-  /**
-   * Create chat scenarios with expected outcomes
-   */
   static createTestChats() {
     return {
-      // Simple chat for basic testing
       simple: {
         title: 'Simple Test Chat',
         messages: [
@@ -94,7 +77,6 @@ export class ChatFixtures {
         ],
       },
 
-      // Multi-turn conversation
       conversation: {
         title: 'API Discussion',
         messages: [
@@ -105,7 +87,6 @@ export class ChatFixtures {
         ],
       },
 
-      // Technical discussion
       technical: {
         title: 'JavaScript Help',
         messages: [
@@ -118,12 +99,8 @@ export class ChatFixtures {
     };
   }
 
-  /**
-   * Get error scenarios for testing error handling
-   */
   static getErrorScenarios() {
     return {
-      // Network errors
       networkErrors: {
         connectionFailed: 'Failed to fetch',
         timeout: 'Request timeout',
@@ -131,7 +108,6 @@ export class ChatFixtures {
         rateLimited: 'Rate limit exceeded',
       },
 
-      // Validation errors
       validationErrors: {
         noModel: 'No Model Selected',
         emptyMessage: 'Message cannot be empty',
@@ -139,7 +115,6 @@ export class ChatFixtures {
         invalidApiKey: 'Invalid API key',
       },
 
-      // Authentication errors
       authErrors: {
         unauthorized: 'Unauthorized',
         tokenExpired: 'Token expired',
@@ -148,32 +123,25 @@ export class ChatFixtures {
     };
   }
 
-  /**
-   * Create performance test scenarios
-   */
   static createPerformanceScenarios() {
     return {
-      // Long conversation simulation
       longConversation: {
         messageCount: 50,
         messagesPerBatch: 5,
         delayBetweenBatches: 1000,
       },
 
-      // Rapid message sending
       rapidSending: {
         messageCount: 10,
         delayBetweenMessages: 100,
         message: 'Quick test message',
       },
 
-      // Large message testing
       largeMessage: {
         size: 5000, // characters
         content: 'Lorem ipsum '.repeat(500),
       },
 
-      // Model switching performance
       modelSwitching: {
         models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4', 'gpt-3.5-turbo'],
         messagesPerModel: 3,
@@ -182,9 +150,6 @@ export class ChatFixtures {
     };
   }
 
-  /**
-   * Create responsive design test scenarios
-   */
   static getResponsiveScenarios() {
     return {
       viewports: [
@@ -203,12 +168,8 @@ export class ChatFixtures {
     };
   }
 
-  /**
-   * Get streaming test scenarios
-   */
   static getStreamingScenarios() {
     return {
-      // Prompts that should generate streaming responses
       streamingPrompts: [
         'Write a 200 word essay about artificial intelligence',
         'Explain how machine learning works in detail',
@@ -216,21 +177,16 @@ export class ChatFixtures {
         'List 20 things I can do to improve my programming skills',
       ],
 
-      // Prompts for testing streaming interruption
       longPrompts: [
         'Write a detailed 1000-word article about the future of technology',
         'Explain every step of the software development lifecycle',
         'Create a comprehensive guide to web development',
       ],
 
-      // Quick prompts for non-streaming tests
       quickPrompts: ['Hi', 'What is 1+1?', 'Hello', 'Yes', 'Thanks'],
     };
   }
 
-  /**
-   * Create accessibility test scenarios
-   */
   static getAccessibilityScenarios() {
     return {
       keyboardNavigation: {
@@ -266,9 +222,6 @@ export class ChatFixtures {
     };
   }
 
-  /**
-   * Generate unique test data
-   */
   static generateTestData() {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(7);
@@ -281,15 +234,10 @@ export class ChatFixtures {
     };
   }
 
-  /**
-   * Get environment-specific test data
-   */
   static getEnvironmentData() {
     return {
-      // Required environment variables
       requiredEnv: ['INTEG_TEST_OPENAI_API_KEY'],
 
-      // Test API key (should be from environment)
       getApiKey: () => {
         const apiKey = process.env.INTEG_TEST_OPENAI_API_KEY;
         if (!apiKey) {
@@ -298,7 +246,6 @@ export class ChatFixtures {
         return apiKey;
       },
 
-      // Test server configuration
       serverConfig: {
         defaultTimeout: 30000,
         streamTimeout: 60000,
@@ -307,19 +254,14 @@ export class ChatFixtures {
     };
   }
 
-  /**
-   * Create integration test scenarios
-   */
   static getIntegrationScenarios() {
     return {
-      // Model to chat integration
       modelToChatFlow: {
         modelName: 'gpt-4',
         testMessage: 'Hello from models page integration',
         expectedResponse: true,
       },
 
-      // Settings persistence
       settingsPersistence: {
         settings: {
           model: 'gpt-3.5-turbo',
@@ -330,7 +272,6 @@ export class ChatFixtures {
         reloadRequired: true,
       },
 
-      // Multi-chat management
       multiChatManagement: {
         chatsToCreate: 3,
         messagesPerChat: 2,
@@ -340,12 +281,8 @@ export class ChatFixtures {
     };
   }
 
-  /**
-   * Cleanup utilities for test data
-   */
   static getCleanupPatterns() {
     return {
-      // Patterns for test data that should be cleaned up
       testChatTitlePatterns: [
         /^Test Chat \d+/,
         /^test-\d+/,
@@ -354,7 +291,6 @@ export class ChatFixtures {
         /^responsive-test/,
       ],
 
-      // Test messages that indicate test data
       testMessagePatterns: [
         /^Test message \d+/,
         /What day comes after Monday/,
@@ -362,7 +298,6 @@ export class ChatFixtures {
         /Hello from models page integration/,
       ],
 
-      // Default cleanup timeout
       cleanupTimeout: 5000,
     };
   }

@@ -186,7 +186,6 @@ describe('ModelRouterForm', () => {
   });
 });
 
-// ── V2 rebuild: richer step cards / combobox / route-to-model / rail / validation contract ──
 const apiSelectedAlias: AliasResponse = {
   source: 'api',
   id: 'openai-main',

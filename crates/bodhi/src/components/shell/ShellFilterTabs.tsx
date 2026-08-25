@@ -2,8 +2,6 @@
  * Reusable single-select filter tabs for list pages — the themed pill group
  * (l-cat) used in the list toolbar (App Tokens, Access Requests, …). Each tab
  * shows a label and an optional count badge; the active one is filled.
- *
- * First introduced on the App Tokens screen; reused across every list screen.
  */
 export interface ShellFilterTab<T extends string = string> {
   id: T;
@@ -15,7 +13,6 @@ export interface ShellFilterTabsProps<T extends string = string> {
   tabs: ShellFilterTab<T>[];
   value: T;
   onChange: (id: T) => void;
-  /** aria-label for the tablist group */
   label?: string;
   /** testid prefix → `${testIdPrefix}-${tab.id}` per tab */
   testIdPrefix?: string;

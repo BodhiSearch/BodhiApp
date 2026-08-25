@@ -6,33 +6,26 @@ export interface LinkRowProps {
   /** Accessible name announced by screen readers and shown by link-hint tools (e.g. Vimium). */
   label?: string;
   /**
-   * When provided, the anchor is COMPACT — it wraps these children (typically the row's `#` index)
-   * and flows inline instead of stretching across the whole row. Use this in horizontally-scrollable
-   * tables: a full-row stretched anchor is covered by the cell content (z-index:1) and can sit
-   * partly off-screen under horizontal overflow, so link-hint tools (Vimium) fail to surface it.
-   * A small, leftmost, always-visible cell anchor is reliably detected. The row's own `onClick`
-   * still handles plain mouse selection, so the rest of the row stays selectable.
+   * When provided, the anchor is COMPACT — wraps these children (typically the row's `#` index)
+   * inline instead of stretching across the row. For horizontally-scrollable tables: a full-row
+   * stretched anchor sits under cell content and can go off-screen under overflow, so link-hint
+   * tools (Vimium) miss it — a small, leftmost cell anchor is reliably detected.
    */
   children?: ReactNode;
 }
 
 /**
- * Turns a selectable list row into a real link target so keyboard / link-hint tools (e.g. the
- * Vimium extension) surface it and screen readers announce it. Selection is local state (no URL),
- * so this is href="#" + preventDefault — not a navigable link. stopPropagation prevents the row's
- * own onClick from also firing (which would run a second view transition on the same selection).
+ * Turns a selectable row into a real link target for keyboard/link-hint tools (e.g. Vimium) and
+ * screen readers. href="#" + preventDefault — not navigable, selection is local state.
+ * stopPropagation stops the row's own onClick from also firing (avoids a duplicate view transition).
  *
- * Two shapes:
- *   - **Stretched (default)**: an empty `<a>` filling the row, BEHIND the row's controls (see
- *     `.l-rowlink` + the control-raising selectors in list.css / settings.css). Rendered as the
- *     FIRST child of a `position: relative` row. Used by flex list rows (settings, tokens, users …).
- *   - **Compact (`children` given)**: an inline `<a.l-rowlink--cell>` wrapping the children (the `#`
- *     index). Used by the catalog tables, where a stretched anchor is unreliable for link-hint tools
- *     under horizontal overflow.
+ * Stretched (default): empty `<a>` filling the row, behind its controls (see `.l-rowlink` +
+ * control-raising selectors in list.css/settings.css) — used by flex list rows. Compact (`children`
+ * given): inline anchor wrapping the `#` index — used by catalog tables where horizontal overflow
+ * makes a stretched anchor unreliable for link-hint tools.
  *
- * onMouseDown preventDefault keeps the anchor from taking DOM focus on a mouse click, so a row
- * selected by mouse never lingers with a stale :focus-visible outline once focus later moves
- * elsewhere (e.g. activating a different row via a link-hint tool like Vimium).
+ * onMouseDown preventDefault keeps the anchor from taking focus on a mouse click, avoiding a stale
+ * :focus-visible outline once focus later moves elsewhere.
  */
 export function LinkRow({ onActivate, label, children }: LinkRowProps) {
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {

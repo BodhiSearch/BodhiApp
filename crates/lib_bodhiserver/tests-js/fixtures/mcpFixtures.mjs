@@ -1,11 +1,4 @@
-/**
- * MCP Fixtures
- *
- * Provides test data factories for MCP server management tests.
- */
-
 export class McpFixtures {
-  // Centralized timeout constants for MCP-related waits
   static MCP_CONNECTION_TIMEOUT = 15000;
   static MCP_INSPECTOR_TIMEOUT = 30000;
 
@@ -123,21 +116,18 @@ export class McpFixtures {
     };
   }
 
-  // Header auth test server (port 55176)
   static AUTH_HEADER_PORT = process.env.TEST_MCP_AUTH_HEADER_PORT || '55176';
   static AUTH_HEADER_MCP_URL = `http://localhost:${McpFixtures.AUTH_HEADER_PORT}/mcp`;
   static AUTH_HEADER_KEY = 'Authorization';
   static AUTH_HEADER_VALUE = 'Bearer test-header-key';
   static AUTH_HEADER_EXPECTED_TOOL = 'echo';
 
-  // Query param auth test server (port 55177)
   static AUTH_QUERY_PORT = process.env.TEST_MCP_AUTH_QUERY_PORT || '55177';
   static AUTH_QUERY_MCP_URL = `http://localhost:${McpFixtures.AUTH_QUERY_PORT}/mcp`;
   static AUTH_QUERY_KEY = 'api_key';
   static AUTH_QUERY_VALUE = 'test-query-key';
   static AUTH_QUERY_EXPECTED_TOOL = 'echo';
 
-  // Mixed auth test server (port 55178)
   static AUTH_MIXED_PORT = process.env.TEST_MCP_AUTH_MIXED_PORT || '55178';
   static AUTH_MIXED_MCP_URL = `http://localhost:${McpFixtures.AUTH_MIXED_PORT}/mcp`;
   static AUTH_MIXED_HEADERS = [
@@ -173,7 +163,7 @@ export class McpFixtures {
     };
   }
 
-  // Everything MCP reference server (port 55180) — full MCP spec surface
+  // Everything MCP reference server — full MCP spec surface
   static EVERYTHING_SERVER_PORT = process.env.TEST_MCP_EVERYTHING_PORT || '55180';
   static EVERYTHING_SERVER_MCP_URL = `http://localhost:${McpFixtures.EVERYTHING_SERVER_PORT}/mcp`;
   static EVERYTHING_EXPECTED_TOOLS = [

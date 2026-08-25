@@ -65,7 +65,6 @@ export function useMutationQuery<T, V>(
         requestBody = variables;
       }
 
-      // For DELETE with no body, don't pass body parameter
       if (method === 'delete' && (axiosConfig?.noBody || requestBody === undefined)) {
         const response = await apiClient[method]<T>(_endpoint, {
           headers: {

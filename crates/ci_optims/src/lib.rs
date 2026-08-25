@@ -1,6 +1,4 @@
-// Dummy crate for pre-compiling dependencies in CI builds
-// This crate exists solely to trigger compilation of heavy dependencies
-// in a separate Docker layer that can be cached effectively.
+// Triggers compilation of heavy dependencies in a separate, cacheable Docker layer for CI builds.
 
 #![allow(unused_imports)]
 #![allow(clippy::single_component_path_imports)]

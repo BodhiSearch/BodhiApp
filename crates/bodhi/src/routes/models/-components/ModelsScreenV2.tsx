@@ -51,7 +51,7 @@ const SORT_STORAGE_KEY = 'bodhi.models.sort';
 const PERSISTED_SORTS = ['name', 'provider', 'base_url'] as const;
 const VALID_ORDERS = ['asc', 'desc'] as const;
 
-// ── Universal column derivations (one value per alias type) ──────────────────────────────────────
+// Universal column derivations (one value per alias type).
 // Provider/Repo: repo (local+user-alias), api_format (api), first target's alias (router).
 function aliasProvider(alias: AliasResponse): string {
   if (isApiAlias(alias)) return alias.api_format.toUpperCase();
@@ -193,10 +193,8 @@ export function ModelsScreenV2() {
     });
   }, [data?.data]);
 
-  // The derived Provider/Repo and Base-URL/Filename columns have no server sort (the API sorts only
-  // name/repo/filename/source); sort them within the current page in-memory. Name goes to the server.
-  // NOTE: this is per-page only — cross-page ordering for the derived columns is not guaranteed; a
-  // follow-up could extend `sort_aliases` in routes_models.rs to make it server-side.
+  // Derived Provider/Repo and Base-URL/Filename columns have no server sort — sort them in-memory per page.
+  // NOTE: cross-page ordering isn't guaranteed; a follow-up could make this server-side in routes_models.rs.
   const rows = useMemo(() => {
     if (sort !== 'provider' && sort !== 'base_url') return dedupedRows;
     const pick = sort === 'provider' ? aliasProvider : aliasBaseUrl;
@@ -323,8 +321,7 @@ export function ModelsScreenV2() {
   });
   const downloadsBusy = archivePending || retryPending;
 
-  // Toggle: clicking while the Downloads panel is shown closes it (falling back to the selected-model
-  // rail, if any); otherwise it opens Downloads (taking over the rail from the model detail).
+  // Toggle: closes Downloads if open (falling back to the selected-model rail); otherwise opens it.
   // `openRail` un-collapses the column if the user had manually collapsed the rail.
   const toggleDownloads = useCallback(() => {
     setDownloadsOpen((open) => {

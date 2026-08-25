@@ -155,7 +155,6 @@ export const useMcpSelectionStore = create<McpSelectionStoreState>((set, get) =>
   },
 }));
 
-// Cross-store subscription: reload MCP selection when chat changes
 let _mcpUnsubscribe: (() => void) | null = null;
 export function initMcpSelectionSubscription() {
   _mcpUnsubscribe?.();

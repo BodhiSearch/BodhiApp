@@ -171,8 +171,7 @@ test.describe(
 
       await test.step('SDK connect — initialize handshake with full capability advertisement', async () => {
         // Import the SDK schemas lazily so this file remains safe to grep in
-        // workers that don't actually load the SDK. These schemas identify
-        // the server→client requests/notifications we want to handle.
+        // workers that don't actually load the SDK.
         const {
           CreateMessageRequestSchema,
           ElicitRequestSchema,

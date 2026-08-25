@@ -8,7 +8,6 @@ export class AccessRequestReviewPage extends BasePage {
     approvedRoleSelect: '[data-testid="review-approved-role-select"]',
   };
 
-  // MCP selectors
   mcpToggle(url) {
     return `[data-testid="review-mcp-toggle-${url}"]`;
   }
@@ -41,8 +40,6 @@ export class AccessRequestReviewPage extends BasePage {
     await this.clickApprove();
   }
 
-  // --- Model/MCP grant controls (shown when the app requests the matching flags) ---
-
   async toggleListModels() {
     await this.page.click('[data-testid="review-list-models-toggle"]');
   }
@@ -51,7 +48,7 @@ export class AccessRequestReviewPage extends BasePage {
     await this.page.click('[data-testid="review-list-mcps-toggle"]');
   }
 
-  /** True when the "list all models" toggle is on (pre-populated in exchange mode). */
+  // Pre-populated in exchange mode.
   async isListModelsChecked() {
     return (
       (await this.page
@@ -60,7 +57,6 @@ export class AccessRequestReviewPage extends BasePage {
     );
   }
 
-  /** True when the "list all MCPs" toggle is on. */
   async isListMcpsChecked() {
     return (
       (await this.page
@@ -69,9 +65,7 @@ export class AccessRequestReviewPage extends BasePage {
     );
   }
 
-  /** Wait for an open Specific picker panel (prefix `review-model-access` |
-   *  `review-mcp-access`), click each grant id, then close it. Empty `ids` leaves
-   *  the grant empty — a deterministic "no access" grant. */
+  // Empty `ids` leaves the grant empty — a deterministic "no access" grant.
   async pickFromOpenPanel(prefix, ids) {
     await this.page.waitForSelector(`[data-testid="${prefix}-panel"]`);
     for (const id of ids) {
@@ -84,39 +78,27 @@ export class AccessRequestReviewPage extends BasePage {
     await this.page.locator(`[data-testid="${prefix}-panel"]`).waitFor({ state: 'hidden' });
   }
 
-  /** Grant exactly `ids` models. The model picker defaults to Specific, so the mode is
-   *  already set — open the panel via its Add button. Empty ids = no model access. */
+  // The model picker defaults to Specific, so the mode is already set.
   async grantSpecificModels(ids) {
     await this.page.click('[data-testid="review-model-access-mode-specific"]');
     await this.page.click('[data-testid="review-model-access-add"]');
     await this.pickFromOpenPanel('review-model-access', ids);
   }
 
-  /** Grant ALL models at consent (the picker defaults to Specific/none now). */
   async grantAllModels() {
     await this.page.click('[data-testid="review-model-access-mode-all"]');
   }
 
-  /** Grant exactly `ids` owner-extra MCPs. That picker defaults to Specific, so the
-   *  mode is already set — open the panel via its Add button. */
+  // That picker defaults to Specific, so the mode is already set.
   async grantSpecificMcps(ids) {
     await this.page.click('[data-testid="review-mcp-access-add"]');
     await this.pickFromOpenPanel('review-mcp-access', ids);
   }
 
-  /** Grant ALL owner-extra MCPs at consent. */
   async grantAllMcps() {
     await this.page.click('[data-testid="review-mcp-access-mode-all"]');
   }
 
-  /**
-   * Approve after configuring the model/MCP grant controls.
-   * @param {Object} opts
-   * @param {boolean}  [opts.listModels] toggle "list all models" on
-   * @param {string[]} [opts.modelIds] switch model access to Specific and grant these ids ([] = none)
-   * @param {boolean}  [opts.listMcps] toggle "list all MCPs" on
-   * @param {string[]} [opts.mcpIds] grant these owner-extra MCP ids
-   */
   async approveWithGrants({
     listModels = false,
     allModels = false,
@@ -141,10 +123,6 @@ export class AccessRequestReviewPage extends BasePage {
     await this.page.click(this.selectors.denyButton);
   }
 
-  /**
-   * Approve with specific MCP server selections.
-   * @param {Array<{url: string, instanceId: string}>} selections
-   */
   async approveWithMcps(selections) {
     await this.waitForReviewPage();
 
@@ -155,21 +133,11 @@ export class AccessRequestReviewPage extends BasePage {
     await this.clickApprove();
   }
 
-  /**
-   * Select the approved role from the role dropdown.
-   * @param {string} role - The role value (e.g. 'scope_user_user', 'scope_user_power_user')
-   */
   async selectApprovedRole(role) {
     await this.page.click(this.selectors.approvedRoleSelect);
     await this.page.locator(`[data-testid="review-approved-role-option-${role}"]`).click();
   }
 
-  /**
-   * Approve with a specific role and optional resource selections.
-   * @param {string} role - The approved_role value to select
-   * @param {Object} [resources] - Optional resource selections
-   * @param {Array<{url: string, instanceId: string}>} [resources.mcps]
-   */
   async approveWithRole(role, { mcps = [] } = {}) {
     await this.waitForReviewPage();
     await this.selectApprovedRole(role);

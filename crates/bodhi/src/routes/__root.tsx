@@ -23,26 +23,16 @@ export const Route = createRootRoute({
   component: RootLayout,
 });
 
-/**
- * Decides the layout for the current route:
- * - Fullscreen routes (the setup wizard) render the Outlet directly with NO chrome — the wizard
- *   owns its own centered column, logo, stepper, and theme toggle.
- * - Bare routes (login / auth / request-access / oauth / root redirectors AND the standalone OAuth
- *   access-request review) render OUTSIDE the AppShell, through the slim-topbar `BareLayout`. (The
- *   central prefix switches in resolveShellRoute are interim — a route-declared layout seam is the
- *   deferred follow-up; see screen-v2/techdebt.md.)
- * - App routes render inside the V2 AppShell, with the active section/subPage derived from the
- *   pathname. A migrated screen contributes breadcrumb/headerActions/rail via `useShellChrome`
- *   (ShellChromeContext); unmigrated screens render their existing content inside the shell.
- */
+// Fullscreen routes (setup wizard) and bare routes (login/auth/request-access/oauth review) render
+// outside the V2 AppShell; the resolveShellRoute prefix switches are interim — a route-declared
+// layout seam is deferred (see screen-v2/techdebt.md).
 function RootShell() {
   const { pathname } = useLocation();
   const slots = useShellSlots();
   const { section, subPage } = useShellSection();
   const navigate = useNavigate();
 
-  // App-shell-only data: skip the fetch on bare/fullscreen routes (login/setup) where the
-  // shell doesn't render and the user may not be logged in yet.
+  // Skip the fetch on bare/fullscreen routes: the shell doesn't render there and the user may not be logged in yet.
   const inAppShell = !isFullscreenRoute(pathname) && !isBareRoute(pathname);
   const { data: userInfo } = useGetUser({ enabled: inAppShell });
   const { logout, isLoading: logoutPending } = useLogoutHandler({
@@ -98,8 +88,7 @@ function RootShell() {
       onLogout={() => logout()}
       logoutPending={logoutPending}
       {...slots}
-      // section/subPage come from route staticData (useShellSection). Default the content to "flush"
-      // and persist column widths per-section; a screen can still override either via useShellChrome.
+      // Default to "flush" and persist column widths per-section; a screen can override via useShellChrome.
       contentClass={slots.contentClass ?? 'flush'}
       resizeKey={slots.resizeKey ?? section}
     >

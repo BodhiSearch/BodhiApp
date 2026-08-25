@@ -95,7 +95,6 @@ function hintFor(key: HintKey, val: boolean): Hint {
   }
 }
 
-/** Compute the friendly hints to show for a tool, in fixed order. */
 export function hintsForTool(tool: Pick<McpClientTool, 'annotations'>): Hint[] {
   const a = tool.annotations;
   if (!a) return [];

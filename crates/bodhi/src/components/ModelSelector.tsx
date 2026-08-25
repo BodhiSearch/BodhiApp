@@ -253,8 +253,7 @@ export function ModelSelector({
 }: ModelSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filter by search only — selected models STAY in the list (rendered checked + tinted),
-  // so clicking a checked row toggles it off. Matches the design.
+  // Selected models stay in the filtered list (checked + tinted) so clicking toggles them off.
   const filteredModels = useMemo(() => {
     const searchLower = searchTerm.toLowerCase();
     return availableModels.filter((model) => model.toLowerCase().includes(searchLower));

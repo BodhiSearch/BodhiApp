@@ -10,7 +10,6 @@ describe('STDOUT Logging Tests', () => {
   });
 
   afterEach(async () => {
-    // Clean up any running servers after each test
     for (const server of runningServers) {
       const isRunning = await server.isRunning();
       if (isRunning) {
@@ -29,15 +28,12 @@ describe('STDOUT Logging Tests', () => {
     });
     runningServers.push(server);
 
-    // Start the server - this should trigger logging setup
     await server.start();
     expect(await server.isRunning()).toBe(true);
 
-    // Test ping functionality - this will generate logs with tracing
     const pingResult = await server.ping();
     expect(pingResult).toBe(true);
 
-    // Server should remain running after ping
     expect(await server.isRunning()).toBe(true);
   });
 
@@ -50,15 +46,12 @@ describe('STDOUT Logging Tests', () => {
     });
     runningServers.push(server);
 
-    // Start the server
     await server.start();
     expect(await server.isRunning()).toBe(true);
 
-    // Test ping functionality
     const pingResult = await server.ping();
     expect(pingResult).toBe(true);
 
-    // Server should remain running after ping
     expect(await server.isRunning()).toBe(true);
   });
 
@@ -74,13 +67,11 @@ describe('STDOUT Logging Tests', () => {
     await server.start();
     expect(await server.isRunning()).toBe(true);
 
-    // Multiple pings to test debug logging
     for (let i = 0; i < 3; i++) {
       const pingResult = await server.ping();
       expect(pingResult).toBe(true);
     }
 
-    // Server should remain running after multiple pings
     expect(await server.isRunning()).toBe(true);
   });
 
@@ -93,18 +84,14 @@ describe('STDOUT Logging Tests', () => {
     });
     runningServers.push(server);
 
-    // Test lifecycle with logging
     await server.start();
     expect(await server.isRunning()).toBe(true);
 
-    // Test functionality
     expect(await server.ping()).toBe(true);
 
-    // Stop server
     await server.stop();
     expect(await server.isRunning()).toBe(false);
 
-    // After stop, ping should return false
     expect(await server.ping()).toBe(false);
   });
 });

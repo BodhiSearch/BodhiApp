@@ -1,4 +1,4 @@
-/** Group metadata: display name + kebab lucide icon. A setting's group is its config group. */
+/** icon is a kebab-case lucide icon name. */
 export interface GroupMeta {
   id: string;
   name: string;
@@ -10,7 +10,6 @@ export interface SettingGroupConfig {
   id: string;
   /** uppercase section header name */
   name: string;
-  /** short sidebar label */
   label: string;
   icon: string;
   /** keys belonging to this group, in display order */

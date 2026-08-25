@@ -139,7 +139,7 @@ it.skip('MemoizedReactMarkdown Streaming', () => {
             pre: true,
           },
           lowerCaseTagName: true,
-          parseNoneClosedTags: false, // Don't auto-close tags
+          parseNoneClosedTags: false,
           voidTag: {
             tags: [
               'area',
@@ -167,7 +167,6 @@ it.skip('MemoizedReactMarkdown Streaming', () => {
         }
 
         try {
-          // Check that all opening tags have matching closing tags
           const elements = root.querySelectorAll('*');
           elements.forEach((el) => {
             const tagName = el.tagName.toLowerCase();

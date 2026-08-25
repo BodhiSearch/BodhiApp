@@ -25,7 +25,6 @@ function checkPackageVersion(packageName, expectedVersion) {
 async function verifyPackages() {
   const packageJsonPath = path.join(process.cwd(), 'package.json');
 
-  // Read main package.json
   if (!fs.existsSync(packageJsonPath)) {
     console.error('Error: package.json not found in current directory');
     process.exit(1);
@@ -33,10 +32,8 @@ async function verifyPackages() {
 
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 
-  // Get version from environment variable or package.json
   const expectedVersion = process.env.RELEASE_VERSION || packageJson.version;
 
-  // Get the package name (from napi.package.name or fallback to main name)
   const packageName = packageJson.napi?.package?.name || packageJson.name;
 
   if (!packageName) {
@@ -47,17 +44,14 @@ async function verifyPackages() {
   console.log(`Expected version: ${expectedVersion}`);
   console.log(`Main package: ${packageName}`);
 
-  // Build list of packages to verify
   const packagesToVerify = new Map();
 
-  // Add main package
   packagesToVerify.set(packageName, {
     name: packageName,
     type: 'main',
     verified: false,
   });
 
-  // Add platform packages
   const npmDir = path.join(process.cwd(), 'npm');
   if (fs.existsSync(npmDir)) {
     const platformDirs = fs
@@ -81,7 +75,6 @@ async function verifyPackages() {
     console.log(`  - ${name} (${info.type})`);
   }
 
-  // Verification loop
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     console.log(`\n--- Verification attempt ${attempt} of ${MAX_ATTEMPTS} ---`);
 
@@ -90,7 +83,7 @@ async function verifyPackages() {
 
     for (const [packageName, packageInfo] of packagesToVerify) {
       if (packageInfo.verified) {
-        continue; // Skip already verified packages
+        continue;
       }
 
       console.log(`Checking ${packageName}...`);
@@ -125,7 +118,6 @@ async function verifyPackages() {
       console.log(`  - ${pkg}`);
     }
 
-    // Show verification progress
     const verifiedCount = Array.from(packagesToVerify.values()).filter((p) => p.verified).length;
     console.log(`Progress: ${verifiedCount}/${packagesToVerify.size} packages verified`);
 
@@ -140,7 +132,6 @@ async function verifyPackages() {
   }
 }
 
-// Run the script
 if (require.main === module) {
   verifyPackages().catch((error) => {
     console.error('Error during package verification:', error.message);

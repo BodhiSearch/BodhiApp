@@ -90,7 +90,6 @@ test.describe('Explore · API Providers', () => {
       await expect(providersPage.page.locator(providersPage.selectors.railPanel)).toBeVisible();
       expect(providersPage.urlParam('select')).toBe('prov-0');
 
-      // Closing strips ?select and closes the rail.
       await providersPage.closeRail();
       await expect(providersPage.page.locator(providersPage.selectors.railPanel)).toHaveCount(0);
       expect(providersPage.searchParams().has('select')).toBe(false);

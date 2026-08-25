@@ -183,8 +183,8 @@ async fn test_create_alias_handler(
   Ok(())
 }
 
-// Creating an alias for a not-yet-downloaded file now SUCCEEDS: the alias is created and the
-// download is enqueued (recorded completed under test-mode). The snapshot falls back to `main`.
+// Creating an alias for a not-yet-downloaded file succeeds: the download is enqueued
+// (recorded completed under test-mode), and the snapshot falls back to `main`.
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -347,8 +347,8 @@ async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyho
   Ok(())
 }
 
-// Updating an alias to point at a not-yet-downloaded file now SUCCEEDS: the alias is updated and the
-// download enqueued (recorded completed under test-mode). Snapshot falls back to `main`.
+// Updating an alias to point at a not-yet-downloaded file succeeds: the download is enqueued
+// (recorded completed under test-mode). Snapshot falls back to `main`.
 #[rstest]
 #[awt]
 #[tokio::test]

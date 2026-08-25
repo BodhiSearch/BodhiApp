@@ -3,7 +3,6 @@ import { AliasResponse } from '@bodhiapp/ts-client';
 import { ShellIcon } from '@/components/shell';
 import { isApiAlias, isModelAlias } from '@/lib/utils';
 
-/** Discriminated alias type → the prototype's three badge looks, driven by the real `source`. */
 type AliasKind = 'local-file' | 'model-alias' | 'api-model';
 
 export function aliasKind(alias: AliasResponse): AliasKind {

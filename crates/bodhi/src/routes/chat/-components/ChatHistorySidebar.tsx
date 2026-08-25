@@ -25,12 +25,10 @@ export function ChatHistorySidebar({ listOpen = true }: { listOpen?: boolean }) 
   const searchRef = useRef<HTMLInputElement>(null);
   const histOpen = openPop === HIST_POP;
 
-  // Focus the input when the search field opens.
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus();
   }, [searchOpen]);
 
-  // Close the popover whenever we leave the collapsed icon-rail.
   useEffect(() => {
     if (!collapsed && histOpen) setOpenPop(null);
   }, [collapsed, histOpen, setOpenPop]);
@@ -95,7 +93,6 @@ export function ChatHistorySidebar({ listOpen = true }: { listOpen?: boolean }) 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onBlur={() => {
-            // Auto-hide the (empty) search on blur so it doesn't linger open.
             if (search.trim() === '') setSearchOpen(false);
           }}
         />

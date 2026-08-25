@@ -273,7 +273,6 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       });
     }
 
-    // Restore messages if switching to existing chat and agent is empty
     const currentChat = getCurrentChat(chatStore);
     if (currentChat && currentChat.messageCount > 0 && agent.state.messages.length === 0) {
       await restoreMessagesForChat();
@@ -377,7 +376,6 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   },
 }));
 
-// Cross-store subscription: reset agent when currentChatId changes
 let _chatStoreUnsubscribe: (() => void) | null = null;
 export function initAgentSubscription() {
   _chatStoreUnsubscribe?.();

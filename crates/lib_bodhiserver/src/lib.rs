@@ -11,7 +11,6 @@ mod error;
 #[cfg(feature = "embed-ui")]
 mod ui_assets;
 
-/// Git commit SHA captured at build time. "undefined" if not available.
 pub const BUILD_COMMIT_SHA: &str = match option_env!("BODHI_BUILD_COMMIT_SHA") {
   Some(sha) => sha,
   None => "undefined",

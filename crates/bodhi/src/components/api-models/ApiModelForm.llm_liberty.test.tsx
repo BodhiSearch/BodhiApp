@@ -218,7 +218,6 @@ describe('ApiModelForm — llm_liberty_oauth edit mode (keep vs set)', () => {
     const textarea = await screen.findByTestId('llm-liberty-envelope-input');
     fireEvent.change(textarea, { target: { value: validEnvelopeJson } });
 
-    // Wait for the parsed-summary to appear (validates the textarea content).
     await waitFor(() => {
       expect(screen.getByTestId('llm-liberty-envelope-summary')).toBeInTheDocument();
     });

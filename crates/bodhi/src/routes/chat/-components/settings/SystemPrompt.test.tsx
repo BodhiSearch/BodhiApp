@@ -87,7 +87,6 @@ describe('SystemPrompt', () => {
       const switchElement = screen.getByRole('switch');
 
       expect(switchElement).toHaveAttribute('aria-checked', 'false');
-      // Control is hidden when the setting is off.
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     });
   });

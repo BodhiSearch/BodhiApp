@@ -17,7 +17,6 @@ type SettingConfig = {
 type GroupConfig = {
   /** uppercase section header name */
   title: string;
-  /** short sidebar label */
   label: string;
   /** kebab lucide icon name */
   icon: string;
@@ -28,13 +27,8 @@ type SettingsConfig = {
   [key: string]: GroupConfig;
 };
 
-/**
- * Static group → keys mapping (titles, sidebar labels, kebab icons, per-key descriptions). A
- * setting's value/source/metadata comes from the API; this only supplies grouping + copy. Settings
- * not listed here fall into the data-driven "Variant Args" / "Miscellaneous" groups (see
- * SettingsPageV2). Editability is enforced by the backend EDIT_SETTINGS_ALLOWED list, mirrored as
- * EDITABLE_KEYS in SettingsPageV2.
- */
+// Static grouping + copy only — value/source/metadata comes from the API. Settings not listed
+// here fall into the data-driven "Variant Args" / "Miscellaneous" groups (see SettingsPageV2).
 const SETTINGS_CONFIG: SettingsConfig = {
   app: {
     title: 'App Configuration',
@@ -118,7 +112,7 @@ const SETTINGS_CONFIG: SettingsConfig = {
   },
 };
 
-/** Project the static SETTINGS_CONFIG into the V2 shape (dynamic groups are added at render). */
+// Dynamic groups are added at render, not here.
 function buildSettingsConfigV2(config: SettingsConfig): SettingsConfigV2 {
   const groups: SettingGroupConfig[] = Object.entries(config).map(([id, group]) => ({
     id,

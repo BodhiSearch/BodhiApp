@@ -5,7 +5,6 @@ const path = require('node:path');
 function updateOptionalDependencies() {
   const packageJsonPath = path.join(process.cwd(), 'package.json');
 
-  // Read main package.json
   if (!fs.existsSync(packageJsonPath)) {
     console.error('Error: package.json not found in current directory');
     process.exit(1);
@@ -13,10 +12,8 @@ function updateOptionalDependencies() {
 
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 
-  // Get version from environment variable or package.json
   const version = process.env.RELEASE_VERSION || packageJson.version;
 
-  // Get the package name (from napi.package.name or fallback to main name)
   const packageName = packageJson.napi?.package?.name || packageJson.name;
 
   if (!packageName) {
@@ -27,7 +24,6 @@ function updateOptionalDependencies() {
   console.log(`Package name: ${packageName}`);
   console.log(`Version: ${version}`);
 
-  // Find all platform directories and build optionalDependencies
   const optionalDependencies = {};
   const npmDir = path.join(process.cwd(), 'npm');
 
@@ -51,10 +47,8 @@ function updateOptionalDependencies() {
     }
   }
 
-  // Update main package.json
   packageJson.optionalDependencies = optionalDependencies;
 
-  // Write back with proper formatting
   fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 
   console.log('\nUpdated optionalDependencies:');
@@ -62,7 +56,6 @@ function updateOptionalDependencies() {
   console.log('\n✅ package.json updated successfully');
 }
 
-// Run the script
 if (require.main === module) {
   updateOptionalDependencies();
 }

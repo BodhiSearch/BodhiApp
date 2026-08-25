@@ -14,7 +14,6 @@ use utoipa::ToSchema;
 }))]
 pub struct CreateAccessRequestResponse {
   pub id: String,
-  /// Always "draft"
   pub status: AppAccessRequestStatus,
   pub review_url: String,
 }
@@ -30,7 +29,6 @@ pub struct CreateAccessRequestResponse {
 }))]
 pub struct AccessRequestStatusResponse {
   pub id: String,
-  /// One of: "draft", "approved", "denied", "failed"
   pub status: AppAccessRequestStatus,
   pub requested_role: UserScope,
   /// Present when approved
@@ -102,8 +100,7 @@ pub struct AppAccessSummary {
 }
 
 impl AppAccessSummary {
-  /// Build a summary from an access-request row, reflecting its approved grants
-  /// (defaults to no access when the approved JSON is missing/unparsable).
+  /// Defaults to no access when the approved JSON is missing/unparsable.
   ///
   /// `caller_max_scope` clamps a (possibly DB-tampered) stored `approved_role` to the
   /// ceiling the session caller could actually have granted — mirroring the

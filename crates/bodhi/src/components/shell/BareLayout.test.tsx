@@ -27,12 +27,11 @@ describe('BareLayout', () => {
 
     expect(screen.getByTestId('bare-layout')).toBeInTheDocument();
     expect(screen.getByTestId('bare-child')).toHaveTextContent('consent form');
-    // brand present
     expect(screen.getByText('Bodhi')).toBeInTheDocument();
     expect(screen.getByText('AI Operating System')).toBeInTheDocument();
     // theme toggle present (shadcn ThemeToggle exposes an sr-only label)
     expect(screen.getByText('Toggle theme')).toBeInTheDocument();
-    // NOT the AppShell — no shell sidebar nav trigger
+    // confirms this is not the AppShell
     expect(screen.queryByTestId('shell-nav-trigger')).not.toBeInTheDocument();
   });
 });

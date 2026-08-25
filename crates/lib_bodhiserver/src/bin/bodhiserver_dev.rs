@@ -65,8 +65,7 @@ fn run() -> anyhow::Result<()> {
   }
 
   // The routes layer only honours BODHI_DEV_PROXY_UI under debug_assertions
-  // via SettingService::get_dev_env. Dev binary is always compiled with
-  // debug_assertions (cargo build/run default), so this works.
+  // (SettingService::get_dev_env); the dev binary is always built that way.
   env::set_var(BODHI_DEV_PROXY_UI, "true");
 
   let host = env_or(BODHI_HOST, DEFAULT_HOST);

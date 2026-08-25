@@ -9,10 +9,7 @@ import '@/routes/models/-components/models.css';
 /**
  * Faceted sidebar for Explore · Local Models. Controlled — selections drive the parent's
  * `ListModelsQuery`. Only facets the v1 API actually filters on are shown (no capability / size /
- * context / quant-bits / quant-method / curated — dropped in v1). See the batch plan.
- *
- * Phase 2a: Browse (sort), Specialisation, Task (pipeline_tag).
- * Phase 2b: Tag (advanced), Language, License (repeatable → repeated query keys).
+ * context / quant-bits / quant-method / curated — dropped in v1).
  */
 
 const SPECIALISATION_FACETS: { id: Specialisation; label: string }[] = [

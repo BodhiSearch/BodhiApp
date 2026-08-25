@@ -235,7 +235,6 @@ describe('McpPlaygroundPage — Tool execution', () => {
     await renderScreen([`/mcps/playground/?id=${MCP_ID}&feature=tools&item=read_wiki_structure`]);
     await waitFor(() => screen.getByTestId('mcp-playground-tool-detail'));
 
-    // Fill required param
     const paramContainer = screen.getByTestId('mcp-playground-param-repo_name');
     const input = within(paramContainer).getByRole('textbox');
     await user.type(input, 'my-repo');
@@ -253,7 +252,6 @@ describe('McpPlaygroundPage — Tool execution', () => {
     await renderScreen([`/mcps/playground/?id=${MCP_ID}&feature=tools&item=ask_question`]);
     await waitFor(() => screen.getByTestId('mcp-playground-tool-detail'));
 
-    // Fill required params
     const repoUrlContainer = screen.getByTestId('mcp-playground-param-repo_url');
     await user.type(within(repoUrlContainer).getByRole('textbox'), 'https://example.com');
     const qContainer = screen.getByTestId('mcp-playground-param-question');

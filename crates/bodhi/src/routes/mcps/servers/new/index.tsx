@@ -33,7 +33,6 @@ export const Route = createFileRoute('/mcps/servers/new/')({
   component: NewMcpServerPage,
 });
 
-/** Map a catalog `auth_type` to the form's initial auth-config state. */
 function authPrefill(auth: string | undefined): {
   show: boolean;
   type: 'none' | 'header' | 'oauth';

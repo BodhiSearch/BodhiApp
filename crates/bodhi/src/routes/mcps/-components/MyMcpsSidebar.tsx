@@ -2,9 +2,8 @@ import { ShellIcon } from '@/components/shell';
 import '@/routes/models/-components/models.css';
 
 /**
- * Faceted sidebar for My MCPs. The list is server-centric (registered servers); the Scope facet narrows
- * it: `all` ("Configured") shows every registered server, `mine` ("Connected") shows only servers the
- * user has at least one instance on. Single-select, tri-state (re-selecting clears).
+ * `all` ("Configured") shows every registered server; `mine` ("Connected") shows only servers the
+ * user has an instance on. Single-select, tri-state (re-selecting clears).
  */
 
 export type ScopeFacet = 'all' | 'mine';

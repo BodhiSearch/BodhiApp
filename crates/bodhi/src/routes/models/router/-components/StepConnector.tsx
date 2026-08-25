@@ -1,6 +1,5 @@
 import { ShellIcon } from '@/components/shell';
 
-/** The vertical "↓ on error" pill shown between consecutive step cards. */
 export function StepConnector({ testId }: { testId: string }) {
   return (
     <div className="rf-connector" data-testid={testId}>

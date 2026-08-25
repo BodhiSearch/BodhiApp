@@ -69,7 +69,6 @@ describe('ModelSelector', () => {
         />
       );
 
-      // Selected models stay in the list (design: checked + tinted), not filtered out.
       const selectedRow = screen.getByTestId('available-model-gpt-4');
       expect(selectedRow).toBeInTheDocument();
       expect(selectedRow).toHaveAttribute('aria-pressed', 'true');

@@ -3,7 +3,6 @@ import { fileURLToPath } from 'url';
 import { defineConfig, devices } from '@playwright/test';
 import { config } from 'dotenv';
 
-// Load test environment variables globally
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 config({ path: join(__dirname, 'tests-js', '.env.test') });
@@ -14,7 +13,6 @@ const testTimeout = 120000;
 const navigationTimeout = 30000;
 const actionTimeout = 30000;
 
-// Check if running scheduled tests via --grep flag
 const isScheduledRun = process.argv.includes('--grep') && process.argv.some(arg => arg.includes('@scheduled'));
 
 // Dual-project support: standalone (SQLite, port 51135) and multi_tenant (PostgreSQL, port 41135)
@@ -28,55 +26,41 @@ export default defineConfig({
   testMatch: '**/*.spec.mjs',
   /* Exclude scheduled tests from regular runs, unless explicitly running with --grep @scheduled */
   ...(isScheduledRun ? {} : { grepInvert: /@scheduled/ }),
-  /* Run tests in files in parallel */
   fullyParallel: false, // Sequential execution for server tests
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* No test-level retries: external auth-server flakiness is absorbed at the POM
      action level (see LoginPage/SetupResourceAdminPage login retries). */
   retries: 0,
-  /* Opt out of parallel tests on CI. */
   workers: 1, // Single worker to avoid port conflicts
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI
     ? [
-      ['github'], // GitHub Actions reporter for CI
-      ['html', { open: 'never' }], // HTML report without auto-opening
-      ['junit', { outputFile: 'test-results/junit.xml' }], // JUnit for test results
+      ['github'],
+      ['html', { open: 'never' }],
+      ['junit', { outputFile: 'test-results/junit.xml' }],
     ]
-    : 'list', // Use list reporter locally
-  /* Global timeout for each test */
-  timeout: process.env.PLAYWRIGHT_TIMEOUT ? Number.parseInt(process.env.PLAYWRIGHT_TIMEOUT) : testTimeout, // Configurable timeout
-  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+    : 'list',
+  timeout: process.env.PLAYWRIGHT_TIMEOUT ? Number.parseInt(process.env.PLAYWRIGHT_TIMEOUT) : testTimeout,
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
     // baseURL will be set dynamically by tests based on server configuration
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
 
-    /* Take screenshot on failure */
     screenshot: 'only-on-failure',
 
-    /* Record video on failure */
     video: 'retain-on-failure',
 
-    /* Navigation timeout */
     navigationTimeout,
 
-    /* Action timeout */
     actionTimeout,
 
-    /* Wait for load state */
     waitForLoadState: 'domcontentloaded',
 
-    /* Default wait after navigation for SPA stability */
     extraHTTPHeaders: {
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     },
   },
 
-  /* Configure projects for major browsers */
   projects: [
     {
       name: 'standalone',
@@ -85,7 +69,6 @@ export default defineConfig({
       ],
       use: {
         ...devices['Desktop Chrome'],
-        // Use headless mode in CI or when explicitly set
         headless: !!process.env.CI || process.env.HEADLESS === 'true' || process.env.PLAYWRIGHT_HEADLESS === 'true',
       },
     },
@@ -102,32 +85,6 @@ export default defineConfig({
         headless: !!process.env.CI || process.env.HEADLESS === 'true' || process.env.PLAYWRIGHT_HEADLESS === 'true',
       },
     },
-
-    // Disable WebKit for now due to bus errors on this system
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
   ],
 
   /* Run your local dev server before starting the tests */
@@ -141,7 +98,7 @@ export default defineConfig({
     {
       command: 'npm run e2e:server:standalone',
       url: 'http://localhost:51135/ping',
-      reuseExistingServer: false,  // Always start fresh
+      reuseExistingServer: false,
       timeout: 60000,
     },
     {

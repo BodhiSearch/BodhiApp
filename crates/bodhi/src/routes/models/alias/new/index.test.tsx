@@ -84,10 +84,6 @@ beforeEach(() => {
   navigateMock.mockClear();
 });
 
-/**
- * Drive the repo combobox: open it, type the repo, then commit. When `repo` matches a `/api/v1/repos`
- * suggestion it picks that option; otherwise it commits via the free-text "Use this" row.
- */
 async function selectRepo(user: ReturnType<typeof userEvent.setup>, repo: string) {
   await user.click(screen.getByTestId('repo-input'));
   const search = await screen.findByPlaceholderText(/search huggingface repos/i);

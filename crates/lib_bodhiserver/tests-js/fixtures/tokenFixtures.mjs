@@ -1,13 +1,4 @@
-/**
- * Token Fixtures
- *
- * Provides test data and utilities for API token testing
- */
-
 export class TokenFixtures {
-  /**
-   * Generate test token names
-   */
   static getTestTokenNames() {
     return {
       basic: 'Test API Token',
@@ -19,9 +10,6 @@ export class TokenFixtures {
     };
   }
 
-  /**
-   * Get invalid token formats for error testing
-   */
   static getInvalidTokens() {
     return {
       invalidFormat: 'invalid_token',
@@ -32,10 +20,6 @@ export class TokenFixtures {
     };
   }
 
-  /**
-   * Mock clipboard API for testing copy functionality
-   * @param {Page} page - Playwright page object
-   */
   static async mockClipboard(page) {
     const clipboardContent = '';
 
@@ -67,9 +51,6 @@ export class TokenFixtures {
     };
   }
 
-  /**
-   * Expected error messages
-   */
   static getErrorMessages() {
     return {
       missingToken: /token|authorization|authentication/i,

@@ -156,7 +156,6 @@ test.describe('Explore · Local Models (discovery)', () => {
         discoveryPage.page.locator(discoveryPage.selectors.quantPull).first()
       ).toBeEnabled();
 
-      // Close the rail.
       await discoveryPage.page.locator(discoveryPage.selectors.detailClose).click();
       await expect(discoveryPage.page.locator(discoveryPage.selectors.railPanel)).toHaveCount(0);
     });
@@ -208,7 +207,6 @@ test.describe('Explore · Local Models (discovery)', () => {
         discoveryPage.page.locator(discoveryPage.selectors.downloadsPanel)
       ).toContainText('No downloads yet');
 
-      // Closing the rail removes the panel.
       await discoveryPage.closeDownloads();
       await expect(discoveryPage.page.locator(discoveryPage.selectors.downloadsPanel)).toHaveCount(
         0

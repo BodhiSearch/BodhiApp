@@ -7,7 +7,6 @@ interface CurrentChatSource {
   chats: Chat[];
 }
 
-// Resolves the current chat from a chatStore snapshot, or null when none is selected/found.
 export function getCurrentChat(chatStore: CurrentChatSource): Chat | null {
   return chatStore.currentChatId ? (chatStore.chats.find((c) => c.id === chatStore.currentChatId) ?? null) : null;
 }

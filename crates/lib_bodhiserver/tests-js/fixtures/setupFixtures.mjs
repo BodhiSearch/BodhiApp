@@ -12,7 +12,7 @@ export class SetupFixtures {
   static createSetupFlowData() {
     return {
       serverName: SetupFixtures.createServerConfig().serverName,
-      skipDownloads: true, // Skip downloads for faster tests
+      skipDownloads: true,
       completeFlow: true,
     };
   }
@@ -31,13 +31,12 @@ export class SetupFixtures {
     return {
       authUrl: authServerConfig.authUrl,
       authRealm: authServerConfig.authRealm,
-      host, // Bind to all interfaces for network IP access
+      host,
       port,
       logLevel: 'debug',
     };
   }
 
-  // Test scenarios for different setup paths
   static scenarios = {
     FULL_SETUP: () => ({
       ...this.createSetupFlowData(),
@@ -68,7 +67,6 @@ export class SetupFixtures {
       useNetworkIP: true,
     }),
 
-    // New scenarios for API Models and Browser Extension
     SETUP_WITH_API_MODELS: () => ({
       ...this.createSetupFlowData(),
       skipDownloads: true,
@@ -101,7 +99,7 @@ export class SetupFixtures {
       },
       browserExtension: {
         browser: 'chrome',
-        extensionInstalled: false, // Will skip extension
+        extensionInstalled: false,
       },
     }),
 
@@ -113,7 +111,6 @@ export class SetupFixtures {
     }),
   };
 
-  // Validation helpers
   static validateSetupConfig(config) {
     const required = ['serverName'];
     const missing = required.filter((field) => !config[field]);
@@ -129,7 +126,6 @@ export class SetupFixtures {
     return true;
   }
 
-  // Environment helpers
   static getTestEnvironment() {
     return {
       hasAuthServer: !!process.env.INTEG_TEST_AUTH_URL,
@@ -149,7 +145,6 @@ export class SetupFixtures {
     return env;
   }
 
-  // Setup flow validation
   static getExpectedSetupSteps() {
     return [
       {
@@ -201,7 +196,6 @@ export class SetupFixtures {
     return steps.find((step) => step.path === path);
   }
 
-  // Test data cleanup
   static generateUniqueServerName(prefix = 'Test Server') {
     return `${prefix} ${Date.now()} ${Math.random().toString(36).substring(2, 7)}`;
   }
@@ -210,7 +204,6 @@ export class SetupFixtures {
     return SetupFixtures.scenarios.MINIMAL_SETUP();
   }
 
-  // Model download fixtures
   static getRecommendedModels() {
     return [
       {
@@ -235,10 +228,9 @@ export class SetupFixtures {
   }
 
   static getTestModel() {
-    return SetupFixtures.getRecommendedModels()[0]; // Return first recommended model
+    return SetupFixtures.getRecommendedModels()[0];
   }
 
-  // API Models test data
   static getApiProviders() {
     return [
       {
@@ -269,7 +261,6 @@ export class SetupFixtures {
     return SetupFixtures.getApiProviders().find((p) => p.id === providerId);
   }
 
-  // Browser Extension test data
   static getBrowserTypes() {
     return [
       {
@@ -315,7 +306,6 @@ export class SetupFixtures {
     return SetupFixtures.getBrowserTypes().filter((b) => !b.supported);
   }
 
-  // Extension detection states
   static getExtensionStates() {
     return {
       DETECTING: 'detecting',
@@ -328,8 +318,8 @@ export class SetupFixtures {
     return {
       status: state,
       extensionId: extensionId,
-      refresh: () => {}, // Mock function
-      redetect: () => {}, // Mock function
+      refresh: () => {},
+      redetect: () => {},
     };
   }
 }

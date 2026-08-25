@@ -60,7 +60,6 @@ export default function ModelRouterForm({ mode, initialData, breadcrumb }: Model
   // Only one alias combobox is open at a time (clicking another trigger closes the prior popover).
   const [openComboboxIdx, setOpenComboboxIdx] = useState<number | null>(null);
 
-  // Resilience knobs (persisted since Phase 1; surfaced here in Phase 3).
   const initialStrategy = initialData?.strategy;
   const [cooldownSecs, setCooldownSecs] = useState<number>(initialStrategy?.cooldown_secs ?? DEFAULT_COOLDOWN_SECS);
   const [maxAttempts, setMaxAttempts] = useState<number>(initialStrategy?.max_attempts ?? DEFAULT_MAX_ATTEMPTS);
@@ -142,7 +141,7 @@ export default function ModelRouterForm({ mode, initialData, breadcrumb }: Model
 
   const submitting = createMutation.isPending || updateMutation.isPending;
 
-  // ── Published rail (live preview). Display-only; never gates submit. ──
+  // Published rail is display-only; never gates submit.
   const chain: ChainItem[] = useMemo(
     () =>
       targets.map((t) => {
@@ -180,7 +179,6 @@ export default function ModelRouterForm({ mode, initialData, breadcrumb }: Model
       </div>
 
       <div className="rf-card-body">
-        {/* ── IDENTITY ── */}
         <section className="rf-section">
           <div className="rf-section-title">Identity</div>
           <div className="rf-field">
@@ -215,7 +213,6 @@ export default function ModelRouterForm({ mode, initialData, breadcrumb }: Model
 
         <div className="rf-divider" />
 
-        {/* ── RESILIENCE ── */}
         <section className="rf-section" data-testid="resilience-settings">
           <div className="rf-section-title">Resilience</div>
           <div className="rf-field-row">
@@ -274,7 +271,6 @@ export default function ModelRouterForm({ mode, initialData, breadcrumb }: Model
 
         <div className="rf-divider" />
 
-        {/* ── TARGETS ── */}
         <section className="rf-section">
           <div className="rf-section-title">Targets (in priority order)</div>
 
@@ -313,7 +309,6 @@ export default function ModelRouterForm({ mode, initialData, breadcrumb }: Model
         </section>
       </div>
 
-      {/* ── FOOTER ── */}
       <div className="rf-footer">
         <Button
           type="button"

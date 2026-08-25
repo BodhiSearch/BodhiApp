@@ -49,7 +49,6 @@ export function buildDefaultSchemaParams(schema: InputSchema | undefined): Recor
   return params;
 }
 
-/** Build default `{ [name]: '' }` for an arg field list (prompts/templates). */
 export function buildDefaultFieldParams(args: ArgField[] | undefined): Record<string, string> {
   const out: Record<string, string> = {};
   for (const a of args ?? []) out[a.name] = '';
@@ -73,7 +72,6 @@ export function fillTemplate(uriTemplate: string, values: Record<string, string>
   });
 }
 
-/** Adapt a prompt's flat argument list to the playground's `ArgField` shape. */
 export function promptArgsToFields(args: McpClientPromptArg[] | undefined): ArgField[] {
   return (args ?? []).map((a) => ({
     name: a.name,
@@ -92,7 +90,6 @@ export type Block =
   | { type: 'resource_link'; uri: string; name?: string; description?: string; mimeType?: string }
   | { type: 'resource'; resource: { uri: string; mimeType?: string; text?: string; blob?: string } };
 
-/** Readable model for a Tools result. */
 export interface ToolReadable {
   content: Block[];
   structuredContent?: unknown;
@@ -211,7 +208,6 @@ export function idleRun(): RunState {
 
 // ── tool helpers ───────────────────────────────────────────────
 
-/** Friendly title (falls back to code name) for a tool. */
 export function toolFriendlyTitle(t: McpClientTool): string {
   return t.title || t.annotations?.title || t.name;
 }

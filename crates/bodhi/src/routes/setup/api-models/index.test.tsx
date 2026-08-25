@@ -130,12 +130,11 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       expect(skipButton).toBeInTheDocument();
       expect(skipButton).toHaveTextContent('Continue');
 
-      // No cancel button in setup mode
       expect(screen.queryByTestId('cancel-button')).not.toBeInTheDocument();
 
       const apiFormatSelect = screen.getByTestId('api-format-selector');
       expect(apiFormatSelect).toBeInTheDocument();
-      expect(apiFormatSelect).toHaveTextContent('Select an API format'); // Empty in setup mode
+      expect(apiFormatSelect).toHaveTextContent('Select an API format');
 
       const baseUrlInput = screen.getByTestId('base-url-input') as HTMLInputElement;
       expect(baseUrlInput.value).toBe('');
@@ -143,7 +142,6 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       const apiKeyInput = screen.getByTestId('api-key-input') as HTMLInputElement;
       expect(apiKeyInput.value).toBe('');
 
-      // Action buttons should be disabled initially
       expect(screen.getByTestId('test-connection-button')).toBeDisabled();
       expect(screen.getByTestId('fetch-models-button')).toBeDisabled();
     });
@@ -174,7 +172,6 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/browser-extension/' });
       expect(navigateMock).toHaveBeenCalledTimes(1);
 
-      // No form submission means no toast.
       expect(mockToast).not.toHaveBeenCalled();
     });
   });
@@ -200,7 +197,6 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       const baseUrlInput = screen.getByTestId('base-url-input') as HTMLInputElement;
       const apiKeyInput = screen.getByTestId('api-key-input') as HTMLInputElement;
 
-      // Setup mode starts empty, with no API format pre-selected.
       expect(apiFormatSelector).toHaveTextContent('Select an API format');
       expect(baseUrlInput.value).toBe('');
       expect(apiKeyInput.value).toBe('');
@@ -313,7 +309,6 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
         expectErrorToast(mockToast, 'Failed to Create API Model');
       });
 
-      // No navigation on failure: the user stays on the setup page.
       expect(navigateMock).not.toHaveBeenCalled();
 
       expect(screen.getByTestId('setup-api-model-form')).toBeInTheDocument();

@@ -4,12 +4,10 @@ import { ShellIcon } from '@/components/shell';
 import '@/routes/models/-components/models.css';
 
 /**
- * Faceted sidebar for Explore · MCP Servers. Controlled — selections drive the parent's
- * `ListMcpServersQuery`. Unlike the API-Models sidebar (fixed enum + availability mask), the MCP
- * facet OPTIONS are themselves DATA-DRIVEN from the response `facets` arrays: Category and Auth render
- * exactly the values the catalog currently has. In v1 `facets.category` is empty (the group hides) and
- * `facets.auth` is `['http']` (a single chip), so the rails light up automatically as enrichment lands
- * — no hard-coded taxonomy. `Verified` is the one boolean-backed pill.
+ * Controlled — selections drive the parent's `ListMcpServersQuery`. Unlike the API-Models sidebar
+ * (fixed enum), facet OPTIONS are data-driven from the response `facets` arrays, so Category/Auth
+ * render only values the catalog currently has — v1's `facets.category` is empty (group hidden) and
+ * `facets.auth` is `['http']`. `Verified` is the one boolean-backed pill.
  */
 
 export type InstalledFacet = 'installed' | 'not_installed';

@@ -12,7 +12,6 @@ interface SetupCardProps {
   className?: string;
 }
 
-/** Calm wizard card: soft surface, generous padding, centered head. */
 export function SetupCard({ title, description, children, footer, className }: SetupCardProps) {
   return (
     <motion.section

@@ -41,7 +41,6 @@ export function StopWords({ isLoading = false, tooltip }: StopWordsProps) {
     setStop(newStopWords);
   };
 
-  // Control is shown only when the setting is switched on (design: off → control hidden).
   const showControl = stop_enabled;
 
   return (

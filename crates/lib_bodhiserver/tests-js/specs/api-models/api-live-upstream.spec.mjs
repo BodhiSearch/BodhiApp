@@ -43,11 +43,6 @@ import {
 // Adding a new format: add its entry to ApiModelFixtures.API_FORMATS.
 // All loops below pick it up automatically.
 
-/**
- * Create all format API models with disambiguation prefixes.
- * Returns a map of formatKey → { modelId, effectiveModel }.
- * effectiveModel = `${multiTestPrefix}${model}` (the ID to use in API calls).
- */
 async function createAllFormatModels(modelsPage, formPage) {
   const models = {};
   for (const [formatKey, formatConfig] of Object.entries(ApiModelFixtures.API_FORMATS)) {
@@ -115,12 +110,10 @@ test.describe('Live upstream - API token', () => {
     await loginPage.performOAuthLogin();
 
     try {
-      // Create one API model per format with disambiguation prefixes
       await test.step('Create API models for all formats', async () => {
         models = await createAllFormatModels(modelsPage, formPage);
       });
 
-      // Mint one BodhiApp API token shared across all format tests
       await test.step('Mint API token', async () => {
         apiToken = await mintApiToken(
           tokensPage,
@@ -131,7 +124,6 @@ test.describe('Live upstream - API token', () => {
         expect(apiToken).toMatch(/^sk-bodhiapp_/);
       });
 
-      // Verify each format's native (primary) endpoint(s)
       await test.step('Primary endpoints with API token', async () => {
         for (const [formatKey, formatConfig] of Object.entries(ApiModelFixtures.API_FORMATS)) {
           const { effectiveModel } = models[formatKey];
@@ -237,12 +229,10 @@ test.describe('Live upstream - API token', () => {
     await formPage.form.selectApiFormat(formatConfig.format);
     await formPage.form.expectBaseUrlValue(formatConfig.baseUrl);
 
-    // Trigger auth error by attempting fetch without API key
     await formPage.form.uncheckUseApiKey();
     await formPage.form.clickFetchModels();
     await formPage.form.expectFetchError();
 
-    // Recovery: provide key and retry
     await formPage.form.checkUseApiKey();
     await formPage.form.fillName('Live Upstream Recovery');
     await formPage.form.fillApiKey(apiKey);
@@ -288,7 +278,6 @@ test.describe('Live upstream - OAuth app token', () => {
     await loginPage.performOAuthLogin();
 
     try {
-      // Create one API model per format with disambiguation prefixes
       await test.step('Create API models for all formats', async () => {
         models = await createAllFormatModels(modelsPage, formPage);
       });
@@ -314,7 +303,6 @@ test.describe('Live upstream - OAuth app token', () => {
         await app.config.submitAccessRequest();
         await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-        // Approve the access request as the logged-in BodhiApp user
         const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
         // Grant all models so the exchanged app token can infer (consent defaults to
         // Specific/none under fail-closed grants).
@@ -328,7 +316,6 @@ test.describe('Live upstream - OAuth app token', () => {
         expect(oauthToken.length).toBeGreaterThan(50);
       });
 
-      // Verify each format's native (primary) endpoint(s)
       await test.step('Primary endpoints with OAuth app token', async () => {
         for (const [formatKey, formatConfig] of Object.entries(ApiModelFixtures.API_FORMATS)) {
           const { effectiveModel } = models[formatKey];
@@ -348,7 +335,6 @@ test.describe('Live upstream - OAuth app token', () => {
         }
       });
 
-      // Formats where BodhiApp allows routing to /v1/chat/completions.
       await test.step('Universal /v1/chat/completions with OAuth app token', async () => {
         for (const [formatKey, formatConfig] of Object.entries(ApiModelFixtures.API_FORMATS)) {
           if (!formatConfig.supportsUniversalChatCompletions) continue;

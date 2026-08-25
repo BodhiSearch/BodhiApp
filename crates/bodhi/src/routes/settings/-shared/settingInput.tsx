@@ -2,16 +2,11 @@ import { SettingInfo, SettingMetadata } from '@bodhiapp/ts-client';
 
 import { Switch } from '@/components/ui/switch';
 
-/**
- * Shared setting-value logic for both the V1 edit dialog and the V2 detail-rail editor, so the
- * parse/validate rules can't diverge. The V1 dialog renders shadcn controls; the V2 rail renders
- * the design's raw `.field-input`/`.field-select` (via {@link SettingValueInput}). Both call
- * {@link parseSettingValue} before mutating.
- */
+// Shared setting-value logic for the V1 edit dialog and the V2 detail-rail editor, so the
+// parse/validate rules can't diverge — the two render different controls but share this.
 
 export type ParsedSetting = { ok: true; value: string | number | boolean } | { ok: false; error: string };
 
-/** Coerce + validate the draft string against the setting's metadata. */
 export function parseSettingValue(metadata: SettingMetadata, raw: string): ParsedSetting {
   if (metadata.type === 'number') {
     const value = Number(raw);
@@ -36,11 +31,8 @@ interface SettingValueInputProps {
   testId?: string;
 }
 
-/**
- * The V2-rail type-specific control, styled with the design's raw `.field-*` classes (the V1
- * dialog keeps its shadcn equivalents). Value is always a string; callers coerce via
- * {@link parseSettingValue} on save.
- */
+// V2-rail control styled with raw `.field-*` classes (V1 keeps shadcn). Value is always a
+// string; callers coerce via {@link parseSettingValue} on save.
 export function SettingValueInput({ setting, value, onChange, testId }: SettingValueInputProps) {
   const { metadata } = setting;
 

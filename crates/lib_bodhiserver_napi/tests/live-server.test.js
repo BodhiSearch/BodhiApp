@@ -12,7 +12,6 @@ describe('Live Server Tests', () => {
   });
 
   afterEach(async () => {
-    // Clean up any running servers after each test
     for (const server of runningServers) {
       const isRunning = await server.isRunning();
       if (isRunning) {
@@ -28,22 +27,16 @@ describe('Live Server Tests', () => {
       const server = createTestServer(bindings, { host: '127.0.0.1', port: 27001 });
       runningServers.push(server);
 
-      // Initially should not be running
       expect(await server.isRunning()).toBe(false);
 
-      // Start the server
       await server.start();
 
-      // Should now report as running
       expect(await server.isRunning()).toBe(true);
 
-      // Wait for server to be fully ready
       await sleep(2000);
 
-      // Should still be running
       expect(await server.isRunning()).toBe(true);
 
-      // Test ping functionality
       const pingResponse = await server.ping();
       expect(typeof pingResponse).toBe('boolean');
       expect(pingResponse).toBe(true);
@@ -53,11 +46,9 @@ describe('Live Server Tests', () => {
       const server = createTestServer(bindings, { host: '127.0.0.1', port: 27002 });
       runningServers.push(server);
 
-      // Start the server
       await server.start();
       expect(await server.isRunning()).toBe(true);
 
-      // Stop the server
       await server.stop();
       expect(await server.isRunning()).toBe(false);
     });
@@ -67,15 +58,12 @@ describe('Live Server Tests', () => {
       const server2 = createTestServer(bindings, { host: '127.0.0.1', port: 27008 });
       runningServers.push(server1, server2);
 
-      // Start both servers
       await server1.start();
       await server2.start();
 
-      // Both should be running
       expect(await server1.isRunning()).toBe(true);
       expect(await server2.isRunning()).toBe(true);
 
-      // Verify they have different URLs
       expect(server1.serverUrl()).not.toBe(server2.serverUrl());
       expect(server1.port()).not.toBe(server2.port());
     });
@@ -86,11 +74,9 @@ describe('Live Server Tests', () => {
       const server = createTestServer(bindings, { host: '127.0.0.1', port: 27004 });
       runningServers.push(server);
 
-      // Start the server
       await server.start();
       expect(await server.isRunning()).toBe(true);
 
-      // Try to start again - should fail
       await expect(server.start()).rejects.toThrow();
     });
 
@@ -98,11 +84,9 @@ describe('Live Server Tests', () => {
       const server = createTestServer(bindings, { host: '127.0.0.1', port: 27005 });
       runningServers.push(server);
 
-      // Server is not started, ping should return false
       const pingResponse = await server.ping();
       expect(pingResponse).toBe(false);
 
-      // Server is not started, stop should not throw
       await server.stop();
       expect(await server.isRunning()).toBe(false);
     });
@@ -115,7 +99,6 @@ describe('Live Server Tests', () => {
       });
       runningServers.push(server);
 
-      // Verify configuration is preserved
       expect(server.host()).toBe('127.0.0.1');
       expect(server.port()).toBe(27009);
       expect(server.config.envVars.BODHI_LOG_LEVEL).toBe('debug');

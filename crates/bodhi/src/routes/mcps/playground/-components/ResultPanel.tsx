@@ -14,9 +14,7 @@ export type ResultTab = 'readable' | 'raw' | 'request';
 
 export interface ResultPanelProps {
   run: RunState;
-  /** Friendly label for the readable tab (e.g. "Result", "Messages", "Contents"). */
   title?: string;
-  /** Hint shown when the run is idle. */
   emptyHint?: string;
   /** Resource-link click handler so `<ToolResultView>` can deep-link to Resources. */
   onOpenResource?: (uri: string, name?: string) => void;

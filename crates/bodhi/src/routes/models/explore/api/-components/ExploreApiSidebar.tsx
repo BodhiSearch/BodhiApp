@@ -65,9 +65,9 @@ const STATUS_LABELS: Record<StatusFacet, string> = {
 
 // Frontend-owned slider ceilings (the backend has no price-range facet). Most models fall well under
 // these; a slider parked at its ceiling means "no upper bound" and sends nothing.
-const PRICE_IN_MAX = 30; // input $/Mtok slider ceiling
-const PRICE_OUT_MAX = 60; // output $/Mtok slider ceiling
-const CONTEXT_MAX = 1000; // K tokens slider ceiling
+const PRICE_IN_MAX = 30;
+const PRICE_OUT_MAX = 60;
+const CONTEXT_MAX = 1000;
 
 function toggle<T>(list: T[] | undefined, value: T): T[] | undefined {
   const set = new Set(list ?? []);

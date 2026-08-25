@@ -1,6 +1,6 @@
 import { type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-/* ── Anchored popover (fixed-position, escapes overflow) ────── */
+// position:fixed comes from the .shell-pop class, not inline styles — it's what lets this escape ancestor overflow clipping.
 export interface AnchoredPopoverProps {
   open: boolean;
   anchorRef: RefObject<HTMLElement | null>;

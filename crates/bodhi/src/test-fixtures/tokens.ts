@@ -1,4 +1,3 @@
-// Fixture factories for API token-related mock data.
 import type { components } from '@/test-utils/msw-v2/setup';
 
 type TokenDetail = components['schemas']['TokenDetail'];

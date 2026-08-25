@@ -12,7 +12,6 @@ export type RequestedFlags = Pick<
   'version' | 'models_list' | 'models_access' | 'mcps_list' | 'mcps_access'
 >;
 
-/** Minimal shape of a requested MCP server + its candidate instances. */
 export interface McpInfoLike {
   url: string;
   instances: { id: string; path: string }[];
@@ -36,15 +35,8 @@ const grant = (mode: AccessMode, ids: string[]): Grant =>
 /** Least-privilege grant used when the app did not request a selector. */
 const DENY: Grant = { type: 'specific', ids: [] };
 
-/**
- * Build the `approved` envelope for an access-request approval from the app's
- * requested flags and the owner's decisions. Pure + exported so the branch matrix
- * (which decides what a 3rd-party app is granted on a hurried Approve) is unit-tested,
- * mirroring `toCreateTokenRequest`.
- *
- * Defaults are fail-closed: a list toggle the app didn't request stays off, and a
- * grant the app didn't request defaults to deny (empty `specific`), never all-access.
- */
+// Pure + exported so the grant branch matrix is unit-tested (mirrors `toCreateTokenRequest`).
+// Fail-closed: anything the app didn't request defaults to deny, never all-access.
 export function toApproveBody(req: RequestedFlags, mcpsInfo: McpInfoLike[], state: ApproveGrantState): Approved {
   return {
     version: req.version,

@@ -21,7 +21,6 @@ describe('ShellFilterTabs', () => {
   it('shows shimmer placeholders instead of counts while loading', () => {
     render(<ShellFilterTabs tabs={TABS} value="all" onChange={vi.fn()} testIdPrefix="f" loading />);
 
-    // every tab gets a loading placeholder, no numeric counts leak through
     expect(screen.getAllByLabelText('Loading count')).toHaveLength(TABS.length);
     expect(screen.queryByText('5')).not.toBeInTheDocument();
     expect(screen.queryByText('3')).not.toBeInTheDocument();

@@ -28,16 +28,14 @@ test.describe('All Models V2', () => {
     await loginPage.performOAuthLogin();
     await modelsPage.navigateToModels();
 
-    // V2 shell list + published faceted sidebar are present.
     await modelsPage.expectModelsPageV2();
     await modelsPage.expectVisible(modelsPage.selectors.facetType('local_file'));
-    await modelsPage.expectVisible(modelsPage.selectors.facetFormat('liberty')); // Liberty bucket added this batch
+    await modelsPage.expectVisible(modelsPage.selectors.facetFormat('liberty'));
 
-    // There is at least one auto-discovered local model row.
     const initialCount = await modelsPage.getRowCount();
     expect(initialCount).toBeGreaterThan(0);
 
-    // Server-side TYPE filter to local files only — every visible row is a Local File.
+    // Server-side filter — every visible row is a Local File.
     await modelsPage.filterByType('local_file');
     const localCount = await modelsPage.getRowCount();
     expect(localCount).toBeGreaterThan(0);
@@ -85,7 +83,6 @@ test.describe('All Models V2', () => {
     await modelsPage.searchFor('zzz-no-such-model-zzz');
     await modelsPage.expectVisible(modelsPage.selectors.empty);
 
-    // Clearing the box restores the full list.
     await modelsPage.clearSearch();
     await expect(modelsPage.page.locator(modelsPage.selectors.anyRow).first()).toBeVisible();
     expect(await modelsPage.getRowCount()).toBe(all);

@@ -155,7 +155,6 @@ describe('SettingSlider', () => {
     it('hides the slider when enabled is false', () => {
       render(<SettingSlider {...defaultProps} enabled={false} />);
 
-      // Control is hidden when the setting is off; the toggle switch remains.
       expect(screen.queryByRole('slider')).not.toBeInTheDocument();
       expect(screen.getByRole('switch')).toBeInTheDocument();
     });

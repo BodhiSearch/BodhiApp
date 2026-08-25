@@ -80,7 +80,6 @@ vi.mock('@/components/ui/tooltip', () => ({
 
 setupMswV2();
 
-// Default handler for models endpoint used by all tests
 beforeEach(() => {
   server.use(
     ...mockModels({

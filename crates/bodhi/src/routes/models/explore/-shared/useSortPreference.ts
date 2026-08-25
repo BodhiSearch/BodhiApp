@@ -1,15 +1,6 @@
-// Shared sort-preference resolver for the Explore catalog pages (API Models + API Providers).
-//
-// Behavior (identical on both pages, different storage keys):
-//   - The URL `?sort=`/`?order=` is the strongest signal — a shared/deep link wins so it round-trips.
-//   - Otherwise a previously-persisted preference (localStorage) is applied to the REQUEST silently;
-//     it is deliberately NOT written back to the URL, so the URL stays clean until the user clicks.
-//   - Otherwise nothing → effective sort is `undefined` → the caller omits sort/order and the API
-//     returns its natural order.
-//
-// This module is pure + framework-free (no router/React coupling): the screen owns useSearch()/
-// navigate() and just feeds the current URL sort/order in. That keeps the read-once discipline
-// (no effect that writes the URL → no render loop) and makes the logic trivially unit-testable.
+// Sort-preference resolver shared by the Explore catalog pages. Precedence: URL (deep-link) wins,
+// else a persisted localStorage pref applies silently (never written back to the URL), else natural
+// API order. Kept pure/framework-free so the screen's read-once URL discipline holds.
 
 export type SortPref<S extends string, O extends string> = { sort: S; order: O };
 
@@ -54,12 +45,8 @@ export function persistSortPreference<S extends string, O extends string>(storag
 }
 
 /**
- * Resolve the effective sort/order for a render given the current URL params and the page config.
- *
- * Returns `{ sort: undefined, order: undefined, fromStorage: false }` when nothing is set (→ API
- * natural order). `fromStorage` is true when the pref came from localStorage rather than the URL —
- * the caller uses it to decide whether to ALSO reflect the sort in the URL (it should not; storage
- * prefs stay out of the URL).
+ * Resolves the effective sort/order for a render. `fromStorage: true` means the pref came from
+ * localStorage, not the URL — the caller must not write it back to the URL.
  */
 export function resolveSortPreference<S extends string, O extends string>(opts: {
   urlSort: S | undefined;
@@ -77,12 +64,10 @@ export function resolveSortPreference<S extends string, O extends string>(opts: 
     return { sort: urlSort, order: urlOrder ?? naturalOrder(urlSort), fromStorage: false };
   }
 
-  // Else fall back to the persisted preference (applied to the request only).
   const stored = readSortPreference(storageKey, validSorts, validOrders);
   if (stored) {
     return { sort: stored.sort, order: stored.order, fromStorage: true };
   }
 
-  // Else no sort → natural order from the API.
   return { sort: undefined, order: undefined, fromStorage: false };
 }

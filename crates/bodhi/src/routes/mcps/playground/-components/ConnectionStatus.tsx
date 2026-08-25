@@ -7,7 +7,6 @@ import type { McpConnectionStatus } from '@/hooks/mcps/useMcpClient';
 export interface ConnectionStatusProps {
   status: McpConnectionStatus;
   onRefresh: () => void;
-  /** Disable refresh while we're already busy. */
   refreshing: boolean;
 }
 

@@ -10,7 +10,6 @@ describe('Integration Tests', () => {
   });
 
   afterEach(async () => {
-    // Clean up any running servers after each test
     for (const server of runningServers) {
       const isRunning = await server.isRunning();
       if (isRunning) {
@@ -25,7 +24,6 @@ describe('Integration Tests', () => {
       const server = createTestServer(bindings, { host: 'test-host', port: 12345 });
       runningServers.push(server);
 
-      // Test configuration structure
       expect(server.config.envVars).toBeDefined();
       expect(server.config.appSettings).toBeDefined();
       expect(server.config.systemSettings).toBeDefined();
@@ -33,7 +31,6 @@ describe('Integration Tests', () => {
       expect(typeof server.config.appSettings).toBe('object');
       expect(typeof server.config.systemSettings).toBe('object');
 
-      // Test server properties
       expect(server.host()).toBe('test-host');
       expect(server.port()).toBe(12345);
       expect(server.serverUrl()).toBe('http://test-host:12345');
@@ -46,13 +43,11 @@ describe('Integration Tests', () => {
       const server = createTestServer(bindings, { host: '127.0.0.1', port: 28000 });
       runningServers.push(server);
 
-      // Test helper-created server
       expect(server.host()).toBe('127.0.0.1');
       expect(server.port()).toBe(28000);
       expect(server.serverUrl()).toBe('http://127.0.0.1:28000');
       expect(server.config.envVars.HOME).toBeDefined();
 
-      // Test immutability - values should remain constant
       const originalHost = server.host();
       const originalPort = server.port();
       const originalUrl = server.serverUrl();
@@ -63,20 +58,17 @@ describe('Integration Tests', () => {
     });
 
     test('should handle default and random value generation properly', () => {
-      // Test with default host
       const serverWithDefaultHost = createTestServer(bindings, { port: 16000 });
       runningServers.push(serverWithDefaultHost);
       expect(serverWithDefaultHost.host()).toBe('localhost');
       expect(serverWithDefaultHost.port()).toBe(16000);
 
-      // Test with random port
       const serverWithRandomPort = createTestServer(bindings, { host: '127.0.0.1' });
       runningServers.push(serverWithRandomPort);
       expect(serverWithRandomPort.host()).toBe('127.0.0.1');
       expect(serverWithRandomPort.port()).toBeGreaterThanOrEqual(20000);
       expect(serverWithRandomPort.port()).toBeLessThan(30000);
 
-      // Test with both defaults
       const serverWithDefaults = createTestServer(bindings);
       runningServers.push(serverWithDefaults);
       expect(serverWithDefaults.host()).toBe('localhost');
@@ -90,10 +82,8 @@ describe('Integration Tests', () => {
       const server = createTestServer(bindings, { host: '127.0.0.1', port: 20001 });
       runningServers.push(server);
 
-      // Initially should not be running
       expect(await server.isRunning()).toBe(false);
 
-      // Should maintain not-running state consistently
       expect(await server.isRunning()).toBe(false);
     });
 
@@ -103,12 +93,10 @@ describe('Integration Tests', () => {
 
       const serverConfig = server.config;
 
-      // Required environment variables
       expect(serverConfig.envVars.HOME).toBeDefined();
       expect(serverConfig.envVars[bindings.BODHI_HOST]).toBeDefined();
       expect(serverConfig.envVars[bindings.BODHI_PORT]).toBeDefined();
 
-      // For full test config, also check system settings
       const fullTestServer = createTestServer(bindings);
       runningServers.push(fullTestServer);
 

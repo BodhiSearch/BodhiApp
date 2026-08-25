@@ -50,7 +50,7 @@ export function RequestAccessContent() {
       <AuthCard
         title="Access Request Pending"
         description={`Your access request submitted on ${formatDate(requestStatus.created_at)} is pending review`}
-        actions={[]} // No actions when pending
+        actions={[]}
       />
     );
   }

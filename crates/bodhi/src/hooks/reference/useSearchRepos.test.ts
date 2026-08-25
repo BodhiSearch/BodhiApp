@@ -29,7 +29,6 @@ describe('useSearchRepos', () => {
 
     const { result } = renderHook(() => useSearchRepos({ search: '   ', filter: 'gguf' }), { wrapper: Wrapper });
 
-    // Nothing fires; query stays idle.
     await new Promise((r) => setTimeout(r, 50));
     expect(seen).toBeNull();
     expect(result.current.data).toBeUndefined();

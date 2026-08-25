@@ -103,10 +103,8 @@ export function ExploreApiRail({ model, detail, loading }: RailProps) {
   );
 }
 
-// A served-by provider row. Clicking the row toggles an inline connection detail (no navigation to
-// the Providers page — with many providers that page may not list this one). The trailing "Add" icon
-// jumps to the create-API-model form prefilled for this provider (api_format is openai for all
-// catalog providers; base_url is the provider's own).
+// Clicking the row toggles an inline connection detail rather than navigating to the Providers page —
+// with many providers that page may not list this one. api_format is openai for all catalog providers.
 function ServedByRow({ served, modelId }: { served: ServedBy; modelId: string }) {
   const [open, setOpen] = useState(false);
   const { data: provider, isLoading } = useCatalogProviderDetail(open ? served.slug : null);
@@ -155,7 +153,6 @@ function ServedByRow({ served, modelId }: { served: ServedBy; modelId: string })
               <DetailRailRow k="API format" v={provider?.bridge.api_format} />
               <DetailRailRow k="API keys" v={provider?.env?.length ? provider.env.join(', ') : undefined} />
               <div className="cat-servedby-links">
-                {/* Filter the Models page in place to this provider (provider facet = slug). */}
                 <Link
                   to="/models/explore/api/"
                   search={{ provider: [served.slug] }}
@@ -164,7 +161,6 @@ function ServedByRow({ served, modelId }: { served: ServedBy; modelId: string })
                 >
                   <ShellIcon name="layers" size={13} /> All Models from Provider
                 </Link>
-                {/* Open the Providers page searching for this provider by name. */}
                 <Link
                   to="/models/explore/providers/"
                   search={{ q: served.name }}

@@ -41,7 +41,6 @@ describe('RoutingChainPreview', () => {
     render(<RoutingChainPreview items={[{ alias: 'off', enabled: false }]} testId="chain" />);
     const step = within(screen.getByTestId('chain')).getByText('skipped');
     expect(step).toBeInTheDocument();
-    // the step row carries the `disabled` modifier class
     expect(screen.getByTestId('chain').querySelector('.m-chain-step.disabled')).toBeInTheDocument();
   });
 

@@ -17,7 +17,6 @@ use tracing::level_filters::LevelFilter;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-/// The main Bodhi server wrapper for NAPI
 #[napi]
 pub struct BodhiServer {
   config: NapiAppOptions,
@@ -28,7 +27,6 @@ pub struct BodhiServer {
 
 #[napi]
 impl BodhiServer {
-  /// Create a new Bodhi server instance with the given configuration
   #[napi(constructor)]
   pub fn new(config: NapiAppOptions) -> Result<Self> {
     Ok(Self {
@@ -39,13 +37,11 @@ impl BodhiServer {
     })
   }
 
-  /// Get the server configuration
   #[napi(getter)]
   pub fn config(&self) -> NapiAppOptions {
     self.config.clone()
   }
 
-  /// Get the server URL
   #[napi]
   pub fn server_url(&self) -> String {
     let host = self.public_host();
@@ -75,7 +71,6 @@ impl BodhiServer {
     DEFAULT_PORT
   }
 
-  /// Get the server host
   #[napi]
   pub fn public_host(&self) -> String {
     if let Some(host) = self.config.env_vars.get(BODHI_PUBLIC_HOST) {
@@ -84,7 +79,6 @@ impl BodhiServer {
     self.host()
   }
 
-  /// Get the server port
   #[napi]
   pub fn public_port(&self) -> u16 {
     if let Some(port) = self.config.env_vars.get(BODHI_PUBLIC_PORT) {
@@ -95,7 +89,6 @@ impl BodhiServer {
     self.port()
   }
 
-  /// Get the server scheme
   #[napi]
   pub fn public_scheme(&self) -> String {
     if let Some(scheme) = self.config.env_vars.get(BODHI_PUBLIC_SCHEME) {
@@ -107,8 +100,6 @@ impl BodhiServer {
     DEFAULT_SCHEME.to_string()
   }
 
-  /// Start the Bodhi server
-  ///
   /// # Safety
   /// Safe to call from JavaScript/Node.js context via NAPI bindings.
   #[napi]
@@ -197,8 +188,6 @@ impl BodhiServer {
     Ok(())
   }
 
-  /// Stop the Bodhi server
-  ///
   /// # Safety
   /// Safe to call from JavaScript/Node.js context via NAPI bindings.
   #[napi]
@@ -222,8 +211,6 @@ impl BodhiServer {
     Ok(())
   }
 
-  /// Check if the server is running
-  ///
   /// # Safety
   /// Safe to call from JavaScript/Node.js context via NAPI bindings.
   #[napi]
@@ -232,8 +219,6 @@ impl BodhiServer {
     Ok(handle_guard.is_some())
   }
 
-  /// Get server ping status
-  ///
   /// # Safety
   /// Safe to call from JavaScript/Node.js context via NAPI bindings.
   #[napi]

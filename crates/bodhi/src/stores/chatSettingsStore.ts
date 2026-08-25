@@ -309,7 +309,6 @@ export const useChatSettingsStore = create<ChatSettingsStoreState>((set, get) =>
   },
 }));
 
-// Cross-store subscription: when currentChatId changes, load settings for new chat
 let _settingsUnsubscribe: (() => void) | null = null;
 export function initChatSettingsSubscription() {
   _settingsUnsubscribe?.();

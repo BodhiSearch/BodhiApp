@@ -24,8 +24,7 @@ describe('LinkRow', () => {
       </LinkRow>
     );
     const link = screen.getByTestId('row-link');
-    // The compact variant gets the --cell modifier and contains the index — a small, always-visible,
-    // uncovered link-hint target (vs the stretched full-row anchor that horizontal overflow hides).
+    // compact variant: small, always-visible link-hint target vs the stretched full-row anchor that horizontal overflow hides
     expect(link).toHaveClass('l-rowlink', 'l-rowlink--cell');
     expect(link).toHaveTextContent('#3');
   });
@@ -52,8 +51,7 @@ describe('LinkRow', () => {
     const link = screen.getByTestId('row-link');
 
     await user.click(link);
-    // onMouseDown preventDefault keeps the anchor from grabbing focus on a mouse click, so the
-    // row never lingers with a stale focus outline once focus later moves elsewhere (e.g. Vimium).
+    // onMouseDown preventDefault keeps the anchor from grabbing focus on a mouse click
     expect(link).not.toHaveFocus();
   });
 });

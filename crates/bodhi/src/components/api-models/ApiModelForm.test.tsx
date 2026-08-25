@@ -350,7 +350,6 @@ describe('ApiModelForm', () => {
       });
 
       const fetchButton = screen.getByTestId('fetch-models-button');
-      // Fetch button should be enabled because base_url defaults to preset value
       expect(fetchButton).not.toBeDisabled();
     });
 
@@ -508,7 +507,6 @@ describe('ApiModelForm', () => {
         });
       });
 
-      // Verify available models (excluding already selected gpt-4 and gpt-3.5-turbo)
       expect(screen.getByTestId('available-model-gpt-4-turbo')).toBeInTheDocument();
       expect(screen.getByTestId('available-model-claude-3-sonnet')).toBeInTheDocument();
 
@@ -786,7 +784,6 @@ describe('ApiModelForm', () => {
         const apiKeyCheckbox = screen.getByTestId('api-key-input-checkbox');
         expect(apiKeyCheckbox).not.toBeChecked();
 
-        // Test form validation without API key - should not require API key
         await user.click(screen.getByTestId('create-api-model-button'));
 
         await waitFor(() => {
@@ -1228,7 +1225,6 @@ describe('ApiModelForm', () => {
         // In Edit mode, only gpt-4-turbo is available (gpt-4 and gpt-3.5-turbo already selected)
         expect(screen.getByTestId('available-model-gpt-4-turbo')).toBeInTheDocument();
 
-        // Test button should already be enabled because models are already selected
         const testButton = screen.getByTestId('test-connection-button');
         expect(testButton).not.toBeDisabled();
 

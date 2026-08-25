@@ -88,7 +88,6 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [open]);
 
-  // Reset the highlight whenever the list closes.
   useEffect(() => {
     if (!open) setActiveIndex(-1);
   }, [open]);
@@ -116,7 +115,6 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
   // Flat keyboard-navigation order (matching first, then the rest); a divider sits between them.
   const ordered = [...matching, ...nonMatching];
 
-  // Scroll the active option into view as the highlight moves.
   useEffect(() => {
     if (!open || activeIndex < 0) return;
     const el = popRef.current?.querySelector<HTMLElement>(`[data-opt-index="${activeIndex}"]`);

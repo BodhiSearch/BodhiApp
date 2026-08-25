@@ -1,20 +1,5 @@
 import { useEffect, useState } from 'react';
 
-/**
- * Custom hook for generating responsive data-testid attributes based on current viewport
- *
- * Breakpoint strategy:
- * - Mobile (< 768px): 'm-' prefix
- * - Tablet (768px - 1023px): 'tab-' prefix
- * - Desktop (>= 1024px): no prefix
- *
- * @example
- * const getTestId = useResponsiveTestId();
- * <button data-testid={getTestId('send-button')} />
- * // Mobile: data-testid="m-send-button"
- * // Tablet: data-testid="tab-send-button"
- * // Desktop: data-testid="send-button"
- */
 export function useResponsiveTestId() {
   const [viewport, setViewport] = useState<{ width: number; height: number } | null>(null);
 

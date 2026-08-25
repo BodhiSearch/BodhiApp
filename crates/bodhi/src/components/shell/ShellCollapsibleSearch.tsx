@@ -12,16 +12,12 @@ import { ShellSearch } from './ShellSearch';
  *  - the expanded `l-searchrow` (when open), placed via `slot="row"`
  *  - the toggle button, placed via `slot="button"`
  * The toolbar composes them; see App Tokens for the canonical usage.
- *
- * First introduced on the App Tokens screen; reused across every list screen.
  */
 export interface ShellCollapsibleSearchProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  /** testid for the toggle button */
   toggleTestId?: string;
-  /** testid for the close button */
   closeTestId?: string;
 }
 
@@ -33,10 +29,6 @@ interface UseCollapsibleSearch {
   toggle: React.ReactNode;
 }
 
-/**
- * Hook form: returns the `row` (expanded input) and `toggle` (button) nodes so a
- * toolbar can place each in the right slot (the row must sit above the toolbar).
- */
 export function useCollapsibleSearch({
   value,
   onChange,
@@ -62,7 +54,6 @@ export function useCollapsibleSearch({
         onKeyDown={(e) => {
           if (e.key === 'Escape') setOpen(false);
         }}
-        // Collapse when focus leaves an empty search.
         onBlur={() => {
           if (!value.trim()) setOpen(false);
         }}

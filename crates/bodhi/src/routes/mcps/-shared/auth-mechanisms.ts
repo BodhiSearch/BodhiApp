@@ -13,9 +13,7 @@ import { type AuthKind, authKind } from '@/routes/mcps/-shared/auth-badges';
  */
 export interface AuthMechanism {
   id: string;
-  /** Display title — OAuth / API Key / Public. */
   title: string;
-  /** Visual kind for the row icon tile + badge. */
   kind: AuthKind;
   /** Subtitle: "Always available · no setup" (public) or "<name> · <detail>" (explicit). */
   detail: string;

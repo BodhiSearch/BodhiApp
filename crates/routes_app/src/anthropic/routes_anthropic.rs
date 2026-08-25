@@ -179,8 +179,7 @@ pub async fn anthropic_messages_create_handler(
   Ok(response)
 }
 
-/// Aggregates models from all Anthropic-format aliases, returning full metadata.
-/// Models are served from the locally cached metadata — no upstream calls.
+/// Served from locally cached metadata — no upstream calls.
 pub async fn anthropic_models_list_handler(
   auth_scope: AuthScope,
 ) -> Result<Json<serde_json::Value>, AnthropicApiError> {
@@ -228,7 +227,7 @@ pub async fn anthropic_models_list_handler(
   })))
 }
 
-/// Returns a single model's metadata from locally cached data, consistent with the list handler.
+/// Locally cached data, consistent with the list handler — no upstream calls.
 pub async fn anthropic_models_get_handler(
   auth_scope: AuthScope,
   Path(model_id): Path<String>,

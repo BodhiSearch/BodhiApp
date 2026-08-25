@@ -43,7 +43,6 @@ describe('useGetAppAccessRequestReview', () => {
       wrapper: createWrapper(),
     });
 
-    // Query should not be fetching because enabled: !!id = false
     expect(result.current.isFetching).toBe(false);
     expect(result.current.data).toBeUndefined();
   });

@@ -30,12 +30,10 @@ fn copy_llama_bins(project_dir: &Path) -> Result<(), anyhow::Error> {
     bail!("Source directory '../../llama_server_proc' not found");
   }
 
-  // Try to acquire lock from llama_server_proc/bin/.lock
   let lock_path = llama_server_dir.join("bin").join(LOCK_FILE);
   let lock_file = File::open(&lock_path)
     .context("Failed to open lock file - ensure llama_server_proc has been built")?;
 
-  // Try to acquire the lock, retry if locked
   let max_attempts = 180; // Maximum 3 minutes wait
   let mut attempts = 0;
   while let Err(e) = fs2::FileExt::try_lock_shared(&lock_file) {
@@ -48,10 +46,8 @@ fn copy_llama_bins(project_dir: &Path) -> Result<(), anyhow::Error> {
   }
   println!("Acquired llama server bin lock");
 
-  // Perform the copy operation
   try_copy_bins(project_dir, &llama_server_dir)?;
 
-  // Sign binaries if in CI and on macOS
   if cfg!(target_os = "macos") && is_ci() {
     sign_binaries()?;
   }
@@ -68,7 +64,6 @@ fn is_ci() -> bool {
 fn sign_binaries() -> Result<(), anyhow::Error> {
   println!("Signing llama-server binaries for macOS...");
 
-  // Check if we're in CI and have required environment variables
   for var in &[
     "APPLE_CERTIFICATE",
     "APPLE_CERTIFICATE_PASSWORD",
@@ -79,7 +74,6 @@ fn sign_binaries() -> Result<(), anyhow::Error> {
     }
   }
 
-  // Run the make command for signing
   let status = Command::new("make")
     .arg("ci.sign-binaries")
     .current_dir(env!("CARGO_MANIFEST_DIR"))

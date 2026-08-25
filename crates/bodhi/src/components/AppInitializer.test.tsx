@@ -326,7 +326,6 @@ describe('AppInitializer role-based access control', () => {
       </AppInitializer>
     );
 
-    // Should redirect to login due to auth failure, not role failure
     expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
   });
 });

@@ -72,7 +72,6 @@ export function ExploreProvidersRail({ provider, detail, detailLoading, models, 
             </DetailRailRows>
           )}
           <div className="cat-servedby-links">
-            {/* Filter the API Models page in place to this provider (provider facet = slug). */}
             <Link
               to="/models/explore/api/"
               search={{ provider: [provider.slug] }}
@@ -81,7 +80,6 @@ export function ExploreProvidersRail({ provider, detail, detailLoading, models, 
             >
               <ShellIcon name="layers" size={13} /> See All Models from Provider
             </Link>
-            {/* Jump to the create-API-model form prefilled for this provider. */}
             <Link
               to="/models/api/new/"
               search={addProviderSearch}

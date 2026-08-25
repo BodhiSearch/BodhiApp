@@ -25,7 +25,6 @@ const AUTH_META: Record<AuthKind, AuthMeta> = {
   http: { icon: 'shield', label: 'HTTP', cls: 'auth-badge-http' },
 };
 
-/** Normalize any catalog `auth_type` or local auth-config `type` to a visual kind. */
 export function authKind(type: CatalogAuthType | 'oauth' | 'header' | 'public' | string): AuthKind {
   switch (type) {
     case 'oauth':

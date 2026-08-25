@@ -1,10 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-/* ── Global tooltip (fixed-position; escapes sidebar overflow) ──
-   One listener delegates over `.shell-tip` elements only — i.e. the
-   COLLAPSED icon-rail buttons (and the avatar). Expanded sidebar items
-   already show their label inline, and popover/popup options carry no
-   tooltip, so neither fires a hint. Flips left near the viewport edge. */
+// One delegated listener over `.shell-tip[data-tip]` — only collapsed icon-rail buttons (and the
+// avatar) carry that class; expanded items show their label inline. Flips left near the viewport edge.
 interface TipState {
   text: string | null;
   top: number;

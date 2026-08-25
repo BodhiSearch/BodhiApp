@@ -1,12 +1,6 @@
 import type { ReactNode } from 'react';
 
-/**
- * Composition primitives for the V2 detail rail (the `dp-*` panel shown when a list row is
- * selected). Nine rail panels shared this markup and each re-declared a local `Row` helper;
- * these slots de-duplicate that while keeping the existing CSS classes (zero visual change).
- * Screens keep their own bespoke sections (capability chips, served-by lists, footers) and
- * just compose them inside these wrappers.
- */
+/** Composition primitives for the V2 detail rail (`dp-*` panel); de-duplicates a `Row` helper nine rail panels each re-declared. */
 
 export function DetailRail({
   children,
@@ -45,10 +39,7 @@ export function DetailRailRows({ children, testId }: { children: ReactNode; test
   );
 }
 
-/**
- * A single key/value row. Renders nothing when the value is null/undefined/empty (the behavior the
- * per-rail `Row` helpers all shared). Value text is monospaced by default.
- */
+/** Renders nothing when the value is null/undefined/empty (behavior the per-rail `Row` helpers all shared). */
 export function DetailRailRow({ k, v, mono = true }: { k: string; v: ReactNode; mono?: boolean }) {
   if (v == null || v === '') return null;
   return (

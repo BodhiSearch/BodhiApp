@@ -11,12 +11,9 @@ export interface BareLayoutProps {
 }
 
 /**
- * Standalone (bare) chrome for in-app full-page flows rendered OUTSIDE the AppShell:
- * a slim branded top bar + a centered, scrollable content region. The OAuth
- * access-request review uses it; future request-access / status pages reuse it by
- * rendering bare (see resolveShellRoute `BARE_PREFIXES`). The eventual route-declared
- * layout seam (techdebt.md) is a drop-in — it only changes how a route is chosen to
- * render bare, not this component.
+ * Standalone chrome for full-page flows rendered outside AppShell (OAuth access-request review,
+ * future request-access/status pages — see resolveShellRoute `BARE_PREFIXES`). The eventual
+ * route-declared layout seam (techdebt.md) only changes how a route picks this, not the component.
  */
 export function BareLayout({ children }: BareLayoutProps) {
   return (
