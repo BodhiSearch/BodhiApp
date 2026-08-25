@@ -130,7 +130,7 @@ fn assert_create_alias_response(response: &UserAliasResponse, expected_snapshot:
   assert_eq!("user", response.source);
   assert_eq!(
     OAIRequestParamsBuilder::default()
-      .temperature(0.7)
+      .temperature(0.7_f32)
       .build()
       .unwrap(),
     response.request_params,
@@ -296,7 +296,7 @@ async fn test_update_alias_handler(#[future] app: Router) -> anyhow::Result<()> 
   assert_eq!("user", updated_alias.source);
   assert_eq!(
     OAIRequestParamsBuilder::default()
-      .temperature(0.8)
+      .temperature(0.8_f32)
       .max_tokens(2000_u16)
       .build()?,
     updated_alias.request_params,
