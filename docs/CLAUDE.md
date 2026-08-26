@@ -18,7 +18,7 @@ Curated, current-truth documentation for BodhiApp, organized for progressive dis
 | **deployments/** | Deploying to Railway (single- or multi-tenant) | `deployments/railway.md`, `deployments/railway-multi-tenant.md` |
 
 ## Authoring areas (not docs)
-- `docs/claude-plans/<yyyymm>/` — where Claude Code writes new implementation plans.
+- `docs/claude-plans/<yyyymm>/` — where Claude Code writes new implementation plans. Maintains per-folder `index.md` files — see `claude-plans/CLAUDE.md` for the mandatory index-maintenance rules.
 - `docs/specs/` — where new feature specs are authored.
 
 > Before writing any test, read `conventions/testing.md`. Before any security assessment, read `architecture/security.md`.
