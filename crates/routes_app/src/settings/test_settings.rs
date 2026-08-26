@@ -522,7 +522,6 @@ async fn test_settings_endpoints_allow_admin(
   let response = router
     .oneshot(session_request(method, path, &cookie))
     .await?;
-  // GET /bodhi/v1/settings returns 200 with real SettingServiceStub
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
 }

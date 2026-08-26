@@ -268,9 +268,8 @@ impl DataService for LocalDataService {
       return Err(DataServiceError::AliasExists(alias_name));
     }
 
-    // A not-yet-downloaded file is allowed: the alias is created and the route handler enqueues the
-    // download. Resolve the real snapshot from disk when the file is present; otherwise fall back to
-    // the requested snapshot (default `main`) — the pull will materialise it.
+    // A not-yet-downloaded file is allowed (the route handler enqueues the download).
+    // Resolve the real snapshot from disk when present; otherwise fall back to the requested one.
     let file_exists =
       self
         .hub_service

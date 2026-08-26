@@ -352,10 +352,7 @@ async fn test_chat_completions_invalid_stream_field() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// Format rejection tests — openai_responses aliases must not be routed via
-// chat completions endpoint
-// ============================================================================
+// Format rejection tests — openai_responses aliases must not be routed via chat completions
 
 #[rstest]
 #[awt]
@@ -430,10 +427,8 @@ async fn test_chat_completions_forwards_anthropic_format_alias() -> anyhow::Resu
   builder.with_data_service().await;
   let db_service = builder.get_db_service().await;
 
-  // Anthropic's less-advertised /v1/chat/completions endpoint accepts
-  // OpenAI-compatible format. The opaque proxy pipeline already injects
-  // x-api-key + anthropic-version auth for ApiFormat::Anthropic, so no
-  // handler-level transformation is needed — forward as-is.
+  // Anthropic's /v1/chat/completions endpoint accepts OpenAI format; the opaque
+  // proxy already injects x-api-key + anthropic-version, so no transform is needed.
   let api_alias = ApiAliasBuilder::test_default()
     .id("anthropic-alias")
     .api_format(ApiFormat::Anthropic)
@@ -481,8 +476,6 @@ async fn test_chat_completions_forwards_anthropic_format_alias() -> anyhow::Resu
 #[tokio::test]
 #[anyhow_trace]
 async fn test_chat_completions_rejects_gemini_alias() -> anyhow::Result<()> {
-  // Gemini aliases are not supported by the OpenAI chat completions endpoint.
-  // The handler must return 400 with a format-mismatch error.
   let mut builder = AppServiceStubBuilder::default();
   builder.with_data_service().await;
   let db_service = builder.get_db_service().await;

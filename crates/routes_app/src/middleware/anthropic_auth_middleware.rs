@@ -134,7 +134,6 @@ mod tests {
       .await
       .unwrap();
     let body_str = String::from_utf8_lossy(&body);
-    // x-api-key is NOT rewritten and NOT stripped on non-Anthropic paths
     assert_eq!("auth=|x-api-key=bodhiapp_testtoken", body_str);
   }
 

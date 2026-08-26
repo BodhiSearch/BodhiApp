@@ -140,9 +140,8 @@ impl ApiModelService for DefaultApiModelService {
 
     let api_format = form.api_format();
 
-    // Format is immutable on edit. The LlmLibertyOauth variant has its own
-    // sibling-table credentials that would orphan on switch-out and silently
-    // 404 on switch-in; the simpler contract is to forbid changes entirely.
+    // Format is immutable on edit: LlmLibertyOauth's sibling-table credentials
+    // would orphan on switch-out and silently 404 on switch-in.
     if api_format != api_alias.api_format {
       return Err(ApiModelServiceError::Validation(
         crate::ObjValidationError::ApiFormatImmutableOnEdit,
@@ -654,9 +653,8 @@ fn validate_forward_all_enum(form: &ApiModelRequest) -> Result<(), ApiModelServi
   Ok(())
 }
 
-/// Defense-in-depth wrapper around `validate_extra_headers_no_auth` that maps the
-/// `validator::ValidationError` into `ApiModelServiceError`. Keeps enforcement at
-/// the service layer in addition to DTO-level validation.
+/// Defense-in-depth wrapper around `validate_extra_headers_no_auth`, mapped to
+/// `ApiModelServiceError` — enforces at the service layer, not just DTO-level.
 pub(crate) fn validate_extra_headers(
   extra_headers: &Option<serde_json::Value>,
 ) -> Result<(), ApiModelServiceError> {

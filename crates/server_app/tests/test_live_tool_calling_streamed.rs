@@ -15,8 +15,6 @@ use axum::http::StatusCode;
 use pretty_assertions::assert_eq;
 use std::time::Duration;
 
-/// Tests multi-turn streaming tool calling with Qwen3 model.
-/// Verifies the complete flow: user query -> tool call -> tool response -> final answer (streamed).
 #[rstest::rstest]
 #[awt]
 #[tokio::test]
@@ -42,7 +40,6 @@ async fn test_live_tool_calling_multi_turn_streamed(
   let chat_endpoint = format!("http://{host}:{port}/v1/chat/completions");
   let client = reqwest::Client::new();
 
-  // Turn 1: Initial request with developer role for tool calling
   let mut messages: Vec<ChatCompletionRequestMessage> = vec![
     ChatCompletionRequestDeveloperMessage::from(
       "You are a model that can do tool calling with the following tools",
@@ -96,7 +93,6 @@ async fn test_live_tool_calling_multi_turn_streamed(
     .as_str()
     .expect("Expected tool call id");
 
-  // Turn 2: Convert tool_calls from JSON to typed structs
   let typed_tool_calls: Vec<ChatCompletionMessageToolCalls> = tool_calls
     .iter()
     .map(|tc| {
@@ -157,7 +153,6 @@ async fn test_live_tool_calling_multi_turn_streamed(
     finish_reason
   );
 
-  // The final response should mention temperature or weather-related content
   let content_lower = content.to_lowercase();
   assert!(
     content_lower.contains("15")

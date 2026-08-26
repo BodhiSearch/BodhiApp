@@ -18,8 +18,6 @@ use reqwest::{Client, StatusCode};
 use serde_json::{json, Value};
 use utils::{create_test_session_for_live_server, start_test_live_server};
 
-/// Create an Anthropic-format API alias via the real REST endpoint.
-/// Returns the alias id from the create response.
 async fn create_anthropic_alias(
   client: &Client,
   base_url: &str,
@@ -49,8 +47,6 @@ async fn create_anthropic_alias(
   Ok(body["id"].as_str().unwrap().to_string())
 }
 
-/// POST /anthropic/v1/messages successfully proxies to upstream with
-/// `x-api-key` + `anthropic-version` headers injected from the stored alias.
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
@@ -109,7 +105,6 @@ async fn test_anthropic_messages_proxy_injects_auth_headers() -> anyhow::Result<
   Ok(())
 }
 
-/// Client-sent `anthropic-beta` header is forwarded to the upstream.
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
@@ -165,7 +160,6 @@ async fn test_anthropic_messages_proxy_forwards_anthropic_beta_header() -> anyho
   Ok(())
 }
 
-/// Non-Anthropic aliases are rejected with 400.
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
@@ -215,8 +209,7 @@ async fn test_anthropic_messages_proxy_rejects_wrong_format() -> anyhow::Result<
   Ok(())
 }
 
-/// GET /anthropic/v1/models aggregates the alias's models from DB.
-/// Does NOT call upstream.
+// Does NOT call upstream.
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
@@ -275,7 +268,6 @@ async fn test_anthropic_models_list_aggregates_from_db() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// Missing model field returns 400 (validation).
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]

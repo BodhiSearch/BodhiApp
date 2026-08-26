@@ -12,10 +12,6 @@ use server_core::test_utils::ResponseTestExt;
 use services::{McpAuthConfigResponse, RegistrationType};
 use tower::ServiceExt;
 
-// ============================================================================
-// POST /bodhi/v1/mcps/auth-configs - Create header auth config
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -66,10 +62,6 @@ async fn test_create_auth_config_header_success() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// GET /bodhi/v1/mcps/auth-configs/{id}
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -105,10 +97,6 @@ async fn test_get_auth_config_success() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// DELETE /bodhi/v1/mcps/auth-configs/{id}
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -137,10 +125,6 @@ async fn test_delete_auth_config_success() -> anyhow::Result<()> {
   assert_eq!(StatusCode::NO_CONTENT, response.status());
   Ok(())
 }
-
-// ============================================================================
-// GET /bodhi/v1/mcps/auth-configs?mcp_server_id=...
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -171,10 +155,6 @@ async fn test_list_auth_configs_success() -> anyhow::Result<()> {
   assert_eq!(1, configs.len());
   Ok(())
 }
-
-// ============================================================================
-// POST /bodhi/v1/mcps/auth-configs - Create OAuth pre-registered auth config
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -239,10 +219,6 @@ async fn test_create_auth_config_oauth_prereg_success() -> anyhow::Result<()> {
   }
   Ok(())
 }
-
-// ============================================================================
-// POST /bodhi/v1/mcps/auth-configs - Create OAuth DCR auth config
-// ============================================================================
 
 #[rstest]
 #[tokio::test]

@@ -141,7 +141,6 @@ describe('SettingsPage V2', () => {
     const save = within(screen.getByTestId('harness-rail')).getByTestId('setting-save');
     await waitFor(() => expect(save).toBeEnabled());
     await user.click(save);
-    // mutation fires without error; rail stays mounted
     await waitFor(() => expect(screen.getByTestId('setting-detail-BODHI_EXEC_VARIANT')).toBeInTheDocument());
   });
 });

@@ -6,7 +6,6 @@ use strum::{Display, EnumString, IntoStaticStr};
 use utoipa::ToSchema;
 use validator::Validate;
 
-/// e.g. `/bodhi/v1/apps/mcps/{id}/mcp`.
 pub fn mcp_proxy_path(id: &str) -> String {
   format!("/bodhi/v1/apps/mcps/{id}/mcp")
 }

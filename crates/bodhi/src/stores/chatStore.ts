@@ -81,10 +81,8 @@ export interface ChatStoreState {
   getChatSettings: (chatId: string) => Promise<PersistedChatSettings | undefined>;
 }
 
-// Two-phase initialization: the store starts with userId='default' and reads
-// currentChatId from the 'default' localStorage key. Callers MUST call
-// loadChats(realUserId) before invoking setCurrentChatId(), otherwise
-// persistence writes to the wrong key. ChatPageContent does this in useEffect.
+// Two-phase init: starts as userId='default'. Callers MUST call loadChats(realUserId) before
+// setCurrentChatId(), otherwise persistence writes to the wrong key (see ChatPageContent's useEffect).
 export const useChatStore = create<ChatStoreState>((set, get) => ({
   chats: [],
   currentChatId: loadCurrentChatId('default'),

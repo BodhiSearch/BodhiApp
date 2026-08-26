@@ -84,7 +84,6 @@ const SectionHead = ({n, title, concept}) => (
   </div>
 );
 
-// Small model row used across multiple screens
 const ModelRow = ({name='Qwen3.5-9B', org='Qwen', task='Text→Text', size='9B', dl='443k', likes='415', fit='green', fitLabel='~38 tok/s', children, highlight}) => (
   <div className="card row" style={{background: highlight?'var(--lotus-soft)':'#fff'}}>
     <div className="ph thumb" style={{background:'linear-gradient(135deg,#ffd6e0,#d4d8f4)'}} />
@@ -104,8 +103,6 @@ const ModelRow = ({name='Qwen3.5-9B', org='Qwen', task='Text→Text', size='9B',
   </div>
 );
 
-// Shared Downloads panel — used as the right-pane detail view on Hub + Discover
-// when the user clicks the "↓ Downloads" menu entry.
 const DownloadsPanel = () => (
   <>
     <div className="right-collapsed-rail">downloads · 1 active</div>
@@ -183,8 +180,6 @@ const DownloadsPanel = () => (
   </>
 );
 
-// Tiny sidebar row used on Hub + Discover to open the DownloadsPanel.
-// Shows a live badge when something is in progress.
 const DownloadsMenu = ({active, count=1, onClick}) => (
   <div className={`downloads-menu${active?' active':''}${count>0?' live':''}`} onClick={onClick}>
     <span className="downloads-menu-icon">↓</span>
@@ -193,12 +188,6 @@ const DownloadsMenu = ({active, count=1, onClick}) => (
   </div>
 );
 
-// Generic list-view row used by the unified Models page in list mode.
-// v25: accepts optional duality props for the unified stream:
-//   · localBadge (tag alias/file/api-model as 'local' when mixed in All mode)
-//   · backlink (↗ catalog link on file-first rows)
-//   · catalogAliases ({count, onClick}) for hf-repo rows with local aliases
-//   · directoryAttribution (show 'from api.getbodhi.app' on unconnected providers)
 const ModelListRow = ({kind='file', title, subtitle, caps=[], meta, cost, status, fitLabel, fit, selected, onClick,
                         localBadge, backlink, catalogAliases, directoryAttribution}) => {
   const kindTone =
@@ -247,8 +236,6 @@ const ModelListRow = ({kind='file', title, subtitle, caps=[], meta, cost, status
   );
 };
 
-// Breadcrumb-style header for mobile + medium (replaces the old ☰-brand topbar).
-// The whole path is tappable and opens MobileMenu.
 const MobileHeader = ({active='My Models', dlCount=1, rightSlot}) => (
   <div className="m-bc-header">
     <div className="m-bc-path">
@@ -267,11 +254,7 @@ const MobileHeader = ({active='My Models', dlCount=1, rightSlot}) => (
   </div>
 );
 
-// Nested app menu that drops from tapping the breadcrumb.
-// v25: Models is a single leaf — no more My Models / Discover sub-tree since
-// the unified Models page handles that split via its mode toggle.
 const MobileMenu = ({active='Models', withDownloads=false, dlCount=1}) => {
-  // Backwards-compat: treat legacy "My Models" / "Discover" as Models active.
   const modelsActive = active==='Models' || active==='My Models' || active==='Discover';
   return (
     <div className="m-menu-overlay">
@@ -292,7 +275,6 @@ const MobileMenu = ({active='Models', withDownloads=false, dlCount=1}) => {
   );
 };
 
-// Tablet-shaped frame used for the medium-width wireframes.
 const TabletFrame = ({label, children}) => (
   <div className="tablet-frame">
     <div className="tablet-label">{label}</div>
@@ -302,7 +284,6 @@ const TabletFrame = ({label, children}) => (
   </div>
 );
 
-// Phone-shaped frame used for mobile variants.
 const PhoneFrame = ({label, children}) => (
   <div className="phone-frame">
     <div className="phone-label">{label}</div>
@@ -314,9 +295,6 @@ const PhoneFrame = ({label, children}) => (
 // Alias form primitives · v20
 // ─────────────────────────────────────────────────────────────
 
-// Progressive-disclosure section. Static (no state) — summary shown when
-// `open=false`, body shown when `open=true`. The wireframe shows both
-// states across different variants rather than toggling live.
 const ParamSection = ({n, title, summary, open=false, children}) => (
   <div className={`param-section ${open?'open':'collapsed'}`}>
     <div className="param-section-head">
@@ -333,7 +311,6 @@ const ParamSection = ({n, title, summary, open=false, children}) => (
   </div>
 );
 
-// Preset chip row — chat / coding / long-ctx / agent / reasoning / custom.
 const PRESETS = [
   {k:'chat',     icon:'💬', label:'Chat',     hint:'balanced'},
   {k:'coding',   icon:'🧑‍💻', label:'Coding',   hint:'temp 0.2'},
@@ -354,7 +331,6 @@ const PresetChipRow = ({selected='chat'}) => (
   </div>
 );
 
-// Quant rows — fit dot, size, speed estimate, recommended badge.
 const QuantPicker = ({quants, selected}) => (
   <div style={{display:'flex', flexDirection:'column', gap:3}}>
     {quants.map(q => (
@@ -380,7 +356,6 @@ const DEFAULT_QUANTS = [
   {q:':F16',    size:'18 GB',  tok:'OOM',     fit:'red',   rec:false, local:false},
 ];
 
-// Fit check summary card.
 const FitCheckCard = ({tone='good', title='✓ Fits with 21 GB headroom', sub='Est. ~38 tok/s on your rig · Apple M3 Max'}) => (
   <div className={`fit-check-card ${tone==='warn'?'warn':tone==='fail'?'fail':''}`}>
     <div className="fit-check-title">{title}</div>
@@ -394,7 +369,6 @@ const FitCheckCard = ({tone='good', title='✓ Fits with 21 GB headroom', sub='E
   </div>
 );
 
-// Live JSON config preview (static snapshot per wireframe).
 const LiveConfigJson = ({config}) => {
   const json = JSON.stringify(config, null, 2);
   return <div className="live-json">{json}</div>;
@@ -410,7 +384,6 @@ const DEFAULT_ALIAS_CONFIG = {
   request:  { response_format: 'auto', tool_choice: 'auto' }
 };
 
-// Inline download strip — file not local yet.
 const DownloadProgressStrip = ({repo='Qwen/Qwen3.5-9B-GGUF', quant=':Q4_K_M', state='queued', size='5.6 GB', pct=0}) => (
   <div className="dl-strip">
     <span className="dl-strip-icon">↓</span>
@@ -427,7 +400,6 @@ const DownloadProgressStrip = ({repo='Qwen/Qwen3.5-9B-GGUF', quant=':Q4_K_M', st
   </div>
 );
 
-// Slider with labeled tick marks.
 const SliderWithMarks = ({label, marks=[], value, thumbPct=50, right}) => (
   <div>
     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
@@ -441,7 +413,6 @@ const SliderWithMarks = ({label, marks=[], value, thumbPct=50, right}) => (
   </div>
 );
 
-// Task category data — 10 categories with illustrative benchmarks + sample refs.
 const TASK_CATEGORIES = [
   {k:'chat',      icon:'💬', title:'Chat · general',        desc:'Everyday conversation, summarization, QA.',            bench:['MMLU','MT-Bench','Arena Elo'], refs:['Llama-3.3','Qwen3-chat','Gemma-2']},
   {k:'coding',    icon:'🧑‍💻', title:'Coding',               desc:'Code completion, refactor, fix, explain.',             bench:['HumanEval','MBPP','SWE-Bench'],     refs:['Qwen2.5-Coder','DeepSeek-Coder','Codestral']},
@@ -476,7 +447,6 @@ const TaskCategoryGrid = () => (
   </div>
 );
 
-// Browse-by selector — Task / Capability / Family segmented control.
 const BrowseBySelector = ({active='family'}) => (
   <div className="browse-by-row">
     <span className="browse-by-label">Browse by</span>
@@ -493,7 +463,6 @@ const BrowseBySelector = ({active='family'}) => (
   </div>
 );
 
-// Overlay shell for desktop AliasOverlay variant.
 const OverlayShell = ({title, context, body, footer}) => (
   <div className="alias-overlay-frame">
     {/* dimmed underlay represents the Discover page the overlay launched from */}
@@ -514,7 +483,6 @@ const OverlayShell = ({title, context, body, footer}) => (
   </div>
 );
 
-// Left rail for alias standalone — section nav.
 const ALIAS_SECTIONS = [
   {k:'identity', n:1, label:'Identity'},
   {k:'model',    n:2, label:'Model file'},
@@ -615,9 +583,6 @@ const ARGS_HELP = {
   ],
 };
 
-// Preset arg bundles — applying a preset replaces current lines.
-// Grouped into "usage" (what you want to do) and "tradeoff" (resource dial)
-// plus a Default (minimal sensible set) and Custom (empty).
 const ARGS_PRESETS = {
   // Default / Custom
   default:  ['--flash-attn auto', '--jinja'],
@@ -644,8 +609,6 @@ const ARGS_PRESETS = {
   small:    ['--ctx-size 4096',   '--flash-attn auto', '--parallel 8', '--cache-type-k q4_0'],
 };
 
-// Preset catalogue — label, icon, group. Used by the chip grid in the
-// merged "Preset & Runtime args" section.
 const PRESET_CATALOGUE = [
   // base
   {k:'default',  icon:'●',   label:'Default',             group:'base'},
@@ -681,8 +644,6 @@ const DEFAULT_ARG_LINES = [
   {flag:'--reasoning',   value:'auto',     default:true,  focused:false},
 ];
 
-// Plain-text render: each line is text with hover tooltip on the flag.
-// Warnings render with a wavy underline (native `title` holds the message).
 const ArgLine = ({line, spec}) => {
   const tooltip = spec
     ? `${spec.flag}${spec.alias?` (${spec.alias})`:''}${spec.value?` ${spec.value}`:''}\n${spec.desc}${spec.def?`\ndefault: ${spec.def}`:''}${spec.enum?`\nallowed: ${spec.enum.join(', ')}`:''}${spec.env?`\nenv: ${spec.env}`:''}`
@@ -697,7 +658,6 @@ const ArgLine = ({line, spec}) => {
   );
 };
 
-// Inline help footer for currently-focused line.
 const ArgsHelpPop = ({help}) => (
   <div className="args-help-pop">
     <span>name</span>
@@ -714,7 +674,6 @@ const ArgsHelpPop = ({help}) => (
   </div>
 );
 
-// Tiny searchable palette — grouped list + filter.
 const ArgsPalette = ({query='ctx'}) => (
   <div className="args-palette">
     <input className="args-palette-search" defaultValue={query} placeholder="filter args (e.g. ctx, flash, chat)…" />
@@ -739,8 +698,6 @@ const ArgsPalette = ({query='ctx'}) => (
   </div>
 );
 
-// Full args editor — used by AliasStandalone / Medium / Overlay.
-// `compact=true` stacks palette below for narrow shells.
 const ArgsEditor = ({
   selectedPreset='chat',
   lines=DEFAULT_ARG_LINES,
@@ -805,7 +762,6 @@ const ArgsEditor = ({
   );
 };
 
-// Grid of all presets grouped by row (Base · Usage · Tradeoff · Custom).
 const PresetGrid = ({selected='chat'}) => {
   const groups = [['base','Base'],['usage','Usage'],['tradeoff','Tradeoff'],['custom','']];
   return (
@@ -827,10 +783,6 @@ const PresetGrid = ({selected='chat'}) => {
   );
 };
 
-// Merged "Preset & Runtime args" block — preset chips always visible,
-// editor collapsed by default. When collapsed, shows a one-liner summary
-// with the first few cmdline args so users still see the preset's effect.
-// Renders as a ParamSection with custom body.
 const PresetAndArgsSection = ({n=3, selected='chat', open=false, compact=false}) => {
   const presetMeta = PRESET_CATALOGUE.find(p=>p.k===selected) || {label:selected, icon:'·'};
   const lines = ARGS_PRESETS[selected] || [];
@@ -888,8 +840,6 @@ const PresetAndArgsSection = ({n=3, selected='chat', open=false, compact=false})
 // Unified Models page primitives · v25
 // ─────────────────────────────────────────────────────────────
 
-// Mode radio — "[o] My Models · [ ] All Models" row 1 of the main toolbar.
-// Shows a counts readout on the right so users see what each bucket contains.
 const ModeToggle = ({mode='my', onChange, localCount=14, catalogCount='3.1M', directoryCount=23}) => (
   <div className="mode-toggle">
     <div className={`mode-toggle-option${mode==='my'?' active':''}`}
@@ -907,7 +857,6 @@ const ModeToggle = ({mode='my', onChange, localCount=14, catalogCount='3.1M', di
   </div>
 );
 
-// Caption under the toggle — a one-liner explaining what each mode draws from.
 const ModeToggleCaption = ({mode='my'}) => (
   <div className="mode-toggle-caption">
     {mode==='my'
@@ -916,7 +865,6 @@ const ModeToggleCaption = ({mode='my'}) => (
   </div>
 );
 
-// Toolbar row 2 — kind chips to narrow within the current mode.
 const KindChipRow = ({active=['all'], mode='my'}) => {
   const kinds = mode==='my'
     ? [['all','All'],['alias','Aliases'],['file','Files'],['api-model','API models'],['provider','Providers']]
@@ -947,18 +895,6 @@ const ModelsAddBrowseMenu = ({style}) => (
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────
-// Ranked display mode · v27
-// Model-level rows that kick in when a benchmark sort is active.
-// See specs/models.md §8 for the full spec. Key rules:
-//   · local file downloaded → collapse HF entry; stack aliases
-//   · API model → stack all api-aliases + show provider identity
-//   · no local backing → show HF / provider / directory entry as-is
-//   · rank numbers are ABSOLUTE across the leaderboard;
-//     filtering narrows visible rows but never renumbers.
-// ─────────────────────────────────────────────────────────────
-
-// Banner shown below the toolbar when ranked mode is active. Dismissible.
 const RankedModeCaption = ({benchmark='HumanEval', specLabel='Coding', onDismiss}) => (
   <div className="rank-caption">
     <span>
@@ -970,10 +906,6 @@ const RankedModeCaption = ({benchmark='HumanEval', specLabel='Coding', onDismiss
   </div>
 );
 
-// Static fixture used by groupIntoRankedRows. Each entry represents the model
-// at a given global rank; `isLocal` controls which entries are visible in
-// `My Models` scope. The shape mirrors what a production aggregator would
-// produce after applying dedup + stack rules to raw entity data.
 const RANKED_FIXTURE_CODING = [
   {
     rank: 1, score: 82.1, benchmark: 'HumanEval',
@@ -1069,18 +1001,11 @@ const RANKED_FIXTURE_CODING = [
   },
 ];
 
-// Pure function: takes the benchmark key + mode, returns ordered RankedRow props.
-// For the wireframe the population is the static fixture above; in production
-// this is where the backend-data shape would be formalized. The mode filter
-// narrows the SET but never renumbers ranks — an item at global #6 still shows
-// as #6 in My Models even if it's the 3rd surviving row.
 const groupIntoRankedRows = (benchmark='HumanEval', mode='all') => {
-  const all = RANKED_FIXTURE_CODING; // only Coding/HumanEval wired for the demo
+  const all = RANKED_FIXTURE_CODING;
   return mode === 'my' ? all.filter(r => r.isLocal) : all;
 };
 
-// One ranked entry — rank number · stacked primaries · identity line · meta.
-// Click dispatches to the same detail panel as the equivalent non-ranked row.
 const RankedRow = ({entry, selected, onClick}) => {
   if (!entry) return null;
   const {rank, primaries=[], identity, score, benchmark, actions=[],
@@ -1131,19 +1056,6 @@ const RankedRow = ({entry, selected, onClick}) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────
-// Create API Model primitives · v29
-// Flat one-form layout with production-parity fields:
-//   · ApiFormatPicker     — format dropdown (openai/anthropic/google/…)
-//   · ApiKeyField         — "Use API key" toggle + masked input + eye
-//   · PrefixField         — "Enable prefix" toggle + text input
-//   · ForwardingModeRadio — "Forward all" / "Forward for selected models only"
-//   · ModelMultiSelect    — selected chips + search + available list + actions
-//   · ApiRail / ApiMediumAnchors — sticky/top section nav
-// Model selection section is CONDITIONAL on forwarding mode — shown only when
-// "Forward for selected" is active. See specs/api.md §4.
-// ─────────────────────────────────────────────────────────────
-
 const API_FORMATS = [
   {code: 'openai-responses',     label: 'OpenAI — Responses',       defaultBaseUrl: 'https://api.openai.com/v1'},
   {code: 'openai-completions',   label: 'OpenAI — Completions',     defaultBaseUrl: 'https://api.openai.com/v1'},
@@ -1167,7 +1079,6 @@ const FIXTURE_OPENAI_MODELS = [
   'text-embedding-3-large',
 ];
 
-// Dropdown picker for API format. Wireframe: Field-styled closed state only.
 const ApiFormatPicker = ({value='openai-completions', onChange}) => {
   const selected = API_FORMATS.find(f => f.code === value) || API_FORMATS[0];
   return (
@@ -1180,7 +1091,6 @@ const ApiFormatPicker = ({value='openai-completions', onChange}) => {
   );
 };
 
-// "Use API key" toggle + masked input with eye toggle. Disabled until toggled on.
 const ApiKeyField = ({enabled=true, value='••••••••••••••••••••••', masked=true, onEnabledChange, onValueChange, onToggleMask}) => (
   <div className="api-toggle-field">
     <input type="checkbox" checked={enabled} onChange={e => onEnabledChange && onEnabledChange(e.target.checked)} />
@@ -1197,7 +1107,6 @@ const ApiKeyField = ({enabled=true, value='••••••••••••�
   </div>
 );
 
-// "Enable prefix" toggle + text input. Example helper shown under the input.
 const PrefixField = ({enabled=true, value='openai/', onEnabledChange, onValueChange, example='openai/gpt-4'}) => (
   <div className="api-toggle-field">
     <input type="checkbox" checked={enabled} onChange={e => onEnabledChange && onEnabledChange(e.target.checked)} />
@@ -1214,8 +1123,6 @@ const PrefixField = ({enabled=true, value='openai/', onEnabledChange, onValueCha
   </div>
 );
 
-// Two-option radio: forward-all vs forward-for-selected. Drives the
-// conditional rendering of the Model selection section in api.jsx.
 const ForwardingModeRadio = ({value='selected', onChange}) => {
   const opts = [
     {k: 'all',      label: 'Forward all requests with prefix'},
@@ -1235,9 +1142,6 @@ const ForwardingModeRadio = ({value='selected', onChange}) => {
   );
 };
 
-// Full model picker: selected-chips strip + search + available list + actions.
-// `onSelect`/`onDeselect` toggle individual models; `onSelectAll`/`onClear`
-// bulk ops; `onFetch` mimics a re-fetch of the provider's model list.
 const ModelMultiSelect = ({
   selected=['gpt-4-turbo','gpt-5-mini','gpt-5.3-codex'],
   available=FIXTURE_OPENAI_MODELS,
@@ -1300,7 +1204,6 @@ const ModelMultiSelect = ({
   );
 };
 
-// Sticky section nav for ApiStandalone — mirrors AliasRail.
 const ApiRail = ({active='provider'}) => {
   const items = [
     {k:'provider', label:'Provider'},
@@ -1317,7 +1220,6 @@ const ApiRail = ({active='provider'}) => {
   );
 };
 
-// Top-of-page jump chips for ApiMedium — mirrors AliasMediumAnchors.
 const ApiMediumAnchors = ({active='provider'}) => {
   const items = [
     {k:'provider', label:'Provider'},
@@ -1333,9 +1235,6 @@ const ApiMediumAnchors = ({active='provider'}) => {
   );
 };
 
-// ═════════════════ MCP primitives (v30) ═════════════════
-
-// 9 curated categories drawn from research across Smithery / mcp.so / mcpmarket / Docker Hub MCP.
 const MCP_CATEGORIES = [
   {code:'all',         label:'All',                icon:'◎'},
   {code:'productivity',label:'Productivity',       icon:'▤'},
@@ -1349,9 +1248,6 @@ const MCP_CATEGORIES = [
   {code:'finance',     label:'Finance',            icon:'◉'},
 ];
 
-// Catalog fixture — 12 entries that span the 5 card-states, loosely modelled on the production
-// Register-MCP-Server screenshots (download (23).png header-auth and download (24).png oauth).
-// `state` is the DERIVED state a viewer would see, not a DB column — computed from the join.
 const MCP_CATALOG_FIXTURE = [
   {slug:'notion', name:'Notion', publisher:'Notion Labs', verified:true, category:'productivity',
    logo:'N', tags:['oauth','featured','official'],

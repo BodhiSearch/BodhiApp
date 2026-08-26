@@ -1,9 +1,5 @@
-// Re-export BodhiApp management API types.
-// For OpenAI-compatible types, use the subpath import:
-//   import { CreateChatCompletionRequest } from '@bodhiapp/ts-client/openai';
 export * from './types';
 
-// MSW-compatible schema types for both specs
 export type { paths, components } from './openapi-typescript/openapi-schema';
 export type {
   paths as pathsOai,

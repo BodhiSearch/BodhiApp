@@ -48,8 +48,7 @@ pub enum RoleError {
 }
 
 impl ResourceRole {
-  /// Checks if this role has access to the required role level
-  /// Higher roles automatically have access to lower role endpoints
+  /// Higher roles automatically have access to lower role endpoints.
   pub fn has_access_to(&self, required: &ResourceRole) -> bool {
     self >= required
   }
@@ -65,8 +64,7 @@ impl ResourceRole {
     }
   }
 
-  /// Parse the highest role from a slice of resource role strings.
-  /// Returns the highest valid role found, or an error if no valid roles are present.
+  /// Returns the highest valid role parsed from the slice, or an error if none parse.
   pub fn from_resource_role<T: AsRef<str>>(resource_roles: &[T]) -> Result<Self, RoleError> {
     resource_roles
       .iter()

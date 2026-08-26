@@ -184,7 +184,6 @@ describe('CreateAliasPage', () => {
     await user.type(screen.getByTestId('alias-input'), 'test-alias');
     await selectRepo(user, 'Qwen/Qwen3-Coder-32B-GGUF');
 
-    // The quant table loads from the reference catalog; pick a quant to set the filename.
     const quantRow = await screen.findByTestId('quant-row-Q4_K_M');
     await user.click(quantRow);
     await waitFor(() => expect(quantRow).toHaveAttribute('data-test-state', 'selected'));
@@ -245,7 +244,6 @@ describe('CreateAliasPage', () => {
     await user.type(contextParamsTextarea, '--ctx-size 2048\n--parallel 4\n--threads 8');
     expect(contextParamsTextarea).toHaveValue('--ctx-size 2048\n--parallel 4\n--threads 8');
 
-    // Click-to-add a flag from the catalog appends it to the textarea.
     await user.click(screen.getByTestId('context-flag-add---flash-attn'));
     await waitFor(() => expect((contextParamsTextarea as HTMLTextAreaElement).value).toContain('--flash-attn'));
     // Re-adding the same flag is blocked (the catalog entry is now disabled).
@@ -270,7 +268,6 @@ describe('CreateAliasPage', () => {
       render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
 
-    // System prompt has its own textarea.
     const systemPrompt = screen.getByTestId('system-prompt');
     await user.type(systemPrompt, 'You are concise.');
     expect(systemPrompt).toHaveValue('You are concise.');

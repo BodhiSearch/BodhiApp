@@ -41,8 +41,7 @@ describe('toApproveBody — models_access', () => {
   });
 
   it('NOT requested → deny (empty specific), never all', () => {
-    // Even if the owner state says modelMode:'all', a model selector the app did not
-    // request must not silently grant all models.
+    // Fail-closed: owner state alone must not grant access the app never requested.
     const out = toApproveBody(reqNone, [], { ...baseState, modelMode: 'all', models: ['m1'] });
     expect(out.models_access).toEqual({ type: 'specific', ids: [] });
   });

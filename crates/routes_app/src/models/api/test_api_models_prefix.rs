@@ -341,8 +341,8 @@ async fn test_create_api_model_forward_all_requires_prefix(
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["gpt-4".to_string()],
-      prefix: None,                  // No prefix provided
-      forward_all_with_prefix: true, // But forward_all is enabled
+      prefix: None,
+      forward_all_with_prefix: true,
       extra_headers: None,
       extra_body: None,
     },
@@ -407,7 +407,7 @@ async fn test_create_api_model_duplicate_prefix_error(
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["claude-3".to_string()],
-      prefix: Some("azure/".to_string()), // Same prefix
+      prefix: Some("azure/".to_string()),
       forward_all_with_prefix: false,
       extra_headers: None,
       extra_body: None,
@@ -492,7 +492,7 @@ async fn test_update_api_model_duplicate_prefix_error(
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["claude-3".to_string()],
-      prefix: Some("azure/".to_string()), // Trying to use existing prefix
+      prefix: Some("azure/".to_string()),
       forward_all_with_prefix: false,
       extra_headers: None,
       extra_body: None,

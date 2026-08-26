@@ -22,7 +22,6 @@ import { cn } from '@/lib/utils';
 import { fadeInUp, variantTransition } from '@/app/home/animations';
 import type { DockerData, ReleasesData } from '@/types/docker';
 
-// Helper to get complete Tailwind classes for variant colors
 const getVariantColorClasses = (color: string): { light: string; dark: string } => {
   const colorMap: Record<string, { light: string; dark: string }> = {
     blue: { light: 'bg-blue-100', dark: 'dark:bg-blue-900/20' },
@@ -87,7 +86,6 @@ export function DockerSection() {
     );
   }
 
-  // Ensure selectedVariant is valid, fallback to first available
   const validSelectedVariant = dockerData.variants[selectedVariant] ? selectedVariant : variantKeys[0] || 'cpu';
   const currentVariant = dockerData.variants[validSelectedVariant];
   const currentMetadata = getVariantMetadata(validSelectedVariant);
@@ -110,13 +108,11 @@ export function DockerSection() {
             <h2 className="text-3xl font-bold mb-4">Deploy with Docker</h2>
           </div>
 
-          {/* Variant Selector */}
           <div className="mb-8">
             <Select value={validSelectedVariant} onValueChange={setSelectedVariant}>
               <SelectTrigger className="w-full h-auto min-h-[4rem] text-base">
                 <SelectValue>
                   <div className="flex items-center gap-3 py-2">
-                    {/* Icon */}
                     <div
                       className={cn(
                         'p-2.5 rounded-lg',
@@ -131,7 +127,6 @@ export function DockerSection() {
                       )}
                     </div>
 
-                    {/* Variant Name */}
                     <div className="flex flex-col items-start flex-1">
                       <span className="font-semibold text-slate-900">{currentMetadata.displayName}</span>
                       <span className="text-sm text-muted-foreground">
@@ -139,7 +134,6 @@ export function DockerSection() {
                       </span>
                     </div>
 
-                    {/* Badges */}
                     <div className="flex flex-wrap gap-2">
                       {currentMetadata.recommended && (
                         <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
@@ -167,7 +161,6 @@ export function DockerSection() {
                     return (
                       <SelectItem key={variantKey} value={variantKey} className="h-auto min-h-[4rem] cursor-pointer">
                         <div className="flex items-center gap-3 py-2 w-full">
-                          {/* Icon */}
                           <div className={cn('p-2 rounded-lg', getVariantColorClasses(metadata.color).light)}>
                             {metadata.gpuVendor ? (
                               <Zap className="h-4 w-4 text-slate-700" />
@@ -176,7 +169,6 @@ export function DockerSection() {
                             )}
                           </div>
 
-                          {/* Info */}
                           <div className="flex flex-col items-start flex-1 min-w-0">
                             <span className="font-medium text-slate-900">{metadata.displayName}</span>
                             <span className="text-xs text-muted-foreground truncate w-full">
@@ -184,7 +176,6 @@ export function DockerSection() {
                             </span>
                           </div>
 
-                          {/* Badges */}
                           <div className="flex flex-wrap gap-1 ml-2">
                             {metadata.recommended && (
                               <Badge
@@ -209,9 +200,7 @@ export function DockerSection() {
             </Select>
           </div>
 
-          {/* Variant Details - Animated */}
           <motion.div key={validSelectedVariant} {...variantTransition} className="space-y-6">
-            {/* Info Cards Grid */}
             <div className="grid md:grid-cols-2 gap-4">
               <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
                 <div className="text-sm font-medium text-muted-foreground mb-1">Platforms</div>
@@ -246,18 +235,15 @@ export function DockerSection() {
               )}
             </div>
 
-            {/* Description Card */}
             <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-900 dark:text-blue-100">{currentMetadata.description}</p>
             </div>
 
-            {/* Pull Command */}
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-muted-foreground">Pull Image</h3>
               <CopyableCodeBlock command={currentVariant.pull_command} language="bash" />
             </div>
 
-            {/* Run Command */}
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-muted-foreground">Run Container</h3>
               <CopyableCodeBlock

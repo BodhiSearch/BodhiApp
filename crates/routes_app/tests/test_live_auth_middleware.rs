@@ -305,7 +305,6 @@ async fn test_cross_client_token_exchange_auth_service_error(
   assert_eq!(StatusCode::UNAUTHORIZED, response.status());
 
   let body = response.text().await?;
-  // Verify the error is aud-related (missing audience or invalid audience)
   assert!(
     body.contains("audience") || body.contains("aud"),
     "Expected aud-related error, got: {}",

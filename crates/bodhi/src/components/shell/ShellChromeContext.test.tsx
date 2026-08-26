@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import userEvent from '@testing-library/user-event';
 
-/** Renders the currently-published slots so the test can assert on them. */
 function SlotsProbe() {
   const slots = useShellSlots();
   return (

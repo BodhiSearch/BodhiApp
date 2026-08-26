@@ -59,7 +59,6 @@ pub trait TokenService: Send + Sync + std::fmt::Debug {
     token: &mut TokenEntity,
   ) -> Result<(), TokenServiceError>;
 
-  /// Fetch a token by id, update its name and status, and persist.
   async fn update_token(
     &self,
     tenant_id: &str,

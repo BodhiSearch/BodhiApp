@@ -105,7 +105,6 @@ mod tests {
       .await
       .unwrap();
     let body_str = String::from_utf8_lossy(&body);
-    // x-goog-api-key NOT touched on non-/v1beta/* paths
     assert_eq!("auth=|x-goog-api-key=bodhiapp_testtoken", body_str);
   }
 
@@ -126,7 +125,6 @@ mod tests {
       .await
       .unwrap();
     let body_str = String::from_utf8_lossy(&body);
-    // Authorization kept; x-goog-api-key removed without overwriting auth
     assert_eq!("auth=Bearer bodhiapp_existing|x-goog-api-key=", body_str);
   }
 

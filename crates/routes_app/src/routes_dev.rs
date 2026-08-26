@@ -373,7 +373,6 @@ mod tests {
     let response = dev_db_reset_handler(auth_scope).await?;
     assert_eq!(StatusCode::OK, response.status());
 
-    // Verify all tables are empty
     assert_eq!(
       None,
       db_service
@@ -411,7 +410,6 @@ mod tests {
         .await?
     );
 
-    // Verify sessions cleared
     assert_eq!(
       0,
       session_service.count_sessions_for_user("test-user").await?

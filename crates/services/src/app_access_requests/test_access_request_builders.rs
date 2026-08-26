@@ -1,7 +1,6 @@
 use crate::app_access_requests::{AppAccessRequest, AppAccessRequestStatus};
 use chrono::Duration;
 
-/// A Draft `AppAccessRequest` row owned by `tenant_id`.
 pub(crate) fn make_request(
   id: &str,
   tenant_id: &str,
@@ -28,8 +27,6 @@ pub(crate) fn make_request(
   }
 }
 
-/// An Approved request owned by `user_id` (the shape `update_revocation` /
-/// `list_approved_for_user` operate on).
 pub(crate) fn approved_request(
   id: &str,
   tenant_id: &str,

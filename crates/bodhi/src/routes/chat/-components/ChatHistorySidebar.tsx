@@ -10,12 +10,8 @@ import { ChatHistory } from './ChatHistory';
 
 const HIST_POP = 'chat-history';
 
-/**
- * The chat-history left-sidebar slot. Expanded: a "New chat" button, a History header with a
- * collapsible search, then the grouped list. Collapsed (icon-rail): two icon buttons whose
- * history button opens an AnchoredPopover list — driven by the shell's `collapsed`/`openPop` seam,
- * mirroring ShellNav.
- */
+// Collapsed (icon-rail) mode drives the history popover through the shell's
+// `collapsed`/`openPop` seam, mirroring ShellNav.
 export function ChatHistorySidebar({ listOpen = true }: { listOpen?: boolean }) {
   const { collapsed, openPop, setOpenPop } = useShell();
   const createNewChat = useChatStore((s) => s.createNewChat);

@@ -20,7 +20,6 @@ static HTTP_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
     .expect("Failed to build HTTP client")
 });
 
-/// Headers to forward from client request to upstream.
 const FORWARD_REQUEST_HEADERS: &[&str] = &[
   "content-type",
   "accept",
@@ -29,7 +28,6 @@ const FORWARD_REQUEST_HEADERS: &[&str] = &[
   "last-event-id",
 ];
 
-/// Headers to forward from upstream response to client.
 const FORWARD_RESPONSE_HEADERS: &[&str] = &[
   "content-type",
   "mcp-session-id",
@@ -111,7 +109,6 @@ pub async fn mcp_proxy_handler(
     });
   let mut upstream_req = HTTP_CLIENT.request(upstream_method, upstream_url.as_str());
 
-  // Forward selected headers from client
   for header_name in FORWARD_REQUEST_HEADERS {
     if let Some(value) = parts.headers.get(*header_name) {
       if let Ok(value_str) = value.to_str() {
@@ -120,9 +117,8 @@ pub async fn mcp_proxy_handler(
     }
   }
 
-  // Force-set Accept header for MCP protocol compliance.
-  // Some clients or browser fetch configurations may not pass Accept correctly.
-  // reqwest::header() appends rather than replaces, so we overwrite explicitly.
+  // Force-set Accept for MCP protocol compliance (clients don't always set it correctly);
+  // reqwest's .header() appends rather than replaces, so this must overwrite explicitly.
   if method == axum::http::Method::POST {
     upstream_req = upstream_req.header(
       reqwest::header::ACCEPT,
@@ -132,7 +128,6 @@ pub async fn mcp_proxy_handler(
     upstream_req = upstream_req.header(reqwest::header::ACCEPT, "text/event-stream");
   }
 
-  // Inject auth headers
   if let Some(ref params) = auth_params {
     for (key, value) in &params.headers {
       upstream_req = upstream_req.header(key.as_str(), value.as_str());
@@ -155,14 +150,12 @@ pub async fn mcp_proxy_handler(
   let status = upstream_resp.status();
   let mut response_builder = Response::builder().status(status.as_u16());
 
-  // Forward selected headers from upstream
   for header_name in FORWARD_RESPONSE_HEADERS {
     if let Some(value) = upstream_resp.headers().get(*header_name) {
       response_builder = response_builder.header(*header_name, value);
     }
   }
 
-  // Stream response body
   let body = Body::from_stream(upstream_resp.bytes_stream());
   Ok(response_builder.body(body).unwrap().into_response())
 }

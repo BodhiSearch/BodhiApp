@@ -22,15 +22,14 @@ pub trait TenantService: Send + Sync + std::fmt::Debug {
   ) -> Result<Tenant>;
   /// Atomically set tenant status to Ready, set created_by, and upsert tenant-user membership.
   async fn set_tenant_ready(&self, tenant_id: &str, user_id: &str) -> Result<()>;
-  /// Upsert a tenant-user membership (idempotent).
+  /// Idempotent.
   async fn upsert_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<()>;
-  /// Delete a tenant-user membership (idempotent).
+  /// Idempotent.
   async fn delete_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<()>;
-  /// List all tenants a user has membership in, regardless of status.
+  /// Regardless of tenant status.
   async fn list_user_tenants(&self, user_id: &str) -> Result<Vec<Tenant>>;
   async fn has_tenant_memberships(&self, user_id: &str) -> Result<bool>;
-  /// Delete a tenant by its client_id, including associated tenant_users records.
-  /// Idempotent: returns Ok if tenant does not exist.
+  /// Cascades to associated tenant_users; idempotent if tenant does not exist.
   async fn delete_tenant_by_client_id(&self, client_id: &str) -> Result<()>;
   async fn list_tenants_by_creator(&self, created_by: &str) -> Result<Vec<Tenant>>;
 }

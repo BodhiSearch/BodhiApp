@@ -7,15 +7,9 @@ use services::AuthContext;
 use services::{AppService, AuthScopedAppService};
 use std::{ops::Deref, sync::Arc};
 
-/// Newtype wrapper around `AuthScopedAppService` that implements `FromRequestParts`
-/// for use as an Axum extractor in route handlers.
-///
-/// Extracts `AuthContext` from request extensions (populated by auth middleware)
-/// and the `AppService` from the router state, then combines them into an
-/// `AuthScopedAppService` for user-scoped service access.
-///
-/// Falls back to `AuthContext::Anonymous` if no auth middleware has populated the
-/// extension (e.g., handlers behind `optional_auth_middleware` or public endpoints).
+/// Axum extractor combining `AuthContext` (from request extensions) with `AppService`
+/// (from router state) into `AuthScopedAppService`. Falls back to `AuthContext::Anonymous`
+/// if no auth middleware populated the extension (e.g. public endpoints).
 pub struct AuthScope(pub AuthScopedAppService);
 
 impl Deref for AuthScope {
@@ -51,7 +45,7 @@ where
           deployment: services::DeploymentMode::Standalone,
         });
 
-    // Extract the app service using FromRef (same mechanism as State<T> extractor)
+    // Same mechanism as the State<T> extractor
     let app_service = Arc::<dyn AppService>::from_ref(state);
 
     Ok(AuthScope(AuthScopedAppService::new(

@@ -42,10 +42,8 @@ impl ModelMetadataRepository for DefaultDbService {
     self
       .with_tenant_txn(&tenant_id, |txn| {
         Box::pin(async move {
-          // When api_model_id is NULL, we use delete-then-insert instead of ON CONFLICT upsert.
-          // SQL composite unique indexes treat each NULL as distinct, so a row with
-          // api_model_id=NULL never conflicts with another NULL row. We must manually
-          // delete the matching record first, then insert the replacement.
+          // SQL composite unique indexes treat each NULL as distinct, so a NULL api_model_id row
+          // never conflicts under ON CONFLICT — delete the matching record manually, then insert.
           if metadata.api_model_id.is_none() {
             let mut delete_query = model_metadata::Entity::delete_many()
               .filter(model_metadata::Column::TenantId.eq(metadata.tenant_id.clone()))

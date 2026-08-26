@@ -171,10 +171,8 @@ function agentMessageToLegacy(msg: AgentMessage): Message | null {
       metadata:
         assistantMsg.usage || assistantMsg.model
           ? {
-              // The model the request was sent under. For a model-router this is
-              // the router alias (the pi SDK reports the request model, not the
-              // upstream-echoed served model), so E2E distinguishes targets via
-              // response content rather than this field.
+              // Request-time model; for a model-router this is the router alias — the pi SDK reports
+              // the request model, not the upstream-echoed served one, so E2E uses response content instead.
               model: assistantMsg.model,
               usage: assistantMsg.usage
                 ? {

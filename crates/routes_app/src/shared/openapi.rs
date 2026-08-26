@@ -588,7 +588,6 @@ fn apply_security_schemes(components: &mut utoipa::openapi::Components) {
   );
 }
 
-/// Modifies OpenAPI documentation with environment-specific settings
 #[derive(Debug, derive_new::new)]
 pub struct OpenAPIEnvModifier {
   setting_service: Arc<dyn SettingService>,
@@ -614,7 +613,6 @@ impl OpenAPIEnvModifier {
   }
 }
 
-/// Modifies OpenAPI documentation to add security schemes
 #[derive(Debug)]
 pub struct SecurityModifier;
 
@@ -630,8 +628,6 @@ impl Modify for SecurityModifier {
   }
 }
 
-/// Modifies OpenAPI documentation to add common error responses to all endpoints.
-///
 /// Each spec provides its own error schema name — the management spec uses
 /// `BodhiErrorResponse`, the OpenAI-compat spec uses async-openai's `openai.WrappedError`
 /// envelope — because the two surfaces have different wire formats.

@@ -1,10 +1,3 @@
-/**
- * Tool name encoding/decoding utilities for MCP (Model Context Protocol) servers.
- *
- * Tool names are encoded as: mcp__{mcpSlug}__{toolName}
- * where mcpSlug is the unique instance slug and toolName is the tool name.
- */
-
 export function encodeMcpToolName(mcpSlug: string, toolName: string): string {
   return `mcp__${mcpSlug}__${toolName}`;
 }

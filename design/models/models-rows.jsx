@@ -1,17 +1,5 @@
-/* ═══════════════════════════════════════════════════════════════
-   Bodhi Models — list rows
-   models/models-rows.jsx   (load after models-base.jsx)
-
-   The three row renderers for the main list: MyRow (My Models — local
-   files, aliases, fallbacks, API models), LocalRow (HuggingFace repo
-   results), and ApiRow (API provider results). Badges/verified marks
-   used by the local rows come from bodhi-models-local.jsx.
-
-   Exports: MyRow, LocalRow, ApiRow
-═══════════════════════════════════════════════════════════════ */
 const { STATUS_CFG, PROV_COLORS, FAMILY_SLUG } = window.MODELS_DATA;
 
-/* catalog formatters (mirror models.dev / fmtPrice) */
 const fmtCtx = (n) => !n ? '—' : n >= 1000000 ? (n % 1000000 === 0 ? n / 1000000 + 'M' : (n / 1000000).toFixed(1) + 'M') : Math.round(n / 1000) + 'K';
 const catCaps = (m) => {
   const c = [];
@@ -22,10 +10,7 @@ const catCaps = (m) => {
   return c;
 };
 
-/* Provider logo — real brand glyph from the Simple Icons CDN, tinted to the
-   provider's brand color on a soft tile. Only slugs actually published on the
-   CDN are listed; the rest (e.g. OpenAI / Groq / Together, removed for
-   trademark) render a tasteful 2-letter brand monogram instead. */
+/* Brand glyphs from Simple Icons CDN; non-CDN providers use monogram fallback. */
 const PROV_ICON_SLUG = { anthropic:'anthropic', openrouter:'openrouter', 'nvidia-nim':'nvidia' };
 function ProviderLogo({ slug, provider, size = 36, radius = 9 }) {
   const [err, setErr] = React.useState(false);
@@ -147,8 +132,7 @@ function ApiRow({ p, active, onClick }) {
 
 }
 
-/* Model monogram tile — family-tinted, mirrors ProviderLogo styling but keyed
-   off the model family (logos use brand hexes, not UI tokens). */
+/* Family-tinted monogram; uses model family colors not brand hexes. */
 function ModelLogo({ family, name, size = 36, radius = 9 }) {
   const color = PROV_COLORS[FAMILY_SLUG[family]] || '#888';
   const mono = String(family || name || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase();

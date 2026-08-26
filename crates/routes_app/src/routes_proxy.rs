@@ -244,7 +244,6 @@ mod tests {
     let (socket_addr, shutdown_tx) = backend_server;
     let app = build_ui_proxy_router(format!("http://{socket_addr}"));
 
-    // /ui → backend /ui
     let res = app
       .clone()
       .oneshot(
@@ -258,7 +257,6 @@ mod tests {
     assert_eq!(StatusCode::OK, res.status());
     assert_eq!("Root no slash", res.text().await.unwrap());
 
-    // /ui/ → backend /ui/
     let res = app
       .clone()
       .oneshot(
@@ -272,7 +270,6 @@ mod tests {
     assert_eq!(StatusCode::OK, res.status());
     assert_eq!("Root with slash", res.text().await.unwrap());
 
-    // /ui/page → backend /ui/page
     let res = app
       .clone()
       .oneshot(
@@ -286,7 +283,6 @@ mod tests {
     assert_eq!(StatusCode::OK, res.status());
     assert_eq!("Proxied page", res.text().await.unwrap());
 
-    // /ui/api/data → backend /ui/api/data
     let res = app
       .clone()
       .oneshot(
@@ -300,7 +296,6 @@ mod tests {
     assert_eq!(StatusCode::OK, res.status());
     assert_eq!("Proxied data", res.text().await.unwrap());
 
-    // /ui/missing → 404 from backend
     let res = app
       .oneshot(
         Request::builder()

@@ -340,7 +340,6 @@ async fn test_optional_auth_endpoints_accept_unauthenticated(
   use tower::ServiceExt;
   let (router, _, _temp) = build_test_router().await?;
   let response = router.oneshot(unauth_request(method, path)).await?;
-  // These endpoints should not return 401/403 for unauthenticated users
   assert_ne!(StatusCode::UNAUTHORIZED, response.status());
   assert_ne!(StatusCode::FORBIDDEN, response.status());
   Ok(())
@@ -359,7 +358,7 @@ async fn test_guest_endpoints_require_authentication(
   use tower::ServiceExt;
   let (router, _, _temp) = build_test_router().await?;
   let response = router.oneshot(unauth_request(method, path)).await?;
-  // These endpoints require authentication (moved to guest_endpoints behind auth_middleware)
+  // Moved to guest_endpoints behind auth_middleware.
   assert_eq!(StatusCode::UNAUTHORIZED, response.status());
   Ok(())
 }

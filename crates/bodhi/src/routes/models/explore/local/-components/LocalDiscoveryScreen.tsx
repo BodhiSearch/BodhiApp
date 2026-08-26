@@ -114,7 +114,7 @@ export function LocalDiscoveryScreen() {
   // Selection lives in the URL via replace (no history entries) — Back/Forward skips past selections.
   const select = useCallback(
     (key: string | null) => {
-      if ((key ?? undefined) === search.select) return; // dedup
+      if ((key ?? undefined) === search.select) return;
       withViewTransition(() => {
         setDownloadsOpen(false);
         navigate({

@@ -46,8 +46,7 @@ impl Related<super::mcp_auth_config_entity::Entity> for Entity {
 impl ActiveModelBehavior for ActiveModel {}
 
 /// View that excludes encryption salt/nonce fields for domain reads.
-/// Includes encrypted_client_secret and encrypted_registration_access_token
-/// for is_some() checks only (ciphertext is useless without salt/nonce).
+/// Includes ciphertext fields only for is_some() checks — useless without salt/nonce.
 #[derive(Debug, Clone, DerivePartialModel, FromQueryResult)]
 #[sea_orm(entity = "Entity")]
 pub struct McpOAuthConfigDetailView {

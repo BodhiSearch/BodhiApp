@@ -1,11 +1,5 @@
 #!/usr/bin/env node
 
-/**
- * Fetch the current version of a package from npm registry
- * Usage: node get_npm_version.js <package-name>
- * Returns the version string or "0.0.0" if package not found
- */
-
 import https from 'https';
 
 function fetchNpmVersion(packageName) {

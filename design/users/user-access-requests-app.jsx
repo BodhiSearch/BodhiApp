@@ -1,10 +1,4 @@
-/* ═══════════════════════════════════════════════════
-   USER ACCESS REQUESTS — list page + right detail panel (on AppShell)
-   user-access-requests-app.jsx  (load after bodhi-app-shell.jsx + bodhi-list.jsx)
-   People requesting access to this Bodhi instance. Admin assigns a role,
-   then Approves or Rejects. The role picker + Approve/Reject stay in the
-   row (pending) and repeat in the right detail panel (rail).
-═══════════════════════════════════════════════════ */
+/* User access requests: list + detail panel. Role picker + Approve/Reject shared. */
 const { useState } = React;
 const Ic = ShellIcon;
 

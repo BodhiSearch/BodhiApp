@@ -1,15 +1,4 @@
-/* ═══════════════════════════════════════════════════
-   bodhi-select.js — app-wide themed <select> dropdown
-
-   Native <select> popups are drawn by the OS and can't be themed.
-   This progressively enhances EVERY <select> on the page: the closed
-   control stays the real native element (so value / focus / forms /
-   React state all keep working untouched) — we only suppress the OS
-   popup and render a themed listbox overlay in its place.
-
-   Opt out per element with  data-native  (or <select multiple> / size>1).
-   Works for static HTML and React-mounted selects (MutationObserver).
-═══════════════════════════════════════════════════ */
+/* Progressive enhancement: suppress OS popup, render themed listbox overlay. */
 (function () {
   if (window.__bodhiSelectInit) return;
   window.__bodhiSelectInit = true;
@@ -72,7 +61,7 @@
 
   const CHECK = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
-  /* native value setter so React's value-tracker notices the change */
+  /* React's value-tracker only notices native value setter. */
   const nativeValueSet = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set;
 
   const enhanced = new WeakSet();
@@ -87,7 +76,6 @@
     return sel && sel.tagName === 'SELECT' && !sel.multiple && sel.size <= 1 && !sel.hasAttribute('data-native');
   }
 
-  /* ── build / position the overlay ───────────────── */
   function buildPop(sel) {
     pop = document.createElement('div');
     pop.className = 'bsel-pop';
@@ -152,7 +140,6 @@
     if (rightOverflow > 0) pop.style.left = Math.max(8, r.left - rightOverflow) + 'px';
   }
 
-  /* ── open / close ───────────────────────────────── */
   function open(sel) {
     if (host === sel) return;
     close();
@@ -179,7 +166,7 @@
   }
 
   function onScroll(e) {
-    // reposition while scrolling the page; close if the host scrolls out
+    // Reposition while scrolling; close if host scrolls out.
     if (pop && pop.contains(e.target)) return;
     position();
   }
@@ -224,7 +211,6 @@
     if (match >= 0) setActive(match, true);
   }
 
-  /* ── input interception on the native select ────── */
   function onHostMouseDown(e) {
     const sel = e.currentTarget;
     if (!shouldEnhance(sel) || sel.disabled) return;
@@ -236,7 +222,7 @@
     const sel = e.currentTarget;
     if (!shouldEnhance(sel) || sel.disabled) return;
     if (host === sel) {
-      // overlay is open — drive it
+      // Overlay is open — drive it.
       switch (e.key) {
         case 'ArrowDown': e.preventDefault(); moveActive(1); break;
         case 'ArrowUp':   e.preventDefault(); moveActive(-1); break;
@@ -249,7 +235,7 @@
         default:          if (e.key.length === 1) { e.preventDefault(); typeAhead(e.key); }
       }
     } else {
-      // closed — open on the usual keys
+      // Closed — open on usual keys.
       if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
         e.preventDefault(); open(sel);
       }
@@ -268,14 +254,12 @@
     (root.querySelectorAll ? root.querySelectorAll('select') : []).forEach(enhance);
   }
 
-  /* close on outside interaction */
   document.addEventListener('pointerdown', (e) => {
     if (!pop) return;
     if (pop.contains(e.target) || (host && host.contains(e.target))) return;
     close();
   }, true);
 
-  /* enhance existing + observe for React-mounted selects */
   function start() {
     scan(document);
     const mo = new MutationObserver((muts) => {

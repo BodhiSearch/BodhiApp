@@ -146,11 +146,9 @@ pub async fn models_pull_create(
   Ok((StatusCode::CREATED, Json(download_request.into())))
 }
 
-/// Enqueue a download for `repo`/`filename` unless the file is already local or a request for it
-/// already exists. Shared by the pull route and the local-alias create flow so there is one download
-/// code path. In dev/E2E **test mode** the row is recorded `Completed` immediately (no real fetch);
-/// otherwise the background pull is spawned. Returns the (existing or new) request, or `None` when
-/// the file is already present locally.
+/// Enqueues a download for `repo`/`filename` unless already local or already requested — shared by
+/// the pull route and the local-alias create flow. In test mode records `Completed` immediately
+/// instead of spawning a real fetch. Returns `None` when the file is already present locally.
 pub async fn enqueue_download_if_absent(
   auth_scope: &AuthScope,
   repo: &Repo,

@@ -153,7 +153,6 @@ describe('ManageUsers V2', () => {
     await user.click(removeBtn());
     expect(removeBtn()).toHaveTextContent('Confirm remove');
     await user.click(removeBtn());
-    // mutation fires without error
   });
 
   it('changes a role via the rail select + save', async () => {

@@ -54,10 +54,6 @@ async fn seed_gemini_alias_with_prefix(
   Ok(api_alias)
 }
 
-// ============================================================================
-// gemini_models_list
-// ============================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -328,10 +324,6 @@ async fn test_gemini_models_list_returns_prefixed_name() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// gemini_models_get
-// ============================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -443,10 +435,6 @@ async fn test_gemini_models_get_invalid_model_id() -> anyhow::Result<()> {
   );
   Ok(())
 }
-
-// ============================================================================
-// gemini_generate_content
-// ============================================================================
 
 #[rstest]
 #[awt]
@@ -716,10 +704,8 @@ async fn test_generate_content_strips_alias_prefix() -> anyhow::Result<()> {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_action_handler_accepts_literal_slash_in_prefixed_alias() -> anyhow::Result<()> {
-  // Regression: pi-ai's @google/genai SDK does NOT URL-encode `/` in the model
-  // segment, so a prefixed alias hits `/v1beta/models/gem/gemini-flash-latest:…`.
-  // The wildcard route `/v1beta/models/{*model_path}` must match this literal
-  // multi-segment path; the previous `{id}` single-segment route 404'd.
+  // Regression: pi-ai's @google/genai SDK doesn't URL-encode `/` in a prefixed model id,
+  // producing multi-segment paths that only the wildcard route (not the old `{id}` route) matched.
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias_with_prefix(&mut builder, Some("gem/".to_string())).await?;
 
@@ -760,10 +746,8 @@ async fn test_action_handler_accepts_literal_slash_in_prefixed_alias() -> anyhow
 #[tokio::test]
 #[anyhow_trace]
 async fn test_action_handler_forwards_alt_sse_query_param() -> anyhow::Result<()> {
-  // Regression: the @google/genai SDK appends `?alt=sse` to request SSE-formatted
-  // streaming responses. Without forwarding this query param to upstream Gemini,
-  // we get a JSON array (`[{...},{...}]`) instead of SSE chunks
-  // (`data: {...}\r\n\r\n`), and the SDK fails with "incomplete json segment".
+  // Regression: @google/genai appends `?alt=sse` for streaming; without forwarding it, upstream
+  // returns a JSON array instead of SSE chunks and the SDK fails with "incomplete json segment".
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias(&mut builder).await?;
 
@@ -840,10 +824,6 @@ async fn test_action_handler_forwards_x_goog_headers() -> anyhow::Result<()> {
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
 }
-
-// ============================================================================
-// stream and embed actions via single action handler
-// ============================================================================
 
 #[rstest]
 #[awt]
@@ -962,18 +942,11 @@ async fn test_batch_embed_contents_forwards_correct_endpoint() -> anyhow::Result
   Ok(())
 }
 
-// ============================================================================
-// Axum path routing: verify GET/POST disambiguation
-// ============================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_axum_get_and_post_routes_do_not_conflict() -> anyhow::Result<()> {
-  // Regression test: GET /v1beta/models/{model_id} must not intercept
-  //                  POST /v1beta/models/{model_action}
-  // Axum's method-based routing correctly separates GET from POST.
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias(&mut builder).await?;
 
@@ -989,7 +962,6 @@ async fn test_axum_get_and_post_routes_do_not_conflict() -> anyhow::Result<()> {
     )
     .with_state(router_state);
 
-  // POST to action URL should NOT go to the GET handler
   let response = app
     .oneshot(
       Request::post("/v1beta/models/gemini-2.5-flash:generateContent")
@@ -1003,7 +975,6 @@ async fn test_axum_get_and_post_routes_do_not_conflict() -> anyhow::Result<()> {
     )
     .await?;
 
-  // Should reach gemini_action_handler, not gemini_models_get
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
 }

@@ -1,15 +1,6 @@
-/* ═══════════════════════════════════════════════════
-   NEW APP TOKEN — React App  (bodhi-form.css layout)
-   Sections:
-     1 · Token Identity
-     2 · Model Access
-     3 · MCP Access
-     4 · Token Scope
-   Generic shell + form primitives come from bodhi-form.css (.bf-*).
-   Page-unique: selection box, role cards, token reveal (new-app-token.css).
-═══════════════════════════════════════════════════ */
 
-/* ── Sample data ── */
+// Form primitives from bodhi-form.css; page-unique: selection box, role cards, token reveal.
+
 const SAMPLE_MODELS = [
   { id: 'llama3.2:3b',       name: 'Llama 3.2 · 3B',      type: 'local', ctx: '128k' },
   { id: 'llama3.2:1b',       name: 'Llama 3.2 · 1B',      type: 'local', ctx: '128k' },
@@ -41,7 +32,6 @@ const SAMPLE_MCPS = [
   { id: 'fetch',                label: 'fetch',          meta: 'HTTP fetch & scrape' },
 ];
 
-/* ── Icon helper ── */
 function Icon({ name, size = 13, style = {} }) {
   const ref = React.useRef(null);
   React.useEffect(() => {
@@ -61,7 +51,6 @@ function Icon({ name, size = 13, style = {} }) {
   );
 }
 
-/* ── Selectable list (models or MCPs) ── */
 function SelectableList({ items, selected, onToggle, onClearAll, onSelectAll, searchPlaceholder }) {
   const [query, setQuery] = React.useState('');
 
@@ -158,28 +147,22 @@ function NewAppTokenApp() {
   /* Section 1 — Token Identity */
   const [tokenName, setTokenName] = React.useState('');
 
-  /* Section 2 — Model Access */
   const [modelMode,      setModelMode]      = React.useState('all'); // 'all' | 'specific'
   const [selectedModels, setSelectedModels] = React.useState([]);
   const [listAllModels,  setListAllModels]  = React.useState(false);
 
-  /* Section 3 — MCP Access */
   const [mcpMode,        setMcpMode]        = React.useState('all'); // 'all' | 'specific'
   const [selectedMcps,   setSelectedMcps]   = React.useState([]);
   const [listAllMcps,    setListAllMcps]    = React.useState(false);
 
-  /* Section 4 — Token Scope */
   const [role, setRole] = React.useState('user');
 
-  /* Success state */
   const [generated,   setGenerated]   = React.useState(false);
   const [tokenValue,  setTokenValue]  = React.useState('');
   const [copied,      setCopied]      = React.useState(false);
 
-  /* Lucide icons after render */
   React.useEffect(() => { lucide.createIcons(); });
 
-  /* Helpers */
   const toggleModel = id => setSelectedModels(prev =>
     prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
   );

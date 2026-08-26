@@ -303,7 +303,6 @@ export function ModelsScreenV2() {
     [navigate]
   );
 
-  // ── Downloads panel ──────────────────────────────────────────────
   const { showSuccess, showError } = useToastMessages();
   const { data: downloadsData, isLoading: downloadsLoading } = useListDownloads(1, 100, {
     enablePolling: downloadsOpen,

@@ -106,9 +106,8 @@ impl LocalLlama for LocalLlamaImpl {
       .forward_request(api_path, request, alias)
       .await
       .map_err(|e| LocalLlamaError::Internal(e.to_string()));
-    // Intentional: reset keep-alive on every completion, including errors. A failed
-    // forward still touched the model (load attempt or in-flight request); the timer
-    // should debounce from the latest user activity, not the latest success.
+    // Reset keep-alive even on errors: a failed forward still touched the model, so the
+    // timer should debounce from the latest activity, not the latest success.
     self.on_request_completed();
     result
   }

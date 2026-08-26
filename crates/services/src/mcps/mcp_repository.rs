@@ -118,7 +118,6 @@ pub trait McpRepository: Send + Sync {
     mcp_id: &str,
   ) -> Result<(), DbError>;
 
-  /// Decrypt all auth params for an MCP instance and return as McpAuthParams.
   async fn get_decrypted_auth_params(
     &self,
     tenant_id: &str,
@@ -166,21 +165,18 @@ pub trait McpRepository: Send + Sync {
     user_id: &str,
   ) -> Result<(), DbError>;
 
-  /// Get the decrypted refresh token for an OAuth token, if present.
   async fn get_decrypted_refresh_token(
     &self,
     tenant_id: &str,
     token_id: &str,
   ) -> Result<Option<String>, DbError>;
 
-  /// Get the decrypted access token for an OAuth token by ID.
   async fn get_decrypted_oauth_access_token(
     &self,
     tenant_id: &str,
     token_id: &str,
   ) -> Result<Option<String>, DbError>;
 
-  /// Link an OAuth token to an MCP instance (set mcp_id).
   /// Verifies user_id ownership before updating.
   async fn link_oauth_token_to_mcp(
     &self,
@@ -194,8 +190,7 @@ pub trait McpRepository: Send + Sync {
   // Composite methods (atomic multi-table operations)
   // ============================================================================
 
-  /// Atomically create an MCP instance with optional auth params and OAuth token link.
-  /// All operations happen within a single transaction.
+  /// Atomically create an MCP instance with optional auth params and OAuth token link (single transaction).
   async fn create_mcp_with_auth(
     &self,
     tenant_id: &str,
@@ -205,8 +200,7 @@ pub trait McpRepository: Send + Sync {
     user_id: &str,
   ) -> Result<McpEntity, DbError>;
 
-  /// Atomically update an MCP instance with optional auth params and OAuth token link.
-  /// All operations happen within a single transaction.
+  /// Atomically update an MCP instance with optional auth params and OAuth token link (single transaction).
   async fn update_mcp_with_auth(
     &self,
     tenant_id: &str,

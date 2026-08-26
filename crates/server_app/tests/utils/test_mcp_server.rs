@@ -549,7 +549,6 @@ mod tests {
     assert_eq!(1, tools_result.tools.len());
     assert_eq!("echo", tools_result.tools[0].name.as_ref());
 
-    // -- Test call_tool --
     let call_result = client
       .call_tool(CallToolRequestParams {
         meta: None,
@@ -568,12 +567,10 @@ mod tests {
       .expect("Expected text content");
     assert_eq!("echoed: hello", text.text);
 
-    // -- Test list_resources --
     let resources_result = client.list_resources(None).await?;
     assert_eq!(1, resources_result.resources.len());
     assert_eq!("file://test", resources_result.resources[0].uri);
 
-    // -- Test read_resource --
     let read_result = client
       .read_resource(ReadResourceRequestParams {
         meta: None,
@@ -588,12 +585,10 @@ mod tests {
       other => panic!("Expected TextResourceContents, got {:?}", other),
     }
 
-    // -- Test list_prompts --
     let prompts_result = client.list_prompts(None).await?;
     assert_eq!(1, prompts_result.prompts.len());
     assert_eq!("greeting", prompts_result.prompts[0].name);
 
-    // -- Test get_prompt --
     let prompt_result = client
       .get_prompt(GetPromptRequestParams {
         meta: None,
@@ -612,7 +607,6 @@ mod tests {
       other => panic!("Expected Text content, got {:?}", other),
     }
 
-    // -- Verify recorded tool calls --
     let calls = server.calls_received.lock().await;
     assert_eq!(1, calls.len());
     assert_eq!("echo", calls[0].tool_name);
@@ -644,7 +638,6 @@ mod tests {
 
     let server = TestMcpServer::start(config).await?;
 
-    // Without auth header: should get 401
     let http = reqwest::Client::new();
     let resp = http
       .post(format!("{}", server.url))
@@ -668,7 +661,6 @@ mod tests {
       "Missing auth should return 401"
     );
 
-    // With wrong auth header: should get 401
     let resp = http
       .post(format!("{}", server.url))
       .header("Content-Type", "application/json")
@@ -688,7 +680,6 @@ mod tests {
       .await?;
     assert_eq!(401, resp.status().as_u16(), "Wrong auth should return 401");
 
-    // With correct auth header: should succeed
     let mut headers = reqwest::header::HeaderMap::new();
     headers.insert("X-Api-Key", "test-secret".parse().unwrap());
     let http_client = reqwest::Client::builder()

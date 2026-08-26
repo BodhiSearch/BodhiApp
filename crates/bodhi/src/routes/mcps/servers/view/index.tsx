@@ -236,7 +236,6 @@ function ServerViewContent() {
         </div>
 
         <div className="sc-card-body">
-          {/* ── Basic information ── */}
           <div className="sc-section" data-testid="server-info-section">
             <div className="sc-sec-head">
               <span className="sc-sec-lbl">Basic information</span>
@@ -343,7 +342,6 @@ function ServerViewContent() {
 
           <div className="sc-divider" />
 
-          {/* ── Auth mechanisms ── */}
           <div className="sc-section" data-testid="auth-configs-section">
             <span className="sc-sec-lbl">Auth mechanisms</span>
             <div className="sc-sec-desc">

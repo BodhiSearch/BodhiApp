@@ -15,7 +15,6 @@ use tower_sessions::Session;
 
 const BEARER_PREFIX: &str = "Bearer ";
 
-/// TTL for cached exchange results in seconds (5 minutes)
 const EXCHANGE_CACHE_TTL_SECS: i64 = 300;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,7 +88,6 @@ impl DefaultTokenService {
 
     if let Some(after_prefix) = bearer_token.strip_prefix(BODHIAPP_TOKEN_PREFIX) {
       // Format: sk-bodhiapp_<random><checksum>.<client_id>
-      // Split on last '.' to extract <random><checksum> and client_id
       let dot_pos = after_prefix
         .rfind('.')
         .ok_or_else(|| TokenError::InvalidToken("Token missing client_id suffix".to_string()))?;
@@ -182,7 +180,6 @@ impl DefaultTokenService {
       .get(&format!("exchanged_token:{}", &token_digest))
     {
       if let Ok(cached_result) = serde_json::from_str::<CachedExchangeResult>(&cached_json) {
-        // Check TTL: reject stale cache entries
         if cached_result.cached_at > 0 && (now - cached_result.cached_at) > EXCHANGE_CACHE_TTL_SECS
         {
           None
@@ -447,9 +444,7 @@ impl DefaultTokenService {
     Ok((auth_context, cached_result))
   }
 
-  /// Validates and optionally refreshes the dashboard access token stored in the session.
   /// Uses distributed locking to prevent concurrent dashboard token refreshes.
-  /// Returns the valid dashboard access token string on success.
   pub async fn get_valid_dashboard_token(
     &self,
     session: Session,
@@ -494,7 +489,6 @@ impl DefaultTokenService {
                 return Ok(current);
               }
 
-              // Still expired, refresh
               let refresh_token = session_clone
                 .get::<String>(services::DASHBOARD_REFRESH_TOKEN_KEY)
                 .await?;
@@ -562,7 +556,6 @@ impl DefaultTokenService {
 
     let now = self.time_service.utc_now().timestamp();
     if now < claims.exp as i64 {
-      // Token still valid, return immediately
       let role = claims
         .resource_access
         .get(&instance_client_id)
@@ -613,7 +606,6 @@ impl DefaultTokenService {
               let now = time_service.utc_now().timestamp();
 
               if now < current_claims.exp as i64 {
-                // Token was refreshed by another request, use it
                 tracing::info!(
                   "Token already refreshed by concurrent request for user: {}",
                   user_id

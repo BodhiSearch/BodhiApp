@@ -126,7 +126,6 @@ async fn test_create_mcp_with_oauth_token(
   let mcp_client: Arc<dyn mcp_client::McpClient> = Arc::new(mcp_client::MockMcpClient::new());
   let service = DefaultMcpService::new(Arc::clone(&db_arc), mcp_client, default_time_service())?;
 
-  // Create server
   service
     .create_mcp_server(
       TEST_TENANT_ID,
@@ -305,7 +304,6 @@ async fn test_update_mcp_clear_auth(
     )
     .await?;
 
-  // Update to Public auth type — should clean up
   let updated = service
     .update(
       TEST_TENANT_ID,
@@ -636,7 +634,6 @@ async fn test_resolve_auth_params_oauth(
   Ok(())
 }
 
-// Helper to build a DefaultMcpService without a real DB (for HTTP-only tests)
 fn make_service_no_db() -> anyhow::Result<DefaultMcpService> {
   let db: Arc<dyn DbService> = Arc::new(MockDbService::new());
   let mcp_client: Arc<dyn mcp_client::McpClient> = Arc::new(mcp_client::MockMcpClient::new());
@@ -664,7 +661,6 @@ async fn test_discover_mcp_oauth_metadata_path_specific_url() -> anyhow::Result<
     "token_endpoint": format!("{}/token", base)
   });
 
-  // Path-specific PRS endpoint (e.g., /.well-known/oauth-protected-resource/mcp)
   let prs_mock = server
     .mock("GET", "/.well-known/oauth-protected-resource/mcp")
     .with_status(200)
@@ -711,7 +707,6 @@ async fn test_discover_mcp_oauth_metadata_fallback_to_root() -> anyhow::Result<(
     "token_endpoint": format!("{}/token", base)
   });
 
-  // Path-specific URL returns 404, root URL returns 200
   let path_mock = server
     .mock("GET", "/.well-known/oauth-protected-resource/mcp")
     .with_status(404)
@@ -764,7 +759,6 @@ async fn test_discover_mcp_oauth_metadata_root_url() -> anyhow::Result<()> {
     "token_endpoint": format!("{}/token", base)
   });
 
-  // No path in MCP URL — should hit root PRS URL directly
   let prs_mock = server
     .mock("GET", "/.well-known/oauth-protected-resource")
     .with_status(200)

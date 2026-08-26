@@ -58,7 +58,6 @@ function DownloadSectionComponent() {
             privacy.
           </p>
 
-          {/* Platform Tabs */}
           <PlatformTabs
             platforms={platformTabs}
             selectedPlatform={selectedPlatform}
@@ -66,7 +65,6 @@ function DownloadSectionComponent() {
             onPlatformChange={handlePlatformChange}
           />
 
-          {/* Installation Options with Animation */}
           <AnimatePresence mode="wait">
             <motion.div key={selectedPlatform} {...slideTransition}>
               {currentPlatform && <InstallationOptions platform={currentPlatform} />}

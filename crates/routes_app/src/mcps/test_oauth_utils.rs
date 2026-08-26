@@ -218,9 +218,7 @@ async fn test_standalone_dynamic_register_missing_fields() -> anyhow::Result<()>
   Ok(())
 }
 
-// ============================================================================
 // OAuth Token Handler Tests
-// ============================================================================
 
 fn test_oauth_token() -> McpOAuthToken {
   let now = fixed_dt();

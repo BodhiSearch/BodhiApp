@@ -1,14 +1,3 @@
-/* ═══════════════════════════════════════════════════════════════
-   Bodhi App Shell — CHROME (sidebar nav + filter controls)
-   shared/shell-chrome.jsx   (load after shell-core.jsx)
-
-   The primary section nav (expanded dropdown / collapsed icon rail),
-   the page-level controls that live in the `sidebar` slot
-   (mode switch, range slider, filter group), plus the brand mark and
-   breadcrumb. Reads collapse state from ShellContext (shell-core).
-═══════════════════════════════════════════════════════════════ */
-
-/* ── Primary section nav (expanded dropdown OR collapsed icon rail) ── */
 function ShellNav({ section = 'chat', subPage = null }) {
   const { collapsed, openPop, setOpenPop, navBase = '' } = useShell();
   const nb = (h) => h ? navBase + h : '#';
@@ -79,7 +68,6 @@ function ShellNav({ section = 'chat', subPage = null }) {
 
 }
 
-/* ── Mode switch (page control) ─────────────────────────────── */
 function ShellModeSwitch({ value, onChange, options = [], label }) {
   const { collapsed } = useShell();
   if (collapsed) {
@@ -112,7 +100,6 @@ function ShellModeSwitch({ value, onChange, options = [], label }) {
 
 }
 
-/* ── Dual-handle range slider ───────────────────────────────── */
 function ShellRangeSlider({ min = 0, max = 100, step = 1, unit = '', prefix = '', defaultMin, defaultMax }) {
   const [lo, setLo] = React.useState(defaultMin != null ? defaultMin : min);
   const [hi, setHi] = React.useState(defaultMax != null ? defaultMax : max);
@@ -140,7 +127,6 @@ function ShellRangeSlider({ min = 0, max = 100, step = 1, unit = '', prefix = ''
 
 }
 
-/* ── Filter group (page control) ────────────────────────────── */
 function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable, range, value, onSelect, single, values, onToggle, onClear }) {
   const controlled = Array.isArray(values) && typeof onToggle === 'function';
   const { collapsed, openPop, setOpenPop } = useShell();
@@ -203,7 +189,6 @@ function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable,
 
 }
 
-/* ── Default brand mark ─────────────────────────────────────── */
 function ShellBrand({ collapsed }) {
   const { navBase = '' } = useShell();
   return (
@@ -219,7 +204,6 @@ function ShellBrand({ collapsed }) {
 
 }
 
-/* ── Breadcrumb ─────────────────────────────────────────────── */
 function ShellBreadcrumb({ items }) {
   if (!items) return null;
   if (!Array.isArray(items)) return <div className="shell-bc">{items}</div>;

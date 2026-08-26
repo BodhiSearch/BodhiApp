@@ -1,15 +1,5 @@
 #!/usr/bin/env node
 
-/**
- * Increment version of a semver version string
- * Usage: node increment_version.js <version> [patch|minor] [prerelease-id]
- * Examples:
- *   node increment_version.js 1.2.3 -> 1.2.4 (default: patch increment)
- *   node increment_version.js 1.2.3 minor -> 1.3.0
- *   node increment_version.js 1.2.3 minor dev -> 1.3.0-dev
- *   node increment_version.js 1.2.3-dev patch -> 1.2.3 (removes prerelease)
- */
-
 function parseVersion(version) {
   const versionRegex = /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/;
   const match = version.match(versionRegex);

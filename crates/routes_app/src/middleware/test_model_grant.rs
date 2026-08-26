@@ -76,7 +76,6 @@ fn external_app(model: &str) -> AuthContext {
     .with_external_app_grants(approved)
 }
 
-// Body-based formats: the model lives in the JSON body.
 #[rstest]
 #[case::chat("/v1/chat/completions")]
 #[case::embeddings("/v1/embeddings")]
@@ -159,12 +158,9 @@ async fn gemini_action_path_enforces_model_grant() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// The middleware lets a request reach the handler without a 403 in two arms:
-/// (b) a grant/deny principal whose body carries no `model` (malformed → the
-/// handler owns the rejection), and (a) an `Unrestricted` session, which
-/// short-circuits before the body is even buffered and is never denied — even for
-/// a model no token would grant. Here the stub handler always returns 200, so a 200
-/// proves the middleware passed through rather than issuing its own 403.
+/// Passes through in two arms: a grant/deny principal with no `model` in the body
+/// (malformed → handler's job), and an `Unrestricted` session, which short-circuits
+/// before the body is buffered and is never denied.
 #[rstest]
 #[case::scoped_token_no_model(api_token("granted"), json!({"messages": []}))]
 #[case::unrestricted_session_ungranted_model(

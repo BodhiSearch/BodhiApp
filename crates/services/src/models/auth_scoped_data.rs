@@ -2,7 +2,6 @@ use crate::models::{Alias, DataServiceError, UserAlias, UserAliasRequest};
 use crate::{AppService, AuthContext};
 use std::sync::Arc;
 
-/// Auth-scoped wrapper around DataService that injects tenant_id and user_id from AuthContext.
 /// Read operations (list, find) use optional user_id — anonymous callers get empty string.
 /// Write operations (save, copy, delete) require an authenticated user.
 pub struct AuthScopedDataService {
@@ -66,7 +65,6 @@ impl AuthScopedDataService {
       .await
   }
 
-  /// Requires an authenticated user.
   pub async fn copy_alias(&self, id: &str, new_alias: &str) -> Result<UserAlias, DataServiceError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
@@ -77,7 +75,6 @@ impl AuthScopedDataService {
       .await
   }
 
-  /// Requires an authenticated user.
   pub async fn delete_alias(&self, id: &str) -> Result<(), DataServiceError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
@@ -88,7 +85,7 @@ impl AuthScopedDataService {
       .await
   }
 
-  /// Validates file existence and duplicates. Requires an authenticated user.
+  /// Validates file existence and duplicates.
   pub async fn create_alias_from_form(
     &self,
     form: UserAliasRequest,
@@ -102,7 +99,7 @@ impl AuthScopedDataService {
       .await
   }
 
-  /// Validates file existence. Requires an authenticated user.
+  /// Validates file existence.
   pub async fn update_alias_from_form(
     &self,
     id: &str,

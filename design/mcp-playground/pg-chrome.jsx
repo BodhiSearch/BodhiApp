@@ -17,7 +17,6 @@
    script; we auto-mount it.
 ═══════════════════════════════════════════════════════════════ */
 
-/* capability nav model — each links to its own page, instance in tow */
 const PG_CAPS = [
   { id: 'overview',  label: 'Overview',  icon: 'compass',              file: 'MCP-Playground-Overview.html',  countKey: null },
   { id: 'tools',     label: 'Tools',     icon: 'wrench',               file: 'MCP-Playground-Tools.html',     countKey: 'tools' },
@@ -32,7 +31,6 @@ function capHref(id, inst) {
   return capFile(id) + (inst ? '?' + instQS(inst) : '');
 }
 
-/* ══ INSTANCE PICKER (left, navigates within the current capability) ══ */
 function InstancePicker({ instances, selected, currentCap }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -108,7 +106,6 @@ function InstancePicker({ instances, selected, currentCap }) {
   );
 }
 
-/* ══ CAPABILITY NAV (left, cross-page links) ══ */
 function CapabilityNav({ counts, pending, active, inst }) {
   return (
     <div className="pg-capnav">
@@ -135,7 +132,6 @@ function CapabilityNav({ counts, pending, active, inst }) {
   );
 }
 
-/* ══ LIST RAIL (right, pinned) — the master list for this capability ══ */
 function ListRail({ config, items, activeId, onSelect }) {
   const [q, setQ] = useState('');
   if (!items || items.length === 0) {
@@ -168,7 +164,6 @@ function ListRail({ config, items, activeId, onSelect }) {
   );
 }
 
-/* ══ BLANK STATE (no instance chosen) ══ */
 function BlankState({ instances }) {
   const connected = instances.filter(i => i.status === 'connected');
   return (
@@ -195,7 +190,6 @@ function BlankState({ instances }) {
   );
 }
 
-/* ══ PAGE ══ */
 function PlaygroundPage({ cap }) {
   const instances = useMemo(() => playgroundInstances(), []);
   const inst = useMemo(() => resolveURLInstance(), []);
@@ -207,7 +201,6 @@ function PlaygroundPage({ cap }) {
   const liveBump = useLiveBump();
   const pending = useMemo(() => inst ? pendingCounts(inst.instId) : null, [inst, liveBump]);
 
-  /* resource link opened from a tool (Resources page reads ?open) */
   const openParam = useMemo(() => {
     const p = urlParams();
     if (cap !== 'resources' || !p.get('open')) return null;

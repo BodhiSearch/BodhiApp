@@ -137,10 +137,8 @@ pub async fn api_models_destroy(
 
 /// Test API connectivity with a prompt.
 //
-// CRUD uniformity exception: This is a utility endpoint, not CRUD. It uses
-// `require_tenant_id()` / `require_user_id()` directly to resolve stored
-// credentials when `TestCreds::Id` is provided, since this operation crosses
-// the CRUD boundary (reading from an existing API model to perform a test).
+// CRUD uniformity exception: a utility endpoint, not CRUD — resolves stored
+// credentials via require_tenant_id()/require_user_id() when TestCreds::Id is given.
 #[utoipa::path(
     post,
     path = ENDPOINT_MODELS_API_TEST.to_owned(),
@@ -251,10 +249,8 @@ pub async fn api_models_test(
 
 /// Fetch available models from the API.
 //
-// CRUD uniformity exception: This is a utility endpoint, not CRUD. It uses
-// `require_tenant_id()` / `require_user_id()` directly to resolve stored
-// credentials when `TestCreds::Id` is provided, since this operation crosses
-// the CRUD boundary (reading from an existing API model to perform a fetch).
+// CRUD uniformity exception: a utility endpoint, not CRUD — resolves stored
+// credentials via require_tenant_id()/require_user_id() when TestCreds::Id is given.
 #[utoipa::path(
     post,
     path = ENDPOINT_MODELS_API_FETCH_MODELS.to_owned(),

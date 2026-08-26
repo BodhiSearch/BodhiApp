@@ -38,8 +38,7 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(initialError || null);
 
-  // Popup flow: the popup's /callback posts the OAuth result (code/error) back here; the opener
-  // owns the PKCE verifier and does the token exchange, so the verifier never leaves this window.
+  // Popup flow: /callback posts result back to opener (which owns PKCE verifier); verifier never leaves opener.
   useEffect(() => {
     const onMessage = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;

@@ -56,10 +56,6 @@ async fn test_router_for_crud(mock_mcp_service: MockMcpService) -> anyhow::Resul
   )
 }
 
-// ============================================================================
-// GET /mcps - API-token grant filter (shared with /apps/mcps)
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -217,9 +213,7 @@ async fn test_mcps_index_list_toggle_on_annotates_access(
   Ok(())
 }
 
-// ============================================================================
 // GET /mcps/{id} - existence-hiding for scoped tokens (N6)
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -277,9 +271,7 @@ async fn test_mcps_show_scoped_token_hides_ungranted(
   Ok(())
 }
 
-// ============================================================================
 // POST /apps/mcps/{id}/mcp - proxy grant gate (C1)
-// ============================================================================
 
 /// Proxy router with `get` stubbed to `None` so a granted invocation that
 /// clears the grant gate surfaces the absent upstream as a clean 404 (never a
@@ -366,10 +358,6 @@ async fn test_mcp_proxy_enforces_mcp_connect_grant(#[case] ctx: AuthContext) -> 
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   Ok(())
 }
-
-// ============================================================================
-// POST /mcps - Create MCP instance
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -485,10 +473,6 @@ async fn test_create_mcp_with_auth_config_id(
   Ok(())
 }
 
-// ============================================================================
-// PUT /mcps/{id} - Update MCP instance
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -545,10 +529,6 @@ async fn test_update_mcp_success(test_mcp_entity: McpWithServerEntity) -> anyhow
   Ok(())
 }
 
-// ============================================================================
-// POST /mcps - Create with oauth_token_id
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -603,10 +583,6 @@ async fn test_create_mcp_with_oauth_token_id(
   assert_eq!(Some("oauth-config-1".to_string()), body.auth_config_id);
   Ok(())
 }
-
-// ============================================================================
-// POST /mcps - Create with credentials
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -668,10 +644,6 @@ async fn test_create_mcp_with_credentials(
   assert_eq!(StatusCode::CREATED, response.status());
   Ok(())
 }
-
-// ============================================================================
-// PUT /mcps/{id} - Update with credentials
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -746,10 +718,6 @@ async fn test_update_mcp_change_credentials(
   Ok(())
 }
 
-// ============================================================================
-// PUT /mcps/{id} - Update with oauth_token_id
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -803,10 +771,6 @@ async fn test_update_mcp_change_oauth_token(
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
 }
-
-// ============================================================================
-// PUT /mcps/{id} - Update to clear auth (switch to public)
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -862,10 +826,6 @@ async fn test_update_mcp_clear_auth(test_mcp_entity: McpWithServerEntity) -> any
   Ok(())
 }
 
-// ============================================================================
-// DELETE /mcps/{id}
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -896,9 +856,7 @@ async fn test_delete_mcp_success() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
 // Error path tests for MCP create/update (Finding 14)
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -1029,9 +987,7 @@ async fn test_update_mcp_not_found_returns_404() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
 // Integration tests (real DB)
-// ============================================================================
 
 use crate::test_utils::{
   build_test_router, create_authenticated_session, create_header_auth_config_in_db,

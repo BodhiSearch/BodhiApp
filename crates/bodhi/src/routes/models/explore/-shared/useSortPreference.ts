@@ -39,9 +39,7 @@ export function persistSortPreference<S extends string, O extends string>(storag
   if (!isBrowser()) return;
   try {
     window.localStorage.setItem(storageKey, JSON.stringify({ sort, order }));
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
 /**

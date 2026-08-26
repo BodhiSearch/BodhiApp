@@ -812,10 +812,6 @@ async fn test_external_client_token_cache_security_prevents_jti_forgery(
   Ok(())
 }
 
-// ============================================================================
-// Phase 4b: Access Request Pre/Post-Exchange Validation Tests
-// ============================================================================
-
 #[anyhow_trace]
 #[rstest]
 #[awt]
@@ -823,7 +819,6 @@ async fn test_external_client_token_cache_security_prevents_jti_forgery(
 async fn test_validate_bearer_token_scope_not_found(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // External token with scope_access_request:nonexistent
   let sub = Uuid::new_v4().to_string();
   let external_token_claims = json!({
     "exp": (Utc::now() + Duration::hours(1)).timestamp(),

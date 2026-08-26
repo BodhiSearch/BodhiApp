@@ -27,7 +27,6 @@ fn test_metadata_router(state: Arc<dyn services::AppService>) -> Router {
 async fn test_refresh_metadata_no_params_returns_202_accepted(
   #[future] mut app_service_stub_builder: AppServiceStubBuilder,
 ) -> anyhow::Result<()> {
-  // Configure mock to succeed on enqueue
   let mut mock_queue = MockQueueProducer::new();
   mock_queue
     .expect_enqueue()
@@ -63,7 +62,6 @@ async fn test_refresh_metadata_no_params_returns_202_accepted(
 async fn test_refresh_metadata_enqueue_failure_returns_400(
   #[future] mut app_service_stub_builder: AppServiceStubBuilder,
 ) -> anyhow::Result<()> {
-  // Configure mock to fail on enqueue
   let mut mock_queue = MockQueueProducer::new();
   mock_queue
     .expect_enqueue()

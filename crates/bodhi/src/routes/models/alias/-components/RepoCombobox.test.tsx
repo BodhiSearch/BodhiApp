@@ -45,7 +45,6 @@ beforeEach(() => {
   );
 });
 
-/** Controlled host so onChange updates the displayed value, mirroring the form field wiring. */
 function Host({ onChange }: { onChange?: (v: string) => void }) {
   const [value, setValue] = useState('');
   return (

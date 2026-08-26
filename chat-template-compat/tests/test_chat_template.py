@@ -4,7 +4,6 @@ from transformers import AutoTokenizer
 from .conftest import inputs_yaml
 
 cases = list(inputs_yaml().keys())
-# cases = ["error-user-at-even-with-system"]
 
 
 # covered: llama2, llama2-legacy, llama3, phi3, gemma, zephyr, deepseek, command-r, openchat, empty
@@ -18,7 +17,6 @@ cases = list(inputs_yaml().keys())
     ("llama2-legacy", "mistralai/Mistral-7B-Instruct-v0.3"),
     ("llama2-legacy", "mistralai/Mixtral-8x7B-Instruct-v0.1"),
     ("gemma", "google/gemma-7b-it"),
-    # ("zephyr", "HuggingFaceH4/zephyr-7b-beta"),
     ("deepseek", "deepseek-ai/deepseek-llm-67b-chat"),
     ("command-r", "CohereForAI/c4ai-command-r-plus"),
     ("openchat", "openchat/openchat-3.6-8b-20240522"),

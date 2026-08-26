@@ -19,7 +19,6 @@ export function useGetUser(options?: { enabled?: boolean }) {
   });
 }
 
-// Redirects to login when the user is not authenticated.
 export function useGetAuthenticatedUser(): UseQueryResult<AuthenticatedUser, AxiosError<BodhiErrorResponse>> {
   const navigate = useNavigate();
   const { data: userInfo, isLoading, error, ...queryResult } = useGetUser();

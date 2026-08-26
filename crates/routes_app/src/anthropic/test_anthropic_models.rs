@@ -33,10 +33,6 @@ async fn seed_anthropic_alias(
   Ok(api_alias)
 }
 
-// ============================================================================
-// Models list — DB aggregation
-// ============================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -149,7 +145,6 @@ async fn test_models_list_excludes_non_anthropic_aliases() -> anyhow::Result<()>
   builder.with_data_service().await;
   let db_service = builder.get_db_service().await;
 
-  // One Anthropic alias and one OpenAI alias owned by the same user.
   let anthropic_alias = ApiAliasBuilder::test_default()
     .id("anthropic-alias")
     .api_format(ApiFormat::Anthropic)
@@ -201,10 +196,6 @@ async fn test_models_list_excludes_non_anthropic_aliases() -> anyhow::Result<()>
   assert!(!ids.contains(&"gpt-4o"));
   Ok(())
 }
-
-// ============================================================================
-// Single model GET — served from local cache
-// ============================================================================
 
 #[rstest]
 #[awt]
@@ -295,7 +286,6 @@ async fn test_models_get_invalid_model_id_slash() -> anyhow::Result<()> {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_models_get_valid_id_with_dots_and_hyphens() -> anyhow::Result<()> {
-  // Model ids with dots (like claude-3.5-sonnet) must be accepted.
   let mut builder = AppServiceStubBuilder::default();
   builder.with_data_service().await;
   let db_service = builder.get_db_service().await;

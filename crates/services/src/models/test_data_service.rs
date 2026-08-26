@@ -201,7 +201,6 @@ async fn test_local_data_service_list_aliases(
   let result = service.list_aliases(TEST_TENANT_ID, TEST_USER_ID).await?;
   // Should have at least the 3 seeded user aliases + model aliases from hub
   assert!(result.len() >= 3);
-  // Check that user aliases are present
   assert!(result
     .iter()
     .any(|a| matches!(a, Alias::User(u) if u.alias == "llama3:instruct")));

@@ -75,7 +75,6 @@ export function ChatMessage({
           {!isUser && metadata?.model && <span className="chat-model-tag">{metadata.model}</span>}
         </div>
 
-        {/* Tool calls display (before content, as they are executed first) */}
         {hasToolCalls && (
           <ToolCallsDisplay toolCalls={message.tool_calls!} messages={allMessages} isExecuting={isExecutingTools} />
         )}

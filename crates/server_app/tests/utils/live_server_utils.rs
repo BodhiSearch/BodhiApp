@@ -142,7 +142,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   ));
   db_service.migrate().await?;
 
-  // Build settings service directly
   let settings_file = bodhi_home.join(SETTINGS_YAML);
   let mut system_settings = app_settings;
   system_settings.push(Setting {
@@ -406,7 +405,6 @@ pub async fn create_authenticated_session(
   Ok(session_id.to_string())
 }
 
-/// Create a session cookie for the given session ID
 pub fn create_session_cookie(session_id: &str) -> Cookie<'_> {
   Cookie::build(("bodhiapp_session_id", session_id))
     .path("/")
@@ -480,7 +478,6 @@ pub async fn setup_test_app_service_with_time(
   }
   let env_wrapper: Arc<dyn EnvWrapper> = Arc::new(env_wrapper_impl);
 
-  // Build system settings
   let app_settings = vec![
     Setting {
       key: BODHI_ENV_TYPE.to_string(),
@@ -532,7 +529,6 @@ pub async fn setup_test_app_service_with_time(
   ));
   db_service.migrate().await?;
 
-  // Build settings service directly
   let settings_file = bodhi_home.join(SETTINGS_YAML);
   let mut system_settings = app_settings;
   system_settings.push(Setting {
@@ -868,7 +864,6 @@ pub async fn setup_multitenant_app_service(
   }
   let env_wrapper: Arc<dyn EnvWrapper> = Arc::new(env_wrapper_impl);
 
-  // Build system settings (includes multi-tenant deployment mode)
   let app_settings = vec![
     Setting {
       key: BODHI_ENV_TYPE.to_string(),
@@ -926,7 +921,6 @@ pub async fn setup_multitenant_app_service(
   ));
   db_service.migrate().await?;
 
-  // Build settings service directly
   let settings_file = bodhi_home.join(SETTINGS_YAML);
   let mut system_settings = app_settings;
   system_settings.push(Setting {
@@ -1105,8 +1099,6 @@ pub async fn create_dashboard_session(
 }
 
 /// Update an existing session by adding resource token keys and active_client_id.
-///
-/// Loads the session record by ID, adds the new keys, and saves it back.
 pub async fn add_resource_token_to_session(
   app_service: &Arc<dyn AppService>,
   session_id: Id,
@@ -1134,7 +1126,6 @@ pub async fn add_resource_token_to_session(
   Ok(())
 }
 
-/// Get a dashboard token via password grant against the multi-tenant client.
 pub async fn get_dashboard_token_via_password_grant(
   auth_url: &str,
   realm: &str,
@@ -1174,7 +1165,6 @@ pub async fn get_dashboard_token_via_password_grant(
   Ok(access_token.to_string())
 }
 
-/// Get a resource token via password grant against a resource client (with client_secret).
 pub async fn get_resource_token_via_password_grant(
   auth_url: &str,
   realm: &str,

@@ -190,7 +190,6 @@ describe('ModelsScreen V2 — list + rail', () => {
     // Disclaimer is gone for auto-discovered local files.
     expect(within(rail).queryByText(/Auto-discovered from local cache/)).not.toBeInTheDocument();
 
-    // HuggingFace external links.
     expect(within(rail).getByText('org/local-gguf').closest('a')).toHaveAttribute(
       'href',
       'https://huggingface.co/org/local-gguf'
@@ -360,7 +359,6 @@ describe('ModelsScreen V2 — table layout + columns', () => {
     expect(head).toHaveTextContent('NAME');
     expect(head).toHaveTextContent('PROVIDER / REPO');
     expect(head).toHaveTextContent('BASE URL / FILE');
-    // Rows are table rows carrying their alias id testid.
     expect(screen.getByTestId('model-row-openai-main').tagName).toBe('TR');
   });
 

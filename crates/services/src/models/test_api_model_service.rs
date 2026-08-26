@@ -33,7 +33,6 @@ fn extra_body_for(format: &ApiFormat) -> Option<serde_json::Value> {
   }
 }
 
-/// Returns two provider models appropriate for the given format.
 fn two_models_for(format: &ApiFormat) -> Vec<ApiModel> {
   match format {
     ApiFormat::Gemini => vec![
@@ -44,7 +43,6 @@ fn two_models_for(format: &ApiFormat) -> Vec<ApiModel> {
   }
 }
 
-/// Returns two named provider models for selection tests.
 fn two_named_models_for(format: &ApiFormat, id_a: &str, id_b: &str) -> Vec<ApiModel> {
   match format {
     ApiFormat::Gemini => vec![

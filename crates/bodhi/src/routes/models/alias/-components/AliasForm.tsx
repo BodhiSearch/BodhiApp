@@ -41,7 +41,6 @@ interface AliasFormProps {
   initialData?: AliasResponse;
 }
 
-/** Field label with an optional help tooltip + a required marker. */
 function LfLabel({
   label,
   tooltip,

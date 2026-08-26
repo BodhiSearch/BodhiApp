@@ -30,7 +30,6 @@ pub async fn canonical_url_middleware(
   let method = request.method();
   let uri = request.uri();
   let path = uri.path();
-  // Only redirect GET and HEAD requests to avoid breaking forms and APIs
   if !matches!(method.as_str(), "GET" | "HEAD") {
     debug!("Not a GET or HEAD request, skipping redirect");
     return next.run(request).await;
@@ -114,20 +113,17 @@ async fn should_redirect_to_canonical(
   let canonical_host = setting_service.public_host().await;
   let canonical_port = setting_service.public_port().await;
 
-  // Parse request host to handle host:port format
   let (req_host, req_port) = if let Some((host, port_str)) = request_host.rsplit_once(':') {
     if let Ok(port) = port_str.parse::<u16>() {
       (host, port)
     } else {
-      // Invalid port format, should redirect
       return true;
     }
   } else {
-    // No port specified, use default based on scheme
     let default_port = match request_scheme {
       "https" => 443,
       "http" => 80,
-      _ => return true, // Unknown scheme, should redirect
+      _ => return true,
     };
     (request_host, default_port)
   };

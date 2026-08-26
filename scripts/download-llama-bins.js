@@ -136,7 +136,6 @@ async function main() {
     process.exit(1);
   }
 
-  // Sort by created_at descending and pick latest with non-empty assets
   serverReleases.sort((a, b) => b.created_at.localeCompare(a.created_at));
   const release = serverReleases.find(r => r.assets && r.assets.length > 0);
   if (!release) {
@@ -168,14 +167,12 @@ async function main() {
       await downloadFile(asset.browser_download_url, downloadPath, headers);
 
       if (isZip) {
-        // Extract zip
         if (process.platform === 'win32') {
           execSync(`pwsh -Command "Expand-Archive -Path '${downloadPath}' -DestinationPath '${tmpDir}'"`, { stdio: 'inherit' });
         } else {
           execSync(`unzip -o "${downloadPath}" -d "${tmpDir}"`, { stdio: 'inherit' });
         }
 
-        // Move extracted contents (excluding the zip itself) to target dir
         const entries = fs.readdirSync(tmpDir);
         for (const entry of entries) {
           if (entry === asset.name) continue;
@@ -188,7 +185,6 @@ async function main() {
           }
         }
       } else {
-        // Direct file
         const dest = path.join(targetDir, execname(extension));
         moveFile(downloadPath, dest);
         if (process.platform !== 'win32') {
@@ -198,7 +194,6 @@ async function main() {
 
       console.log(`  Successfully installed ${asset.name} -> ${targetDir}`);
     } finally {
-      // Clean up temp dir
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   }

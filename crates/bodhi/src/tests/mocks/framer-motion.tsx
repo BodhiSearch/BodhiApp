@@ -27,7 +27,7 @@ const createMotionComponent = (Component: string) => {
       'custom',
       'onAnimationStart',
       'onAnimationComplete',
-      // Note: 'style' deliberately NOT filtered - it's a valid HTML prop
+      // style intentionally NOT filtered—valid HTML prop
     ];
 
     const htmlProps = Object.keys(props).reduce((acc, key) => {

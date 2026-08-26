@@ -51,7 +51,6 @@ async fn test_create_token_privilege_escalation_user(
 
   let app = app(app_service).await;
 
-  // User attempting to create higher-privilege token
   let response = app
     .oneshot(
       Request::builder()

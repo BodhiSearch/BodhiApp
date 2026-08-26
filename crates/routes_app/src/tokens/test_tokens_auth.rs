@@ -64,7 +64,6 @@ async fn test_token_list_endpoint_allows_eligible_roles(
   let response = router
     .oneshot(session_request("GET", "/bodhi/v1/tokens", &cookie))
     .await?;
-  // GET /bodhi/v1/tokens returns 200 with empty list from real DbService
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
 }

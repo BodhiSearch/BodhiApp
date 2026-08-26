@@ -116,7 +116,6 @@ export function SettingsPageV2({ config: staticConfig }: { config: SettingsConfi
     [filter, q]
   );
 
-  // Per-group counts (total settings present in each group).
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
     config.groups.forEach((g) => {
@@ -144,7 +143,6 @@ export function SettingsPageV2({ config: staticConfig }: { config: SettingsConfi
     closeTestId: 'settings-search-close',
   });
 
-  // Visible rows per group (after filter + search).
   const visibleGroups = useMemo(
     () =>
       config.groups

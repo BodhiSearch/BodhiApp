@@ -98,12 +98,9 @@ async fn test_cross_tenant_mcp_server_list_isolation(
   let auth_b = AuthContext::test_session("user-a", "a@test.com", ResourceRole::Admin)
     .with_tenant_id(TEST_TENANT_B_ID);
 
-  // Create MCP server in tenant A
   create_mcp_server(&router, &auth_a, "Server A", "https://mcp-a.example.com").await?;
-  // Create MCP server in tenant B
   create_mcp_server(&router, &auth_b, "Server B", "https://mcp-b.example.com").await?;
 
-  // List as tenant A -> only 1
   let response = router
     .clone()
     .oneshot(
@@ -118,7 +115,6 @@ async fn test_cross_tenant_mcp_server_list_isolation(
   let list = response.json::<ListMcpServersResponse>().await?;
   assert_eq!(1, list.mcp_servers.len());
 
-  // List as tenant B -> only 1
   let response = router
     .clone()
     .oneshot(
@@ -150,11 +146,9 @@ async fn test_cross_tenant_mcp_server_show_isolation(
   let auth_b = AuthContext::test_session("user-a", "a@test.com", ResourceRole::Admin)
     .with_tenant_id(TEST_TENANT_B_ID);
 
-  // Create MCP server in tenant A
   let server_a =
     create_mcp_server(&router, &auth_a, "Server A", "https://mcp-a.example.com").await?;
 
-  // Show that server as tenant B -> 404
   let response = router
     .clone()
     .oneshot(
@@ -184,11 +178,9 @@ async fn test_cross_tenant_mcp_server_update_isolation(
   let auth_b = AuthContext::test_session("user-a", "a@test.com", ResourceRole::Admin)
     .with_tenant_id(TEST_TENANT_B_ID);
 
-  // Create MCP server in tenant A
   let server_a =
     create_mcp_server(&router, &auth_a, "Server A", "https://mcp-a.example.com").await?;
 
-  // Update that server as tenant B -> 404
   let response = router
     .clone()
     .oneshot(

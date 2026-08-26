@@ -39,14 +39,14 @@ export function OAuthCallbackPage() {
         }
       : { type: 'success', code: code ?? '', state: state ?? '' };
 
-    // Popup flow: hand the raw result to the opener (which owns the PKCE verifier) and close.
+    // Popup flow: post result to opener (which owns PKCE verifier) and close.
     if (isPopup()) {
       window.opener.postMessage({ [OAUTH_RESULT_KEY]: result }, window.location.origin);
       window.close();
       return;
     }
 
-    // Redirect flow: this tab owns the verifier — finish here.
+    // Redirect flow: this tab owns the verifier—finish here.
     void finishRedirect(result);
 
     async function finishRedirect(res: OAuthResult) {

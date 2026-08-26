@@ -70,7 +70,6 @@ impl LlamaServerArgs {
     args.push(self.port.to_string());
 
     for param in &self.server_args {
-      // each param string is split on whitespace into separate CLI arguments
       args.extend(param.split_whitespace().map(String::from));
     }
 

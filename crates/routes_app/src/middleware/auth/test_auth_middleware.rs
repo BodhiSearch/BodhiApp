@@ -926,8 +926,6 @@ async fn test_auth_middleware_bodhiapp_token_invalid_hash() -> anyhow::Result<()
   Ok(())
 }
 
-// evaluate_same_origin unit tests (P0-6)
-
 #[rstest]
 #[case::same_origin(Some("example.com"), Some("same-origin"), true)]
 #[case::same_site(Some("example.com"), Some("same-site"), true)]

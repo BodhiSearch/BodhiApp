@@ -8,16 +8,13 @@ import { DocDetails, DocGroup, MetaData } from '@/app/docs/types';
 const MD_EXTENSION = '.md';
 const DEFAULT_ORDER = 999;
 
-// sends the path of the docs directory as array of strings
 function getDocsDirectory(): string[] {
   return (process.env.DOCS_DIR || 'src/docs').split('/');
 }
 
-// takes in the slug and returns the order
 export function getPathOrder(slug: string): number {
   const rootDocs = getDocsDirectory();
   try {
-    // Special case for index - read from root _meta.json
     if (slug === 'index') {
       const rootMetaPath = path.join(...rootDocs, '_meta.json');
       if (fs.existsSync(rootMetaPath)) {
@@ -29,8 +26,6 @@ export function getPathOrder(slug: string): number {
     }
 
     const fullPath = path.join(...rootDocs, ...slug.split('/'));
-
-    // Check if it's a directory
     const isDirectory = fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
 
     if (isDirectory) {
@@ -41,7 +36,6 @@ export function getPathOrder(slug: string): number {
         return meta.order ?? DEFAULT_ORDER;
       }
     } else {
-      // Check if it's a markdown file
       const mdPath = `${fullPath}.md`;
       if (fs.existsSync(mdPath)) {
         const fileContent = fs.readFileSync(mdPath, 'utf-8');
@@ -57,7 +51,6 @@ export function getPathOrder(slug: string): number {
   }
 }
 
-// returns all the slugs of the given docs directory
 export function getAllDocSlugs() {
   const docsDirectory = path.join(process.cwd(), ...getDocsDirectory());
 
@@ -86,7 +79,6 @@ export function getAllDocSlugs() {
   return getAllFiles(docsDirectory);
 }
 
-// takes in the doc full path and returns the details
 export const getDocDetails = (filePath: string): DocDetails => {
   try {
     const fileContents = fs.readFileSync(filePath, 'utf8');
@@ -121,7 +113,6 @@ export const formatTitle = (slug: string): string => {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-// takes in slug paths and return grouped docs
 const groupDocs = (slugs: string[]): DocGroup[] => {
   const groups: { [key: string]: DocGroup } = {};
   const docsDirectory = path.join(process.cwd(), ...getDocsDirectory());
@@ -144,12 +135,10 @@ const groupDocs = (slugs: string[]): DocGroup[] => {
     groups[groupName].items.push(details);
   });
 
-  // Sort items within each group
   Object.values(groups).forEach((group) => {
     group.items.sort((a, b) => a.order - b.order);
   });
 
-  // Convert groups object to sorted array
   return Object.entries(groups)
     .map(([key, group]) => ({
       ...group,
@@ -158,12 +147,10 @@ const groupDocs = (slugs: string[]): DocGroup[] => {
     .sort((a, b) => a.order - b.order);
 };
 
-// returns the docs for all the slug paths
 export const getDocsForSlug = (slugPath: string[] | null): DocGroup[] => {
   const basePath = slugPath ? slugPath.join('/') : '';
   const slugs = getAllDocSlugs();
 
-  // Filter paths that belong to the current directory
   const relevantSlugs = slugs.filter((slug) => {
     if (!basePath) return true;
     return slug.startsWith(basePath + '/') && slug !== basePath;

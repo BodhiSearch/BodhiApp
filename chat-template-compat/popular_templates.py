@@ -77,17 +77,14 @@ class ModelProcessor:
         }
 
     async def process_all_repos(self):
-        # Read repos file
         repos = self.repos_file.read_text().strip().split('\n')
-        
+
         async with aiohttp.ClientSession() as session:
             tasks = [self.process_repo(session, repo) for repo in repos]
             results = await asyncio.gather(*tasks)
-            
-            # Filter out None results and create final data
+
             data = [result for result in results if result]
-            
-            # Write YAML file
+
             self.output_file.parent.mkdir(parents=True, exist_ok=True)
             with self.output_file.open('w') as f:
                 yaml.dump(data, f, sort_keys=False, allow_unicode=True)

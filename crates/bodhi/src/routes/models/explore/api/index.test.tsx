@@ -118,7 +118,6 @@ describe('ExploreApiScreen (A1 — list)', () => {
     );
     const router = await renderScreen();
 
-    // Page 1: 30 of 31 rows, pager visible (no Load More).
     expect(within(screen.getByTestId('cat-model-list')).getAllByRole('option').length).toBe(30);
     expect(screen.getByTestId('pagination')).toBeInTheDocument();
     expect(screen.queryByTestId('cat-model-load-more')).not.toBeInTheDocument();
@@ -126,7 +125,6 @@ describe('ExploreApiScreen (A1 — list)', () => {
     const user = userEvent.setup();
     await user.click(screen.getByTestId('pagination-page-2'));
 
-    // Page 2: the request carries page=2, the URL reflects it, and the single remaining row renders.
     await waitFor(() => expect(seen.some((u) => u.searchParams.get('page') === '2')).toBe(true));
     expect(router.state.location.search).toMatchObject({ page: 2 });
     await waitFor(() => expect(within(screen.getByTestId('cat-model-list')).getAllByRole('option').length).toBe(1));
@@ -146,7 +144,6 @@ describe('ExploreApiScreen (A1 — list)', () => {
     await user.click(screen.getByTestId('pagination-page-2'));
     await waitFor(() => expect(seen.some((u) => u.searchParams.get('page') === '2')).toBe(true));
 
-    // Toggling a facet must reset paging to page 1.
     await user.click(screen.getByTestId('cat-model-cap-reasoning'));
     await waitFor(() => {
       const last = seen[seen.length - 1];
@@ -182,9 +179,7 @@ describe('ExploreApiScreen (URL sync — back/forward + deep link)', () => {
     server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen(['/models/explore/api/?provider=nano-gpt']);
 
-    // The request carries the deep-linked provider...
     await waitFor(() => expect(seen.some((u) => u.searchParams.getAll('provider').includes('nano-gpt'))).toBe(true));
-    // ...and the sidebar shows it as an active removable chip.
     expect(screen.getByTestId('cat-model-provider-chip-nano-gpt')).toBeInTheDocument();
   });
 
@@ -193,7 +188,6 @@ describe('ExploreApiScreen (URL sync — back/forward + deep link)', () => {
     server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
     const router = await renderScreen();
 
-    // Initial state: no sort/order/page in the URL.
     expect(router.state.location.search).toEqual({});
 
     const user = userEvent.setup();
@@ -217,7 +211,6 @@ describe('ExploreApiScreen (URL sync — back/forward + deep link)', () => {
       router.history.back();
     });
     await waitFor(() => expect(router.state.location.search).toEqual({}));
-    // The facet chip is gone and the request reverts to no capability.
     await waitFor(() => {
       const last = seen[seen.length - 1];
       expect(last.searchParams.getAll('capability')).toHaveLength(0);
@@ -426,7 +419,6 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     await renderScreen();
 
     const user = userEvent.setup();
-    // First click: price adopts its natural ascending direction.
     await user.click(screen.getByTestId('cat-model-sort-price'));
     await waitFor(() => {
       const last = seen[seen.length - 1];
@@ -435,7 +427,6 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     });
     expect(screen.getByTestId('cat-model-sort-price')).toHaveAttribute('data-test-state', 'active');
 
-    // Re-click the active column toggles to descending.
     await user.click(screen.getByTestId('cat-model-sort-price'));
     await waitFor(() => {
       const last = seen[seen.length - 1];
@@ -546,7 +537,6 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     await user.click(await screen.findByRole('option', { name: 'nano-gpt' }));
     await waitFor(() => expect(seen[seen.length - 1].searchParams.getAll('provider')).toContain('nano-gpt'));
 
-    // Selecting renders a removable chip; clicking it clears the filter.
     const chip = await screen.findByTestId('cat-model-provider-chip-nano-gpt');
     await user.click(chip);
     await waitFor(() => expect(seen[seen.length - 1].searchParams.has('provider')).toBe(false));
@@ -605,7 +595,6 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     expect(screen.getByTestId('cat-model-cap-structured_output')).toBeDisabled();
     expect(screen.getByTestId('cat-model-mod-audio')).toBeDisabled();
     expect(screen.getByTestId('cat-model-status-beta')).toBeDisabled();
-    // No count badge renders anymore.
     expect(screen.getByTestId('cat-model-cap-reasoning').querySelector('.cat-facet-count')).toBeNull();
   });
 
@@ -698,7 +687,6 @@ describe('ExploreApiScreen (A4 — columns + four-param pricing)', () => {
     await renderScreen();
     const user = userEvent.setup();
 
-    // Icon-only trigger: no visible "Columns" text, but an accessible name for screen readers.
     const columnsBtn = screen.getByTestId('cat-model-columns');
     expect(columnsBtn).toHaveAccessibleName('Columns');
     expect(columnsBtn).not.toHaveTextContent('Columns');
@@ -743,7 +731,6 @@ describe('ExploreApiScreen (A4 — columns + four-param pricing)', () => {
     expect(inVal).not.toHaveClass('visible');
     expect(ctxVal).toHaveAttribute('aria-hidden', 'true');
 
-    // Adjusting a thumb reveals that axis's value.
     const inMin = within(screen.getByTestId('cat-model-pricing-in-slider')).getAllByRole('slider')[0];
     inMin.focus();
     await user.keyboard('{ArrowRight}');

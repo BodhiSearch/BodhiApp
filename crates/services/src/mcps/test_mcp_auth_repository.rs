@@ -112,7 +112,6 @@ async fn test_create_auth_config_header_with_params(
   assert_eq!("ac-1", created.id);
   assert_eq!("header", created.config_type);
 
-  // Verify params were stored
   let stored_params = ctx
     .service
     .list_mcp_auth_config_params(TEST_TENANT_ID, "ac-1")
@@ -164,7 +163,6 @@ async fn test_create_auth_config_oauth_with_detail(
     created_detail.token_endpoint
   );
 
-  // Verify we can read it back via get_mcp_oauth_config_detail
   let fetched = ctx
     .service
     .get_mcp_oauth_config_detail(TEST_TENANT_ID, "ac-oauth-1")
@@ -204,7 +202,6 @@ async fn test_list_auth_configs_by_server(
     )
     .await?;
 
-  // Create 2 configs for server s1
   let config1 = make_auth_config_row("ac-1", "s1", "header", ctx.now);
   ctx
     .service
@@ -216,21 +213,18 @@ async fn test_list_auth_configs_by_server(
     .create_auth_config_header(TEST_TENANT_ID, &config2, vec![])
     .await?;
 
-  // Create 1 config for server s2
   let config3 = make_auth_config_row("ac-3", "s2", "header", ctx.now);
   ctx
     .service
     .create_auth_config_header(TEST_TENANT_ID, &config3, vec![])
     .await?;
 
-  // List for s1 should return 2
   let s1_configs = ctx
     .service
     .list_mcp_auth_configs_by_server(TEST_TENANT_ID, "s1")
     .await?;
   assert_eq!(2, s1_configs.len());
 
-  // List for s2 should return 1
   let s2_configs = ctx
     .service
     .list_mcp_auth_configs_by_server(TEST_TENANT_ID, "s2")
@@ -276,7 +270,6 @@ async fn test_get_auth_config(
   assert_eq!("header", fetched.config_type);
   assert_eq!("Config ac-get-1", fetched.name);
 
-  // Non-existent ID returns None
   let missing = ctx
     .service
     .get_mcp_auth_config(TEST_TENANT_ID, "no-such-config")
@@ -313,27 +306,23 @@ async fn test_delete_auth_config_cascades(
     .create_auth_config_header(TEST_TENANT_ID, &config, params)
     .await?;
 
-  // Verify params exist
   let params_before = ctx
     .service
     .list_mcp_auth_config_params(TEST_TENANT_ID, "ac-del-1")
     .await?;
   assert_eq!(2, params_before.len());
 
-  // Delete the config
   ctx
     .service
     .delete_mcp_auth_config(TEST_TENANT_ID, "ac-del-1")
     .await?;
 
-  // Config should be gone
   let gone = ctx
     .service
     .get_mcp_auth_config(TEST_TENANT_ID, "ac-del-1")
     .await?;
   assert_eq!(None, gone);
 
-  // Params should be cascaded away
   let params_after = ctx
     .service
     .list_mcp_auth_config_params(TEST_TENANT_ID, "ac-del-1")
@@ -388,14 +377,12 @@ async fn test_create_mcp_with_credentials(
 
   assert_eq!("m1", created.id);
 
-  // Verify auth params were created
   let params = ctx
     .service
     .list_mcp_auth_params(TEST_TENANT_ID, "m1")
     .await?;
   assert_eq!(2, params.len());
 
-  // Decrypt and verify values
   let decrypted = ctx
     .service
     .get_decrypted_auth_params(TEST_TENANT_ID, "m1")
@@ -437,7 +424,6 @@ async fn test_create_mcp_with_oauth_token_id(
     .create_auth_config_oauth(TEST_TENANT_ID, &config, &detail)
     .await?;
 
-  // Create an OAuth token without mcp_id
   let token = make_oauth_token(
     "tok-1",
     None,
@@ -449,7 +435,6 @@ async fn test_create_mcp_with_oauth_token_id(
   );
   ctx.service.create_mcp_oauth_token(&token).await?;
 
-  // Create MCP with oauth_token_id
   let mcp = McpEntity {
     auth_type: McpAuthType::Oauth,
     auth_config_id: Some("ac-oauth-1".to_string()),
@@ -469,7 +454,6 @@ async fn test_create_mcp_with_oauth_token_id(
 
   assert_eq!("m1", created.id);
 
-  // Verify the token's mcp_id is now set
   let fetched_token = ctx
     .service
     .get_mcp_oauth_token(TEST_TENANT_ID, TEST_USER_ID, "tok-1")
@@ -502,7 +486,6 @@ async fn test_update_mcp_replaces_credentials(
     ..make_mcp("m1", "s1", "cred-mcp", TEST_USER_ID, ctx.now)
   };
 
-  // Create with initial credentials
   let old_params = vec![make_auth_param_row(
     "ap-old",
     "m1",
@@ -516,7 +499,6 @@ async fn test_update_mcp_replaces_credentials(
     .create_mcp_with_auth(TEST_TENANT_ID, &mcp, Some(old_params), None, TEST_USER_ID)
     .await?;
 
-  // Update with new credentials
   let updated_at = ctx.now + chrono::Duration::seconds(30);
   let updated_mcp = McpEntity {
     updated_at,
@@ -552,7 +534,6 @@ async fn test_update_mcp_replaces_credentials(
     )
     .await?;
 
-  // Verify old params deleted and new params present
   let params = ctx
     .service
     .list_mcp_auth_params(TEST_TENANT_ID, "m1")
@@ -590,7 +571,6 @@ async fn test_update_mcp_changes_oauth_token(
     )
     .await?;
 
-  // Create auth config for OAuth
   let config = make_auth_config_row("ac-oauth-1", "s1", "oauth", ctx.now);
   let detail = make_oauth_config_detail("ac-oauth-1", ctx.now);
   ctx
@@ -606,7 +586,6 @@ async fn test_update_mcp_changes_oauth_token(
   };
   ctx.service.create_mcp(TEST_TENANT_ID, &mcp).await?;
 
-  // Create old token linked to the MCP
   let old_token = make_oauth_token(
     "tok-old",
     Some("m1"),
@@ -618,7 +597,6 @@ async fn test_update_mcp_changes_oauth_token(
   );
   ctx.service.create_mcp_oauth_token(&old_token).await?;
 
-  // Create a new unlinked token
   let new_token_time = ctx.now + chrono::Duration::seconds(10);
   let new_token = make_oauth_token(
     "tok-new",
@@ -631,7 +609,6 @@ async fn test_update_mcp_changes_oauth_token(
   );
   ctx.service.create_mcp_oauth_token(&new_token).await?;
 
-  // Update MCP to use the new token
   let updated_at = ctx.now + chrono::Duration::seconds(30);
   let updated_mcp = McpEntity {
     updated_at,
@@ -656,7 +633,6 @@ async fn test_update_mcp_changes_oauth_token(
     .await?;
   assert_eq!(None, old_fetched);
 
-  // New token should be linked
   let new_fetched = ctx
     .service
     .get_mcp_oauth_token(TEST_TENANT_ID, TEST_USER_ID, "tok-new")
@@ -799,7 +775,6 @@ async fn test_auth_param_encryption_roundtrip(
   );
   ctx.service.create_mcp_auth_param(&param).await?;
 
-  // Read back via decryption
   let decrypted = ctx
     .service
     .get_decrypted_auth_params(TEST_TENANT_ID, "m1")
@@ -849,14 +824,12 @@ async fn test_oauth_token_encryption_roundtrip(
   );
   ctx.service.create_mcp_oauth_token(&token).await?;
 
-  // Decrypt access token
   let access = ctx
     .service
     .get_decrypted_oauth_access_token(TEST_TENANT_ID, "tok-enc-1")
     .await?;
   assert_eq!(Some("my-access-token-abc".to_string()), access);
 
-  // Decrypt refresh token
   let refresh = ctx
     .service
     .get_decrypted_refresh_token(TEST_TENANT_ID, "tok-enc-1")
@@ -953,7 +926,6 @@ async fn test_store_oauth_token_replaces_existing(
     .create_auth_config_oauth(TEST_TENANT_ID, &config, &detail)
     .await?;
 
-  // Store first token with mcp_id
   let token1 = make_oauth_token(
     "tok-1",
     Some("m1"),
@@ -973,7 +945,6 @@ async fn test_store_oauth_token_replaces_existing(
     )
     .await?;
 
-  // Store second token with same mcp_id — should delete first
   let token2_time = ctx.now + chrono::Duration::seconds(10);
   let token2 = make_oauth_token(
     "tok-2",
@@ -994,14 +965,12 @@ async fn test_store_oauth_token_replaces_existing(
     )
     .await?;
 
-  // First token should be gone
   let first = ctx
     .service
     .get_mcp_oauth_token(TEST_TENANT_ID, TEST_USER_ID, "tok-1")
     .await?;
   assert_eq!(None, first);
 
-  // Second token should exist
   let second = ctx
     .service
     .get_mcp_oauth_token(TEST_TENANT_ID, TEST_USER_ID, "tok-2")
@@ -1042,7 +1011,6 @@ async fn test_link_oauth_token_to_mcp(
     .create_auth_config_oauth(TEST_TENANT_ID, &config, &detail)
     .await?;
 
-  // Create token without mcp_id
   let token = make_oauth_token(
     "tok-link",
     None,
@@ -1054,13 +1022,11 @@ async fn test_link_oauth_token_to_mcp(
   );
   ctx.service.create_mcp_oauth_token(&token).await?;
 
-  // Link it
   ctx
     .service
     .link_oauth_token_to_mcp(TEST_TENANT_ID, "tok-link", TEST_USER_ID, "m1")
     .await?;
 
-  // Verify mcp_id is set
   let fetched = ctx
     .service
     .get_mcp_oauth_token(TEST_TENANT_ID, TEST_USER_ID, "tok-link")
@@ -1102,7 +1068,6 @@ async fn test_link_oauth_token_wrong_user_fails(
     .create_auth_config_oauth(TEST_TENANT_ID, &config, &detail)
     .await?;
 
-  // Create token owned by TEST_USER_ID
   let token = make_oauth_token(
     "tok-wrong-user",
     None,
@@ -1114,7 +1079,6 @@ async fn test_link_oauth_token_wrong_user_fails(
   );
   ctx.service.create_mcp_oauth_token(&token).await?;
 
-  // Try to link as a different user — should fail
   let result = ctx
     .service
     .link_oauth_token_to_mcp(TEST_TENANT_ID, "tok-wrong-user", "other-user-id", "m1")
@@ -1155,7 +1119,6 @@ async fn test_get_latest_oauth_token_by_mcp(
     .create_auth_config_oauth(TEST_TENANT_ID, &config, &detail)
     .await?;
 
-  // Create two tokens for the same MCP
   let token1 = make_oauth_token(
     "tok-older",
     Some("m1"),
@@ -1179,7 +1142,6 @@ async fn test_get_latest_oauth_token_by_mcp(
   );
   ctx.service.create_mcp_oauth_token(&token2).await?;
 
-  // Should return the newest one
   let latest = ctx
     .service
     .get_latest_oauth_token_by_mcp(TEST_TENANT_ID, "m1")
@@ -1218,7 +1180,6 @@ async fn test_get_decrypted_auth_params_headers_and_queries(
     )
     .await?;
 
-  // Create mixed header + query params
   let header_param = make_auth_param_row(
     "ap-h1",
     "m1",
@@ -1241,12 +1202,10 @@ async fn test_get_decrypted_auth_params_headers_and_queries(
   assert!(decrypted.is_some());
   let decrypted = decrypted.unwrap();
 
-  // Verify headers
   assert_eq!(1, decrypted.headers.len());
   assert_eq!("Authorization", decrypted.headers[0].0);
   assert_eq!("Bearer h-token", decrypted.headers[0].1);
 
-  // Verify query params
   assert_eq!(2, decrypted.query_params.len());
   let query_keys: Vec<&str> = decrypted
     .query_params
@@ -1256,7 +1215,6 @@ async fn test_get_decrypted_auth_params_headers_and_queries(
   assert!(query_keys.contains(&"api_key"));
   assert!(query_keys.contains(&"secret"));
 
-  // Verify no params returns None
   let empty = ctx
     .service
     .get_decrypted_auth_params(TEST_TENANT_ID, "no-such-mcp")

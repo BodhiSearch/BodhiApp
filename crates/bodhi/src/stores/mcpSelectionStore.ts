@@ -17,9 +17,7 @@ function getLastMcpSelection(): EnabledMcpTools {
         return parsed;
       }
     }
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   return {};
 }
 

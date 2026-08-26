@@ -21,7 +21,6 @@ pub const KEY_PREFIX_HEADER_BODHIAPP: &str = "X-BodhiApp-";
 
 const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
 
-/// Clears authentication data from the session.
 /// Removes the active client's namespaced tokens and the active_client_id marker.
 async fn clear_session_auth_data(session: &Session) {
   if let Ok(Some(client_id)) = session.get::<String>(SESSION_KEY_ACTIVE_CLIENT_ID).await {
@@ -89,8 +88,6 @@ fn evaluate_same_origin(_host: Option<&str>, sec_fetch_site: Option<&str>) -> bo
   }
 }
 
-/// Try to read and validate/refresh the dashboard token from the session.
-/// Returns `Some(valid_dashboard_token)` on success, `None` if no dashboard token or refresh fails.
 async fn try_resolve_dashboard_token(
   session: &Session,
   token_service: &DefaultTokenService,
@@ -317,27 +314,24 @@ pub async fn optional_auth_middleware(
       None if is_multi_tenant => {
         // No resource token, but might have dashboard token (dashboard-only session)
         match try_resolve_dashboard_token(&session, &token_service).await {
-          Some(dashboard_token) => {
-            // Extract user info from dashboard JWT
-            match extract_claims::<UserIdClaims>(&dashboard_token) {
-              Ok(user_claims) => {
-                req
-                  .extensions_mut()
-                  .insert(AuthContext::MultiTenantSession {
-                    client_id: None,
-                    tenant_id: None,
-                    user_id: user_claims.sub.clone(),
-                    username: user_claims.preferred_username,
-                    role: services::ResourceRole::Guest,
-                    token: None,
-                    dashboard_token,
-                  });
-              }
-              Err(_) => {
-                req.extensions_mut().insert(anon());
-              }
+          Some(dashboard_token) => match extract_claims::<UserIdClaims>(&dashboard_token) {
+            Ok(user_claims) => {
+              req
+                .extensions_mut()
+                .insert(AuthContext::MultiTenantSession {
+                  client_id: None,
+                  tenant_id: None,
+                  user_id: user_claims.sub.clone(),
+                  username: user_claims.preferred_username,
+                  role: services::ResourceRole::Guest,
+                  token: None,
+                  dashboard_token,
+                });
             }
-          }
+            Err(_) => {
+              req.extensions_mut().insert(anon());
+            }
+          },
           None => {
             req.extensions_mut().insert(anon());
           }

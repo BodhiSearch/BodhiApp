@@ -20,10 +20,6 @@ fn make_test_tenant(id: &str, client_id: &str, now: chrono::DateTime<chrono::Utc
   }
 }
 
-// ============================================================================
-// Cross-Tenant tenants_users Isolation
-// ============================================================================
-
 #[rstest]
 #[anyhow_trace]
 #[tokio::test]

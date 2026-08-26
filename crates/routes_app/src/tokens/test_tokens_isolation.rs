@@ -37,7 +37,6 @@ async fn isolation_router(
     .await;
   let app_service: Arc<dyn AppService> = Arc::new(builder.build().await?);
 
-  // Create both tenants with deterministic IDs via create_tenant_test
   app_service
     .db_service()
     .create_tenant_test(&Tenant::test_default())
@@ -69,7 +68,6 @@ async fn test_cross_tenant_token_list_isolation(
   let auth_b = AuthContext::test_session("user-a", "a@test.com", ResourceRole::Admin)
     .with_tenant_id(TEST_TENANT_B_ID);
 
-  // Create token as tenant A user A
   let response = router
     .clone()
     .oneshot(
@@ -86,7 +84,6 @@ async fn test_cross_tenant_token_list_isolation(
     .await?;
   assert_eq!(StatusCode::CREATED, response.status());
 
-  // Create token as tenant B user A (same user, different tenant)
   let response = router
     .clone()
     .oneshot(
@@ -103,7 +100,6 @@ async fn test_cross_tenant_token_list_isolation(
     .await?;
   assert_eq!(StatusCode::CREATED, response.status());
 
-  // List as tenant A -> only 1 token
   let response = router
     .clone()
     .oneshot(
@@ -118,7 +114,6 @@ async fn test_cross_tenant_token_list_isolation(
   let list = response.json::<PaginatedTokenResponse>().await?;
   assert_eq!(1, list.data.len());
 
-  // List as tenant B -> only 1 token
   let response = router
     .clone()
     .oneshot(
@@ -150,7 +145,6 @@ async fn test_cross_tenant_token_update_isolation(
   let auth_b = AuthContext::test_session("user-a", "a@test.com", ResourceRole::Admin)
     .with_tenant_id(TEST_TENANT_B_ID);
 
-  // Create token as tenant A user A
   let response = router
     .clone()
     .oneshot(
@@ -167,7 +161,6 @@ async fn test_cross_tenant_token_update_isolation(
     .await?;
   assert_eq!(StatusCode::CREATED, response.status());
 
-  // List as tenant A to get the token ID
   let response = router
     .clone()
     .oneshot(
@@ -183,7 +176,6 @@ async fn test_cross_tenant_token_update_isolation(
   assert_eq!(1, list.data.len());
   let token_id = &list.data[0].id;
 
-  // Try to update that token as tenant B user A -> 404
   let response = router
     .clone()
     .oneshot(
@@ -215,7 +207,6 @@ async fn test_intra_tenant_user_token_list_isolation(
   let auth_user_a = AuthContext::test_session("user-a", "a@test.com", ResourceRole::Admin);
   let auth_user_b = AuthContext::test_session("user-b", "b@test.com", ResourceRole::Admin);
 
-  // Create token as tenant A user A
   let response = router
     .clone()
     .oneshot(
@@ -232,7 +223,6 @@ async fn test_intra_tenant_user_token_list_isolation(
     .await?;
   assert_eq!(StatusCode::CREATED, response.status());
 
-  // Create token as tenant A user B
   let response = router
     .clone()
     .oneshot(
@@ -249,7 +239,6 @@ async fn test_intra_tenant_user_token_list_isolation(
     .await?;
   assert_eq!(StatusCode::CREATED, response.status());
 
-  // List as user A -> only 1 token
   let response = router
     .clone()
     .oneshot(
@@ -264,7 +253,6 @@ async fn test_intra_tenant_user_token_list_isolation(
   let list = response.json::<PaginatedTokenResponse>().await?;
   assert_eq!(1, list.data.len());
 
-  // List as user B -> only 1 token
   let response = router
     .clone()
     .oneshot(
@@ -295,7 +283,6 @@ async fn test_intra_tenant_user_token_update_isolation(
   let auth_user_a = AuthContext::test_session("user-a", "a@test.com", ResourceRole::Admin);
   let auth_user_b = AuthContext::test_session("user-b", "b@test.com", ResourceRole::Admin);
 
-  // Create token as tenant A user A
   let response = router
     .clone()
     .oneshot(
@@ -312,7 +299,6 @@ async fn test_intra_tenant_user_token_update_isolation(
     .await?;
   assert_eq!(StatusCode::CREATED, response.status());
 
-  // List as user A to get the token ID
   let response = router
     .clone()
     .oneshot(
@@ -328,7 +314,6 @@ async fn test_intra_tenant_user_token_update_isolation(
   assert_eq!(1, list.data.len());
   let token_id = &list.data[0].id;
 
-  // Try to update as tenant A user B -> 404
   let response = router
     .clone()
     .oneshot(

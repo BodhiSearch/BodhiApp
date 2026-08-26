@@ -6,7 +6,6 @@ import { ChatRequest } from '../src/types';
 const TEST_PORT = 9135;
 const API_BASE_URL = `http://localhost:${TEST_PORT}`;
 
-// Mock response data
 const mockChatCompletion = {
   id: "mock-completion-id",
   object: "chat.completion",
@@ -29,20 +28,14 @@ const mockChatCompletion = {
   }
 };
 
-// Setup MSW server
 const server = setupServer(
   http.post(`${API_BASE_URL}/v1/chat/completions`, () => {
     return HttpResponse.json(mockChatCompletion);
   })
 );
 
-// Start server before all tests
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-
-// Reset handlers after each test
 afterEach(() => server.resetHandlers());
-
-// Clean up after all tests are done
 afterAll(() => server.close());
 
 describe('BodhiApp TypeScript Client', () => {

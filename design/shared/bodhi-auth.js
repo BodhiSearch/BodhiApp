@@ -1,18 +1,7 @@
-/* ═══════════════════════════════════════════════════════════════
-   Bodhi Auth — shared page behaviors
-   bodhi-auth.js   ·   load at end of <body> on every auth page
-
-   Pure UX niceties — all client-side, safe to keep or drop on the
-   Keycloak port:
-     • password show / hide toggle
-     • password-strength meter (register / update-password)
-     • in-page light / dark theme toggle (uses window.bodhiTheme)
-     • lucide icon init
-═══════════════════════════════════════════════════════════════ */
+/* UX helpers: password toggle, strength meter, theme switch, icon init. */
 (function () {
   function initIcons() { if (window.lucide) lucide.createIcons(); }
 
-  /* ── Password show / hide ──────────────────────────────────── */
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-pw-toggle]');
     if (!btn) return;
@@ -23,7 +12,6 @@
     initIcons();
   });
 
-  /* ── Password-strength meter ───────────────────────────────── */
   function score(v) {
     var s = 0;
     if (v.length >= 8) s++;
@@ -50,7 +38,6 @@
     });
   });
 
-  /* ── In-page theme toggle ──────────────────────────────────── */
   var themeBtn = document.getElementById('ba-theme');
   if (themeBtn && window.bodhiTheme) {
     var sync = function () {

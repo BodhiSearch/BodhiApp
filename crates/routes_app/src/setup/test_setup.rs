@@ -515,8 +515,6 @@ async fn test_setup_handler_validation_error() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ── Multi-tenant setup_show() tests ─────────────────────────────────────────
-
 use services::test_utils::AppServiceStub;
 
 async fn build_multi_tenant_app_service() -> anyhow::Result<Arc<AppServiceStub>> {

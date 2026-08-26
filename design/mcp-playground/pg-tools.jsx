@@ -19,7 +19,6 @@
    Pure data + helpers — published to window; consumed by pg-views.
 ═══════════════════════════════════════════════════════════════ */
 
-/* ── behaviour hints (friendly label · protocol term in the tooltip) ── */
 const HINT_ORDER = ['readOnlyHint', 'destructiveHint', 'idempotentHint', 'openWorldHint'];
 function hintFor(key, val) {
   switch (key) {
@@ -44,13 +43,6 @@ function hintsForTool(tool) {
   return HINT_ORDER.filter(k => k in a).map(k => hintFor(k, a[k])).filter(Boolean);
 }
 
-/* ── result model ─────────────────────────────────────────────────
-   A tool's readable result is { content:[block…], structuredContent?, isError? }.
-   block.type ∈ text | image | resource_link | resource
-     text   → { text, format?: 'markdown'(default) | 'plain' | 'pre' }
-     image  → { name, mimeType, w?, h?, alt?, tint? }   (placeholder tile)
-     link   → { uri, name, description?, mimeType? }     (jumps to Resources)
-     resource → { uri, mimeType, text }                  (embedded inline) */
 function toolResultModel(tool) {
   if (tool.result) return tool.result;
   let parsed; try { parsed = JSON.parse(tool.mockResponse); } catch (e) { parsed = tool.mockResponse; }
@@ -60,7 +52,6 @@ function toolResultModel(tool) {
   if (parsed && parsed.type === 'text') return { content: [{ type: 'text', text: parsed.text }] };
   return { content: [], structuredContent: parsed };
 }
-/* the wire-shape envelope shown under Raw (mirrors a real tools/call result) */
 function blockToWire(b) {
   if (b.type === 'text') return { type: 'text', text: b.text };
   if (b.type === 'image') return { type: 'image', mimeType: b.mimeType || 'image/png', data: b.data || 'iVBORw0KGgoAAAANSUhEUg…(base64)' };
@@ -75,9 +66,6 @@ function toolResultEnvelope(model) {
   return out;
 }
 
-/* ── interactive demo payloads (shared by the tool trigger + the seeded
-   inbox in pg-live). The elicitation schema exercises every field kind the
-   form-builder supports; the sampling params mirror a real createMessage. ── */
 const CONTACT_ELICIT_SCHEMA = {
   type: 'object',
   properties: {
@@ -102,7 +90,6 @@ const SUMMARIZE_SAMPLING_PARAMS = {
   maxTokens: 100, temperature: 0.7,
 };
 
-/* ── EVERYTHING reference server — one tool per result kind / annotation ── */
 const EVERYTHING_TOOLS = [
   /* the two live-interaction demos lead the list so they're easy to find */
   { name: 'collect_contact_info', title: 'Request your details', icon: 'message-square-dashed',
@@ -174,7 +161,6 @@ const EVERYTHING_TOOLS = [
     result: { content: [{ type: 'text', text: 'Note **note-8842** was deleted. This can’t be undone.' }] } },
 ];
 
-/* ── enrichment for the real servers (titles + annotations + a few results) ── */
 const TOOL_ENRICH = {
   deepwiki: {
     read_wiki_structure: { title: 'Browse documentation', annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true } },
@@ -211,7 +197,6 @@ const TOOL_ENRICH = {
   },
 };
 
-/* ── the playground's enriched tool list for a server ── */
 function playgroundToolsFor(serverId) {
   if (serverId === 'everything') return EVERYTHING_TOOLS;
   const base = (typeof toolsFor === 'function') ? toolsFor(serverId) : [];

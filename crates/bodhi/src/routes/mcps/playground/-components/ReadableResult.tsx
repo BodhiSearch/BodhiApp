@@ -5,15 +5,11 @@ import type { McpPromptMessage } from '@/hooks/mcps/useMcpClient';
 
 import type { Block, ResourceReadable, ToolReadable } from './playgroundTypes';
 
-// ── helpers ─────────────────────────────────────────────────────
-
 function prettyKey(k: string): string {
   if (!k) return '';
   const spaced = k.replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2');
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
-
-// ── inline markdown ─────────────────────────────────────────────
 
 function inlineMd(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];

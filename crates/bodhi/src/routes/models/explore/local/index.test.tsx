@@ -82,7 +82,7 @@ describe('LocalDiscoveryScreen (Phase 1 — search-only list)', () => {
 
     const list = screen.getByTestId('ld-list');
     expect(within(list).getAllByRole('option').length).toBe(3);
-    // The result bar is gone — the count lives below the list, next to Load more.
+    // No result bar; the count lives below the list, next to Load more.
     expect(screen.queryByTestId('ld-resultbar')).not.toBeInTheDocument();
     expect(screen.getByTestId('ld-count')).toHaveTextContent('Showing 3');
     // Default sort is Downloads (descending-only); the active header carries the state.
@@ -154,7 +154,6 @@ describe('LocalDiscoveryScreen (Phase 1 — search-only list)', () => {
       expect(last.searchParams.get('order')).toBeNull();
     });
 
-    // Re-clicking the active column does not flip to ascending.
     await act(async () => {
       await userEvent.click(screen.getByTestId('ld-sort-likes'));
     });
@@ -176,7 +175,6 @@ describe('LocalDiscoveryScreen (Phase 1 — search-only list)', () => {
     );
     await renderScreen();
 
-    // The list row surfaces the formatted last_modified date.
     await waitFor(() => expect(screen.getByTestId('ld-row-a-dated')).toHaveTextContent('8 Sep 2025'));
 
     await act(async () => {
@@ -463,7 +461,6 @@ describe('LocalDiscoveryScreen (Phase 6 — Downloads panel)', () => {
     });
     await waitFor(() => expect(screen.getByTestId('ld-downloads-panel')).toBeInTheDocument());
 
-    // Second click collapses the rail → panel removed.
     await act(async () => {
       await userEvent.click(screen.getByTestId('ld-downloads-button'));
     });
@@ -563,7 +560,6 @@ describe('LocalDiscoveryScreen (Phase 6 — Downloads panel)', () => {
       await userEvent.click(screen.getByTestId('ld-downloads-button'));
     });
     await waitFor(() => expect(screen.getByTestId('ld-dl-item-dl-downloading')).toBeInTheDocument());
-    // Downloading items expose neither archive nor retry.
     expect(screen.queryByTestId('ld-dl-archive-dl-downloading')).not.toBeInTheDocument();
     expect(screen.queryByTestId('ld-dl-retry-dl-downloading')).not.toBeInTheDocument();
   });

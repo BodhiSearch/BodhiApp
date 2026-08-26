@@ -196,7 +196,6 @@ fn clean_bin_dir(project_dir: &Path) -> Result<()> {
     fs::create_dir_all(&bin_dir)?;
     return Ok(());
   }
-  // Remove all contents except the lock file
   for entry in fs::read_dir(&bin_dir)? {
     let entry = entry?;
     let path = entry.path();

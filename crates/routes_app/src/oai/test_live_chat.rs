@@ -16,21 +16,7 @@ use serde_json::Value;
 use server_core::test_utils::ResponseTestExt;
 use tower::ServiceExt;
 
-/// Live integration test for non-streamed chat completions using real llama.cpp inference.
-///
-/// This test exercises the complete request flow:
-/// - Session auth with resource_user role
-/// - Model resolution through LocalDataService (discovers Qwen3-1.7B from real HF cache)
-/// - Router forwards request to DefaultSharedContext
-/// - DefaultServerFactory creates LlamaServer process
-/// - Real llama.cpp inference generates response
-///
-/// Prerequisites:
-/// - Pre-downloaded model: `ggml-org/Qwen3-1.7B-GGUF` at `~/.cache/huggingface/hub/`
-/// - llama.cpp binary at `crates/llama_server_proc/bin/{BUILD_TARGET}/{DEFAULT_VARIANT}/{EXEC_NAME}`
-///
-/// Timeout: 5 minutes (allows for model loading + inference)
-/// Concurrency: Serialized with other live tests to prevent resource contention
+/// Requires the pre-downloaded `ggml-org/Qwen3-1.7B-GGUF` model and its llama.cpp binary under `crates/llama_server_proc/bin/`.
 #[rstest]
 #[awt]
 #[tokio::test(flavor = "multi_thread")]
@@ -94,21 +80,7 @@ async fn test_live_chat_completions_non_streamed() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// Live integration test for streamed chat completions using real llama.cpp inference.
-///
-/// This test exercises the complete streaming request flow:
-/// - Session auth with resource_user role
-/// - Model resolution through LocalDataService
-/// - Router forwards request to DefaultSharedContext
-/// - DefaultServerFactory creates LlamaServer process
-/// - Real llama.cpp inference generates streaming SSE response
-///
-/// Prerequisites:
-/// - Pre-downloaded model: `ggml-org/Qwen3-1.7B-GGUF` at `~/.cache/huggingface/hub/`
-/// - llama.cpp binary at `crates/llama_server_proc/bin/{BUILD_TARGET}/{DEFAULT_VARIANT}/{EXEC_NAME}`
-///
-/// Timeout: 5 minutes (allows for model loading + streaming inference)
-/// Concurrency: Serialized with other live tests to prevent resource contention
+/// Requires the pre-downloaded `ggml-org/Qwen3-1.7B-GGUF` model and its llama.cpp binary under `crates/llama_server_proc/bin/`.
 #[rstest]
 #[awt]
 #[tokio::test(flavor = "multi_thread")]
@@ -148,7 +120,6 @@ async fn test_live_chat_completions_streamed() -> anyhow::Result<()> {
 
   let (content, finish_reason) = parse_streaming_content(&response_text);
 
-  // Validate response fields
   assert!(
     content.contains("Tuesday"),
     "Expected content to contain 'Tuesday', got: {}",
@@ -165,18 +136,7 @@ async fn test_live_chat_completions_streamed() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// Live integration test for chat completions with thinking disabled via chat_template_kwargs.
-///
-/// This test verifies that when enable_thinking is explicitly disabled, the response
-/// does not include reasoning_content field. This is important for models that support
-/// thinking mode but users want to disable it for faster responses.
-///
-/// Prerequisites:
-/// - Pre-downloaded model: `ggml-org/Qwen3-1.7B-GGUF` at `~/.cache/huggingface/hub/`
-/// - llama.cpp binary at `crates/llama_server_proc/bin/{BUILD_TARGET}/{DEFAULT_VARIANT}/{EXEC_NAME}`
-///
-/// Timeout: 5 minutes (allows for model loading + inference)
-/// Concurrency: Serialized with other live tests to prevent resource contention
+/// Requires the pre-downloaded `ggml-org/Qwen3-1.7B-GGUF` model and its llama.cpp binary under `crates/llama_server_proc/bin/`.
 #[rstest]
 #[awt]
 #[tokio::test(flavor = "multi_thread")]
@@ -224,7 +184,6 @@ async fn test_live_chat_completions_thinking_disabled() -> anyhow::Result<()> {
     content
   );
 
-  // Verify thinking is disabled: reasoning_content should be absent or null
   let reasoning_content = message.get("reasoning_content");
   assert!(
     reasoning_content.is_none() || reasoning_content.unwrap().is_null(),
@@ -243,18 +202,7 @@ async fn test_live_chat_completions_thinking_disabled() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// Live integration test for chat completions with reasoning_format set to "none".
-///
-/// This test verifies that when reasoning_format is set to "none", the response
-/// does not extract reasoning_content even if the model produces thinking tokens.
-/// The reasoning stays unparsed in the main content.
-///
-/// Prerequisites:
-/// - Pre-downloaded model: `ggml-org/Qwen3-1.7B-GGUF` at `~/.cache/huggingface/hub/`
-/// - llama.cpp binary at `crates/llama_server_proc/bin/{BUILD_TARGET}/{DEFAULT_VARIANT}/{EXEC_NAME}`
-///
-/// Timeout: 5 minutes (allows for model loading + inference)
-/// Concurrency: Serialized with other live tests to prevent resource contention
+/// Requires the pre-downloaded `ggml-org/Qwen3-1.7B-GGUF` model and its llama.cpp binary under `crates/llama_server_proc/bin/`.
 #[rstest]
 #[awt]
 #[tokio::test(flavor = "multi_thread")]
@@ -300,8 +248,6 @@ async fn test_live_chat_completions_reasoning_format_none() -> anyhow::Result<()
     content
   );
 
-  // Verify reasoning_format: none leaves thoughts unparsed
-  // reasoning_content should be absent or null (not extracted by parser)
   let reasoning_content = message.get("reasoning_content");
   assert!(
     reasoning_content.is_none() || reasoning_content.unwrap().is_null(),
@@ -320,18 +266,7 @@ async fn test_live_chat_completions_reasoning_format_none() -> anyhow::Result<()
   Ok(())
 }
 
-/// Live integration test for chat completions with thinking enabled by default.
-///
-/// This test verifies that when no thinking parameters are specified, the default
-/// behavior produces reasoning_content in the response. This tests the default
-/// configuration of the model's thinking mode.
-///
-/// Prerequisites:
-/// - Pre-downloaded model: `ggml-org/Qwen3-1.7B-GGUF` at `~/.cache/huggingface/hub/`
-/// - llama.cpp binary at `crates/llama_server_proc/bin/{BUILD_TARGET}/{DEFAULT_VARIANT}/{EXEC_NAME}`
-///
-/// Timeout: 5 minutes (allows for model loading + inference)
-/// Concurrency: Serialized with other live tests to prevent resource contention
+/// Requires the pre-downloaded `ggml-org/Qwen3-1.7B-GGUF` model and its llama.cpp binary under `crates/llama_server_proc/bin/`.
 #[rstest]
 #[awt]
 #[tokio::test(flavor = "multi_thread")]
@@ -345,7 +280,6 @@ async fn test_live_chat_completions_thinking_enabled_default() -> anyhow::Result
     create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
       .await?;
 
-  // Build chat completion request WITHOUT thinking parameters (tests default behavior)
   let request = serde_json::json!({
     "model": "ggml-org/Qwen3-1.7B-GGUF:Q8_0",
     "messages": [
@@ -377,7 +311,6 @@ async fn test_live_chat_completions_thinking_enabled_default() -> anyhow::Result
     content
   );
 
-  // Verify thinking is enabled by default: reasoning_content should be present
   let reasoning_content = message.get("reasoning_content");
   assert!(
     reasoning_content.is_some() && !reasoning_content.unwrap().is_null(),
@@ -385,7 +318,6 @@ async fn test_live_chat_completions_thinking_enabled_default() -> anyhow::Result
     reasoning_content
   );
 
-  // Verify reasoning_content is non-empty string
   let reasoning_text = reasoning_content.unwrap().as_str();
   assert!(
     reasoning_text.is_some() && !reasoning_text.unwrap().is_empty(),
@@ -404,20 +336,7 @@ async fn test_live_chat_completions_thinking_enabled_default() -> anyhow::Result
   Ok(())
 }
 
-/// Live integration test for non-streaming tool calling with real llama.cpp inference.
-///
-/// This test exercises a single-turn tool calling flow:
-/// - Session auth with resource_user role
-/// - Request with developer message and tools definition
-/// - Model generates tool call in OpenAI-compatible format
-/// - Response includes finish_reason "tool_calls" with function name and arguments
-///
-/// Prerequisites:
-/// - Pre-downloaded model: `ggml-org/Qwen3-1.7B-GGUF` at `~/.cache/huggingface/hub/`
-/// - llama.cpp binary at `crates/llama_server_proc/bin/{BUILD_TARGET}/{DEFAULT_VARIANT}/{EXEC_NAME}`
-///
-/// Timeout: 5 minutes (allows for model loading + tool calling inference)
-/// Concurrency: Serialized with other live tests to prevent resource contention
+/// Requires the pre-downloaded `ggml-org/Qwen3-1.7B-GGUF` model and its llama.cpp binary under `crates/llama_server_proc/bin/`.
 #[rstest]
 #[awt]
 #[tokio::test(flavor = "multi_thread")]
@@ -506,20 +425,7 @@ async fn test_live_tool_calling_non_streamed() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// Live integration test for streaming tool calling with real llama.cpp inference.
-///
-/// This test exercises a single-turn streaming tool calling flow:
-/// - Session auth with resource_user role
-/// - Request with developer message, tools definition, and stream=true
-/// - Model generates tool call in OpenAI-compatible SSE format
-/// - Response includes finish_reason "tool_calls" with function name and arguments
-///
-/// Prerequisites:
-/// - Pre-downloaded model: `ggml-org/Qwen3-1.7B-GGUF` at `~/.cache/huggingface/hub/`
-/// - llama.cpp binary at `crates/llama_server_proc/bin/{BUILD_TARGET}/{DEFAULT_VARIANT}/{EXEC_NAME}`
-///
-/// Timeout: 5 minutes (allows for model loading + streaming tool calling)
-/// Concurrency: Serialized with other live tests to prevent resource contention
+/// Requires the pre-downloaded `ggml-org/Qwen3-1.7B-GGUF` model and its llama.cpp binary under `crates/llama_server_proc/bin/`.
 #[rstest]
 #[awt]
 #[tokio::test(flavor = "multi_thread")]

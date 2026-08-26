@@ -17,16 +17,13 @@ import { getAllDocSlugs, getDocsForSlug } from '@/app/docs/utils';
 
 export const DOCS_ROOT_PATH = 'src/docs';
 
-// Generate static paths for all markdown files
 export function generateStaticParams() {
   const paths = getAllDocSlugs();
   const allPaths = new Set<string>();
 
   paths.forEach((path) => {
-    // Add the full path
     allPaths.add(path);
 
-    // Add all parent directory paths
     const parts = path.split('/');
     for (let i = 1; i < parts.length; i++) {
       allPaths.add(parts.slice(0, i).join('/'));

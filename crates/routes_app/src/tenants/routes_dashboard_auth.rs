@@ -70,9 +70,8 @@ pub async fn dashboard_auth_initiate(
         }),
       ));
     }
-    // Expired or undecodable: the auth middleware already tried and failed to refresh it. Drop the
-    // stale keys and fall through to a fresh OAuth flow, otherwise the client is bounced back to
-    // /ui/login forever with no way to re-authenticate.
+    // Auth middleware already tried and failed to refresh this token; drop the stale keys so we
+    // fall through to a fresh OAuth flow instead of bouncing the client back to /ui/login forever.
     session
       .remove::<String>(DASHBOARD_ACCESS_TOKEN_KEY)
       .await

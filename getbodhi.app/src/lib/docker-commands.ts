@@ -1,7 +1,3 @@
-/**
- * Generate Docker run commands from variant metadata
- */
-
 interface DockerRunCommandOptions {
   containerName?: string;
   hostPort?: number;
@@ -14,11 +10,6 @@ interface DockerRunCommandOptions {
   tag: string;
 }
 
-/**
- * Generate a Docker run command from metadata
- * @param options - Command generation options
- * @returns Multi-line Docker run command with line continuations
- */
 export function generateDockerRunCommand(options: DockerRunCommandOptions): string {
   const {
     containerName = 'bodhiapp',

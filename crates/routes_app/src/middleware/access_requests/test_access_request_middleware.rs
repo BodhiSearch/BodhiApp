@@ -113,10 +113,8 @@ async fn test_mcp_session_auth_passes_through() {
 #[rstest]
 #[tokio::test]
 async fn test_mcp_api_token_passes_through() {
-  // API tokens bypass the access-request lifecycle check in this middleware — their
-  // per-resource grants are enforced downstream by AccessPolicy. Guards the explicit
-  // `AuthContext::ApiToken => Session` bypass arm against accidental removal (which
-  // would otherwise 403 every API token reaching /apps/mcps/* with no failing test).
+  // Guards the `AuthContext::ApiToken => Session` bypass arm against accidental removal
+  // (which would otherwise 403 every API token reaching /apps/mcps/* with no failing test).
   let ctx = AuthContext::test_api_token("user123", TokenScope::User);
   let app = test_mcp_router(ctx).await;
 
@@ -161,10 +159,8 @@ async fn test_mcp_multi_tenant_session_passes_through() {
   assert_eq!(response.status(), StatusCode::OK);
 }
 
-/// The middleware now validates only the access-request **lifecycle** (exists +
-/// Approved + app/user match). Per-instance authorization moved to AccessPolicy in
-/// the handler, so an approved request passes the middleware regardless of which
-/// MCP instance is addressed.
+/// Per-instance authorization moved to AccessPolicy in the handler, so an approved
+/// request passes the middleware regardless of which MCP instance is addressed.
 #[rstest]
 #[case::approved(AppAccessRequestStatus::Approved, StatusCode::OK)]
 #[case::denied(AppAccessRequestStatus::Denied, StatusCode::FORBIDDEN)]

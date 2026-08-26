@@ -16,13 +16,11 @@ export interface LinkRowProps {
 
 /**
  * Turns a selectable row into a real link target for keyboard/link-hint tools (e.g. Vimium) and
- * screen readers. href="#" + preventDefault — not navigable, selection is local state.
- * stopPropagation stops the row's own onClick from also firing (avoids a duplicate view transition).
+ * screen readers. href="#" + preventDefault keeps it non-navigable; stopPropagation stops the row's
+ * own onClick from also firing (avoids a duplicate view transition).
  *
- * Stretched (default): empty `<a>` filling the row, behind its controls (see `.l-rowlink` +
- * control-raising selectors in list.css/settings.css) — used by flex list rows. Compact (`children`
- * given): inline anchor wrapping the `#` index — used by catalog tables where horizontal overflow
- * makes a stretched anchor unreliable for link-hint tools.
+ * Compact mode (`children`) wraps the `#` index instead of stretching across the row, since a
+ * stretched anchor under cell content is missed by link-hint tools once the row overflows horizontally.
  *
  * onMouseDown preventDefault keeps the anchor from taking focus on a mouse click, avoiding a stale
  * :focus-visible outline once focus later moves elsewhere.

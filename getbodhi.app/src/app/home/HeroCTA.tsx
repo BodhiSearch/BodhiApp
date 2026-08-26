@@ -13,7 +13,6 @@ interface HeroCTAProps {
 }
 
 function HeroCTAComponent({ platform, platformData }: HeroCTAProps) {
-  // Fallback for unknown platform
   if (!platformData || platform === 'unknown') {
     return (
       <div className="max-w-xl mx-auto space-y-4">
@@ -41,9 +40,7 @@ function HeroCTAComponent({ platform, platformData }: HeroCTAProps) {
 
   return (
     <div className="w-full space-y-4">
-      {/* Primary Download and Package Manager - Side by side on desktop, stacked on mobile */}
       <div className="flex flex-col md:flex-row justify-center items-stretch gap-4 px-4 max-w-5xl mx-auto">
-        {/* Primary Download Card */}
         {platformData.downloadUrl ? (
           <Card className="p-6 bg-gray-50 border border-gray-200 w-full md:w-auto md:min-w-[400px]">
             <div className="flex items-center gap-2 mb-3">
@@ -74,7 +71,6 @@ function HeroCTAComponent({ platform, platformData }: HeroCTAProps) {
           </Card>
         )}
 
-        {/* Secondary Package Manager Card */}
         {hasPackageManagers && primaryPackageManager && (
           <Card className="p-6 bg-gray-50 border border-gray-200 w-full md:w-auto md:min-w-[400px]">
             <div className="flex items-center gap-2 mb-3">
@@ -88,7 +84,6 @@ function HeroCTAComponent({ platform, platformData }: HeroCTAProps) {
         )}
       </div>
 
-      {/* Tertiary Platform Selector Link */}
       <div className="text-center">
         <Link
           href="#download-section"

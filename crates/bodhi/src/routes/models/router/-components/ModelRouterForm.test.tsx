@@ -141,7 +141,7 @@ describe('ModelRouterForm', () => {
     await user.type(screen.getByTestId('cooldown-secs-input'), '90');
     await user.clear(screen.getByTestId('max-attempts-input'));
     await user.type(screen.getByTestId('max-attempts-input'), '2');
-    await user.click(screen.getByTestId('honor-retry-after-switch')); // turn off
+    await user.click(screen.getByTestId('honor-retry-after-switch'));
 
     await user.click(screen.getByTestId('router-submit'));
 

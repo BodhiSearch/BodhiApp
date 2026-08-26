@@ -259,7 +259,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// Discover OAuth metadata from an MCP server URL.
   pub async fn discover_mcp_oauth_metadata(
     &self,
     mcp_server_url: &str,

@@ -93,7 +93,6 @@ static STRUCTURED_PATTERNS: Lazy<Vec<Regex>> = Lazy::new(|| {
   ]
 });
 
-/// Extract complete model metadata from GGUF file
 pub fn extract_metadata(metadata: &GGUFMetadata, filename: &str) -> ModelMetadata {
   ModelMetadata {
     capabilities: extract_capabilities(metadata),
@@ -103,7 +102,6 @@ pub fn extract_metadata(metadata: &GGUFMetadata, filename: &str) -> ModelMetadat
   }
 }
 
-/// Extract model capabilities from GGUF metadata
 pub fn extract_capabilities(metadata: &GGUFMetadata) -> ModelCapabilities {
   let chat_template = get_chat_template(metadata);
   let model_name = get_model_name(metadata);
@@ -119,13 +117,7 @@ pub fn extract_capabilities(metadata: &GGUFMetadata) -> ModelCapabilities {
   }
 }
 
-/// Detect vision support from GGUF metadata
-///
-/// Vision support indicators (research-report.md Section 1):
-/// 1. Architecture-specific: qwen2vl, qwen3vl, chameleon, cogvlm, minicpm, llava
-/// 2. CLIP architecture with vision encoder flag
-/// 3. Projector type presence (clip.projector_type)
-/// 4. Vision-specific keys (clip.vision.image_size, patch_size, embedding_length)
+/// Vision indicators per research-report.md Section 1.
 ///
 /// Returns:
 /// - Some(true): Definite vision capability
@@ -183,12 +175,7 @@ pub fn detect_vision(metadata: &GGUFMetadata) -> Option<bool> {
   Some(false)
 }
 
-/// Detect audio support from GGUF metadata
-///
-/// Audio support indicators (research-report.md Section 1):
-/// 1. Audio encoder flag (clip.has_audio_encoder)
-/// 2. Audio-specific keys (clip.audio.num_mel_bins, embedding_length, block_count)
-/// 3. Audio architecture hints (lfm2, lfm2moe)
+/// Audio indicators per research-report.md Section 1.
 pub fn detect_audio(metadata: &GGUFMetadata) -> Option<bool> {
   // 1. Audio encoder flag
   if let Some(true) = metadata
@@ -219,14 +206,8 @@ pub fn detect_audio(metadata: &GGUFMetadata) -> Option<bool> {
   Some(false)
 }
 
-/// Detect tool calling support from chat template
-///
-/// Detects patterns indicating tool/function calling support (research-report.md Section 3).
-/// Uses comprehensive regex patterns covering Jinja2, Ollama Go templates, and model-specific tags.
-///
-/// Returns:
-/// - Some(true): Tool calling patterns detected
-/// - Some(false): Template exists but no patterns OR no template
+/// Tool/function-calling patterns (research-report.md Section 3) across Jinja2, Ollama Go
+/// templates, and model-specific tags. `Some(false)` covers both "no template" and "no match".
 pub fn detect_tool_calling(chat_template: Option<&str>) -> Option<bool> {
   let Some(template) = chat_template else {
     return Some(false); // No template = no tool support
@@ -241,15 +222,8 @@ pub fn detect_tool_calling(chat_template: Option<&str>) -> Option<bool> {
   Some(false)
 }
 
-/// Detect thinking/reasoning support from chat template and model name
-///
-/// Three-tier detection strategy (research-report.md Section 3):
-/// 1. Chat template patterns (highest confidence): <think> tags
-/// 2. Model name heuristics (medium confidence): R1, QwQ, reasoning
-///
-/// Returns:
-/// - Some(true): Thinking capability detected
-/// - Some(false): No thinking capability detected
+/// Two-tier detection (research-report.md Section 3): chat-template patterns take priority
+/// (highest confidence) over model-name heuristics (medium confidence).
 pub fn detect_thinking(chat_template: Option<&str>, model_name: Option<&str>) -> Option<bool> {
   // 1. Chat template patterns (highest priority)
   if let Some(template) = chat_template {
@@ -274,13 +248,8 @@ pub fn detect_thinking(chat_template: Option<&str>, model_name: Option<&str>) ->
   Some(false)
 }
 
-/// Detect structured output support from chat template
-///
-/// Detects patterns indicating structured output/JSON schema support (research-report.md Section 3).
-///
-/// Returns:
-/// - Some(true): Structured output patterns detected
-/// - Some(false): Template exists but no patterns OR no template
+/// Structured output/JSON schema patterns (research-report.md Section 3). `Some(false)` covers
+/// both "no template" and "no match".
 pub fn detect_structured_output(chat_template: Option<&str>) -> Option<bool> {
   let Some(template) = chat_template else {
     return Some(false);
@@ -295,10 +264,8 @@ pub fn detect_structured_output(chat_template: Option<&str>) -> Option<bool> {
   Some(false)
 }
 
-/// Extract context limits from GGUF metadata
-///
-/// Context length is stored in architecture-specific keys:
-/// - {arch}.context_length (e.g., "llama.context_length")
+/// Context length is stored in an architecture-specific key: `{arch}.context_length`
+/// (e.g. `llama.context_length`).
 pub fn extract_context(metadata: &GGUFMetadata) -> ContextLimits {
   let max_input_tokens = get_context_length(metadata);
 
@@ -308,7 +275,6 @@ pub fn extract_context(metadata: &GGUFMetadata) -> ContextLimits {
   }
 }
 
-/// Get context length from architecture-specific key
 fn get_context_length(metadata: &GGUFMetadata) -> Option<u64> {
   let arch = metadata
     .get("general.architecture")
@@ -334,7 +300,6 @@ fn get_context_length(metadata: &GGUFMetadata) -> Option<u64> {
   None
 }
 
-/// Extract model architecture information from GGUF metadata
 pub fn extract_architecture(metadata: &GGUFMetadata, filename: &str) -> ModelArchitecture {
   ModelArchitecture {
     family: get_architecture_family(metadata),
@@ -344,7 +309,6 @@ pub fn extract_architecture(metadata: &GGUFMetadata, filename: &str) -> ModelArc
   }
 }
 
-/// Get model architecture family (e.g., "llama", "phi", "mistral")
 fn get_architecture_family(metadata: &GGUFMetadata) -> Option<String> {
   metadata
     .get("general.architecture")
@@ -352,7 +316,6 @@ fn get_architecture_family(metadata: &GGUFMetadata) -> Option<String> {
     .map(|s| s.to_string())
 }
 
-/// Get total parameter count
 fn get_parameter_count(metadata: &GGUFMetadata) -> Option<u64> {
   if let Some(value) = metadata.get("general.parameter_count") {
     if let Ok(v) = value.as_u64() {
@@ -365,13 +328,8 @@ fn get_parameter_count(metadata: &GGUFMetadata) -> Option<u64> {
   None
 }
 
-/// Detect quantization method with filename-first priority (research finding)
-///
-/// Priority (research-report.md Phase 1 finding):
-/// 1. Parse from filename (highest reliability)
-/// 2. Fall back to metadata key (general.quantization_version)
-///
-/// Filename parsing is more reliable than metadata keys which are often missing or inconsistent.
+/// Filename-first priority (research-report.md Phase 1): the `general.quantization_version`
+/// metadata key is often missing or inconsistent, so the filename is parsed first.
 pub fn detect_quantization(filename: &str, metadata: &GGUFMetadata) -> Option<String> {
   // 1. Parse from filename (highest reliability per research)
   if let Some(quant) = parse_quantization_from_filename(filename) {
@@ -385,7 +343,6 @@ pub fn detect_quantization(filename: &str, metadata: &GGUFMetadata) -> Option<St
     .map(|s| s.to_string())
 }
 
-/// Parse quantization from filename (research-validated patterns)
 fn parse_quantization_from_filename(filename: &str) -> Option<String> {
   let filename_lower = filename.to_lowercase();
 
@@ -398,7 +355,6 @@ fn parse_quantization_from_filename(filename: &str) -> Option<String> {
   None
 }
 
-/// Extract chat template from GGUF metadata
 pub fn get_chat_template(metadata: &GGUFMetadata) -> Option<String> {
   metadata
     .get("tokenizer.chat_template")
@@ -406,7 +362,6 @@ pub fn get_chat_template(metadata: &GGUFMetadata) -> Option<String> {
     .map(|s| s.to_string())
 }
 
-/// Extract model name from GGUF metadata
 fn get_model_name(metadata: &GGUFMetadata) -> Option<String> {
   metadata
     .get("general.name")

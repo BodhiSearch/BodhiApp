@@ -31,8 +31,6 @@ async fn build_tenants_router(app_service: Arc<dyn AppService>) -> Router {
     .with_state(state)
 }
 
-// --- Standalone error tests ---
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -119,8 +117,6 @@ async fn test_tenants_activate_returns_error_when_not_multi_tenant() -> anyhow::
 
   Ok(())
 }
-
-// --- Multi-tenant happy-path tests ---
 
 #[rstest]
 #[tokio::test]

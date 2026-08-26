@@ -25,7 +25,6 @@ pub struct NapiAppOptions {
   pub tenant_name: Option<String>,
 }
 
-/// Create a new NapiAppOptions with empty configuration
 #[napi]
 pub fn create_napi_app_options() -> NapiAppOptions {
   NapiAppOptions {
@@ -40,7 +39,6 @@ pub fn create_napi_app_options() -> NapiAppOptions {
   }
 }
 
-/// Set an environment variable
 #[napi]
 pub fn set_env_var(mut config: NapiAppOptions, key: String, value: String) -> NapiAppOptions {
   config.env_vars.insert(key, value);
@@ -65,7 +63,6 @@ pub fn set_system_setting(
   config
 }
 
-/// Set OAuth client credentials
 #[napi]
 pub fn set_client_credentials(
   mut config: NapiAppOptions,
@@ -77,7 +74,6 @@ pub fn set_client_credentials(
   config
 }
 
-/// Set the user ID of the tenant creator
 #[napi]
 pub fn set_created_by(mut config: NapiAppOptions, user_id: String) -> NapiAppOptions {
   config.created_by = Some(user_id);
@@ -91,7 +87,6 @@ pub fn set_tenant_name(mut config: NapiAppOptions, name: String) -> NapiAppOptio
   config
 }
 
-/// Set app status
 #[napi]
 pub fn set_app_status(mut config: NapiAppOptions, status: String) -> napi::Result<NapiAppOptions> {
   use lib_bodhiserver::services::AppStatus;

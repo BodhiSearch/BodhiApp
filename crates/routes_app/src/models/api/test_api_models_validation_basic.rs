@@ -76,7 +76,7 @@ async fn test_create_api_model_handler_validation_error_empty_api_key(
   let json_request = json!({
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key": {"action": "set", "value": ""},  // Invalid: empty api_key
+    "api_key": {"action": "set", "value": ""},
     "models": ["gpt-4"]
   });
 
@@ -111,7 +111,7 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
     ApiFormat::OpenAI,
     DefaultApiModelRequest {
       name: "Test API".to_string(),
-      base_url: "not-a-valid-url".to_string(), // Invalid: not a valid URL
+      base_url: "not-a-valid-url".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
       models: vec!["gpt-4".to_string()],
       prefix: None,
@@ -155,7 +155,7 @@ async fn test_create_api_model_handler_validation_error_empty_models(
       name: "Test API".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
-      models: vec![], // Invalid: empty models array
+      models: vec![],
       prefix: None,
       forward_all_with_prefix: false,
       extra_headers: None,
@@ -558,7 +558,7 @@ async fn test_create_api_model_handler_validation_error_invalid_name(
   let create_form = ApiModelRequest::default_for(
     ApiFormat::OpenAI,
     DefaultApiModelRequest {
-      name: name.to_string(), // Invalid: empty or > 255 chars
+      name: name.to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
       models: vec!["gpt-4".to_string()],

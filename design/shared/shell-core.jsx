@@ -1,18 +1,4 @@
-/* ═══════════════════════════════════════════════════════════════
-   Bodhi App Shell — CORE primitives
-   shared/shell-core.jsx   (load 1st of the shell modules)
-
-   Context, the lucide icon helper, the two fixed-position overlays
-   (tooltip + popover), the nav/tenant data, and the theme hook.
-   Everything here is published to window so the other shell modules
-   (shell-chrome, shell-user, shell-app) and page apps can use it.
-
-   Load order on every page:
-     <script type="text/babel" src="shared/shell-core.jsx"></script>
-     <script type="text/babel" src="shared/shell-chrome.jsx"></script>
-     <script type="text/babel" src="shared/shell-user.jsx"></script>
-     <script type="text/babel" src="shared/shell-app.jsx"></script>
-═══════════════════════════════════════════════════════════════ */
+/* Core context, icon helper, overlays, nav data, theme hook. */
 
 const SHELL_NAV = (typeof window !== 'undefined' && window.BSB_NAV) || [
   { id: 'chat', label: 'Chat', icon: 'message-circle', href: 'Chat.html', subPages: [] },
@@ -61,14 +47,12 @@ const SHELL_NAV = (typeof window !== 'undefined' && window.BSB_NAV) || [
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-/* ── Context ─────────────────────────────────────────────────── */
 const ShellContext = React.createContext({
   collapsed: false, isMobile: false, openRail: () => {}, closeRail: () => {},
   openPop: null, setOpenPop: () => {},
 });
 const useShell = () => React.useContext(ShellContext);
 
-/* ── Lucide icon helper ─────────────────────────────────────── */
 function ShellIcon({ name, size = 14, color, strokeWidth }) {
   const ref = React.useRef(null);
   React.useEffect(() => {
@@ -87,11 +71,7 @@ function ShellIcon({ name, size = 14, color, strokeWidth }) {
   }} />;
 }
 
-/* ── Global tooltip (fixed-position; escapes sidebar overflow) ──
-   One listener delegates over `.shell-tip` elements only — i.e. the
-   COLLAPSED icon-rail buttons (and the avatar). Expanded sidebar items
-   already show their label inline, and popover/popup options carry no
-   tooltip, so neither fires a hint. Flips left near the viewport edge. */
+/* One listener over .shell-tip (collapsed icon-rail only); flips left near edge. */
 function GlobalTooltip() {
   const [tip, setTip] = React.useState(null);
   const ref = React.useRef(null);
@@ -133,7 +113,6 @@ function GlobalTooltip() {
   return <div ref={ref} className="shell-tooltip" style={{ top: tip.top, left: tip.aRight + 10 }}>{tip.text}</div>;
 }
 
-/* ── Anchored popover (fixed-position, escapes overflow) ────── */
 function AnchoredPopover({ open, anchorRef, onClose, children }) {
   const popRef = React.useRef(null);
   const [pos, setPos] = React.useState(null);
@@ -167,16 +146,12 @@ function AnchoredPopover({ open, anchorRef, onClose, children }) {
   );
 }
 
-/* ── Shared tenant/org list (override via window.BSB_TENANTS or user.tenants) ── */
 const SHELL_TENANTS = (typeof window !== 'undefined' && window.BSB_TENANTS) || [
   { id: 'acme',    name: 'Acme Corp',     role: 'Admin',      plan: 'Enterprise' },
   { id: 'northwind', name: 'Northwind Trading', role: 'Power User', plan: 'Team' },
   { id: 'initech', name: 'Initech Labs',  role: 'User',       plan: 'Free' },
 ];
 
-/* ── Theme (light/dark/system) ─────────────────────────────────
-   Backed by window.bodhiTheme (bodhi-theme.js, loaded in <head>).
-   Persists to localStorage + applies data-theme on <html>. */
 const THEME_OPTS = [
   { id: 'light',  label: 'Light',  icon: 'sun' },
   { id: 'dark',   label: 'Dark',   icon: 'moon' },

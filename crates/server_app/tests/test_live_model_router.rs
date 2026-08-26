@@ -187,7 +187,6 @@ async fn test_model_router_pass_through_chat_completion() -> anyhow::Result<()> 
     .await?;
 
   assert_eq!(StatusCode::OK, resp.status());
-  // Observability headers identify the served target.
   assert_eq!(
     alias_id,
     resp

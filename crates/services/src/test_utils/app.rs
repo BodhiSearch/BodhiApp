@@ -307,7 +307,6 @@ impl AppServiceStubBuilder {
   pub fn with_temp_home_as(&mut self, temp_dir: TempDir) -> &mut Self {
     let temp_home = Arc::new(temp_dir);
     self.temp_home = Some(Some(temp_home.clone()));
-    // Only set default setting_service if not already explicitly configured
     if !matches!(&self.setting_service, Some(Some(_))) {
       let setting_service = SettingServiceStub::with_defaults_in(temp_home.clone());
       self.setting_service = Some(Some(Arc::new(setting_service)));
@@ -325,7 +324,6 @@ impl AppServiceStubBuilder {
     }
   }
 
-  /// Sets deployment mode to `multi_tenant` and configures a dashboard client ID.
   /// Uses the default settings (scheme, host, port, auth_url, auth_realm, etc.)
   /// already provided by `SettingServiceStub::default()`.
   pub async fn with_multitenant_settings(&mut self) -> &mut Self {
@@ -440,9 +438,8 @@ impl AppServiceStubBuilder {
     self
   }
 
-  /// Creates DefaultTenantService and persists the given Tenant to DB.
-  /// Uses `create_tenant_test` to preserve the caller-specified tenant ID.
-  /// Reuses existing tenant service if already set (additive: multiple tenants share one service).
+  /// Uses `create_tenant_test` to preserve the caller-specified tenant ID; reuses an
+  /// existing tenant service if already set (additive: multiple tenants share one service).
   pub async fn with_tenant(&mut self, instance: Tenant) -> &mut Self {
     if self.tenant_service.is_none() || !matches!(&self.tenant_service, Some(Some(_))) {
       let db_service = self.get_db_service().await;

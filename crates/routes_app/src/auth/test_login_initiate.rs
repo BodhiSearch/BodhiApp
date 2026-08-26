@@ -126,7 +126,6 @@ async fn test_auth_initiate_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
 async fn test_auth_initiate_handler_loopback_host_detection(
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
-  // Configure with default 0.0.0.0 host (loopback)
   let setting_service = SettingServiceStub::with_settings(HashMap::from([
     (BODHI_SCHEME.to_string(), "http".to_string()),
     (BODHI_HOST.to_string(), "0.0.0.0".to_string()),
@@ -183,7 +182,6 @@ async fn test_auth_initiate_handler_loopback_host_detection(
   let url = Url::parse(&body.location)?;
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
-  // Should use localhost from Host header instead of configured 0.0.0.0
   assert_eq!(
     Some("http://localhost:1135/ui/auth/callback"),
     query_params.get("redirect_uri").map(|s| s.as_str())
@@ -198,7 +196,6 @@ async fn test_auth_initiate_handler_loopback_host_detection(
 async fn test_auth_initiate_handler_network_host_usage(
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
-  // Configure with default settings (no explicit public host)
   let setting_service = SettingServiceStub::with_settings(HashMap::from([
     (BODHI_SCHEME.to_string(), "http".to_string()),
     (BODHI_HOST.to_string(), "0.0.0.0".to_string()),
@@ -255,7 +252,6 @@ async fn test_auth_initiate_handler_network_host_usage(
   let url = Url::parse(&body.location)?;
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
-  // Should now use the request host for network installation support
   assert_eq!(
     Some("http://192.168.1.100:1135/ui/auth/callback"),
     query_params.get("redirect_uri").map(|s| s.as_str())
@@ -396,7 +392,6 @@ async fn test_auth_initiate_dashboard_only_session_initiates_tenant_oauth(
     )
     .await?;
 
-  // Should get 201 with OAuth URL, not 200 with home page
   assert_eq!(StatusCode::CREATED, resp.status());
   let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
   let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
@@ -459,7 +454,6 @@ async fn test_auth_initiate_full_multi_tenant_session_redirects_to_home(
     )
     .await?;
 
-  // Should get 200 with home page URL (already authenticated with tenant)
   assert_eq!(StatusCode::OK, resp.status());
   let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
   let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;

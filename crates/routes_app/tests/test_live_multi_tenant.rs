@@ -23,8 +23,6 @@ use tempfile::TempDir;
 use tower::ServiceExt;
 use tower_sessions::SessionStore;
 
-// ── Env / Config ────────────────────────────────────────────────────────────
-
 #[fixture]
 #[once]
 fn auth_server_config() -> AuthServerConfig {
@@ -74,9 +72,6 @@ fn test_user() -> TestUser {
   }
 }
 
-// ── App Service Builders ────────────────────────────────────────────────────
-
-/// Build an AppService configured for multi-tenant mode with a real KeycloakAuthService.
 async fn create_multi_tenant_state(
   config: &AuthServerConfig,
 ) -> anyhow::Result<Arc<dyn AppService>> {
@@ -129,7 +124,6 @@ async fn create_multi_tenant_state(
   Ok(Arc::new(app_service) as Arc<dyn AppService>)
 }
 
-/// Build an AppService configured for standalone mode.
 async fn create_standalone_state(config: &AuthServerConfig) -> anyhow::Result<Arc<dyn AppService>> {
   let setting_service = SettingServiceStub::default()
     .append_settings(HashMap::from([
@@ -168,9 +162,6 @@ async fn create_standalone_state(config: &AuthServerConfig) -> anyhow::Result<Ar
   Ok(Arc::new(app_service) as Arc<dyn AppService>)
 }
 
-// ── Session Helpers ─────────────────────────────────────────────────────────
-
-/// Create a session record with the given data, save it, and return the session ID string.
 async fn inject_session(
   app_service: &Arc<dyn AppService>,
   data: HashMap<String, Value>,
@@ -189,7 +180,6 @@ async fn inject_session(
   Ok(format!("{}", record.id))
 }
 
-/// Get a dashboard token by doing a password grant against the multi-tenant client.
 async fn get_dashboard_token(config: &AuthServerConfig) -> anyhow::Result<String> {
   let mt = multi_tenant_config();
   let user = test_user();
@@ -205,7 +195,6 @@ async fn get_dashboard_token(config: &AuthServerConfig) -> anyhow::Result<String
     .await
 }
 
-/// Get a resource token by doing a password grant against a resource client.
 async fn get_resource_token(
   config: &AuthServerConfig,
   client_id: &str,
@@ -224,10 +213,6 @@ async fn get_resource_token(
     .await
 }
 
-// ── Tests ───────────────────────────────────────────────────────────────────
-
-/// GET /bodhi/v1/info without any session in multi-tenant mode
-/// should return status=ready and deployment=multi-tenant
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -255,8 +240,6 @@ async fn test_info_multi_tenant_no_session(
   Ok(())
 }
 
-/// GET /bodhi/v1/info with dashboard + active tenant session in multi-tenant mode
-/// should return status=ready with the active tenant's client_id
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -319,8 +302,6 @@ async fn test_info_multi_tenant_with_dashboard_and_active_tenant(
   Ok(())
 }
 
-/// POST /bodhi/v1/auth/dashboard/initiate in standalone mode
-/// should return error with NotMultiTenant code
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -350,8 +331,6 @@ async fn test_dashboard_auth_initiate_standalone_rejected(
   Ok(())
 }
 
-/// POST /bodhi/v1/tenants/{client_id}/activate with a valid resource token in session
-/// should return 200
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -403,8 +382,6 @@ async fn test_tenants_activate_success(
   Ok(())
 }
 
-/// POST /bodhi/v1/tenants/{client_id}/activate without a resource token
-/// should return TenantNotLoggedIn error
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -440,8 +417,6 @@ async fn test_tenants_activate_not_logged_in(
   Ok(())
 }
 
-/// GET /bodhi/v1/user with a dashboard token in session
-/// should return dashboard object and auth_status: logged_out (no resource token)
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -487,8 +462,6 @@ async fn test_user_info_has_dashboard_session(
   Ok(())
 }
 
-/// GET /bodhi/v1/user without a dashboard token in session
-/// should NOT include dashboard field
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]

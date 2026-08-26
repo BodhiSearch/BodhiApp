@@ -1,8 +1,3 @@
-/**
- * Docker variant metadata system for BodhiApp
- * Provides display information for Docker image variants
- */
-
 export interface DockerVariantMetadata {
   name: string;
   displayName: string;
@@ -13,10 +8,6 @@ export interface DockerVariantMetadata {
   color: string; // Tailwind color class (without prefix)
 }
 
-/**
- * Metadata for known Docker variants
- * New variants will use fallback metadata until explicitly defined here
- */
 export const VARIANT_METADATA: Record<string, DockerVariantMetadata> = {
   cpu: {
     name: 'cpu',
@@ -75,10 +66,6 @@ export const VARIANT_METADATA: Record<string, DockerVariantMetadata> = {
   },
 };
 
-/**
- * Get metadata for a Docker variant
- * Returns predefined metadata or generates fallback for unknown variants
- */
 export function getVariantMetadata(variantKey: string): DockerVariantMetadata {
   return (
     VARIANT_METADATA[variantKey] || {

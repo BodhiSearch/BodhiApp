@@ -432,14 +432,9 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     }
   }
 
-  /// Base URL to embed in user-facing links (e.g. the access-request review URL), resolved
-  /// for the host the request actually arrived on.
-  ///
-  /// - Explicit public host (Docker/RunPod/configured `BODHI_PUBLIC_HOST`) always wins.
-  /// - Local/network install: reflect `request_host` only when it is a known-valid host
-  ///   (a `LOOPBACK_HOSTS` entry or the detected `server_ip`) — guards against Host-header
-  ///   injection into user-facing links.
-  /// - Otherwise fall back to `public_server_url()`.
+  /// Base URL for user-facing links, resolved for the request's host. Only a known-valid host
+  /// (`LOOPBACK_HOSTS` or the detected `server_ip`) is reflected — guards against Host-header
+  /// injection into user-facing links.
   async fn resolve_public_server_url<'a>(
     &self,
     request_host: Option<&'a str>,

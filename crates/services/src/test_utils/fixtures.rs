@@ -189,7 +189,6 @@ pub async fn seed_test_api_models_for_user(
       vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")],
       base_time - chrono::Duration::seconds(40),
     ),
-    // Add prefix test data with separators
     create_test_api_model_alias_with_prefix(
       "azure-openai",
       vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")],
@@ -226,7 +225,6 @@ pub fn model_metadata_builder(now: DateTime<Utc>) -> ModelMetadataEntityBuilder 
   builder
 }
 
-/// Creates a test ModelMetadataEntity for a local GGUF model file.
 /// source is always 'model' since UserAlias and ModelAlias both reference the same physical file.
 pub fn create_test_model_metadata(
   repo: &str,

@@ -22,11 +22,8 @@ enum AccessRequestAuthFlow {
   },
 }
 
-/// Validate the access-request **lifecycle** for an external app: the request
-/// exists, is Approved, and its app-client / user match the bearer. Per-resource
-/// authorization (which MCP instance / model) is enforced downstream by
-/// `AccessPolicy` in the handler, using the approved grants carried on the
-/// AuthContext — so it is not re-checked here.
+/// Validates the access-request lifecycle (exists, Approved, app-client/user match).
+/// Per-resource authorization is enforced downstream by `AccessPolicy` via AuthContext grants — not re-checked here.
 async fn validate_access_request(
   db_service: &Arc<dyn DbService>,
   tenant_id: &str,

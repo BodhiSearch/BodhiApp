@@ -314,7 +314,6 @@ async fn test_delete_api_token(
     .await?;
   assert!(fetched.is_none());
 
-  // Deleting a missing row is a typed not-found error.
   let err = ctx
     .service
     .delete_api_token(TEST_TENANT_ID, &user_id, &token_id)

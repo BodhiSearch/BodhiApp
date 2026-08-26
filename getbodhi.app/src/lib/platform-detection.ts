@@ -1,8 +1,3 @@
-/**
- * Platform detection utilities for auto-selecting download links
- * Uses 'platform' library for lightweight, reliable OS detection
- */
-
 import platform from 'platform';
 
 export type OSType = 'macos' | 'windows' | 'linux' | 'unknown';
@@ -14,10 +9,6 @@ export interface PlatformInfo {
   description: string;
 }
 
-/**
- * Detect the user's operating system
- * Returns 'macos', 'windows', 'linux', or 'unknown'
- */
 export function detectOS(): OSType {
   if (typeof window === 'undefined') {
     return 'unknown';
@@ -38,13 +29,6 @@ export function detectOS(): OSType {
   return 'unknown';
 }
 
-/**
- * Detect the user's CPU architecture
- * Returns 'arm64', 'x64', or 'unknown'
- *
- * Note: Browser UA detection for architecture is unreliable
- * This is a best-effort attempt
- */
 export function detectArchitecture(): ArchType {
   if (typeof window === 'undefined') {
     return 'unknown';
@@ -59,9 +43,6 @@ export function detectArchitecture(): ArchType {
   return 'x64';
 }
 
-/**
- * Get comprehensive platform information
- */
 export function getPlatformInfo(): PlatformInfo {
   const os = detectOS();
   const arch = detectArchitecture();
@@ -74,10 +55,6 @@ export function getPlatformInfo(): PlatformInfo {
   };
 }
 
-/**
- * Get user-friendly platform name
- * e.g., "macOS (Apple Silicon)", "Windows (x64)", "Linux (x64)"
- */
 export function getPlatformDisplayName(os: OSType, arch: ArchType): string {
   const osNames = {
     macos: 'macOS',

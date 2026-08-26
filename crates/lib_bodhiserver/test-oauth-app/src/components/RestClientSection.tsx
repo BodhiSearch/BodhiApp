@@ -31,8 +31,7 @@ export function RestClientSection() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<RestResponse | null>(null);
-  // On a successful request-access POST, mint a fresh PKCE authorize URL (this window owns the
-  // verifier) and link to the Bodhi review page — drives manual use and the exchange/upgrade e2e.
+  // On request-access POST, mint fresh PKCE authorize URL (window owns verifier) + link to review page.
   const [reviewLink, setReviewLink] = useState<string | null>(null);
 
   const buildReviewLink = async (reviewUrl: string) => {

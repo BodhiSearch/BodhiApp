@@ -51,7 +51,6 @@ async fn test_create_access_request_review_url_reflects_request_host() -> anyhow
   Ok(())
 }
 
-/// External token with approved role can access GET /bodhi/v1/apps/mcps
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
@@ -78,7 +77,6 @@ async fn test_oauth_token_with_role_can_list_mcps() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// External token without approved role is rejected
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
@@ -104,7 +102,6 @@ async fn test_oauth_token_without_role_is_rejected() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// External token is rejected on session-only endpoints (GET /mcps/{id})
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]

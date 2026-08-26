@@ -74,7 +74,6 @@ pub const BODHI_MULTITENANT_CLIENT_SECRET: &str = "BODHI_MULTITENANT_CLIENT_SECR
 pub const BODHI_ON_RUNPOD: &str = "BODHI_ON_RUNPOD";
 pub const RUNPOD_POD_ID: &str = "RUNPOD_POD_ID";
 
-/// Settings that are allowed to be edited via the API
 pub const EDIT_SETTINGS_ALLOWED: &[&str] = &[BODHI_EXEC_VARIANT, BODHI_KEEP_ALIVE_SECS];
 
 /// Settings that are LLM-related and cannot be modified in multi-tenant mode

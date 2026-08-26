@@ -123,9 +123,8 @@ function emitAgentEvent(event: AgentEvent) {
 
 describe('agentStore', () => {
   beforeEach(() => {
-    // Reset module-level _agent singleton so each test gets a fresh agent.
-    // reset() sets _agent = null; restoreMessagesForChat() exits early
-    // because chats=[] means no currentChat.
+    // Reset module-level _agent singleton so each test gets a fresh agent (restoreMessagesForChat
+    // exits early here since chats=[] means no currentChat).
     useAgentStore.getState().reset();
 
     vi.clearAllMocks();

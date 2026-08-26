@@ -1,10 +1,4 @@
-/* ═══════════════════════════════════════════════════
-   API TOKENS — list page + right detail panel (on AppShell)
-   api-tokens-app.jsx   (programmatic tokens you create for API access)   (load after bodhi-app-shell.jsx + bodhi-list.jsx)
-   Click a row → details open in the right sidepanel (rail). The primary
-   control (Enabled/Disabled toggle) stays in the row and is repeated in
-   the panel; Delete lives only in the panel.
-═══════════════════════════════════════════════════ */
+/* API Tokens: list page + detail panel. Toggle in row + panel; delete in panel only. */
 const { useState, useEffect } = React;
 const Ic = ShellIcon;
 
@@ -37,7 +31,6 @@ const SAMPLE_TOKENS = [
 
 function scopeLabel(scope) { return scope === 'power' ? 'scope_token_power_user' : 'scope_token_user'; }
 
-/* ── Listing permission line — mirrors the New Token form's "List all…" toggle ── */
 function ListingLine({ on, label, code }) {
   if (!on) return null;
   return (
@@ -89,7 +82,6 @@ function TokenRow({ token, selected, onSelect, onToggle }) {
   );
 }
 
-/* ── Rail header (railHeader slot) ── */
 function TokenDetailHeader({ token, onClose }) {
   const inactive = token.status !== 'active';
   return (
@@ -104,7 +96,6 @@ function TokenDetailHeader({ token, onClose }) {
   );
 }
 
-/* ── Rail body (rail slot) ── */
 function TokenDetailPanel({ token, onToggle, onDelete }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   useEffect(() => { setConfirmDelete(false); }, [token && token.id]);

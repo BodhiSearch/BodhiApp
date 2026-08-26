@@ -1,13 +1,5 @@
 #!/usr/bin/env node
 
-/**
- * Fetch the latest app version from GitHub releases API
- * Handles migration from v* to app/v* format
- * Usage: node get_github_release_version.js <repo>
- * Example: node get_github_release_version.js BodhiSearch/BodhiApp
- * Returns the latest version string or "0.0.25" if no app releases found
- */
-
 import { execSync } from 'child_process';
 
 function getAppVersionFromReleases(repo) {

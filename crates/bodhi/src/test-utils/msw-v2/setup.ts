@@ -1,18 +1,5 @@
-/**
- * MSW v2 server setup. Prefer `typedHttp` (openapi-msw, type-checked against ts-client paths)
- * over plain `http`; use `createTypedResponse` for arbitrary-status responses.
- *
- * ```typescript
- * import { typedHttp, http, type components } from '@/test-utils/msw-v2/setup';
- *
- * typedHttp.get('/api/endpoint', ({ response }) => {
- *   const responseData: components['schemas']['YourType'] = { ... };
- *   return response(200).json(responseData);
- * });
- *
- * http.get('/api/endpoint', () => HttpResponse.json(responseData));
- * ```
- */
+// Prefer typedHttp (type-checked against ts-client paths) over plain http; use createTypedResponse for arbitrary-status responses.
+// Example: typedHttp.get('/api/endpoint', ({ response }) => response(200).json(data))
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { createOpenApiHttp } from 'openapi-msw';

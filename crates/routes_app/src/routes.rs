@@ -421,7 +421,6 @@ pub async fn build_routes(
       access_request_auth_middleware,
     ));
 
-  // Combine all apps APIs with OAuth-accepting auth
   let apps_apis = Router::new()
     .merge(apps_list_apis)
     .merge(apps_mcp_exec)
@@ -604,17 +603,11 @@ pub async fn build_routes(
     .await;
   GlobalErrorResponses::oai().modify(&mut openapi_oai);
 
-  // Anthropic spec is a checked-in static asset (filtered upstream of BodhiApp)
-  // — see crates/routes_app/resources/README.md. We use OpenAPI 3.1.0 from
-  // upstream, which `utoipa::openapi` does not parse strictly, so we serve
-  // it as a `serde_json::Value` via `external_url_unchecked` (swagger-ui
-  // bypasses utoipa validation).
-  //
-  // Two patches at boot time:
-  //   1. Inject `info.version` if missing (the upstream filter omits it).
-  //   2. Override `servers` so swagger-ui prepends `/anthropic` to all
-  //      relative paths, making "Try it out" calls land on BodhiApp's proxy
-  //      endpoints.
+  // Anthropic spec is a checked-in static asset (see crates/routes_app/resources/README.md),
+  // OpenAPI 3.1.0 which `utoipa::openapi` doesn't parse strictly — served as raw JSON via
+  // `external_url_unchecked` (bypasses utoipa validation). Patched at boot: inject
+  // `info.version` if missing, and point `servers` at `/anthropic` so swagger-ui's
+  // "Try it out" lands on BodhiApp's proxy instead of the real upstream.
   let openapi_anthropic: serde_json::Value = {
     let mut doc: serde_json::Value = serde_json::from_str(ANTHROPIC_OPENAPI_JSON)
       .expect("checked-in anthropic openapi spec must be valid JSON");
@@ -632,9 +625,8 @@ pub async fn build_routes(
     doc
   };
 
-  // Gemini spec is also a checked-in static asset. Patched similarly:
-  //   1. Inject `info.version` if missing.
-  //   2. Override `servers` to point at BodhiApp's `/v1beta` proxy prefix.
+  // Gemini spec is also a checked-in static asset, patched the same way: inject
+  // `info.version` if missing and point `servers` at BodhiApp's `/v1beta` proxy prefix.
   let openapi_gemini: serde_json::Value = {
     let mut doc: serde_json::Value = serde_json::from_str(GEMINI_OPENAPI_JSON)
       .expect("checked-in gemini openapi spec must be valid JSON");

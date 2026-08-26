@@ -11,10 +11,8 @@ const REQUIRED_OAUTH_PARAMS = [
 export type AuthUrlValidation = { ok: true } | { ok: false; description: string };
 
 /**
- * The app-supplied `auth_url` must target our own Keycloak authorize endpoint and carry a
- * complete PKCE authorization request — this is the guard that keeps the post-approval
- * redirect pointed only at the configured auth server. No scheme check (http and https
- * are both accepted).
+ * Guards that the post-approval redirect targets our Keycloak authorize endpoint with a
+ * complete PKCE request. No scheme check — http and https are both accepted.
  */
 export function validateAuthUrl(authUrl: string, authEndpoint: string, appClientId: string): AuthUrlValidation {
   let url: URL;

@@ -1,7 +1,4 @@
-// Main app: tabs + rendering of variants per screen
-// v25: Models Hub + Discover collapsed into a single "Models" page.
-// v27: Provider Directory absorbed into Models (specs/models.md §13).
-// v28: Model Detail absorbed — right-drawer dispatch on Models page covers it.
+// Main app + variant rendering. v25: Hub/Discover merged. v27: Provider Dir absorbed. v28: Detail absorbed (right-drawer).
 const SCREENS = [
   {key:'models', title:'Models', concept:'local + API + remote · My / All · ranked leaderboards', list: () => window.ModelsScreens},
   {key:'alias', title:'Create local alias', concept:'tune llama.cpp runtime', list: () => window.AliasScreens},
@@ -13,7 +10,7 @@ const SCREENS = [
   {key:'access-request', title:'Access Request', concept:'3rd-party app review · per-model + per-MCP grants · inline prerequisites', list: () => window.AccessRequestScreens},
 ];
 
-// Migrate legacy tab keys (`hub`, `discover`, `providers`, `detail`) → `models` on first load.
+// Migrate legacy tab keys (hub, discover, providers, detail) → models.
 (function migrateTabKey(){
   try {
     const cur = localStorage.getItem('bodhi-wf-tab');
@@ -58,7 +55,6 @@ function App() {
 function Tabs() {
   const firstTab = (typeof localStorage !== 'undefined' && localStorage.getItem('bodhi-wf-tab')) || 'hub';
   const [tab, setTab] = React.useState(firstTab);
-  // Two-way: write when our local state changes, but also listen to page's state via a shared handler.
   React.useEffect(() => {
     const handler = (e) => { if (e.key === 'bodhi-wf-tab') setTab(e.newValue); };
     window.addEventListener('storage', handler);
@@ -71,7 +67,6 @@ function Tabs() {
           onClick={() => {
             try { localStorage.setItem('bodhi-wf-tab', s.key); } catch(e){}
             setTab(s.key);
-            // trigger App re-render by dispatching a synthetic storage event in this tab
             window.dispatchEvent(new Event('bodhi-tab-change'));
           }}>{s.title}</button>
       ))}
@@ -79,7 +74,6 @@ function Tabs() {
   );
 }
 
-// Simpler combined root so tabs + page share state
 function Root() {
   const init = (typeof localStorage !== 'undefined' && localStorage.getItem('bodhi-wf-tab')) || 'hub';
   const [tab, setTab] = React.useState(init);
@@ -89,7 +83,6 @@ function Root() {
   const idx = SCREENS.indexOf(current) + 1;
   return (
     <>
-      {/* Tabs into the tabs container */}
       {ReactDOM.createPortal(
         SCREENS.map(s => (
           <button key={s.key} className={`tab ${tab===s.key?'active':''}`}

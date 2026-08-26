@@ -83,7 +83,6 @@ fn test_mcp_server_entity() -> McpServerEntity {
   }
 }
 
-/// Builds a router with session layer for OAuth flow tests.
 /// Returns (Router, Arc<DefaultSessionService>) for session inspection.
 async fn build_oauth_flow_router(
   mock_mcp_service: MockMcpService,
@@ -158,7 +157,6 @@ async fn test_oauth_login_success() -> anyhow::Result<()> {
   assert_eq!(StatusCode::OK, response.status());
   let body: OAuthLoginResponse = response.json().await?;
 
-  // Parse the authorization URL and verify all expected parameters
   let auth_url = Url::parse(&body.authorization_url)?;
   let params: HashMap<_, _> = auth_url.query_pairs().into_owned().collect();
 
@@ -346,7 +344,6 @@ async fn test_oauth_token_exchange_state_mismatch() -> anyhow::Result<()> {
     .create(&mut record)
     .await?;
 
-  // Send request with a DIFFERENT state
   let body = serde_json::to_string(&OAuthTokenExchangeRequest {
     mcp_id: Some("mcp-instance-1".to_string()),
     code: "auth-code-xyz".to_string(),

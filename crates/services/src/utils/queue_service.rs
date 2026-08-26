@@ -31,7 +31,6 @@ pub enum MetadataExtractionError {
   Other(String),
 }
 
-/// Extracts GGUF metadata and stores in database. Returns the metadata row on success.
 pub async fn extract_and_store_metadata(
   alias: &Alias,
   hub_service: &dyn HubService,

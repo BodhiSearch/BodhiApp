@@ -50,7 +50,6 @@ async fn test_sqlite_tenant_isolation_app_layer(_setup_env: ()) -> anyhow::Resul
     .create_api_token(TEST_TENANT_B_ID, &mut token_b)
     .await?;
 
-  // Tenant A only sees its own token via application-layer filter
   let (tokens_a, total_a) = ctx
     .service
     .list_api_tokens(TEST_TENANT_ID, &user_id, 1, 10)
@@ -59,7 +58,6 @@ async fn test_sqlite_tenant_isolation_app_layer(_setup_env: ()) -> anyhow::Resul
   assert_eq!(1, tokens_a.len());
   assert_eq!(TEST_TENANT_ID, tokens_a[0].tenant_id);
 
-  // Tenant B only sees its own token via application-layer filter
   let (tokens_b, total_b) = ctx
     .service
     .list_api_tokens(TEST_TENANT_B_ID, &user_id, 1, 10)
@@ -229,7 +227,6 @@ async fn test_postgres_rls_policies_and_function_installed(_setup_env: ()) -> an
 #[tokio::test]
 async fn test_begin_tenant_txn_special_chars(_setup_env: ()) -> anyhow::Result<()> {
   let ctx = sea_context("sqlite").await;
-  // Special chars that would break SQL injection with string interpolation
   let special_tenant_ids = vec![
     "tenant'; DROP TABLE api_tokens; --",
     "tenant\"with\"quotes",

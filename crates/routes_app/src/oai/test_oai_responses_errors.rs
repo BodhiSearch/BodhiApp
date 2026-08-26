@@ -134,7 +134,6 @@ async fn test_responses_create_model_not_found() -> anyhow::Result<()> {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_responses_create_wrong_format() -> anyhow::Result<()> {
-  // Seed an openai-format alias (not openai_responses) and verify it's rejected
   let mut builder = AppServiceStubBuilder::default();
   builder.with_data_service().await;
   let db_service = builder.get_db_service().await;

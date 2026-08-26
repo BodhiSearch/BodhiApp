@@ -1,11 +1,9 @@
-// Basic fade in animation
 export const fadeIn = {
   initial: { opacity: 0 },
   animate: { opacity: 1 },
   transition: { duration: 0.4 },
 };
 
-// Fade in with upward motion (common for sections)
 export const fadeInUp = {
   initial: { opacity: 0, y: 20 },
   whileInView: { opacity: 1, y: 0 },
@@ -28,7 +26,6 @@ export const slideTransition = {
   transition: { duration: 0.2 },
 };
 
-// Docker variant transition
 export const variantTransition = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },

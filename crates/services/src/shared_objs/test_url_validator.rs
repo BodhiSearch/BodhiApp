@@ -132,9 +132,7 @@ fn test_172_non_private_range_allowed() {
   assert!(validate_outbound_url("http://172.32.0.1", false).is_ok());
 }
 
-// ============================================================================
 // allow_private_ips=true tests (for AI API / MCP local connections)
-// ============================================================================
 
 #[rstest]
 #[case("http://127.0.0.1:11434")]
@@ -171,9 +169,7 @@ fn test_allow_private_ips_still_rejects_bad_schemes(#[case] url: &str, #[case] _
   );
 }
 
-// ============================================================================
 // validate_http_url() tests (validator-crate-compatible wrapper)
-// ============================================================================
 
 #[rstest]
 #[case("http://example.com")]

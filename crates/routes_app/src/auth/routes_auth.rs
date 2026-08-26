@@ -85,12 +85,10 @@ pub async fn auth_initiate(
     .insert("auth_client_id", &request.client_id)
     .await
     .map_err(AuthRouteError::from)?;
-  // Determine callback URL based on whether public host is explicitly configured
   let callback_url = if settings.get_public_host_explicit().await.is_some() {
-    // Explicit configuration (including RunPod) - use configured callback URL
+    // Covers explicit-host deployments like RunPod.
     settings.login_callback_url().await
   } else {
-    // Local/network installation mode - use request host or fallback
     if let Some(request_host) = extract_request_host(&headers) {
       format!(
         "{}://{}:{}{}",

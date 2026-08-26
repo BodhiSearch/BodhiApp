@@ -93,9 +93,8 @@ const ReviewContent = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
 
-  // Owner's model/MCP grant decisions (driven by the app's requested UI flags).
-  // Both pickers default to least-privilege (Specific/none) — granting a 3rd-party
-  // app is opt-in, matching the fail-closed backend default.
+  // Owner's model/MCP grant decisions; both pickers default to least-privilege (Specific/none) —
+  // granting a 3rd-party app is opt-in, matching the fail-closed backend default.
   const [listModels, setListModels] = useState(false);
   const [modelMode, setModelMode] = useState<AccessMode>('specific');
   const [models, setModels] = useState<string[]>([]);
@@ -235,9 +234,8 @@ const ReviewContent = () => {
   }, [id, authUrl, errorUrl, reviewData]);
 
   useEffect(() => {
-    // Only the initial preflight (invalid auth_url / non-draft on load) redirects here. Once an
-    // approve/deny is in flight the query refetches to a non-draft status — ignore that so it
-    // can't hijack the navigation the action already started (to Keycloak or error_url).
+    // Only the initial preflight redirects here — once approve/deny is in flight the query refetches
+    // to non-draft status, but that must not hijack the navigation the action already started.
     if (preflight.kind === 'redirect' && !redirecting) {
       setRedirecting(true);
       safeNavigate(preflight.url);

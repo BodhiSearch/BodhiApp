@@ -31,7 +31,6 @@ def parse_timestamp(line: str) -> Optional[datetime]:
     """Extract timestamp from log line."""
     match = re.match(r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)', line)
     if match:
-        # Parse ISO format timestamp
         ts_str = match.group(1)
         return datetime.fromisoformat(ts_str.replace('Z', '+00:00'))
     return None
@@ -73,23 +72,19 @@ def analyze_log_file(log_path: str) -> Dict[str, List[BuildStep]]:
         for line in f:
             timestamp = parse_timestamp(line)
 
-            # Check for build step start
             step_info = parse_build_step(line)
             if step_info:
                 step_id, platform, stage, step_num, description = step_info
 
-                # Create or update step
                 if step_id not in steps_by_id:
                     step = BuildStep(step_id, platform, stage, step_num, description)
                     steps_by_id[step_id] = step
                     steps_by_platform[platform].append(step)
 
-                # Record start time if we have a timestamp
                 if timestamp and step_id not in start_times:
                     start_times[step_id] = timestamp
                     steps_by_id[step_id].start_time = timestamp
 
-            # Check for DONE line
             done_info = parse_done_line(line)
             if done_info:
                 step_id, duration = done_info
@@ -118,7 +113,6 @@ def format_duration(seconds: float) -> str:
 
 def calculate_cumulative_time(steps: List[BuildStep]) -> List[Tuple[BuildStep, float]]:
     """Calculate cumulative time for each step based on end times."""
-    # Sort steps by end time
     sorted_steps = sorted([s for s in steps if s.end_time], key=lambda x: x.end_time)
 
     if not sorted_steps:
@@ -141,18 +135,15 @@ def print_platform_report(platform: str, steps: List[BuildStep]):
     print(f"Platform: {platform.upper()}")
     print(f"{'='*120}")
 
-    # Calculate cumulative times
     steps_with_cumulative = calculate_cumulative_time(steps)
 
     if not steps_with_cumulative:
         print("No timing data available")
         return
 
-    # Print header
     print(f"{'Step':<6} {'Stage':<15} {'Step #':<8} {'Duration':<15} {'Cumulative':<15} {'Description':<50}")
     print(f"{'-'*6} {'-'*15} {'-'*8} {'-'*15} {'-'*15} {'-'*50}")
 
-    # Print each step
     for step, cumulative in steps_with_cumulative:
         duration_str = format_duration(step.duration) if step.duration else "N/A"
         cumulative_str = format_duration(cumulative)
@@ -160,7 +151,6 @@ def print_platform_report(platform: str, steps: List[BuildStep]):
 
         print(f"#{step.step_id:<5} {step.stage:<15} {step.step_num:<8} {duration_str:<15} {cumulative_str:<15} {desc:<50}")
 
-    # Print summary
     total_time = steps_with_cumulative[-1][1]
     total_step_time = sum(s.duration for s in steps if s.duration)
 
@@ -178,7 +168,6 @@ def print_slowest_steps(steps_by_platform: Dict[str, List[BuildStep]], top_n: in
             if step.duration:
                 all_steps.append((platform, step))
 
-    # Sort by duration
     all_steps.sort(key=lambda x: x[1].duration, reverse=True)
 
     print(f"\n{'='*120}")
@@ -201,12 +190,11 @@ def print_optimization_recommendations(steps_by_platform: Dict[str, List[BuildSt
 
     recommendations = []
 
-    # Find longest steps per platform
     for platform, steps in steps_by_platform.items():
         sorted_steps = sorted([s for s in steps if s.duration], key=lambda x: x.duration, reverse=True)
 
         for step in sorted_steps[:5]:
-            if step.duration > 60:  # Steps taking more than 1 minute
+            if step.duration > 60:
                 if "cargo build" in step.description:
                     recommendations.append(
                         f"• [{platform}] Cargo build taking {format_duration(step.duration)} - "
@@ -223,7 +211,6 @@ def print_optimization_recommendations(steps_by_platform: Dict[str, List[BuildSt
                         f"Consider using a pre-built base image with dependencies"
                     )
 
-    # Check for parallel execution opportunities
     amd64_steps = steps_by_platform.get('amd64', [])
     arm64_steps = steps_by_platform.get('arm64', [])
 
@@ -235,7 +222,7 @@ def print_optimization_recommendations(steps_by_platform: Dict[str, List[BuildSt
         print(f"  • AMD64 total step time: {format_duration(amd64_total)}")
         print(f"  • ARM64 total step time: {format_duration(arm64_total)}")
 
-        if abs(amd64_total - arm64_total) > 300:  # 5 minutes difference
+        if abs(amd64_total - arm64_total) > 300:
             slower_platform = "ARM64" if arm64_total > amd64_total else "AMD64"
             recommendations.append(
                 f"• Significant time difference between platforms - {slower_platform} is much slower. "
@@ -244,7 +231,7 @@ def print_optimization_recommendations(steps_by_platform: Dict[str, List[BuildSt
 
     if recommendations:
         print("\nKey recommendations:")
-        for rec in recommendations[:10]:  # Show top 10 recommendations
+        for rec in recommendations[:10]:
             print(rec)
     else:
         print("\nNo specific recommendations - build appears reasonably optimized.")
@@ -262,14 +249,10 @@ def main():
         print("No build steps found in log file")
         return
 
-    # Print reports for each platform
     for platform in sorted(steps_by_platform.keys()):
         print_platform_report(platform, steps_by_platform[platform])
 
-    # Print slowest steps across all platforms
     print_slowest_steps(steps_by_platform, top_n=15)
-
-    # Print optimization recommendations
     print_optimization_recommendations(steps_by_platform)
 
     print(f"\n{'='*120}")

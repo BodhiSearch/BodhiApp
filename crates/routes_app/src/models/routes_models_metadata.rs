@@ -1,9 +1,3 @@
-//! Model metadata API endpoints
-//!
-//! This module provides endpoints for:
-//! - Refreshing metadata for models (bulk async or single sync)
-//! - Getting queue status
-
 use crate::models::error::ModelRouteError;
 use crate::models::models_api_schemas::{QueueStatusResponse, RefreshResponseType};
 use crate::shared::AuthScope;

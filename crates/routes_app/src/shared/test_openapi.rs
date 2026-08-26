@@ -587,23 +587,19 @@ fn test_oai_models_endpoint() {
   assert!(responses.responses.contains_key("500"));
 }
 
-/// Test that runtime OpenAPI spec matches the generated openapi.json file
 #[test]
 fn test_all_endpoints_match_spec() {
   let runtime_spec = BodhiOpenAPIDoc::openapi();
   let runtime_value = serde_json::to_value(&runtime_spec).unwrap();
 
-  // Load the generated openapi.json file
   let spec_content = include_str!("../../../../openapi.json");
   let generated_spec: serde_json::Value = serde_json::from_str(spec_content).unwrap();
 
-  // Compare key sections to ensure they're in sync
   assert_eq!(
     runtime_value["info"]["title"], generated_spec["info"]["title"],
     "API title mismatch between runtime and generated spec"
   );
 
-  // Compare paths - ensure all paths exist in both specs
   let runtime_paths = runtime_value["paths"].as_object().unwrap();
   let generated_paths = generated_spec["paths"].as_object().unwrap();
 
@@ -623,7 +619,6 @@ fn test_all_endpoints_match_spec() {
     );
   }
 
-  // Compare number of endpoints
   assert_eq!(
     runtime_paths.len(),
     generated_paths.len(),
@@ -633,7 +628,6 @@ fn test_all_endpoints_match_spec() {
   );
 }
 
-/// Test that runtime OAI OpenAPI spec matches the generated openapi-oai.json file
 #[test]
 fn test_oai_endpoints_match_spec() {
   let runtime_spec = BodhiOAIOpenAPIDoc::openapi();

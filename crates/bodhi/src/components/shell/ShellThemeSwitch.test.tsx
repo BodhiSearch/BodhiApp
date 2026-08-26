@@ -26,7 +26,6 @@ describe('Shell theme switch (always visible above the user chip)', () => {
     const user = userEvent.setup();
     renderFooter();
 
-    // No menu interaction — the switch is always visible in the footer.
     const lightBtn = screen.getByTestId('shell-theme-light');
     const darkBtn = screen.getByTestId('shell-theme-dark');
     expect(screen.getByTestId('shell-theme-system')).toBeInTheDocument();

@@ -2,7 +2,6 @@
 use async_openai::types::chat::{ChatCompletionTool, ChatCompletionTools, FunctionObjectArgs};
 use serde_json::{json, Value};
 
-/// Get weather tool for testing tool calling functionality
 pub fn get_weather_tool() -> Vec<ChatCompletionTools> {
   vec![ChatCompletionTools::Function(ChatCompletionTool {
     function: FunctionObjectArgs::default()
@@ -23,7 +22,6 @@ pub fn get_weather_tool() -> Vec<ChatCompletionTools> {
   })]
 }
 
-/// Parse SSE stream and extract tool calls from streaming response
 pub fn parse_streaming_tool_calls(response_text: &str) -> (Vec<Value>, String) {
   let mut tool_call_map: std::collections::HashMap<i64, Value> = std::collections::HashMap::new();
   let mut finish_reason = String::new();
@@ -92,7 +90,6 @@ pub fn parse_streaming_tool_calls(response_text: &str) -> (Vec<Value>, String) {
   (tool_calls, finish_reason)
 }
 
-/// Parse SSE stream and extract content from streaming response
 pub fn parse_streaming_content(response_text: &str) -> (String, String) {
   let mut content = String::new();
   let mut finish_reason = String::new();

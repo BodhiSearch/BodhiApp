@@ -1,14 +1,5 @@
 #!/usr/bin/env python3
-"""
-Filter Cargo.toml for dependency-only builds in Docker.
-
-This script creates a minimal workspace containing only:
-- xtask (required by workspace)
-- ci_optims (our dependency compilation crate)
-
-It removes all workspace dependencies that reference local crates (path = "crates/*")
-to avoid missing dependency errors during the dependency pre-compilation stage.
-"""
+"""Create a minimal Cargo.toml workspace for dependency-only builds."""
 
 import sys
 import os

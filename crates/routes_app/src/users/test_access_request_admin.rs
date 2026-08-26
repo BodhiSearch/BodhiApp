@@ -350,7 +350,6 @@ async fn test_approve_request_insufficient_privileges(
     )
     .with_state(state);
 
-  // A user role trying to approve admin role should fail
   let response = router
     .oneshot(
       Request::post(format!(

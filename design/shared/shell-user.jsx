@@ -1,16 +1,3 @@
-/* ═══════════════════════════════════════════════════════════════
-   Bodhi App Shell — USER (theme toggle + user menu + footer)
-   shared/shell-user.jsx   (load after shell-core.jsx)
-
-   The sidebar footer cluster: a light/dark/system theme switch, the
-   user chip, and its popover (org switcher + logout) with toasts.
-   Theme state comes from useTheme (shell-core); tenants from
-   SHELL_TENANTS (shell-core), overridable per-page via user.tenants.
-═══════════════════════════════════════════════════════════════ */
-
-/* Quick light/dark switch that lives just above the user chip in the
-   sidebar footer. Expanded → labelled sun/moon segmented pill.
-   Collapsed icon-rail → a single button that flips the theme. */
 function ShellThemeToggle({ collapsed }) {
   const { mode, setMode } = useTheme();
   if (collapsed) {
@@ -41,7 +28,6 @@ function ShellThemeToggle({ collapsed }) {
   );
 }
 
-/* ── User menu popover (fixed; opens UP from the chip, RIGHT when collapsed) ── */
 function UserMenuPop({ open, anchorRef, collapsed, onClose, children }) {
   const popRef = React.useRef(null);
   const [pos, setPos] = React.useState(null);

@@ -4,11 +4,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
 
-// Get current script directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Compute output directory relative to script location
 const OUTPUT_DIR = path.join(__dirname, 'tests', 'data', 'embedded');
 const REPOS_FILE = path.join(__dirname, 'tests', 'data', 'embedded-repos.txt');
 const OUTPUT_YAML = path.join(__dirname, 'tests', 'data', 'embedded-repos-with-base.yaml');
@@ -116,12 +114,10 @@ async function main() {
     const modelRepos = await fetchOwnerModels(owner);
     console.log(`Found ${modelRepos.length} model repos for ${owner}`);
 
-    // Save repos list to file
     await ensureDirectoryExists(path.dirname(REPOS_FILE));
     await fs.writeFile(REPOS_FILE, modelRepos.join('\n'));
     console.log(`Saved repos list to ${REPOS_FILE}`);
 
-    // Process all repos in parallel with concurrency limit
     const concurrencyLimit = 5;
     const results = [];
     
@@ -131,7 +127,6 @@ async function main() {
       results.push(...batchResults.filter(Boolean));
     }
 
-    // Save results to YAML file
     await ensureDirectoryExists(path.dirname(OUTPUT_YAML));
     await fs.writeFile(
       OUTPUT_YAML,

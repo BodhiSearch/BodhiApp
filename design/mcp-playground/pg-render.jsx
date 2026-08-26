@@ -8,7 +8,6 @@
    shared Result panel with its tucked-away Raw / Request tabs.
 ═══════════════════════════════════════════════════════════════ */
 
-/* ── copy button ─────────────────────────────────────────────── */
 function CopyBtn({ text, label }) {
   const [done, setDone] = useState(false);
   const copy = () => {
@@ -22,7 +21,6 @@ function CopyBtn({ text, label }) {
   );
 }
 
-/* ── friendly argument form ──────────────────────────────────── */
 function ArgForm({ args, values, onChange, errors }) {
   if (!args || args.length === 0) {
     return <div className="pg-noargs">No inputs needed — just run it.</div>;
@@ -46,8 +44,6 @@ function ArgForm({ args, values, onChange, errors }) {
   );
 }
 
-/* ── light markdown (headings, bullets, **bold**, `code`, links,
-   > quotes, fenced code blocks and tables) ──────────────────── */
 function inlineMd(text) {
   const nodes = [];
   const re = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
@@ -106,7 +102,6 @@ function Markdownish({ text }) {
   return <div className="md">{out}</div>;
 }
 
-/* ── recursive data view (object → list, array of objects → table) ── */
 function DataTable({ rows }) {
   const cols = [];
   rows.forEach(r => Object.keys(r).forEach(k => { if (!cols.includes(k)) cols.push(k); }));
@@ -151,7 +146,6 @@ function DataView({ value, compact }) {
   return <span>{String(value)}</span>;
 }
 
-/* ── text content blocks ([{type:'text',text}] | {…} | string) ── */
 function normalizeText(data) {
   if (typeof data === 'string') return [data];
   if (Array.isArray(data)) return data.map(b => (b && b.text != null) ? b.text : (typeof b === 'string' ? b : JSON.stringify(b, null, 2)));
@@ -162,7 +156,6 @@ function TextContentView({ data }) {
   return <div className="pg-textblocks">{normalizeText(data).map((t, i) => <Markdownish key={i} text={t} />)}</div>;
 }
 
-/* ── prompt messages → chat bubbles ──────────────────────────── */
 function MessagesView({ messages }) {
   return (
     <div className="pg-messages">
@@ -191,7 +184,6 @@ function BehaviourHints({ tool }) {
   );
 }
 
-/* ── one content block (text/image/link/embedded resource) ──── */
 function TextBlock({ block }) {
   const fmt = block.format || 'markdown';
   if (fmt === 'pre') return <pre className="pg-pre"><code>{block.text}</code></pre>;
@@ -245,7 +237,6 @@ function ContentBlock({ block }) {
   return <TextBlock block={block} />;
 }
 
-/* structured data — caption a single {key:[rows]} as a titled table ── */
 function StructuredView({ data }) {
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     const keys = Object.keys(data);
@@ -262,7 +253,6 @@ function StructuredView({ data }) {
   return <DataView value={data} />;
 }
 
-/* ── tool result: ordered content blocks + optional structured data ── */
 function StructDetails({ data, defaultOpen }) {
   const [open, setOpen] = useState(defaultOpen !== false);
   return (
@@ -294,7 +284,6 @@ function ToolResultView({ model }) {
   );
 }
 
-/* ── readable switchboard by result kind ─────────────────────── */
 function ReadableResult({ run }) {
   if (run.kind === 'tool') return <ToolResultView model={run.data} />;
   if (run.kind === 'messages') return <MessagesView messages={run.data} />;
@@ -315,9 +304,6 @@ function ReadableResult({ run }) {
   return <DataView value={run.data} />;
 }
 
-/* ══ RESULT PANEL ════════════════════════════════════════════════
-   Shared output surface. The friendly Result reads first and is selected
-   on load; Raw and Request sit alongside it, always one click away. */
 function ResultPanel({ run, title = 'Result', emptyHint }) {
   const [tab, setTab] = useState('readable');
   useEffect(() => { setTab('readable'); }, [run && run.token]);

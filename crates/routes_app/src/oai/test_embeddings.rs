@@ -88,10 +88,7 @@ async fn test_embeddings_handler_non_stream() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// Format rejection tests — openai_responses aliases must not be routed via
-// embeddings endpoint
-// ============================================================================
+// Format rejection tests — openai_responses aliases must not be routed via embeddings
 
 #[rstest]
 #[awt]

@@ -33,10 +33,6 @@ use services::{
 use std::sync::Arc;
 use tower::ServiceExt;
 
-// ============================================================================
-// Helper: build AppServiceStub with real DB, real AccessRequestService
-// ============================================================================
-
 struct TestHarness {
   state: Arc<dyn services::AppService>,
   db_service: Arc<dyn DbService>,
@@ -70,10 +66,6 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
   Ok(TestHarness { state, db_service })
 }
 
-// ============================================================================
-// Helper: seed a draft access request in DB
-// ============================================================================
-
 async fn seed_draft_request(
   db_service: &dyn DbService,
   request_id: &str,
@@ -103,10 +95,6 @@ async fn seed_draft_request(
   let result = db_service.create(&row).await?;
   Ok(result)
 }
-
-// ============================================================================
-// Helper: seed an MCP server + user instance, returns the instance id
-// ============================================================================
 
 async fn seed_mcp_instance(
   app_service: &dyn services::AppService,
@@ -149,10 +137,6 @@ async fn seed_mcp_instance(
   Ok(instance.id)
 }
 
-// ============================================================================
-// Helper: seed an APPROVED access request owned by `user_id`
-// ============================================================================
-
 #[allow(clippy::too_many_arguments)]
 async fn seed_approved_request(
   db_service: &dyn DbService,
@@ -194,10 +178,6 @@ fn management_router(state: Arc<dyn services::AppService>) -> Router {
     )
     .with_state(state)
 }
-
-// ============================================================================
-// apps_list_user_access — list issued app tokens with grant summary
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -257,10 +237,6 @@ async fn test_list_user_access_returns_only_callers_approved_with_summary() -> a
   );
   Ok(())
 }
-
-// ============================================================================
-// apps_revoke_access_request — revoke makes the grant inactive
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -370,10 +346,6 @@ async fn test_revoke_non_approved_request_rejected() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// apps_approve_access_request - success
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -435,10 +407,6 @@ async fn test_approve_access_request_success() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// apps_create_access_request - review_url reflects the request Host header
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -495,10 +463,6 @@ async fn test_create_access_request_review_url_reflects_host() -> anyhow::Result
   Ok(())
 }
 
-// ============================================================================
-// apps_approve_access_request - error: MCP instance not owned
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -553,10 +517,6 @@ async fn test_approve_access_request_mcp_instance_not_owned() -> anyhow::Result<
 
   Ok(())
 }
-
-// ============================================================================
-// apps_approve_access_request - extended grants (models + owner-extra MCPs)
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -678,10 +638,6 @@ async fn test_approve_access_request_extra_mcp_not_owned() -> anyhow::Result<()>
   Ok(())
 }
 
-// ============================================================================
-// apps_approve_access_request - cross-URL instance (no URL-match restriction)
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -754,10 +710,6 @@ async fn test_approve_access_request_cross_url_instance() -> anyhow::Result<()> 
   Ok(())
 }
 
-// ============================================================================
-// apps_get_access_request_review - lists all instances, exact-URL match first
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -829,10 +781,6 @@ async fn test_review_lists_all_instances_match_first() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// apps_deny_access_request - success
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -870,10 +818,6 @@ async fn test_deny_access_request_success() -> anyhow::Result<()> {
 
   Ok(())
 }
-
-// ============================================================================
-// apps_approve_access_request - error: privilege escalation (user grants power_user)
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -930,10 +874,6 @@ async fn test_approve_privilege_escalation_user_grants_power_user() -> anyhow::R
 
   Ok(())
 }
-
-// ============================================================================
-// apps_approve_access_request - success: power_user downgrades scope_user_power_user to scope_user_user
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -999,10 +939,6 @@ async fn test_approve_valid_downgrade_power_user_grants_user() -> anyhow::Result
   Ok(())
 }
 
-// ============================================================================
-// apps_approve_access_request - error: approved_role exceeds requested_role
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -1053,10 +989,6 @@ async fn test_approve_privilege_escalation_approved_exceeds_requested() -> anyho
 
   Ok(())
 }
-
-// ============================================================================
-// Version validation tests
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -1261,10 +1193,6 @@ fn app_access_summary_clamps_tampered_approved_role() {
   assert_eq!(Some(UserScope::PowerUser), s.approved_role);
 }
 
-// ============================================================================
-// apps_create_access_request - exchange / upgrade mode
-// ============================================================================
-
 /// Seed a Draft whose `source_access_request_id` points at a prior request.
 async fn seed_draft_with_source(
   db_service: &dyn DbService,
@@ -1412,10 +1340,6 @@ async fn test_create_access_request_exchange_app_client_mismatch_rejected() -> a
   assert_eq!(StatusCode::UNAUTHORIZED, response.status());
   Ok(())
 }
-
-// ============================================================================
-// apps_get_access_request_review - previous_grant embedding (upgrade)
-// ============================================================================
 
 fn review_router(state: Arc<dyn services::AppService>) -> Router {
   Router::new()

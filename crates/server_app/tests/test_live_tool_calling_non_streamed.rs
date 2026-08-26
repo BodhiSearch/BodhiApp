@@ -15,8 +15,6 @@ use pretty_assertions::assert_eq;
 use serde_json::Value;
 use std::time::Duration;
 
-/// Tests multi-turn tool calling with Qwen3 model.
-/// Verifies the complete flow: user query -> tool call -> tool response -> final answer.
 #[rstest::rstest]
 #[awt]
 #[tokio::test]
@@ -42,7 +40,6 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
   let chat_endpoint = format!("http://{host}:{port}/v1/chat/completions");
   let client = reqwest::Client::new();
 
-  // Turn 1: Initial request with developer role for tool calling
   let mut messages: Vec<ChatCompletionRequestMessage> = vec![
     ChatCompletionRequestDeveloperMessage::from(
       "You are a model that can do tool calling with the following tools",
@@ -74,7 +71,6 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
   assert_eq!(StatusCode::OK, response.status());
   let response_json = response.json::<Value>().await?;
 
-  // Turn 1 should produce a tool call.
   let choice = &response_json["choices"][0];
   assert_eq!(
     "tool_calls",
@@ -100,7 +96,6 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
     .as_str()
     .expect("Expected tool call id");
 
-  // Turn 2: Convert tool_calls from JSON to typed structs
   let typed_tool_calls: Vec<ChatCompletionMessageToolCalls> = tool_calls
     .iter()
     .map(|tc| {
@@ -153,7 +148,6 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
 
   handle.shutdown().await?;
 
-  // Turn 2 should produce a final answer with finish_reason=stop.
   let choice = &response_json["choices"][0];
   let finish_reason = choice["finish_reason"].as_str().unwrap();
   assert_eq!(
@@ -166,7 +160,6 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
     .as_str()
     .expect("Expected content in final response");
 
-  // The final response should mention temperature or weather-related content
   let content_lower = content.to_lowercase();
   assert!(
     content_lower.contains("15")

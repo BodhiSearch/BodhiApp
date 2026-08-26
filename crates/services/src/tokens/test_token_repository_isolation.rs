@@ -118,7 +118,6 @@ async fn test_cross_tenant_token_delete_blocked(
     .create_api_token(TEST_TENANT_B_ID, &mut token_b)
     .await?;
 
-  // Tenant A cannot delete tenant B's token.
   let err = ctx
     .service
     .delete_api_token(TEST_TENANT_ID, TEST_USER_ID, &token_b.id)
@@ -126,7 +125,6 @@ async fn test_cross_tenant_token_delete_blocked(
     .unwrap_err();
   assert!(matches!(err, crate::db::DbError::ItemNotFound { .. }));
 
-  // The token is still present in tenant B.
   let still_there = ctx
     .service
     .get_api_token_by_id(TEST_TENANT_B_ID, TEST_USER_ID, &token_b.id)

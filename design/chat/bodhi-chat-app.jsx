@@ -13,15 +13,11 @@
 const { useState, useEffect, useRef } = React;
 const Ic = ShellIcon;
 
-/* ── Catalogs (stand-ins for backend data) ───────────────────── */
 const MODEL_GROUPS = [
   { label: 'Local', models: ['llama-3.1-8b-instruct', 'qwen2.5-7b-instruct', 'phi-3.5-mini-instruct'] },
   { label: 'API',   models: ['claude-sonnet-4.5', 'gpt-4o', 'gemini-2.0-flash'] },
 ];
 
-/* Every MCP server configured in this workspace, with the tools it exposes.
-   The chat only lists the ones added to THIS conversation; the rest are
-   offered in the "add server" combobox. */
 const MCP_CATALOG = [
   { id: 'filesystem', name: 'filesystem', status: 'connected',  tools: ['read_file', 'write_file', 'list_directory', 'search_files', 'get_file_info', 'move_file', 'create_directory', 'delete_file'] },
   { id: 'git',        name: 'git',        status: 'connected',  tools: ['status', 'log', 'diff', 'commit', 'branch', 'checkout', 'stash', 'show'] },
@@ -31,7 +27,6 @@ const MCP_CATALOG = [
   { id: 'exa',        name: 'Exa Search', status: 'connected',  tools: ['web_search', 'find_similar', 'get_contents'] },
 ];
 
-/* Build a server instance (tools as {name,on}) with a set of enabled tools. */
 function makeServer(id, enabledTools) {
   const def = MCP_CATALOG.find(s => s.id === id);
   const on = new Set(enabledTools || def.tools);
@@ -39,13 +34,10 @@ function makeServer(id, enabledTools) {
            tools: def.tools.map(name => ({ name, on: on.has(name) })) };
 }
 
-/* ── Small reusable controls ─────────────────────────────────── */
 function Switch({ on, onToggle }) {
   return <button className={'sw' + (on ? ' on' : '')} onClick={onToggle} aria-pressed={on} />;
 }
 
-/* Model picker — free-text autocomplete (any value allowed; the list is
-   just suggestions, not a constraint). */
 function ModelCombo({ value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -59,7 +51,6 @@ function ModelCombo({ value, onChange }) {
   const all = MODEL_GROUPS.flatMap(g => g.models);
   const isMatch = m => m.toLowerCase().includes(q);
   const byName = (a, b) => a.localeCompare(b);
-  // matching first (the current model floated to the top), then the rest A→Z
   const matching = all.filter(isMatch).sort((a, b) => (a === value ? -1 : b === value ? 1 : byName(a, b)));
   const nonMatching = all.filter(m => !isMatch(m)).sort(byName);
   const opt = m => (
@@ -88,7 +79,6 @@ function ModelCombo({ value, onChange }) {
   );
 }
 
-/* MCP add — a combobox with a search bar that filters configured servers. */
 function McpAddCombo({ available, onAdd }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -129,9 +119,6 @@ function McpAddCombo({ available, onAdd }) {
   );
 }
 
-/* A single setting row: label + help + (value) + an override switch, with the
-   control below. Every setting can be switched OFF to skip applying it; the
-   control stays visible but muted/inert while off (matches the app's panel). */
 function Setting({ name, help, defaultOn, value, children }) {
   const [on, setOn] = useState(!!defaultOn);
   return (
@@ -156,7 +143,6 @@ function Slider({ pct }) {
   );
 }
 
-/* ── Sidebar: chat history (collapse-aware) ──────────────────── */
 const CHAT_GROUPS = [
   { group: 'Today', items: ['MCP tool calling basics', 'Quantization tradeoffs for 8B'] },
   { group: 'Yesterday', items: ['Debugging the filesystem server', 'Draft release notes · v0.8'] },
@@ -247,7 +233,6 @@ function ChatSidebar() {
   );
 }
 
-/* ── Header breadcrumb (no header actions — Share/Export/⋯ removed) ── */
 function ChatTitle() {
   return (
     <div className="chat-title">
@@ -257,7 +242,6 @@ function ChatTitle() {
   );
 }
 
-/* ── Main: conversation + composer ───────────────────────────── */
 function MetaActs() {
   return (
     <div className="meta-acts">
@@ -365,7 +349,6 @@ function ChatMain() {
   );
 }
 
-/* ── Rail header: the two tabs (sit on the shared 56px gridline) ── */
 function RailTabs({ tab, setTab, mcpCount }) {
   return (
     <div className="rail-tabs">
@@ -379,7 +362,6 @@ function RailTabs({ tab, setTab, mcpCount }) {
   );
 }
 
-/* ── Rail pane: Parameters ───────────────────────────────────── */
 function ParametersPane({ model, setModel }) {
   return (
     <div className="rail-pane">
@@ -428,7 +410,6 @@ function ParametersPane({ model, setModel }) {
   );
 }
 
-/* ── Rail pane: MCP servers (combobox to add · accordion tool picker) ── */
 function McpServerRow({ srv, onToggleExpand, onToggleTool, onSelectAll, onRemove }) {
   const onCount = srv.tools.filter(t => t.on).length;
   return (
@@ -501,7 +482,6 @@ function McpServersPane({ servers, setServers }) {
   );
 }
 
-/* ── Root ────────────────────────────────────────────────────── */
 function ChatApp() {
   const [tab, setTab] = useState('parameters');
   const [model, setModel] = useState('llama-3.1-8b-instruct');

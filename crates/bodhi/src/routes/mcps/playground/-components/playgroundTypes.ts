@@ -24,10 +24,7 @@ export interface ArgField {
   placeholder?: string;
 }
 
-/**
- * Build sensible default values for an input schema's properties so the form has
- * a stable initial state and re-renders cleanly on tool switch.
- */
+/** Per-type defaults so the form resets cleanly when the tool switches. */
 export function buildDefaultSchemaParams(schema: InputSchema | undefined): Record<string, unknown> {
   if (!schema?.properties) return {};
   const params: Record<string, unknown> = {};
@@ -205,8 +202,6 @@ export type RunState = { phase: 'idle' } | { phase: 'running'; request: RunReque
 export function idleRun(): RunState {
   return { phase: 'idle' };
 }
-
-// ── tool helpers ───────────────────────────────────────────────
 
 export function toolFriendlyTitle(t: McpClientTool): string {
   return t.title || t.annotations?.title || t.name;

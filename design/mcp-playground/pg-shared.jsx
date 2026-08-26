@@ -10,7 +10,6 @@
 ═══════════════════════════════════════════════════════════════ */
 const { useState, useEffect, useRef, useMemo } = React;
 
-/* ── tiny primitives ─────────────────────────────────────────── */
 function PgSpinner({ size = 14 }) {
   return <span className="pg-spin" style={{ width: size, height: size }} />;
 }
@@ -36,7 +35,6 @@ function syntaxHighlight(json) {
   );
 }
 
-/* ── instance ↔ URL helpers (instance carried across pages) ──── */
 function instQS(inst) {
   return new URLSearchParams({ instance: inst.instId, name: inst.instName, server: inst.serverId }).toString();
 }
@@ -48,12 +46,9 @@ function resolveURLInstance() {
   return (typeof findInstance === 'function') ? findInstance(instId, serverId) : null;
 }
 
-/* ── Navigation context — a readable result can jump to another page
-   (resource links open the Resources page). ── */
 const PgNavContext = React.createContext({ openResource: () => {} });
 const usePgNav = () => React.useContext(PgNavContext);
 
-/* ── server glyph (icon tile) ────────────────────────────────── */
 function ServerGlyph({ s, size = 30, radius = 8 }) {
   if (!s) return <div className="pg-glyph" style={{ width: size, height: size, borderRadius: radius, background: 'hsl(var(--muted))' }} />;
   return (
@@ -63,7 +58,6 @@ function ServerGlyph({ s, size = 30, radius = 8 }) {
   );
 }
 
-/* ── status dot for an instance ──────────────────────────────── */
 function StatusDot({ status }) {
   const map = {
     connected: { c: 'var(--c-connected-text)', t: 'Connected' },

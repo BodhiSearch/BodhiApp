@@ -362,10 +362,6 @@ async fn test_remove_user_handler_auth_error(_temp_bodhi_home: TempDir) -> anyho
   Ok(())
 }
 
-// ============================================================================
-// users_change_role - role change failure test
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -414,10 +410,6 @@ async fn test_change_user_role_handler_auth_error(_temp_bodhi_home: TempDir) -> 
   );
   Ok(())
 }
-
-// ============================================================================
-// users_change_role - session clear failure doesn't fail operation
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -474,10 +466,7 @@ async fn test_change_user_role_session_clear_failure_still_succeeds(
   Ok(())
 }
 
-// ============================================================================
-// users_change_role - privilege escalation prevention (P1-3)
-// ============================================================================
-
+// P1-3: privilege escalation prevention
 #[rstest]
 #[case::manager_assigning_admin(ResourceRole::Manager, ResourceRole::Admin)]
 #[case::power_user_assigning_manager(ResourceRole::PowerUser, ResourceRole::Manager)]
@@ -584,10 +573,6 @@ async fn test_change_user_role_allowed_when_caller_has_sufficient_role(
 
   Ok(())
 }
-
-// ============================================================================
-// users_change_role - reject Guest/Anonymous as assignment targets
-// ============================================================================
 
 #[rstest]
 #[case::assign_guest(ResourceRole::Guest)]

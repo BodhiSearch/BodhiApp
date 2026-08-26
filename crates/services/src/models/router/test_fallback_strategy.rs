@@ -76,7 +76,7 @@ type Outcomes = Arc<std::sync::Mutex<HashMap<String, Upstream>>>;
 /// A controllable `RouterContext` plus the handles a test needs to drive it:
 /// the forward-call counter, the mutable outcomes map, the shared health
 /// registry, and the settable clock. The same registry/clock can be threaded
-/// into a second context (via `with_shared`) to exercise cross-router sharing.
+/// into a second context (via `test_ctx_sharing`) to exercise cross-router sharing.
 struct TestCtx {
   ctx: RouterContext,
   calls: Arc<AtomicUsize>,

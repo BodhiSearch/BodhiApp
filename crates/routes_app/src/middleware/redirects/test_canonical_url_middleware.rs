@@ -25,8 +25,8 @@ struct TestScenario {
   public_port: u16,
   expected_status: StatusCode,
   expected_location: Option<&'static str>,
-  skip_public_host: bool,   // When true, don't set BODHI_PUBLIC_HOST
-  canonical_disabled: bool, // When true, disable canonical redirect setting
+  skip_public_host: bool,
+  canonical_disabled: bool,
 }
 
 async fn create_setting_service(scheme: &str, host: &str, port: u16) -> Arc<dyn SettingService> {

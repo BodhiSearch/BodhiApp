@@ -5,7 +5,6 @@ import { startViewTransition } from '@/hooks/useViewTransition';
 describe('startViewTransition', () => {
   afterEach(() => {
     vi.restoreAllMocks();
-    // remove any stub we added
     delete (document as unknown as { startViewTransition?: unknown }).startViewTransition;
   });
 

@@ -1,7 +1,4 @@
-/**
- * Browser detection utilities using UAParser.js
- * Based on implementation from bodhi-js project
- */
+// Based on implementation from bodhi-js project
 
 import { UAParser } from 'ua-parser-js';
 

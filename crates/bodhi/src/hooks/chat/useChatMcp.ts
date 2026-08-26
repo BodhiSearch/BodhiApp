@@ -55,7 +55,6 @@ export function useChatMcp(): ChatMcp {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the added set; connectAll is stable
   }, [addedMcps]);
 
-  // Disconnect everything only when the chat screen unmounts.
   useEffect(() => {
     return () => {
       mcpClients.disconnectAll();
@@ -124,7 +123,6 @@ export function useChatMcp(): ChatMcp {
   const addMcp = useCallback((mcp: Mcp) => addMcpToSelection(mcp.id, []), [addMcpToSelection]);
   const removeMcp = useCallback((mcpId: string) => removeMcpFromSelection(mcpId), [removeMcpFromSelection]);
 
-  // Badge = servers added to this chat.
   const mcpCount = useMemo(() => Object.keys(enabledMcpTools).length, [enabledMcpTools]);
 
   return {

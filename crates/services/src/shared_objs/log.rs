@@ -1,8 +1,7 @@
 use tracing::{error, info, warn};
 
-/// Mask sensitive parameters for logging with improved logic
-/// - For params < 8 chars: show first 2 chars + *
-/// - For params >= 8 chars: show first 2 and last 2 chars + *** in between
+/// Masks a value for logging: values under 8 chars keep only their first 2 chars,
+/// longer values keep the first and last 2.
 pub fn mask_sensitive_value(value: &str) -> String {
   if value.len() < 8 {
     if value.len() >= 2 {

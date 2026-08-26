@@ -127,7 +127,6 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
 
   fn authorize_url(&self) -> String;
 
-  /// Get app client info (name, description) from Keycloak
   /// KC endpoint: GET /users/apps/{app_client_id}/info
   async fn get_app_client_info(
     &self,
@@ -135,9 +134,7 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     user_token: &str,
   ) -> Result<AppClientInfo>;
 
-  /// Forward an arbitrary HTTP request to the Keycloak Bodhi SPI.
-  /// Builds URL: `{auth_url}/realms/{realm}/bodhi/{endpoint}`
-  /// mostly used by tests to call cleanup
+  /// Builds URL: `{auth_url}/realms/{realm}/bodhi/{endpoint}`. Mostly used by tests to call cleanup.
   async fn forward_request(
     &self,
     method: String,
@@ -146,7 +143,6 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     body: Option<serde_json::Value>,
   ) -> Result<(u16, serde_json::Value)>;
 
-  /// Create a new tenant (Keycloak client) via the Bodhi SPI.
   /// SPI endpoint: POST /realms/{realm}/bodhi/tenants
   async fn create_tenant(
     &self,
@@ -477,7 +473,6 @@ impl AuthService for KeycloakAuthService {
       &refresh_token.chars().take(10).collect::<String>()
     );
 
-    // Attempts: 1st try immediate, retry 1 after 100ms, retry 2 after 500ms, retry 3 after 2000ms
     let max_retries = 3;
     let mut last_error = None;
 

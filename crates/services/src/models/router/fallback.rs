@@ -10,17 +10,9 @@ const STRATEGY_NAME: &str = "fallback";
 
 #[async_trait]
 impl RoutingStrategy for FallbackConfig {
-  /// Try enabled targets, ordered by health: not-cooled targets first (in
-  /// declared order), then cooled ones by soonest recovery. A 2xx (success) or
-  /// 400/422 (terminal) response is returned verbatim and routing stops; a
-  /// success also clears the target's health (so a recovered primary returns to
-  /// the front next request). A retryable status or genuine transport failure
-  /// cools the target (`cooldown_secs`, extended to `Retry-After`) and falls
-  /// through. A structural problem (dangling alias, nested router, unsupported
-  /// format) is skipped but NOT cooled — it isn't transient. On exhaustion the
-  /// last upstream response is returned verbatim; if no target ever produced a
-  /// response, the last typed error surfaces. `max_attempts` (0 = whole chain)
-  /// caps how many targets are tried.
+  /// Walks health-ordered targets until one is terminal. On exhaustion returns
+  /// the last upstream response verbatim, or the last error if none responded.
+  /// `max_attempts == 0` means try the whole chain.
   async fn execute(
     &self,
     targets: &[RouterTarget],

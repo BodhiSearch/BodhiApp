@@ -4,7 +4,7 @@ const path = require('node:path');
 const { execSync } = require('node:child_process');
 
 const MAX_ATTEMPTS = 5;
-const RETRY_DELAY_MS = 10000; // 10 seconds
+const RETRY_DELAY_MS = 10000;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));

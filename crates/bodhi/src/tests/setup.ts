@@ -5,8 +5,7 @@ import { beforeAll, afterAll, vi } from 'vitest';
 
 import apiClient from '@/lib/apiClient';
 
-// TanStack Query v5's default setTimeout(cb, 0) scheduler defers updates outside act() in tests;
-// queueMicrotask keeps them inside act() (which flushes microtasks) without fully-sync scheduling's infinite-loop risk.
+// TanStack Query v5: queueMicrotask scheduler keeps updates inside act() without full sync's infinite-loop risk.
 notifyManager.setScheduler((cb) => queueMicrotask(cb));
 
 Object.defineProperty(window, 'matchMedia', {
@@ -38,14 +37,12 @@ class MockResizeObserver {
 
 global.ResizeObserver = MockResizeObserver;
 
-// Polyfill for Pointer Events API (not supported in JSDOM)
-// Required for Radix UI Select and other pointer-based components
+// Pointer Events polyfill for Radix UI
 Element.prototype.hasPointerCapture = vi.fn(() => false);
 Element.prototype.setPointerCapture = vi.fn();
 Element.prototype.releasePointerCapture = vi.fn();
 
-// Polyfill for scrollIntoView (not supported in JSDOM)
-// Required for Radix UI Select and other scroll-based components
+// scrollIntoView polyfill for Radix UI
 Element.prototype.scrollIntoView = vi.fn();
 
 const originalError = console.error;

@@ -2,8 +2,6 @@ use crate::test_utils::{build_test_router, cors_preflight_request, request_with_
 use rstest::rstest;
 use tower::ServiceExt;
 
-/// Test that CORS preflight requests to session-only endpoints
-/// do NOT return Access-Control-Allow-Origin (restrictive CORS).
 #[rstest]
 #[case::session_tokens_post("/bodhi/v1/tokens", "POST")]
 #[case::session_tokens_get("/bodhi/v1/tokens", "GET")]
@@ -32,8 +30,6 @@ async fn test_cors_preflight_session_endpoints_blocked(
   Ok(())
 }
 
-/// Test that CORS preflight requests to non-session API endpoints
-/// DO return Access-Control-Allow-Origin: * (permissive CORS).
 #[rstest]
 #[case::oai_models_get("/v1/models", "GET")]
 #[case::oai_chat_completions_post("/v1/chat/completions", "POST")]
@@ -67,7 +63,6 @@ async fn test_cors_preflight_nonsession_endpoints_allowed(
   Ok(())
 }
 
-/// Test that non-preflight requests to session endpoints do NOT get CORS headers.
 #[rstest]
 #[case::session_tokens_get("/bodhi/v1/tokens", "GET")]
 #[case::session_settings_get("/bodhi/v1/settings", "GET")]
@@ -91,7 +86,6 @@ async fn test_cors_non_preflight_session_endpoints_no_cors(
   Ok(())
 }
 
-/// Test that non-preflight requests to non-session endpoints DO get CORS headers.
 #[rstest]
 #[case::oai_models_get("/v1/models", "GET")]
 #[case::ping_get("/ping", "GET")]

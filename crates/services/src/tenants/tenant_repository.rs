@@ -230,23 +230,19 @@ pub trait TenantRepository: Send + Sync {
   async fn set_tenant_ready(&self, tenant_id: &str, user_id: &str) -> Result<(), DbError>;
   async fn delete_tenant(&self, client_id: &str) -> Result<(), DbError>;
 
-  /// Upsert a tenant-user membership. INSERT ON CONFLICT updates `updated_at`.
+  /// INSERT ON CONFLICT updates `updated_at`.
   async fn upsert_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<(), DbError>;
 
-  /// Delete a tenant-user membership (idempotent).
+  /// Idempotent.
   async fn delete_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<(), DbError>;
 
-  /// List all tenants a user has membership in.
   async fn list_user_tenants(&self, user_id: &str) -> Result<Vec<TenantRow>, DbError>;
 
-  /// Check if a user has any tenant memberships.
   async fn has_tenant_memberships(&self, user_id: &str) -> Result<bool, DbError>;
 
-  /// Delete a tenant by its client_id, including associated tenant_users records.
-  /// Idempotent: returns Ok if tenant does not exist.
+  /// Cascades to associated tenant_users; idempotent if tenant does not exist.
   async fn delete_tenant_by_client_id(&self, client_id: &str) -> Result<(), DbError>;
 
-  /// List all tenants created by a specific user (by `created_by` field).
   async fn list_tenants_by_creator(&self, created_by: &str) -> Result<Vec<TenantRow>, DbError>;
 
   /// Test-only: insert a tenant with a caller-specified ID (bypasses ULID auto-generation).
@@ -314,8 +310,7 @@ impl TenantRepository for DefaultDbService {
     status: &AppStatus,
     created_by: Option<String>,
   ) -> Result<TenantRow, DbError> {
-    // One-per-user enforcement: in multi-tenant mode (created_by is Some),
-    // check if the user already owns a tenant.
+    // One-per-user enforcement in multi-tenant mode (created_by is Some).
     if let Some(ref user_id) = created_by {
       let existing = self.list_tenants_by_creator(user_id).await?;
       if !existing.is_empty() {
@@ -367,7 +362,6 @@ impl TenantRepository for DefaultDbService {
       .await
       .map_err(DbError::from)?;
 
-    // Upsert tenant-user membership in the same transaction
     Self::upsert_tenant_user_on_txn(&txn, tenant_id, user_id, now).await?;
 
     txn.commit().await.map_err(DbError::from)?;
@@ -425,7 +419,6 @@ impl TenantRepository for DefaultDbService {
   }
 
   async fn list_user_tenants(&self, user_id: &str) -> Result<Vec<TenantRow>, DbError> {
-    // Two-step: get tenant_ids from membership, then fetch tenants
     let memberships = tenant_user_entity::Entity::find()
       .filter(tenant_user_entity::Column::UserId.eq(user_id))
       .all(&self.db)
@@ -467,17 +460,15 @@ impl TenantRepository for DefaultDbService {
 
     let tenant = match tenant {
       Some(t) => t,
-      None => return Ok(()), // Idempotent: no tenant means nothing to delete
+      None => return Ok(()),
     };
 
-    // Delete associated tenant_users first
     tenant_user_entity::Entity::delete_many()
       .filter(tenant_user_entity::Column::TenantId.eq(&tenant.id))
       .exec(&self.db)
       .await
       .map_err(DbError::from)?;
 
-    // Delete the tenant
     tenant_entity::Entity::delete_many()
       .filter(tenant_entity::Column::ClientId.eq(client_id))
       .exec(&self.db)

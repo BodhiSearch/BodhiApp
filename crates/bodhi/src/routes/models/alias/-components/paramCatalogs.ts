@@ -45,7 +45,6 @@ export const RUNTIME_FLAGS: CatalogEntry[] = [
   },
 ];
 
-/** Default value used when a flag is appended via the catalog. */
 export function defaultFlagValue(type: CatalogEntry['type']): string {
   switch (type) {
     case 'bool':

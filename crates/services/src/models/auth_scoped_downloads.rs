@@ -4,7 +4,6 @@ use crate::{
 };
 use std::sync::Arc;
 
-/// Auth-scoped wrapper around DownloadService that injects tenant_id from AuthContext.
 pub struct AuthScopedDownloadService {
   app_service: Arc<dyn AppService>,
   auth_context: AuthContext,

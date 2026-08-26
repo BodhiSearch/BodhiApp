@@ -317,14 +317,12 @@ pub async fn apps_approve_access_request(
 
   let requested_scope: UserScope = request.requested_role.parse()?;
 
-  // Validate: approved can't exceed what was requested
   if approved_scope > requested_scope {
     return Err(AppsRouteError::PrivilegeEscalation {
       approved: approved_scope.to_string(),
       max_allowed: requested_scope.to_string(),
     })?;
   }
-  // Validate: approved can't exceed what the approver is allowed to grant
   if approved_scope > max_grantable {
     return Err(AppsRouteError::PrivilegeEscalation {
       approved: approved_scope.to_string(),

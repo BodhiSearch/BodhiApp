@@ -77,7 +77,6 @@ describe('ExploreProvidersScreen (B1 — list)', () => {
     expect(screen.getByTestId('cat-prov-row-nano-gpt')).toHaveTextContent('NanoGPT');
     expect(screen.getByTestId('cat-prov-row-nano-gpt')).toHaveTextContent('617');
     expect(screen.getByTestId('cat-prov-row-nano-gpt')).toHaveTextContent('Reasoning');
-    // The api_format column header is present (FORMAT) and rows carry the format hint.
     expect(screen.getByTestId('cat-listhead')).toHaveTextContent('FORMAT');
   });
 
@@ -164,7 +163,6 @@ describe('ExploreProvidersScreen (B2 — detail rail)', () => {
     const meta = await screen.findByTestId('cat-prov-detail-meta');
     expect(meta).toHaveTextContent('NANO_GPT_API_KEY');
     expect(meta).toHaveTextContent('https://nano-gpt.com/api/v1');
-    // SDK row and the Documentation link were removed.
     expect(meta).not.toHaveTextContent('@ai-sdk/openai-compatible');
     expect(screen.queryByTestId('cat-prov-doc-link')).not.toBeInTheDocument();
 

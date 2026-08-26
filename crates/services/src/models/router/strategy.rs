@@ -113,8 +113,7 @@ impl RoutingStrategyConfig {
   }
 }
 
-/// Entry point for the chat handler: route one chat-completion request through
-/// the router's targets using its configured strategy.
+/// Entry point called by the chat handler.
 pub async fn route_chat_completion(
   router: &ModelRouterAlias,
   ctx: &RouterContext,

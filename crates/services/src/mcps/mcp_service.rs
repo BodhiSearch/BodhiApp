@@ -143,7 +143,6 @@ pub trait McpService: Debug + Send + Sync {
     token_id: &str,
   ) -> Result<(), McpError>;
 
-  /// Exchange an authorization code for tokens via the OAuth token endpoint.
   async fn exchange_oauth_token(
     &self,
     tenant_id: &str,
@@ -207,7 +206,6 @@ pub trait McpService: Debug + Send + Sync {
   ) -> Result<Option<McpAuthParams>, McpError>;
 }
 
-/// Maximum number of concurrent refresh lock entries.
 const MAX_REFRESH_LOCKS: usize = 1000;
 
 pub struct DefaultMcpService {
@@ -481,7 +479,6 @@ impl DefaultMcpService {
     }
 
     debug!(mcp_id, "OAuth token not expired, using cached credentials");
-    // Read access token from mcp_oauth_tokens
     let access_token = self
       .db_service
       .get_decrypted_oauth_access_token(tenant_id, &token.id)
@@ -502,15 +499,12 @@ impl DefaultMcpService {
     mcp_row: &McpEntity,
   ) -> Result<Option<McpAuthParams>, McpError> {
     match mcp_row.auth_type {
-      McpAuthType::Header | McpAuthType::Public => {
-        // Read credentials from mcp_auth_params table
-        Ok(
-          self
-            .db_service
-            .get_decrypted_auth_params(tenant_id, &mcp_row.id)
-            .await?,
-        )
-      }
+      McpAuthType::Header | McpAuthType::Public => Ok(
+        self
+          .db_service
+          .get_decrypted_auth_params(tenant_id, &mcp_row.id)
+          .await?,
+      ),
       McpAuthType::Oauth => self.resolve_oauth_token(tenant_id, &mcp_row.id).await,
     }
   }
@@ -700,7 +694,6 @@ impl McpService for DefaultMcpService {
       updated_at: now,
     };
 
-    // Pre-encrypt credentials if provided
     let auth_params = if let Some(ref credentials) = request.credentials {
       if credentials.is_empty() {
         None
@@ -795,7 +788,6 @@ impl McpService for DefaultMcpService {
       updated_at: now,
     };
 
-    // Pre-encrypt credentials if provided
     let auth_params = if let Some(ref credentials) = request.credentials {
       let mut params = Vec::new();
       for cred in credentials {

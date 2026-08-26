@@ -7,16 +7,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router';
 
-/**
- * Mount a single screen behind a real (in-memory) TanStack Router so components that read
- * `useSearch`/`useNavigate` (or `getRouteApi(path)`) work and browser-history navigation
- * (`router.history.back/forward`) drives them — no mocking of the router needed.
- *
- * Returns the `router` so tests can drive history and assert the URL:
- *   const { router } = renderWithRoute({ path: '/models/explore/api/', validateSearch, Screen });
- *   router.history.back();
- *   expect(router.state.location.search).toMatchObject({ ... });
- */
+// Real in-memory TanStack Router so useSearch/useNavigate and router.history.back/forward work.
 export function makeRouteRouter({
   path,
   validateSearch,
@@ -32,7 +23,6 @@ export function makeRouteRouter({
   const rootRoute = createRootRoute({ component: () => <Outlet /> });
   const screenRoute = createRoute({
     getParentRoute: () => rootRoute,
-    // Test-only infra: the route path/component are dynamic, so the precise router generics don't apply.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     path: path as any,
     validateSearch,
@@ -42,7 +32,6 @@ export function makeRouteRouter({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const routeTree = rootRoute.addChildren([screenRoute as any]);
   const history = createMemoryHistory({ initialEntries: initialEntries ?? [path] });
-  // Mirror production router config (main.tsx) so <Link> hrefs match what ships.
   return createRouter({ routeTree, history, trailingSlash: 'always' });
 }
 

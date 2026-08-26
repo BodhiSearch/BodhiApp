@@ -378,7 +378,6 @@ async fn test_forward_request_client_anthropic_version_used_not_default() -> any
 #[tokio::test]
 async fn test_forward_request_default_anthropic_version_injected_when_absent() -> anyhow::Result<()>
 {
-  // When client does not supply anthropic-version, BodhiApp injects the default.
   let mut server = Server::new_async().await;
   let url = server.url();
   let service = DefaultAiApiClientFactory::new()?;
@@ -458,12 +457,10 @@ async fn test_forward_response_strips_hop_by_hop_headers() -> anyhow::Result<()>
     .await?;
 
   assert_eq!(axum::http::StatusCode::OK, response.status());
-  // hop-by-hop and infrastructure headers must be stripped
   assert!(response.headers().get("transfer-encoding").is_none());
   assert!(response.headers().get("connection").is_none());
   assert!(response.headers().get("keep-alive").is_none());
   assert!(response.headers().get("set-cookie").is_none());
-  // end-to-end headers must be preserved
   assert_eq!(
     response
       .headers()

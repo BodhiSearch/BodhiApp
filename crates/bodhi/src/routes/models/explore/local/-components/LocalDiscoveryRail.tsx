@@ -21,9 +21,8 @@ function fmtSize(bytes?: number | null): string {
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / 1_000_000).toFixed(0)} MB`;
 }
 
-/** CSS-only middle ellipsis: the head shrinks + ellipsizes, the tail (last `tailLen` chars) always
- *  stays pinned so the suffix — which often carries the variant (e.g. `imatrix-fixed`) — is visible
- *  no matter how narrow the column is. */
+/** CSS-only middle ellipsis: the tail (last `tailLen` chars) stays pinned so the suffix — which
+ *  often carries the variant (e.g. `imatrix-fixed`) — stays visible at any column width. */
 function MidEllipsis({
   text,
   tailLen = 10,

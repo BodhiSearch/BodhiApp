@@ -356,10 +356,6 @@ impl std::fmt::Display for HubFile {
   }
 }
 
-// =============================================================================
-// DownloadStatus
-// =============================================================================
-
 #[derive(
   Debug,
   Clone,
@@ -379,10 +375,6 @@ pub enum DownloadStatus {
   Completed,
   Error,
 }
-
-// =============================================================================
-// OAIRequestParams
-// =============================================================================
 
 #[derive(
   Deserialize,
@@ -502,7 +494,6 @@ impl OAIRequestParams {
   /// This preserves any non-standard fields that may be present in the request.
   pub fn apply_to_value(&self, request: &mut serde_json::Value) {
     if let Some(obj) = request.as_object_mut() {
-      // Only set if not already present in request
       if let Some(val) = &self.frequency_penalty {
         if !obj.contains_key("frequency_penalty") {
           obj.insert("frequency_penalty".to_string(), serde_json::json!(val));
@@ -541,9 +532,8 @@ impl OAIRequestParams {
       if !self.stop.is_empty() && !obj.contains_key("stop") {
         obj.insert("stop".to_string(), serde_json::json!(self.stop));
       }
-      // Prepend the alias system prompt as a leading system message — unless the request already
-      // opens with one (the caller's system message wins). `system_prompt` is a stored alias param,
-      // not an OpenAI request field, so it never leaks into the wire body as a top-level key.
+      // Prepend as a leading system message unless the request already opens with one (caller
+      // wins). It's a stored alias param, not an OpenAI field, so it never leaks to the wire.
       if let Some(prompt) = &self.system_prompt {
         if !prompt.is_empty() {
           if let Some(serde_json::Value::Array(messages)) = obj.get_mut("messages") {
@@ -565,10 +555,6 @@ impl OAIRequestParams {
     }
   }
 }
-
-// =============================================================================
-// AliasSource + UserAlias
-// =============================================================================
 
 #[derive(
   Debug,
@@ -663,10 +649,6 @@ impl std::fmt::Display for UserAlias {
   }
 }
 
-// =============================================================================
-// UserAliasRequest (input for create and update)
-// =============================================================================
-
 /// Input request for creating or updating a user model alias.
 // Used as `ValidatedJson<UserAliasRequest>` in handlers for both create and update (PUT).
 // `alias` is required — unique per (tenant_id, user_id) scope, and updatable.
@@ -706,10 +688,6 @@ pub struct UserAliasRequest {
   pub context_params: Option<Vec<String>>,
 }
 
-// =============================================================================
-// ModelAlias
-// =============================================================================
-
 #[derive(
   Debug,
   Clone,
@@ -748,10 +726,6 @@ impl std::fmt::Display for ModelAlias {
     )
   }
 }
-
-// =============================================================================
-// ApiFormat + ApiAlias
-// =============================================================================
 
 /// API format/protocol specification
 #[derive(
@@ -878,10 +852,6 @@ impl ApiAlias {
       .collect()
   }
 
-  /// Check if this API alias supports a given model name.
-  ///
-  /// If `forward_all_with_prefix` is true, checks if the model starts with the prefix.
-  /// If `forward_all_with_prefix` is false, checks if the model is in matchable_models list.
   pub fn supports_model(&self, model: &str) -> bool {
     if self.forward_all_with_prefix {
       self.prefix.as_ref().is_some_and(|p| model.starts_with(p))
@@ -892,10 +862,8 @@ impl ApiAlias {
 }
 
 impl ApiAliasBuilder {
-  /// Build an ApiAlias with the provided timestamp for created_at and updated_at.
-  ///
-  /// This is the primary build method for ApiAlias since timestamps cannot be set through
-  /// the builder's field setters (they are marked with `#[builder(setter(skip))]`).
+  /// Primary build method for ApiAlias: builder field setters are `skip`-only for the
+  /// timestamps, so this sets both created_at and updated_at from one value.
   pub fn build_with_time(
     &self,
     timestamp: chrono::DateTime<chrono::Utc>,
@@ -935,10 +903,6 @@ impl std::fmt::Display for ApiAlias {
   }
 }
 
-// =============================================================================
-// Alias + AliasSource enum
-// =============================================================================
-
 /// Flat enum representing all types of model aliases
 /// Each variant is identified by the source field
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
@@ -959,7 +923,6 @@ pub enum Alias {
 }
 
 impl Alias {
-  /// Check if this alias can serve the requested model
   pub fn can_serve(&self, model: &str) -> bool {
     match self {
       Alias::User(alias) => alias.alias == model,
@@ -969,7 +932,6 @@ impl Alias {
     }
   }
 
-  /// Get the alias name for this model
   pub fn alias_name(&self) -> &str {
     match self {
       Alias::User(alias) => &alias.alias,
@@ -979,7 +941,6 @@ impl Alias {
     }
   }
 
-  /// Get the source of this alias
   pub fn source(&self) -> AliasSource {
     match self {
       Alias::User(_) => AliasSource::User,
@@ -994,16 +955,10 @@ impl Alias {
     matches!(self, Alias::ModelRouter(_))
   }
 
-  /// Retain only models for which `keep` (called with each request-facing model id —
-  /// `prefix + model.id`) returns true, pruning a multi-model API alias's inner list in
-  /// place. Returns false when nothing remains, so the caller drops the alias.
-  ///
-  /// API aliases are judged **per model**, matching `ApiAlias::matchable_models` and the
-  /// OAI `/v1/models` listing — including `forward_all_with_prefix` aliases. The
-  /// forward-all wildcard governs request *routing*, not what the catalog enumerates, so
-  /// a `Specific` grant naming one of the alias's seed models keeps exactly that model
-  /// (judging the whole alias by `keep(prefix)` would key on a different id than the UI
-  /// picker and OAI listing use, hiding granted models from `/bodhi/v1/models`).
+  /// Prunes a multi-model API alias's inner list to models where `keep(prefix + model.id)`
+  /// is true; returns false (drop the alias) when nothing remains. Judged per model — even
+  /// under `forward_all_with_prefix`, which governs routing, not catalog enumeration — so a
+  /// `Specific` grant naming one seed model keeps exactly that model without hiding it.
   pub fn retain_listable_models(&mut self, keep: impl Fn(&str) -> bool) -> bool {
     match self {
       Alias::User(a) => keep(&a.alias),
@@ -1018,9 +973,7 @@ impl Alias {
   }
 }
 
-// =============================================================================
-// ModelRouter domain types (composite alias)
-// =============================================================================
+// ModelRouter domain types: the composite-alias pattern.
 
 fn default_true() -> bool {
   true
@@ -1169,10 +1122,6 @@ impl From<RouterTargetRequest> for RouterTarget {
   }
 }
 
-// =============================================================================
-// ModelMetadata and related types
-// =============================================================================
-
 /// Model metadata for API responses
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct ModelMetadata {
@@ -1229,10 +1178,6 @@ pub struct ModelArchitecture {
   pub format: String,
 }
 
-// =============================================================================
-// ApiKey (validated wrapper)
-// =============================================================================
-
 /// Validated API key wrapper - validates length when Some, allows None for public APIs
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
@@ -1240,12 +1185,10 @@ pub struct ModelArchitecture {
 pub struct ApiKey(Option<String>);
 
 impl ApiKey {
-  /// Create ApiKey with no authentication
   pub fn none() -> Self {
     ApiKey(None)
   }
 
-  /// Create ApiKey with validation
   pub fn some(key: String) -> Result<Self, validator::ValidationError> {
     if key.is_empty() {
       let mut err = validator::ValidationError::new("api_key_empty");
@@ -1261,22 +1204,18 @@ impl ApiKey {
     Ok(ApiKey(Some(key)))
   }
 
-  /// Get as Option<&str>
   pub fn as_option(&self) -> Option<&str> {
     self.0.as_deref()
   }
 
-  /// Into inner Option<String>
   pub fn into_inner(self) -> Option<String> {
     self.0
   }
 
-  /// Check if None
   pub fn is_none(&self) -> bool {
     self.0.is_none()
   }
 
-  /// Check if Some
   pub fn is_some(&self) -> bool {
     self.0.is_some()
   }
@@ -1295,10 +1234,6 @@ impl<'de> Deserialize<'de> for ApiKey {
     }
   }
 }
-
-// =============================================================================
-// ApiKeyUpdate (with serde support for both services and routes)
-// =============================================================================
 
 /// Represents an API key update operation for API model aliases.
 // Uses tagged enum for JSON: `{"action": "keep"}` or `{"action": "set", "value": "sk-..."}`
@@ -1340,10 +1275,6 @@ pub enum RawApiKeyUpdate {
   /// Set a new API key (or clear if None)
   Set(Option<String>),
 }
-
-// =============================================================================
-// ApiModelRequest (input for create and update)
-// =============================================================================
 
 /// Inner request shape for the five non-llm-liberty `api_format` values.
 /// Shared across `openai`, `openai_responses`, `anthropic`, `anthropic_oauth`, `gemini`.
@@ -1582,10 +1513,6 @@ fn default_api_key_keep() -> ApiKeyUpdate {
   ApiKeyUpdate::Keep
 }
 
-// =============================================================================
-// TestCreds (credential specification for test/fetch operations)
-// =============================================================================
-
 /// Credentials for test/fetch operations
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
 #[serde(tag = "type", content = "value", rename_all = "snake_case")]
@@ -1604,10 +1531,6 @@ impl Default for TestCreds {
     TestCreds::ApiKey(ApiKey::none())
   }
 }
-
-// =============================================================================
-// TestPromptRequest / TestPromptResponse
-// =============================================================================
 
 /// Inner request for the five non-llm-liberty `api_format` values.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
@@ -1638,10 +1561,8 @@ pub struct DefaultTestPromptRequest {
   pub extra_body: Option<serde_json::Value>,
 }
 
-/// Internal credential source for LlmLibertyOauth requests. Either points to a
-/// saved alias (stored credentials) or carries an inline envelope. The wire
-/// format keeps `id` and `envelope` as parallel optional fields for backward
-/// compatibility; `try_from_pair` is the single XOR enforcement point.
+/// Internal credential source for LlmLibertyOauth requests: a saved alias id or an inline
+/// envelope. Wire keeps both as parallel optional fields (back-compat); `try_from_pair` enforces XOR.
 #[derive(Debug, Clone)]
 pub enum LlmLibertyCredsSource {
   Saved(String),
@@ -1797,10 +1718,6 @@ impl TestPromptResponse {
   }
 }
 
-// =============================================================================
-// FetchModelsRequest / FetchModelsResponse
-// =============================================================================
-
 /// Inner request for the five non-llm-liberty `api_format` values.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct DefaultFetchModelsRequest {
@@ -1920,10 +1837,6 @@ pub struct FetchModelsResponse {
   pub models: Vec<String>,
 }
 
-// =============================================================================
-// ApiFormatsResponse
-// =============================================================================
-
 /// Response containing available API formats
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
@@ -1933,18 +1846,10 @@ pub struct ApiFormatsResponse {
   pub data: Vec<ApiFormat>,
 }
 
-// =============================================================================
-// CopyAliasRequest
-// =============================================================================
-
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CopyAliasRequest {
   pub alias: String,
 }
-
-// =============================================================================
-// Refresh types
-// =============================================================================
 
 /// Source type discriminator for refresh requests
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, ToSchema, PartialEq)]
@@ -1985,10 +1890,6 @@ pub struct RefreshResponse {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub alias: Option<String>,
 }
-
-// =============================================================================
-// Alias Response types (moved from routes_app)
-// =============================================================================
 
 /// User-defined model alias response
 #[allow(clippy::too_many_arguments)]
@@ -2055,13 +1956,11 @@ impl From<UserAlias> for UserAliasResponse {
 }
 
 impl UserAliasResponse {
-  /// Attach model metadata to this response
   pub fn with_metadata(mut self, metadata: Option<ModelMetadata>) -> Self {
     self.metadata = metadata;
     self
   }
 
-  /// Attach the resolved local file size (bytes) to this response
   pub fn with_size(mut self, size: Option<u64>) -> Self {
     self.size = size;
     self
@@ -2114,13 +2013,11 @@ impl From<ModelAlias> for ModelAliasResponse {
 }
 
 impl ModelAliasResponse {
-  /// Attach model metadata to this response
   pub fn with_metadata(mut self, metadata: Option<ModelMetadata>) -> Self {
     self.metadata = metadata;
     self
   }
 
-  /// Attach the resolved local file size (bytes) to this response
   pub fn with_size(mut self, size: Option<u64>) -> Self {
     self.size = size;
     self
@@ -2288,8 +2185,8 @@ impl AliasResponse {
     match self {
       AliasResponse::User(r) => AliasResponse::User(r.with_metadata(metadata)),
       AliasResponse::Model(r) => AliasResponse::Model(r.with_metadata(metadata)),
-      AliasResponse::Api(r) => AliasResponse::Api(r), // API aliases don't have metadata
-      AliasResponse::ModelRouter(r) => AliasResponse::ModelRouter(r), // routers don't have metadata
+      AliasResponse::Api(r) => AliasResponse::Api(r),
+      AliasResponse::ModelRouter(r) => AliasResponse::ModelRouter(r),
     }
   }
 
@@ -2298,8 +2195,8 @@ impl AliasResponse {
     match self {
       AliasResponse::User(r) => AliasResponse::User(r.with_size(size)),
       AliasResponse::Model(r) => AliasResponse::Model(r.with_size(size)),
-      AliasResponse::Api(r) => AliasResponse::Api(r), // API aliases have no local file
-      AliasResponse::ModelRouter(r) => AliasResponse::ModelRouter(r), // routers have no local file
+      AliasResponse::Api(r) => AliasResponse::Api(r),
+      AliasResponse::ModelRouter(r) => AliasResponse::ModelRouter(r),
     }
   }
 }
@@ -2312,10 +2209,6 @@ pub struct PaginatedAliasResponse {
   pub page: usize,
   pub page_size: usize,
 }
-
-// =============================================================================
-// From<DownloadRequestEntity> for DownloadRequest
-// =============================================================================
 
 impl From<super::DownloadRequestEntity> for super::DownloadRequest {
   fn from(e: super::DownloadRequestEntity) -> Self {

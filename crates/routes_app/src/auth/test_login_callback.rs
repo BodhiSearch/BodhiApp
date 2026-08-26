@@ -254,7 +254,6 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
       ))
     });
 
-  // Configure with 0.0.0.0 (loopback)
   let setting_service = SettingServiceStub::default()
     .append_settings(HashMap::from([
       (BODHI_SCHEME.to_string(), "http".to_string()),
@@ -297,7 +296,6 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
   let mut client = TestServer::new(router)?;
   client.save_cookies();
 
-  // Perform login request with Host header
   let login_resp = client
     .post("/auth/initiate")
     .add_header("Host", "localhost:1135")
@@ -308,7 +306,6 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
   let url = Url::parse(&body.location)?;
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
-  // Verify callback URL uses localhost from Host header
   let callback_url = query_params
     .get("redirect_uri")
     .expect("redirect_uri param missing");
@@ -326,7 +323,6 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
   resp.assert_status(StatusCode::OK);
   let callback_body: RedirectResponse = resp.json();
 
-  // Final redirect should use localhost from the callback URL
   assert_eq!("http://localhost:1135/ui/chat", callback_body.location);
 
   let session_id = resp.cookie("bodhiapp_session_id");
@@ -481,9 +477,8 @@ async fn test_auth_callback_handler_auth_service_error(
   Ok(())
 }
 
-/// auth_callback should reject tenants with Setup status, even in multi-tenant mode.
-/// Previously auth_callback used app_status_or_default() which calls get_standalone_app()
-/// and returns Setup in multi-tenant mode (no standalone app). Now it uses tenant's own status.
+/// Regression: app_status_or_default() returns Setup in multi-tenant mode (no standalone app)
+/// regardless of the tenant's real status — auth_callback must use the tenant's own status instead.
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]

@@ -573,7 +573,6 @@ impl MigrationTrait for Migration {
       .await?;
 
     // Recreate old tables (simplified - just structure, no data migration)
-    // mcp_auth_headers
     manager
       .create_table(
         Table::create()
@@ -621,7 +620,6 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // mcp_oauth_configs (old structure)
     manager
       .create_table(
         Table::create()
@@ -680,7 +678,6 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // mcp_oauth_tokens (old structure)
     manager
       .create_table(
         Table::create()

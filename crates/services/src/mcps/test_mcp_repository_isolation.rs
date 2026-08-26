@@ -57,7 +57,6 @@ async fn test_cross_tenant_mcp_server_isolation(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
 
-  // Create servers in tenant A
   ctx
     .service
     .create_mcp_server(
@@ -73,7 +72,6 @@ async fn test_cross_tenant_mcp_server_isolation(
     )
     .await?;
 
-  // Create server in tenant B
   ctx
     .service
     .create_mcp_server(
@@ -82,19 +80,16 @@ async fn test_cross_tenant_mcp_server_isolation(
     )
     .await?;
 
-  // Tenant A sees only its own servers
   let servers_a = ctx.service.list_mcp_servers(TEST_TENANT_ID, None).await?;
   assert_eq!(2, servers_a.len());
   let ids_a: Vec<&str> = servers_a.iter().map(|s| s.id.as_str()).collect();
   assert!(ids_a.contains(&"s-a1"));
   assert!(ids_a.contains(&"s-a2"));
 
-  // Tenant B sees only its own server
   let servers_b = ctx.service.list_mcp_servers(TEST_TENANT_B_ID, None).await?;
   assert_eq!(1, servers_b.len());
   assert_eq!("s-b1", servers_b[0].id);
 
-  // Cross-tenant get returns None
   let cross = ctx.service.get_mcp_server(TEST_TENANT_B_ID, "s-a1").await?;
   assert_eq!(None, cross);
 
@@ -114,7 +109,6 @@ async fn test_cross_tenant_mcp_instance_isolation(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
 
-  // Create server + instance in tenant A
   ctx
     .service
     .create_mcp_server(
@@ -137,7 +131,6 @@ async fn test_cross_tenant_mcp_instance_isolation(
     )
     .await?;
 
-  // Create server + instance in tenant B (same user_id)
   ctx
     .service
     .create_mcp_server(
@@ -160,7 +153,6 @@ async fn test_cross_tenant_mcp_instance_isolation(
     )
     .await?;
 
-  // Tenant A list returns only its instance
   let mcps_a = ctx
     .service
     .list_mcps_with_server(TEST_TENANT_ID, TEST_USER_ID)
@@ -168,7 +160,6 @@ async fn test_cross_tenant_mcp_instance_isolation(
   assert_eq!(1, mcps_a.len());
   assert_eq!("m-a1", mcps_a[0].id);
 
-  // Tenant B list returns only its instance
   let mcps_b = ctx
     .service
     .list_mcps_with_server(TEST_TENANT_B_ID, TEST_USER_ID)
@@ -176,7 +167,6 @@ async fn test_cross_tenant_mcp_instance_isolation(
   assert_eq!(1, mcps_b.len());
   assert_eq!("m-b1", mcps_b[0].id);
 
-  // Cross-tenant get returns None
   let cross = ctx
     .service
     .get_mcp(TEST_TENANT_B_ID, TEST_USER_ID, "m-a1")
@@ -202,7 +192,6 @@ async fn test_intra_tenant_user_mcp_instance_isolation(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
 
-  // Create one shared server in tenant A
   ctx
     .service
     .create_mcp_server(
@@ -216,7 +205,6 @@ async fn test_intra_tenant_user_mcp_instance_isolation(
     )
     .await?;
 
-  // Create instance for user A
   ctx
     .service
     .create_mcp(
@@ -232,7 +220,6 @@ async fn test_intra_tenant_user_mcp_instance_isolation(
     )
     .await?;
 
-  // Create instance for user B (same tenant)
   ctx
     .service
     .create_mcp(
@@ -248,7 +235,6 @@ async fn test_intra_tenant_user_mcp_instance_isolation(
     )
     .await?;
 
-  // User A sees only their instance
   let mcps_u1 = ctx
     .service
     .list_mcps_with_server(TEST_TENANT_ID, TEST_USER_ID)
@@ -256,7 +242,6 @@ async fn test_intra_tenant_user_mcp_instance_isolation(
   assert_eq!(1, mcps_u1.len());
   assert_eq!("m-u1", mcps_u1[0].id);
 
-  // User B sees only their instance
   let mcps_u2 = ctx
     .service
     .list_mcps_with_server(TEST_TENANT_ID, TEST_TENANT_A_USER_B_ID)
@@ -264,7 +249,6 @@ async fn test_intra_tenant_user_mcp_instance_isolation(
   assert_eq!(1, mcps_u2.len());
   assert_eq!("m-u2", mcps_u2[0].id);
 
-  // Cross-user get returns None
   let cross = ctx
     .service
     .get_mcp(TEST_TENANT_ID, TEST_TENANT_A_USER_B_ID, "m-u1")

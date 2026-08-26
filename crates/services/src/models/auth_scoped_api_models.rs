@@ -1,7 +1,6 @@
 use crate::{ApiAliasResponse, ApiModelRequest, ApiModelServiceError, AppService, AuthContext};
 use std::sync::Arc;
 
-/// Auth-scoped wrapper around ApiModelService that injects tenant_id and user_id from AuthContext.
 pub struct AuthScopedApiModelService {
   app_service: Arc<dyn AppService>,
   auth_context: AuthContext,

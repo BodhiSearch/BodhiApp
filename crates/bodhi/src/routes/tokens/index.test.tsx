@@ -118,7 +118,6 @@ describe('TokenPage V2', () => {
     expect(screen.getByTestId('loading-skeleton')).toBeInTheDocument();
     expect(screen.queryByTestId('tokens-empty')).not.toBeInTheDocument();
 
-    // once loaded, the shimmer is replaced by real counts and the skeleton disappears
     await waitFor(() => {
       expect(screen.getByTestId('tokens-page')).toHaveAttribute('data-pagestatus', 'ready');
     });
@@ -153,7 +152,6 @@ describe('TokenPage V2', () => {
     const user = userEvent.setup();
     await renderReady();
 
-    // search is collapsed behind a button until clicked
     expect(screen.queryByPlaceholderText(/search tokens/i)).not.toBeInTheDocument();
     await user.click(screen.getByTestId('tokens-search-toggle'));
 
@@ -166,14 +164,12 @@ describe('TokenPage V2', () => {
     const user = userEvent.setup();
     await renderReady();
 
-    // open + type → blurring keeps it open (has text)
     await user.click(screen.getByTestId('tokens-search-toggle'));
     const input = screen.getByPlaceholderText(/search tokens/i);
     await user.type(input, 'prod');
     input.blur();
     expect(screen.getByPlaceholderText(/search tokens/i)).toBeInTheDocument();
 
-    // clear it, then blur → collapses (removed)
     await user.clear(input);
     input.blur();
     await waitFor(() => {
@@ -187,7 +183,6 @@ describe('TokenPage V2', () => {
 
     await user.click(screen.getByTestId('token-row-token-1'));
     const rail = await screen.findByTestId('token-detail-rail');
-    // prefix (Token ID) + scope + the created date are shown in the rail Details
     expect(within(rail).getByText('sk-bodhiapp_prod001')).toBeInTheDocument();
     expect(within(rail).getByText('scope_token_power_user')).toBeInTheDocument();
   });
@@ -207,7 +202,6 @@ describe('TokenPage V2', () => {
     await user.click(within(rail).getByTestId('token-delete'));
     await user.click(within(rail).getByTestId('token-delete-confirm'));
 
-    // on success the selection clears and the rail closes
     await waitFor(() => {
       expect(screen.queryByTestId('token-detail-rail')).not.toBeInTheDocument();
     });

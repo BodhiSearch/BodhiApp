@@ -1,17 +1,4 @@
-/* ═══════════════════════════════════════════════════
-   APP TOKENS — tokens issued to approved third-party apps (on AppShell)
-   app-tokens-app.jsx   (load after bodhi-app-shell.jsx + bodhi-list.jsx)
-
-   In sync with the App Access Request domain:
-     • Listing (List all models / List all MCPs) and inference/connect are
-       shown as SEPARATE permissions.
-     • Inference grants can be per-category (slots) and/or a flat model list.
-     • App tokens are immutable: upgrading mints a NEW token and invalidates
-       the old one. Invalidated tokens show status "exchanged" — no toggle,
-       with a link to the replacement (?selected=<id> selects that row).
-     • The detail panel's at-a-glance summary is the full record of a
-       token's granted permissions.
-═══════════════════════════════════════════════════ */
+/* Third-party app tokens: immutable, separate listing/inference perms, exchanged state. */
 const { useState, useEffect } = React;
 const Ic = ShellIcon;
 
@@ -51,7 +38,6 @@ const SAMPLE_APP_TOKENS = [
 function scopeLabel(scope) {return scope === 'power' ? 'scope_user_power_user' : 'scope_user_user';}
 function modelCount(t) {return t.slots ? t.slots.reduce((a, s) => a + s.items.length, 0) : (t.modelNames || []).length;}
 
-/* ── Row summary pills ── */
 function ModelsSummary({ t }) {
   if (t.models === 'all') return <span className="access-pill"><Ic name="cpu" size={11} /> All models</span>;
   const n = modelCount(t);
@@ -114,7 +100,6 @@ function TokenRow({ token, selected, onSelect, onToggle, onSelectId }) {
 
 }
 
-/* ── Rail header ── */
 function TokenDetailHeader({ token, onClose }) {
   const exchanged = token.status === 'exchanged';
   return (
@@ -129,7 +114,6 @@ function TokenDetailHeader({ token, onClose }) {
 
 }
 
-/* ── Permission line (listing) ── */
 function ListingLine({ on, label, code }) {
   if (!on) return null;
   return (
@@ -139,7 +123,6 @@ function ListingLine({ on, label, code }) {
 
 }
 
-/* ── Rail body ── */
 function TokenDetailPanel({ token, onToggle, onDelete, onSelectId }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   useEffect(() => {setConfirmDelete(false);}, [token && token.id]);

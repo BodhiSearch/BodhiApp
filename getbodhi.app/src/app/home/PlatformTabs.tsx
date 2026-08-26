@@ -46,12 +46,10 @@ function PlatformTabsComponent({ platforms, selectedPlatform, detectedPlatform, 
             aria-pressed={isActive}
             aria-label={`Select ${platform.name}`}
           >
-            {/* Icon */}
             <div className={cn('transition-colors', isActive ? 'text-white' : 'text-violet-600')}>
               {getIcon(platform.icon)}
             </div>
 
-            {/* Platform Info */}
             <div className="text-center">
               <div className="font-semibold text-lg">{platform.name}</div>
               <div className={cn('text-sm', isActive ? 'text-violet-100' : 'text-muted-foreground')}>
@@ -59,7 +57,6 @@ function PlatformTabsComponent({ platforms, selectedPlatform, detectedPlatform, 
               </div>
             </div>
 
-            {/* Detected Badge */}
             {isDetected && (
               <Badge
                 variant="secondary"

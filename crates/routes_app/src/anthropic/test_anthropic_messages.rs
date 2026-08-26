@@ -46,15 +46,9 @@ async fn seed_anthropic_alias(
   Ok(api_alias)
 }
 
-// ============================================================================
-// Local error envelope (Anthropic native format)
-// ============================================================================
-//
-// The opaque proxy only validates that `model` is present in the request body
-// (needed for alias routing). All other body validation is delegated to
-// upstream Anthropic. Local errors that BodhiApp originates (missing model,
-// alias not found, wrong format alias, invalid path param) all surface in the
-// Anthropic-native envelope: `{"type":"error","error":{"type":"...","message":"..."}}`.
+// Local errors (missing model, alias not found, wrong format, bad path param) surface in
+// the Anthropic-native envelope `{"type":"error","error":{"type":"...","message":"..."}}`;
+// the proxy only validates `model` is present, everything else is upstream's job.
 
 #[rstest]
 #[awt]
@@ -192,10 +186,6 @@ async fn test_messages_create_rejects_non_anthropic_alias() -> anyhow::Result<()
   );
   Ok(())
 }
-
-// ============================================================================
-// Success paths — verify (method, upstream_path) dispatch and client header forwarding
-// ============================================================================
 
 #[rstest]
 #[awt]

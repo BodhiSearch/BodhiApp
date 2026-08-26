@@ -362,9 +362,8 @@ impl AppServiceBuilder {
   }
 }
 
-/// Minimum length for an operator-supplied `BODHI_ENCRYPTION_KEY`. Below this the key
-/// derivation's work factor is the only thing standing between a stolen database and the
-/// plaintext secrets, and a short key makes that work factor irrelevant.
+/// Minimum length for an operator-supplied `BODHI_ENCRYPTION_KEY`. Below this, the key
+/// derivation's work factor is the only defense against a stolen database, and a short key makes it irrelevant.
 const MIN_ENCRYPTION_KEY_LEN: usize = 20;
 
 /// Both the current and the previously-shipped `.env.example` placeholders. The legacy one

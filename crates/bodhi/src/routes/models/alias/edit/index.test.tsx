@@ -165,7 +165,6 @@ describe('EditAliasPage', () => {
 
     expect(screen.getByRole('button', { name: /update alias/i })).toBeInTheDocument();
 
-    // Check pre-filled values: alias locked, repo populated, current quant preselected.
     expect(screen.getByTestId('alias-input')).toHaveValue('test-alias');
     expect(screen.getByTestId('alias-input')).toBeDisabled();
     expect(screen.getByTestId('repo-input')).toHaveTextContent('owner1/repo1');
@@ -189,7 +188,6 @@ describe('EditAliasPage', () => {
 
     expect(screen.getByTestId('alias-input')).toBeInTheDocument();
 
-    // Switch from the current quant to a different one in the same repo.
     const file2Row = await screen.findByTestId('quant-row-file2');
     await user.click(file2Row);
     await waitFor(() => expect(file2Row).toHaveAttribute('data-test-state', 'selected'));

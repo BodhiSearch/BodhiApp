@@ -51,7 +51,7 @@ describe('RequestAccessPage Display States', () => {
   it('displays pending status when user has pending request', async () => {
     server.use(
       ...mockAppInfo({ status: 'ready' }),
-      ...mockUserLoggedIn({ username: 'user@example.com' }), // No role
+      ...mockUserLoggedIn({ username: 'user@example.com' }),
       ...mockUserRequestStatusPending({ username: 'user@example.com' })
     );
 
@@ -69,7 +69,7 @@ describe('RequestAccessPage Display States', () => {
   it('redirects users with approved status who already have roles', async () => {
     server.use(
       ...mockAppInfo({ status: 'ready' }),
-      ...mockUserLoggedIn({ username: 'user@example.com', role: 'resource_user' }), // User has a role, so will be redirected
+      ...mockUserLoggedIn({ username: 'user@example.com', role: 'resource_user' }),
       ...mockUserRequestStatusApproved({ username: 'approved@example.com' })
     );
 
@@ -86,7 +86,7 @@ describe('RequestAccessPage Display States', () => {
   it('shows request access button when user has rejected request and no roles', async () => {
     server.use(
       ...mockAppInfo({ status: 'ready' }),
-      ...mockUserLoggedIn({ username: 'user@example.com' }), // No role
+      ...mockUserLoggedIn({ username: 'user@example.com' }),
       ...mockUserRequestStatusRejected({ username: 'rejected@example.com' })
     );
 
@@ -107,7 +107,7 @@ describe('RequestAccessPage Authentication and Access Control', () => {
   it('handles unauthenticated users by redirecting', async () => {
     server.use(
       ...mockAppInfo({ status: 'ready' }),
-      ...mockUserLoggedIn({ username: 'user@example.com' }) // Note: This test relies on AppInitializer mocking for redirect logic
+      ...mockUserLoggedIn({ username: 'user@example.com' })
     );
 
     await act(async () => {
@@ -138,7 +138,6 @@ describe('RequestAccessPage Error Handling', () => {
     server.use(
       ...mockAppInfo({ status: 'ready' }),
       ...mockUserLoggedIn({ username: 'user@example.com' }),
-      // Make request status API return 404 (no request exists)
       ...mockUserRequestStatusError({ status: 404, message: 'No request found' })
     );
 
@@ -158,7 +157,7 @@ describe('RequestAccessPage Loading States', () => {
   it('shows pending status for users without roles', async () => {
     server.use(
       ...mockAppInfo({ status: 'ready' }),
-      ...mockUserLoggedIn({ username: 'user@example.com' }), // No role (testing null)
+      ...mockUserLoggedIn({ username: 'user@example.com' }),
       ...mockUserRequestStatusPending({ username: 'user@example.com' })
     );
 
@@ -178,7 +177,7 @@ describe('RequestAccessPage UI Interactions', () => {
   it('allows requesting access when previous request was rejected', async () => {
     server.use(
       ...mockAppInfo({ status: 'ready' }),
-      ...mockUserLoggedIn({ username: 'user@example.com' }), // No role (testing undefined)
+      ...mockUserLoggedIn({ username: 'user@example.com' }),
       ...mockUserRequestStatusRejected({ username: 'rejected@example.com' })
     );
 
@@ -201,7 +200,7 @@ describe('RequestAccessPage UI Interactions', () => {
   it('shows formatted date for pending requests', async () => {
     server.use(
       ...mockAppInfo({ status: 'ready' }),
-      ...mockUserLoggedIn({ username: 'user@example.com' }), // No role
+      ...mockUserLoggedIn({ username: 'user@example.com' }),
       ...mockUserRequestStatusPending({ username: 'user@example.com' })
     );
 

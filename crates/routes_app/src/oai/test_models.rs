@@ -89,7 +89,6 @@ async fn test_oai_models_handler_list_all(#[future] app: Router) -> anyhow::Resu
     "tinyllama:instruct",
   ];
   assert_eq!(expected_ids, model_ids);
-  // Model aliases have created=0 (from filesystem), user aliases have non-zero timestamps
   for model in data {
     assert_eq!("model", model["object"].as_str().unwrap());
     assert_eq!("system", model["owned_by"].as_str().unwrap());
@@ -532,8 +531,7 @@ async fn test_oai_models_handler_anthropic_oauth_alias_included() -> anyhow::Res
   Ok(())
 }
 
-// Auth tier: User - These OpenAI-compatible endpoints are accessible to all authenticated users
-// All roles (User, PowerUser, Manager, Admin) can access these endpoints
+// Auth tier: User - accessible to all authenticated roles (User, PowerUser, Manager, Admin)
 
 #[anyhow_trace]
 #[rstest]
@@ -592,8 +590,6 @@ async fn test_oai_endpoints_allow_all_roles(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_oai_models_handler_gemini_alias_included_with_prefix() -> anyhow::Result<()> {
-  // Gemini alias with prefix should surface in /v1/models and /bodhi/v1/models
-  // with the alias prefix applied to the model id.
   let service = AppServiceStubBuilder::default()
     .with_data_service()
     .await

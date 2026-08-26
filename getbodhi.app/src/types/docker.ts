@@ -1,7 +1,3 @@
-/**
- * Docker variant and release type definitions
- */
-
 export interface DockerVariant {
   image_tag?: string;
   latest_tag: string;

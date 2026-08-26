@@ -39,7 +39,6 @@ impl AuthServerTestClient {
     }
   }
 
-  /// Get App User Token via Direct Access Grant (with Resource Scope)
   pub async fn get_app_user_token_with_scope(
     &self,
     app_client_id: &str,
@@ -79,7 +78,6 @@ impl AuthServerTestClient {
     Ok(token_response.access_token)
   }
 
-  /// Get User Token using password grant (resource owner)
   pub async fn get_user_token(
     &self,
     client_id: &str,

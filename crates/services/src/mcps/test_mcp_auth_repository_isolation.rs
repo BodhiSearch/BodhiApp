@@ -158,7 +158,6 @@ async fn test_cross_tenant_auth_config_isolation(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
 
-  // Create servers in each tenant
   ctx
     .service
     .create_mcp_server(
@@ -174,21 +173,18 @@ async fn test_cross_tenant_auth_config_isolation(
     )
     .await?;
 
-  // Create auth configs in tenant A
   let config_a = make_auth_config_for(TEST_TENANT_ID, "ac-a1", "s-a1", "header", ctx.now);
   ctx
     .service
     .create_auth_config_header(TEST_TENANT_ID, &config_a, vec![])
     .await?;
 
-  // Create auth configs in tenant B
   let config_b = make_auth_config_for(TEST_TENANT_B_ID, "ac-b1", "s-b1", "header", ctx.now);
   ctx
     .service
     .create_auth_config_header(TEST_TENANT_B_ID, &config_b, vec![])
     .await?;
 
-  // Tenant A sees only its config
   let configs_a = ctx
     .service
     .list_mcp_auth_configs_by_server(TEST_TENANT_ID, "s-a1")
@@ -196,7 +192,6 @@ async fn test_cross_tenant_auth_config_isolation(
   assert_eq!(1, configs_a.len());
   assert_eq!("ac-a1", configs_a[0].id);
 
-  // Tenant B sees only its config
   let configs_b = ctx
     .service
     .list_mcp_auth_configs_by_server(TEST_TENANT_B_ID, "s-b1")
@@ -204,7 +199,6 @@ async fn test_cross_tenant_auth_config_isolation(
   assert_eq!(1, configs_b.len());
   assert_eq!("ac-b1", configs_b[0].id);
 
-  // Cross-tenant get returns None
   let cross_a = ctx
     .service
     .get_mcp_auth_config(TEST_TENANT_B_ID, "ac-a1")
@@ -230,7 +224,6 @@ async fn test_cross_tenant_auth_param_isolation(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
 
-  // Create servers + MCPs in each tenant
   ctx
     .service
     .create_mcp_server(
@@ -275,7 +268,6 @@ async fn test_cross_tenant_auth_param_isolation(
     )
     .await?;
 
-  // Create auth params in each tenant
   let param_a = make_auth_param_for(
     TEST_TENANT_ID,
     "ap-a1",
@@ -296,7 +288,6 @@ async fn test_cross_tenant_auth_param_isolation(
   );
   ctx.service.create_mcp_auth_param(&param_b).await?;
 
-  // Tenant A only sees its params
   let params_a = ctx
     .service
     .get_decrypted_auth_params(TEST_TENANT_ID, "m-a1")
@@ -306,7 +297,6 @@ async fn test_cross_tenant_auth_param_isolation(
   assert_eq!(1, params_a.headers.len());
   assert_eq!("X-Key-A", params_a.headers[0].0);
 
-  // Tenant B only sees its params
   let params_b = ctx
     .service
     .get_decrypted_auth_params(TEST_TENANT_B_ID, "m-b1")
@@ -316,18 +306,13 @@ async fn test_cross_tenant_auth_param_isolation(
   assert_eq!(1, params_b.headers.len());
   assert_eq!("X-Key-B", params_b.headers[0].0);
 
-  // Each tenant's MCP ID is unique — querying for tenant B's MCP from tenant A
-  // returns None because MCP IDs don't overlap.
-  // (Auth params isolation is enforced via MCP FK uniqueness + Postgres RLS)
   let cross_b = ctx
     .service
     .get_decrypted_auth_params(TEST_TENANT_ID, "m-b1")
     .await?;
-  // On SQLite: auth_param query filters by mcp_id only, so cross-tenant reads may see data.
-  // On Postgres: RLS ensures isolation. The primary guarantee is that MCP IDs are unique per tenant.
-  // We verify the positive case (each tenant sees its own) rather than the negative case,
-  // since cross-tenant isolation for auth_params is enforced at the MCP layer.
-  let _ = cross_b; // coverage note: RLS tested on Postgres
+  // SQLite doesn't filter cross-tenant here (relies on MCP FK uniqueness); only Postgres RLS
+  // enforces isolation, so we verify the positive case per tenant instead of asserting None here.
+  let _ = cross_b;
 
   Ok(())
 }
@@ -342,7 +327,6 @@ async fn test_cross_tenant_oauth_token_isolation(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
 
-  // Create servers and auth configs in each tenant
   ctx
     .service
     .create_mcp_server(
@@ -371,7 +355,6 @@ async fn test_cross_tenant_oauth_token_isolation(
     .create_auth_config_oauth(TEST_TENANT_B_ID, &config_b, &detail_b)
     .await?;
 
-  // Create tokens in each tenant
   let token_a = make_oauth_token_for(
     TEST_TENANT_ID,
     "tok-a1",
@@ -392,7 +375,6 @@ async fn test_cross_tenant_oauth_token_isolation(
   );
   ctx.service.create_mcp_oauth_token(&token_b).await?;
 
-  // Tenant A can see its token
   let fetched_a = ctx
     .service
     .get_mcp_oauth_token(TEST_TENANT_ID, TEST_USER_ID, "tok-a1")
@@ -400,7 +382,6 @@ async fn test_cross_tenant_oauth_token_isolation(
   assert!(fetched_a.is_some());
   assert_eq!("tok-a1", fetched_a.unwrap().id);
 
-  // Tenant B can see its token
   let fetched_b = ctx
     .service
     .get_mcp_oauth_token(TEST_TENANT_B_ID, TEST_USER_ID, "tok-b1")
@@ -408,7 +389,6 @@ async fn test_cross_tenant_oauth_token_isolation(
   assert!(fetched_b.is_some());
   assert_eq!("tok-b1", fetched_b.unwrap().id);
 
-  // Cross-tenant token access returns None
   let cross_a = ctx
     .service
     .get_mcp_oauth_token(TEST_TENANT_B_ID, TEST_USER_ID, "tok-a1")
@@ -421,7 +401,6 @@ async fn test_cross_tenant_oauth_token_isolation(
     .await?;
   assert_eq!(None, cross_b);
 
-  // Cross-tenant decryption returns None
   let cross_access_a = ctx
     .service
     .get_decrypted_oauth_access_token(TEST_TENANT_B_ID, "tok-a1")

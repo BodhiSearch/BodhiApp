@@ -178,9 +178,7 @@ pub async fn build_live_test_router() -> anyhow::Result<(
   let ctx: Arc<dyn SharedContext> =
     Arc::new(DefaultSharedContext::new(hub_service, setting_service).await);
 
-  // Wire LocalLlamaImpl with the real SharedContext and rebuild the factory
-  // with local_llama support so the unified AiApiClientFactory can dispatch
-  // local + remote uniformly.
+  // Rebuild the factory with local_llama support so it dispatches local + remote uniformly.
   let keep_alive_secs = app_service_stub
     .setting_service
     .as_ref()
