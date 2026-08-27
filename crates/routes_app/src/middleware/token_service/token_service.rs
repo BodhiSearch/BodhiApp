@@ -240,11 +240,18 @@ impl DefaultTokenService {
       .aud
       .as_ref()
       .ok_or_else(|| TokenError::InvalidAudience("missing audience".to_string()))?;
-    let instance = self
-      .tenant_service
-      .get_tenant_by_client_id(aud)
-      .await?
-      .ok_or_else(|| TokenError::InvalidAudience(aud.clone()))?;
+    let mut instance = None;
+    for candidate in aud.values() {
+      if let Some(tenant) = self
+        .tenant_service
+        .get_tenant_by_client_id(candidate)
+        .await?
+      {
+        instance = Some(tenant);
+        break;
+      }
+    }
+    let instance = instance.ok_or_else(|| TokenError::InvalidAudience(aud.values().join(", ")))?;
 
     let access_request_scopes: Vec<&str> = claims
       .scope

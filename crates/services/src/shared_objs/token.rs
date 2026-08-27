@@ -77,6 +77,23 @@ pub struct ResourceClaims {
   pub roles: Vec<String>,
 }
 
+/// `aud` per RFC 7519 §4.1.3 — a single string or an array of strings.
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Audience {
+  One(String),
+  Many(Vec<String>),
+}
+
+impl Audience {
+  pub fn values(&self) -> &[String] {
+    match self {
+      Audience::One(value) => std::slice::from_ref(value),
+      Audience::Many(values) => values.as_slice(),
+    }
+  }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserIdClaims {
   pub jti: String,
@@ -89,7 +106,7 @@ pub struct ScopeClaims {
   pub iss: String,
   pub sub: String,
   pub azp: String,
-  pub aud: Option<String>,
+  pub aud: Option<Audience>,
   pub exp: u64,
   pub scope: String,
   #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -121,7 +138,7 @@ pub struct Claims {
   pub sub: String,
   pub typ: String,
   pub azp: String,
-  pub aud: Option<String>,
+  pub aud: Option<Audience>,
   pub scope: String,
   pub preferred_username: String,
   pub given_name: Option<String>,
@@ -159,10 +176,12 @@ pub fn extract_claims<T: for<'de> Deserialize<'de>>(access_token: &str) -> Resul
 
 #[cfg(test)]
 mod tests {
-  use crate::{extract_claims, test_utils::build_token, TokenError};
+  use crate::{extract_claims, test_utils::build_token, Audience, ScopeClaims, TokenError};
+  use anyhow_trace::anyhow_trace;
   use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
   use chrono::Utc;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use serde::Deserialize;
   use serde_json::{json, Value};
   use std::collections::HashMap;
@@ -338,6 +357,51 @@ mod tests {
     let result = extract_claims::<TestClaims>(&token);
     assert!(result.is_err());
     assert!(matches!(result.unwrap_err(), TokenError::SerdeJson(_)));
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[case::string_aud(
+    json!("resource-client"),
+    Some(Audience::One("resource-client".to_string())),
+    vec!["resource-client"]
+  )]
+  #[case::array_aud(
+    json!(["resource-a", "resource-b"]),
+    Some(Audience::Many(vec!["resource-a".to_string(), "resource-b".to_string()])),
+    vec!["resource-a", "resource-b"]
+  )]
+  #[case::single_element_array(
+    json!(["only-one"]),
+    Some(Audience::Many(vec!["only-one".to_string()])),
+    vec!["only-one"]
+  )]
+  #[case::missing_aud(Value::Null, None, vec![])]
+  fn test_extract_claims_aud_variants(
+    #[case] aud: Value,
+    #[case] expected: Option<Audience>,
+    #[case] expected_values: Vec<&str>,
+  ) -> anyhow::Result<()> {
+    let mut claims = json! {{
+      "iss": "https://id.test/realms/test",
+      "sub": "user-1234",
+      "azp": "app-client",
+      "exp": Utc::now().timestamp() + 3600,
+      "scope": "openid profile",
+    }};
+    if !aud.is_null() {
+      claims["aud"] = aud;
+    }
+    let token = invalid_signature(&claims, r#"{"alg":"HS256","typ":"JWT"}"#);
+    let claims = extract_claims::<ScopeClaims>(&token)?;
+    assert_eq!(expected, claims.aud);
+    let actual_values = claims
+      .aud
+      .as_ref()
+      .map(|a| a.values().to_vec())
+      .unwrap_or_default();
+    assert_eq!(expected_values, actual_values);
     Ok(())
   }
 

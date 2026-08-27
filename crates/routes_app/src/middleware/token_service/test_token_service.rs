@@ -654,6 +654,79 @@ async fn test_validate_external_client_token_success(
 #[rstest]
 #[awt]
 #[tokio::test]
+async fn test_validate_external_client_token_array_aud(
+  #[future] test_db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let external_client_id = "external-client";
+  let sub = Uuid::new_v4().to_string();
+  let external_token_claims = json!({
+    "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+    "iat": Utc::now().timestamp(),
+    "jti": Uuid::new_v4().to_string(),
+    "iss": ISSUER,
+    "sub": sub,
+    "typ": TOKEN_TYPE_OFFLINE,
+    "azp": external_client_id,
+    "aud": ["unknown-audience", TEST_CLIENT_ID], // array aud; only the second resolves to a tenant
+    "session_state": Uuid::new_v4().to_string(),
+    "scope": "openid email profile roles",
+    "sid": Uuid::new_v4().to_string(),
+  });
+  let (external_token, _) = build_token(external_token_claims)?;
+
+  let (exchanged_token, _) = build_token(
+    json! {{ "iss": ISSUER, "azp": TEST_CLIENT_ID, "jti": "test-jti", "sub": sub, "exp": Utc::now().timestamp() + 3600, "scope": "openid email profile roles"}},
+  )?;
+  let exchanged_token_cl = exchanged_token.clone();
+
+  let tenant_svc = AppServiceStubBuilder::default()
+    .with_tenant(Tenant::test_default())
+    .await
+    .build()
+    .await?
+    .tenant_service();
+  let mut mock_auth = MockAuthService::new();
+  mock_auth
+    .expect_exchange_app_token()
+    .times(1)
+    .return_once(|_, _, _, _| Ok((exchanged_token_cl, None)));
+  let mut setting_service = MockSettingService::default();
+  setting_service
+    .expect_auth_issuer()
+    .return_once(|| ISSUER.to_string());
+
+  let token_service = Arc::new(DefaultTokenService::new(
+    Arc::new(mock_auth),
+    tenant_svc,
+    Arc::new(MokaCacheService::default()),
+    Arc::new(test_db_service),
+    Arc::new(setting_service),
+    Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::DefaultTimeService),
+  ));
+
+  let result = token_service
+    .validate_bearer_token(&format!("Bearer {}", external_token))
+    .await?;
+
+  match result {
+    AuthContext::ExternalApp {
+      user_id,
+      app_client_id,
+      ..
+    } => {
+      assert_eq!(sub, user_id);
+      assert_eq!(external_client_id, app_client_id);
+    }
+    _ => panic!("Expected ExternalApp"),
+  }
+  Ok(())
+}
+
+#[anyhow_trace]
+#[rstest]
+#[awt]
+#[tokio::test]
 async fn test_external_client_token_cache_security_prevents_jti_forgery(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
