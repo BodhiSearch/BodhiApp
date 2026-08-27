@@ -1,22 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { toApproveBody, type ApproveGrantState, type RequestedFlags } from './toApproveBody';
+import type { ConsentScopeInfo } from '@bodhiapp/ts-client';
 
-const reqAll: RequestedFlags = {
-  version: '1',
-  models_list: true,
-  models_access: true,
-  mcps_list: true,
-  mcps_access: true,
-};
+import { toApproveBody, type ApproveGrantState } from './toApproveBody';
 
-const reqNone: RequestedFlags = {
-  version: '1',
-  models_list: false,
-  models_access: false,
-  mcps_list: false,
-  mcps_access: false,
-};
+const reqAll: ConsentScopeInfo = { role: 'scope_user_user', llms: true, mcps: true, passthrough: [] };
+
+const reqNone: ConsentScopeInfo = { role: 'scope_user_user', llms: false, mcps: false, passthrough: [] };
 
 const baseState: ApproveGrantState = {
   listModels: false,
@@ -78,7 +68,7 @@ describe('toApproveBody — list flags gated by the scope', () => {
     expect(off.mcps_list).toBe(false);
   });
 
-  it('passes through the requested version', () => {
+  it('emits envelope version 1', () => {
     expect(toApproveBody(reqAll, baseState).version).toBe('1');
   });
 });

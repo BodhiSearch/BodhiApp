@@ -38,10 +38,9 @@ const Redirecting = () => (
   </div>
 );
 
-const SCOPE_ORDER = ['scope_user_power_user', 'scope_user_user'] as const;
-type UserScopeValue = (typeof SCOPE_ORDER)[number];
+const SCOPE_ORDER: readonly UserScope[] = ['scope_user_power_user', 'scope_user_user'];
 
-const SCOPE_LABELS: Record<UserScopeValue, string> = {
+const SCOPE_LABELS: Record<UserScope, string> = {
   scope_user_power_user: 'Power User',
   scope_user_user: 'User',
 };
@@ -50,7 +49,7 @@ function computeRoleOptions(
   requestedRole: string,
   userRole: string | null | undefined
 ): { value: string; label: string }[] {
-  const requestedIndex = SCOPE_ORDER.indexOf(requestedRole as UserScopeValue);
+  const requestedIndex = SCOPE_ORDER.indexOf(requestedRole as UserScope);
   if (requestedIndex === -1) return [];
 
   // resource_power_user, resource_manager, resource_admin can grant scope_user_power_user
@@ -58,7 +57,7 @@ function computeRoleOptions(
     userRole && ['resource_power_user', 'resource_manager', 'resource_admin'].includes(userRole)
       ? 'scope_user_power_user'
       : 'scope_user_user';
-  const maxGrantableIndex = SCOPE_ORDER.indexOf(maxGrantable as UserScopeValue);
+  const maxGrantableIndex = SCOPE_ORDER.indexOf(maxGrantable as UserScope);
 
   // Higher index in SCOPE_ORDER = lower/more-restrictive scope; cap at min(requested, maxGrantable)
   const startIndex = Math.max(requestedIndex, maxGrantableIndex);
@@ -256,7 +255,7 @@ const ConsentContent = () => {
   }
 
   const roleOnly = !scope.llms && !scope.mcps;
-  const roleLabel = SCOPE_LABELS[(approvedRole ?? scope.role) as UserScopeValue];
+  const roleLabel = SCOPE_LABELS[approvedRole ?? scope.role];
 
   const handleApprove = () => {
     setPendingDecision('approve');
@@ -264,16 +263,14 @@ const ConsentContent = () => {
       query,
       decision: 'approve',
       approved_role: approvedRole!,
-      approved: toApproveBody(
-        {
-          version: '1',
-          models_list: scope.llms,
-          models_access: scope.llms,
-          mcps_list: scope.mcps,
-          mcps_access: scope.mcps,
-        },
-        { listModels, modelMode, models, listMcps, mcpExtraMode, mcpsExtra }
-      ),
+      approved: toApproveBody(scope, {
+        listModels,
+        modelMode,
+        models,
+        listMcps,
+        mcpExtraMode,
+        mcpsExtra,
+      }),
     });
   };
 

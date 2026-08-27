@@ -35,10 +35,10 @@ pub const ENDPOINT_ACCESS_REQUESTS_REVOKE: &str = "/bodhi/v1/access-requests/{id
     params(
         ("client_id" = Option<String>, Query, description = "OAuth client id of the requesting app"),
         ("redirect_uri" = Option<String>, Query, description = "App redirect target; exact-matched against the app's registered URIs"),
-        ("response_type" = Option<String>, Query, description = "Must be 'code'"),
-        ("state" = Option<String>, Query, description = "Opaque app state, echoed back on every redirect"),
-        ("code_challenge" = Option<String>, Query, description = "PKCE challenge"),
-        ("code_challenge_method" = Option<String>, Query, description = "Must be 'S256'"),
+        ("response_type" = Option<String>, Query, description = "Forwarded to the auth server verbatim (typically 'code'); enforced there"),
+        ("state" = Option<String>, Query, description = "Opaque app state, echoed back on redirects when present"),
+        ("code_challenge" = Option<String>, Query, description = "PKCE challenge; forwarded verbatim, enforced by the auth server"),
+        ("code_challenge_method" = Option<String>, Query, description = "PKCE method; forwarded verbatim, enforced by the auth server"),
         ("scope" = Option<String>, Query, description = "App-facing scope string (scope_user_*, scope_apps:*, passthrough tokens)"),
         ("source_access_request_id" = Option<String>, Query, description = "Prior grant id for reauthorization"),
     ),
@@ -218,7 +218,7 @@ pub async fn apps_submit_consent(
         &ready.redirect_uri,
         OAUTH_ERROR_ACCESS_DENIED,
         "user denied the access request",
-        Some(&ready.state),
+        ready.state.as_deref(),
       )
       .ok_or_else(|| AppsRouteError::ConsentRejected {
         error: "server_error".to_string(),
@@ -369,15 +369,24 @@ async fn approve_consent(
     .ok_or(AppsRouteError::MissingAccessRequestScope)?;
   let kc_scope = compose_keycloak_scope(&ready.scope, access_request_scope);
 
-  let authorize_query = url::form_urlencoded::Serializer::new(String::new())
-    .append_pair("response_type", "code")
+  // Standard OAuth params are forwarded as received — Keycloak enforces them.
+  let mut authorize_query = url::form_urlencoded::Serializer::new(String::new());
+  if let Some(response_type) = &ready.response_type {
+    authorize_query.append_pair("response_type", response_type);
+  }
+  authorize_query
     .append_pair("client_id", &ready.client_id)
-    .append_pair("redirect_uri", &ready.redirect_uri)
-    .append_pair("state", &ready.state)
-    .append_pair("code_challenge", &ready.code_challenge)
-    .append_pair("code_challenge_method", "S256")
-    .append_pair("scope", &kc_scope)
-    .finish();
+    .append_pair("redirect_uri", &ready.redirect_uri);
+  if let Some(state) = &ready.state {
+    authorize_query.append_pair("state", state);
+  }
+  if let Some(code_challenge) = &ready.code_challenge {
+    authorize_query.append_pair("code_challenge", code_challenge);
+  }
+  if let Some(code_challenge_method) = &ready.code_challenge_method {
+    authorize_query.append_pair("code_challenge_method", code_challenge_method);
+  }
+  let authorize_query = authorize_query.append_pair("scope", &kc_scope).finish();
   let redirect_url = format!(
     "{}?{}",
     access_request_service.build_authorize_endpoint(),

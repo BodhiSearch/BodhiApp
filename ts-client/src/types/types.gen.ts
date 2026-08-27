@@ -2282,19 +2282,19 @@ export type GetConsentContextData = {
          */
         redirect_uri?: string;
         /**
-         * Must be 'code'
+         * Forwarded to the auth server verbatim (typically 'code'); enforced there
          */
         response_type?: string;
         /**
-         * Opaque app state, echoed back on every redirect
+         * Opaque app state, echoed back on redirects when present
          */
         state?: string;
         /**
-         * PKCE challenge
+         * PKCE challenge; forwarded verbatim, enforced by the auth server
          */
         code_challenge?: string;
         /**
-         * Must be 'S256'
+         * PKCE method; forwarded verbatim, enforced by the auth server
          */
         code_challenge_method?: string;
         /**

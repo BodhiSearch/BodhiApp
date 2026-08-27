@@ -698,7 +698,7 @@
           {
             "name": "response_type",
             "in": "query",
-            "description": "Must be 'code'",
+            "description": "Forwarded to the auth server verbatim (typically 'code'); enforced there",
             "required": false,
             "schema": {
               "type": "string"
@@ -707,7 +707,7 @@
           {
             "name": "state",
             "in": "query",
-            "description": "Opaque app state, echoed back on every redirect",
+            "description": "Opaque app state, echoed back on redirects when present",
             "required": false,
             "schema": {
               "type": "string"
@@ -716,7 +716,7 @@
           {
             "name": "code_challenge",
             "in": "query",
-            "description": "PKCE challenge",
+            "description": "PKCE challenge; forwarded verbatim, enforced by the auth server",
             "required": false,
             "schema": {
               "type": "string"
@@ -725,7 +725,7 @@
           {
             "name": "code_challenge_method",
             "in": "query",
-            "description": "Must be 'S256'",
+            "description": "PKCE method; forwarded verbatim, enforced by the auth server",
             "required": false,
             "schema": {
               "type": "string"

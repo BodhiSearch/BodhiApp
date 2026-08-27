@@ -43,3 +43,13 @@ Revisit registering them as Keycloak client scopes with passthrough — noting t
 client-scope assignment problem that caused the `6434d8d` revert in keycloak-bodhi-ext, and that
 audience-bearing scopes would turn `aud` into an array (BodhiApp now parses one-or-many `aud`,
 so that part is ready). Goal: claims present in both scope and record, verifiably matching.
+
+## Orphaned approved grants when Keycloak rejects the authorize request
+The consent flow validates only what BodhiApp itself depends on (client_id, redirect_uri
+exact-match, duplicate params, scope vocabulary); `response_type`/`state`/PKCE are forwarded
+verbatim for Keycloak to enforce. Consequence: an app sending params Keycloak later rejects
+(e.g. missing `response_type`, or no PKCE against a PKCE-required client) still produces an
+approved `app_access_requests` row before the browser hits Keycloak's error — an inert,
+never-connected grant visible in Connected Apps. Accepted trade-off (rare, revocable, no token
+can ever be exchanged against it). Revisit only if misbehaving apps make the list noisy — e.g.
+a pending-until-first-exchange status.

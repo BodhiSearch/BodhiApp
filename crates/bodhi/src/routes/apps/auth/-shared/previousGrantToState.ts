@@ -2,14 +2,10 @@ import type { ConsentPriorGrant, McpGrant, ModelGrant, UserScope } from '@bodhia
 
 import type { AccessMode } from '@/components/access-picker';
 
+import type { ApproveGrantState } from './toApproveBody';
+
 /** Consent-form state pre-selected from a prior grant (reauthorization). */
-export interface PreselectState {
-  listModels: boolean;
-  modelMode: AccessMode;
-  models: string[];
-  listMcps: boolean;
-  mcpExtraMode: AccessMode;
-  mcpsExtra: string[];
+export interface PreselectState extends ApproveGrantState {
   approvedRole: UserScope;
 }
 

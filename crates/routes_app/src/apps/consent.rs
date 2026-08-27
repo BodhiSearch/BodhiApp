@@ -6,7 +6,6 @@ use services::{
 pub const OAUTH_ERROR_INVALID_REQUEST: &str = "invalid_request";
 pub const OAUTH_ERROR_INVALID_SCOPE: &str = "invalid_scope";
 pub const OAUTH_ERROR_UNAUTHORIZED_CLIENT: &str = "unauthorized_client";
-pub const OAUTH_ERROR_UNSUPPORTED_RESPONSE_TYPE: &str = "unsupported_response_type";
 pub const OAUTH_ERROR_ACCESS_DENIED: &str = "access_denied";
 pub const OAUTH_ERROR_SERVER_ERROR: &str = "server_error";
 
@@ -52,12 +51,16 @@ impl ConsentQuery {
 }
 
 /// A consent request that passed validation and can be rendered or decided.
+/// `response_type`/`state`/`code_challenge`/`code_challenge_method` are forwarded to the
+/// auth server verbatim when present — Keycloak is the authority on those, not BodhiApp.
 #[derive(Debug)]
 pub struct ConsentReady {
   pub client_id: String,
   pub redirect_uri: String,
-  pub state: String,
-  pub code_challenge: String,
+  pub response_type: Option<String>,
+  pub state: Option<String>,
+  pub code_challenge: Option<String>,
+  pub code_challenge_method: Option<String>,
   pub scope: ParsedAppScope,
   pub app_info: AppClientInfo,
   pub source_access_request_id: Option<String>,
@@ -118,9 +121,11 @@ pub fn build_error_redirect(
   Some(url.to_string())
 }
 
-/// Validates one authorize request end to end: app client resolution, redirect_uri
-/// exact-match, OAuth parameter checks, and app-facing scope parsing. Both the consent
-/// GET and the consent POST run this, so the POST never trusts a client-side reading.
+/// Validates only what BodhiApp itself depends on: app client resolution, redirect_uri
+/// exact-match (we compose deny/error redirects to it before Keycloak is ever involved),
+/// and the app-facing scope vocabulary. Standard OAuth params (response_type, state,
+/// PKCE) are forwarded for Keycloak to enforce. Both the consent GET and the consent
+/// POST run this, so the POST never trusts a client-side reading.
 pub async fn evaluate_consent_query(
   auth_service: &dyn AuthService,
   user_token: &str,
@@ -189,45 +194,12 @@ pub async fn evaluate_consent_query(
   // The redirect target is trusted from here on — failures below return to the app.
   let state = query.state.filter(|v| !v.is_empty());
 
-  if query.response_type.as_deref() != Some("code") {
-    return Err(Box::new(ConsentFailure::redirecting(
-      &redirect_uri,
-      state.as_deref(),
-      OAUTH_ERROR_UNSUPPORTED_RESPONSE_TYPE,
-      "response_type must be 'code'".to_string(),
-    )));
-  }
-  let Some(state) = state else {
-    return Err(Box::new(ConsentFailure::redirecting(
-      &redirect_uri,
-      None,
-      OAUTH_ERROR_INVALID_REQUEST,
-      "state is required".to_string(),
-    )));
-  };
-  let Some(code_challenge) = query.code_challenge.filter(|v| !v.is_empty()) else {
-    return Err(Box::new(ConsentFailure::redirecting(
-      &redirect_uri,
-      Some(&state),
-      OAUTH_ERROR_INVALID_REQUEST,
-      "code_challenge is required (PKCE)".to_string(),
-    )));
-  };
-  if query.code_challenge_method.as_deref() != Some("S256") {
-    return Err(Box::new(ConsentFailure::redirecting(
-      &redirect_uri,
-      Some(&state),
-      OAUTH_ERROR_INVALID_REQUEST,
-      "code_challenge_method must be 'S256'".to_string(),
-    )));
-  }
-
   let scope = match parse_app_scope(query.scope.as_deref().unwrap_or("")) {
     Ok(scope) => scope,
     Err(err) => {
       return Err(Box::new(ConsentFailure::redirecting(
         &redirect_uri,
-        Some(&state),
+        state.as_deref(),
         OAUTH_ERROR_INVALID_SCOPE,
         err.to_string(),
       )));
@@ -237,8 +209,10 @@ pub async fn evaluate_consent_query(
   Ok(ConsentReady {
     client_id,
     redirect_uri,
+    response_type: query.response_type.filter(|v| !v.is_empty()),
     state,
-    code_challenge,
+    code_challenge: query.code_challenge.filter(|v| !v.is_empty()),
+    code_challenge_method: query.code_challenge_method.filter(|v| !v.is_empty()),
     scope,
     app_info,
     source_access_request_id: query.source_access_request_id.filter(|v| !v.is_empty()),

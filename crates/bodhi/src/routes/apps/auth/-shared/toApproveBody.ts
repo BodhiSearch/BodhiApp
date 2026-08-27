@@ -1,14 +1,8 @@
-import type { ApprovedResources, RequestedResources } from '@bodhiapp/ts-client';
+import type { ApprovedResources, ConsentScopeInfo } from '@bodhiapp/ts-client';
 
 import type { AccessMode } from '@/components/access-picker';
 
 type Grant = ApprovedResources['models_access'];
-
-/** UI-driver flags derived from the parsed consent scope (`scope.llms` / `scope.mcps`). */
-export type RequestedFlags = Pick<
-  RequestedResources,
-  'version' | 'models_list' | 'models_access' | 'mcps_list' | 'mcps_access'
->;
 
 /** The owner's consent-screen decisions. */
 export interface ApproveGrantState {
@@ -28,14 +22,14 @@ const DENY: Grant = { type: 'specific', ids: [] };
 
 // Pure + exported so the grant branch matrix is unit-tested (mirrors `toCreateTokenRequest`).
 // Fail-closed: anything outside the requested scope defaults to deny, never all-access.
-export function toApproveBody(req: RequestedFlags, state: ApproveGrantState): ApprovedResources {
+export function toApproveBody(scope: ConsentScopeInfo, state: ApproveGrantState): ApprovedResources {
   return {
-    version: req.version,
-    models_list: req.models_list ? state.listModels : false,
-    models_access: req.models_access ? grant(state.modelMode, state.models) : DENY,
-    mcps_list: req.mcps_list ? state.listMcps : false,
+    version: '1',
+    models_list: scope.llms ? state.listModels : false,
+    models_access: scope.llms ? grant(state.modelMode, state.models) : DENY,
+    mcps_list: scope.mcps ? state.listMcps : false,
     // Per-URL MCP requests are gone from the consent flow; the envelope keeps the field.
     mcps: [],
-    mcps_access: req.mcps_access ? grant(state.mcpExtraMode, state.mcpsExtra) : DENY,
+    mcps_access: scope.mcps ? grant(state.mcpExtraMode, state.mcpsExtra) : DENY,
   };
 }

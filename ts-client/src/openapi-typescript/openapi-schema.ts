@@ -3604,13 +3604,13 @@ export interface operations {
                 client_id?: string;
                 /** @description App redirect target; exact-matched against the app's registered URIs */
                 redirect_uri?: string;
-                /** @description Must be 'code' */
+                /** @description Forwarded to the auth server verbatim (typically 'code'); enforced there */
                 response_type?: string;
-                /** @description Opaque app state, echoed back on every redirect */
+                /** @description Opaque app state, echoed back on redirects when present */
                 state?: string;
-                /** @description PKCE challenge */
+                /** @description PKCE challenge; forwarded verbatim, enforced by the auth server */
                 code_challenge?: string;
-                /** @description Must be 'S256' */
+                /** @description PKCE method; forwarded verbatim, enforced by the auth server */
                 code_challenge_method?: string;
                 /** @description App-facing scope string (scope_user_*, scope_apps:*, passthrough tokens) */
                 scope?: string;

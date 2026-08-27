@@ -1,7 +1,6 @@
 use crate::apps::{
   build_error_redirect, evaluate_consent_query, ConsentQuery, OAUTH_ERROR_INVALID_REQUEST,
   OAUTH_ERROR_INVALID_SCOPE, OAUTH_ERROR_SERVER_ERROR, OAUTH_ERROR_UNAUTHORIZED_CLIENT,
-  OAUTH_ERROR_UNSUPPORTED_RESPONSE_TYPE,
 };
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
@@ -125,26 +124,6 @@ async fn test_evaluate_consent_query_absent_redirect_uris_skips_validation() -> 
 }
 
 #[rstest]
-#[case::wrong_response_type(
-  format!("client_id=app-acme&redirect_uri={REDIRECT_URI_ENC}&response_type=token&state=st-123&code_challenge=ch-456&code_challenge_method=S256"),
-  OAUTH_ERROR_UNSUPPORTED_RESPONSE_TYPE,
-  true
-)]
-#[case::missing_state(
-  format!("client_id=app-acme&redirect_uri={REDIRECT_URI_ENC}&response_type=code&code_challenge=ch-456&code_challenge_method=S256"),
-  OAUTH_ERROR_INVALID_REQUEST,
-  false
-)]
-#[case::missing_code_challenge(
-  format!("client_id=app-acme&redirect_uri={REDIRECT_URI_ENC}&response_type=code&state=st-123&code_challenge_method=S256"),
-  OAUTH_ERROR_INVALID_REQUEST,
-  true
-)]
-#[case::wrong_code_challenge_method(
-  format!("client_id=app-acme&redirect_uri={REDIRECT_URI_ENC}&response_type=code&state=st-123&code_challenge=ch-456&code_challenge_method=plain"),
-  OAUTH_ERROR_INVALID_REQUEST,
-  true
-)]
 #[case::reserved_scope_token(
   format!("client_id=app-acme&redirect_uri={REDIRECT_URI_ENC}&response_type=code&state=st-123&code_challenge=ch-456&code_challenge_method=S256&scope=scope_access_request%3Ainjected"),
   OAUTH_ERROR_INVALID_SCOPE,
@@ -160,9 +139,14 @@ async fn test_evaluate_consent_query_absent_redirect_uris_skips_validation() -> 
   OAUTH_ERROR_INVALID_SCOPE,
   true
 )]
+#[case::scope_error_without_state_omits_state(
+  format!("client_id=app-acme&redirect_uri={REDIRECT_URI_ENC}&scope=scope_apps%3Agarbage"),
+  OAUTH_ERROR_INVALID_SCOPE,
+  false
+)]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_evaluate_consent_query_post_validation_failures_redirect(
+async fn test_evaluate_consent_query_scope_failures_redirect(
   #[case] query: String,
   #[case] expected_error: &str,
   #[case] state_expected: bool,
@@ -170,7 +154,7 @@ async fn test_evaluate_consent_query_post_validation_failures_redirect(
   let mock = mock_auth_registered();
   let failure = evaluate_consent_query(&mock, USER_TOKEN, &query)
     .await
-    .expect_err("post-validation failure expected");
+    .expect_err("scope failure expected");
   assert_eq!(expected_error, failure.error);
   let redirect_url = failure
     .redirect_url
@@ -206,8 +190,10 @@ async fn test_evaluate_consent_query_happy_path() -> anyhow::Result<()> {
     .map_err(|f| anyhow::anyhow!("unexpected failure: {}", f.error_description))?;
   assert_eq!("app-acme", ready.client_id);
   assert_eq!(REDIRECT_URI, ready.redirect_uri);
-  assert_eq!("st-123", ready.state);
-  assert_eq!("ch-456", ready.code_challenge);
+  assert_eq!(Some("code".to_string()), ready.response_type);
+  assert_eq!(Some("st-123".to_string()), ready.state);
+  assert_eq!(Some("ch-456".to_string()), ready.code_challenge);
+  assert_eq!(Some("S256".to_string()), ready.code_challenge_method);
   assert_eq!("Acme App", ready.app_info.name);
   assert_eq!(UserScope::PowerUser, ready.scope.role);
   assert_eq!(true, ready.scope.llms);
@@ -233,6 +219,27 @@ async fn test_evaluate_consent_query_empty_scope_defaults() -> anyhow::Result<()
   assert_eq!(true, ready.scope.mcps);
   assert_eq!(Vec::<String>::new(), ready.scope.passthrough);
   assert_eq!(None, ready.source_access_request_id);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_evaluate_consent_query_forwards_oauth_params_without_enforcing() -> anyhow::Result<()>
+{
+  // Keycloak is the authority on response_type/state/PKCE — their absence is not our error.
+  let mock = mock_auth_registered();
+  let ready = evaluate_consent_query(
+    &mock,
+    USER_TOKEN,
+    &format!("client_id=app-acme&redirect_uri={REDIRECT_URI_ENC}"),
+  )
+  .await
+  .map_err(|f| anyhow::anyhow!("unexpected failure: {}", f.error_description))?;
+  assert_eq!(None, ready.response_type);
+  assert_eq!(None, ready.state);
+  assert_eq!(None, ready.code_challenge);
+  assert_eq!(None, ready.code_challenge_method);
   Ok(())
 }
 
