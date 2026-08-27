@@ -12,7 +12,7 @@
 
 ### Testing
 - `make test` — Run all tests (backend, UI, E2E)
-- `make test.backend` — Rust backend tests (requires Docker for PostgreSQL; runs `cargo test` and `cargo test -p bodhi --features native`)
+- `make test.backend` — Rust backend tests (requires Docker for PostgreSQL; runs `cargo test`). `make test.backend.all` additionally runs `cargo test -p bodhi --features native`
 - `make test.ui` — Frontend tests (`cd crates/bodhi && npm install && npm test`)
 - `make test.e2e` — Playwright E2E (`make build.dev-server` then `cd crates/lib_bodhiserver && npm install && npm run test:playwright`)
 

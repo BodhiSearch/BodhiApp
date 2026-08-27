@@ -82,7 +82,7 @@ Routes live in `src/routes/` using TanStack Router file conventions. Each route 
 NavigationProvider, and `ShellChromeProvider`. Its `RootShell` renders ONE persistent `<AppShell>`
 (`components/shell/AppShell.tsx`) for all app routes — it stays mounted across navigations because it
 owns collapse/resize state, the localStorage column-width restore, and provides `ShellContext`
-(`useShell()`: `openRail`/`closeRail`/…). Bare routes (login/auth/oauth/request-access/review) render
+(`useShell()`: `openRail`/`closeRail`/…). Bare routes (login/auth/oauth/request-access/apps-auth consent) render
 through `BareLayout`; fullscreen routes (setup) render the bare `<Outlet/>` — the bare/fullscreen
 switch is `components/shell/resolveShellRoute.ts`'s `isBareRoute`/`isFullscreenRoute` predicates.
 
@@ -141,7 +141,7 @@ react-hook-form + zod schema + ts-client types. Schemas in `src/schemas/`:
 - `ready` (all other) -> `/chat`
 - `resource_admin` -> `/setup/resource-admin`
 
-Authenticated routes check `userInfo.auth_status === 'logged_in'`. Users with `resource_guest` or `resource_anonymous` role are redirected to `/request-access`.
+Authenticated routes check `userInfo.auth_status === 'logged_in'`. Users with `resource_guest` or `resource_anonymous` role are redirected to `/request-access` — except pages passing `skipRoleGate` (the `/apps/auth/` consent page renders a blocked state for role-less users instead).
 
 Role hierarchy and utilities in `src/lib/roles.ts`. `Role` type re-exported from `ResourceRole` in `@bodhiapp/ts-client`.
 

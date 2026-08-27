@@ -28,23 +28,18 @@ Standalone-only, locks not held across `.await`. Low risk but should migrate to 
 Only `api_tokens` table covered. Missing: all other tenant-scoped tables, cross-tenant mutation prevention, concurrent request isolation.
 
 ## Fold NetworkService into SettingService (drop the paired dependency)
-`NetworkService` is a tiny, stateless utility — one method `get_server_ip() -> Option<String>`
-(`DefaultNetworkService` is a zero-field unit struct using a UDP-socket egress-interface trick).
-Its only consumers are host/URL resolution: `routes_setup.rs` (OAuth redirect URIs) and
-`DefaultAccessRequestService` (review URL). This forces callers to inject a **paired**
-`SettingService` + `NetworkService` (see `DefaultAccessRequestService::new`,
-`AppServiceBuilder::build_access_request_service`).
+Mostly resolved by the OAuth consent-flow cutover: `DefaultAccessRequestService` no longer takes
+`SettingService`/`NetworkService` (the review URL is gone) and `resolve_public_server_url` was
+removed with its last caller. Remaining: `routes_setup.rs` still injects `NetworkService`
+directly for OAuth redirect-URI composition — fold that lookup into `SettingService` if a second
+consumer ever appears; otherwise leave as-is.
 
-Proposal: `SettingService` owns the network lookup.
-- `DefaultSettingService` holds an `Arc<dyn NetworkService>` that is **optionally injectable**
-  (for tests / stubbing the detected IP) and otherwise defaults to `DefaultNetworkService`.
-- `resolve_public_server_url(request_host)` drops its `server_ip` parameter and fetches the
-  detected IP internally, so consumers pass only the request host.
-- `DefaultAccessRequestService` then depends on `SettingService` alone (revert the
-  `network_service` field/ctor arg added for the review-URL fix).
-- Keep the `AppService::network_service()` accessor if `routes_setup.rs` still wants direct
-  access, or migrate it to `setting_service.resolve_public_server_url(...)` too and remove the
-  standalone accessor.
-
-Net effect: one fewer cross-service dependency to thread through the builder and every test
-construction site, and server-IP validation logic lives in one place (SettingService).
+## Scope vocabulary is not visible in the issued token
+`scope_user_*` and `scope_apps:*` are consumed by the BodhiApp consent flow and never reach
+Keycloak, so an app token's `scope` claim and the DB grant record describe different things
+(the claim carries only `openid profile email roles` + passthrough + the dynamic
+`scope_access_request:` value; the actual grant lives in `app_access_requests.approved`).
+Revisit registering them as Keycloak client scopes with passthrough — noting the O(M×N)
+client-scope assignment problem that caused the `6434d8d` revert in keycloak-bodhi-ext, and that
+audience-bearing scopes would turn `aud` into an array (BodhiApp now parses one-or-many `aud`,
+so that part is ready). Goal: claims present in both scope and record, verifiably matching.
