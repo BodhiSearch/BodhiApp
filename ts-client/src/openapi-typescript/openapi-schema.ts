@@ -72,36 +72,12 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * Approve Access Request
-         * @description Approve access request with tool instance selections. Requires session auth.
-         */
-        put: operations["approveAppsAccessRequest"];
+        put?: never;
         /**
          * Approve Access Request
          * @description Approve an access request and assign a role. Requires manager or admin role.
          */
         post: operations["approveAccessRequest"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/access-requests/{id}/deny": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Deny Access Request
-         * @description Deny access request. Requires session auth.
-         */
-        post: operations["denyAccessRequest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -128,26 +104,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/access-requests/{id}/review": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Access Request Review
-         * @description Get full access request details for review page. Returns data regardless of status. Requires session auth.
-         */
-        get: operations["getAccessRequestReview"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/bodhi/v1/access-requests/{id}/revoke": {
         parameters: {
             query?: never;
@@ -168,7 +124,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/apps/access-requests/{id}": {
+    "/bodhi/v1/apps/access-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Consent Decision
+         * @description The single mutating consent call. Re-validates the authorize request from the echoed query string; on approve creates an already-approved access request and returns the auth server's authorize URL with the composed scope; on deny returns the app's redirect_uri carrying error=access_denied. The page navigates to redirect_url unconditionally. Approve requires the User role; deny is allowed for any authenticated session.
+         */
+        post: operations["submitConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/apps/access-requests/consent": {
         parameters: {
             query?: never;
             header?: never;
@@ -176,10 +152,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Access Request Status
-         * @description Poll access request status. Requires app_client_id query parameter for security.
+         * Get Consent Context
+         * @description Validate an OAuth authorize request (passed as the raw query string, exactly as received by /ui/apps/auth/) and return everything the consent page needs: app identity, parsed scope sections, prior grant, and whether the caller may approve. Always 200 with an ok/error union; error outcomes carry a redirect_url only when the redirect target was validated. Requires session auth (any role — guests see a blocked state).
          */
-        get: operations["getAccessRequestStatus"];
+        get: operations["getConsentContext"];
         put?: never;
         post?: never;
         delete?: never;
@@ -236,26 +212,6 @@ export interface paths {
          * @description Forwards MCP Streamable HTTP requests (POST/GET/DELETE) to upstream MCP server with auth injection
          */
         post: operations["mcpProxy"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/apps/request-access": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create Access Request
-         * @description Create an access request for an app to access user resources. Always creates a draft for user review. Anonymous, except `exchange: true` requires the app's current token in the Authorization header.
-         */
-        post: operations["createAccessRequest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1322,42 +1278,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        AccessRequestActionResponse: {
-            status: components["schemas"]["AppAccessRequestStatus"];
-            /** @description Dynamic scope minted on approval; the review page appends it to `auth_url` before redirecting to Keycloak. */
-            access_request_scope?: string | null;
-        };
-        AccessRequestReviewResponse: {
-            id: string;
-            app_client_id: string;
-            /** @description From KC, if available */
-            app_name?: string | null;
-            /** @description From KC, if available */
-            app_description?: string | null;
-            status: components["schemas"]["AppAccessRequestStatus"];
-            requested_role: string;
-            requested: components["schemas"]["RequestedResources"];
-            mcps_info?: components["schemas"]["McpServerReviewInfo"][];
-            /** @description Canonical Keycloak authorize endpoint the review page validates the app-supplied `auth_url` against. */
-            auth_endpoint: string;
-            previous_grant?: null | components["schemas"]["PreviousGrantInfo"];
-        };
-        /** @example {
-         *       "access_request_scope": "scope_access_request:550e8400-e29b-41d4-a716-446655440000",
-         *       "approved_role": "scope_user_user",
-         *       "id": "550e8400-e29b-41d4-a716-446655440000",
-         *       "requested_role": "scope_user_user",
-         *       "status": "approved"
-         *     } */
-        AccessRequestStatusResponse: {
-            id: string;
-            /** @description One of: "draft", "approved", "denied", "failed" */
-            status: components["schemas"]["AppAccessRequestStatus"];
-            requested_role: components["schemas"]["UserScope"];
-            approved_role?: null | components["schemas"]["UserScope"];
-            /** @description Present when user-approved with tools */
-            access_request_scope?: string | null;
-        };
         /** @description Flat enum representing all types of model aliases
          *     Each variant is identified by the source field */
         Alias: (components["schemas"]["UserAlias"] & {
@@ -1638,28 +1558,6 @@ export interface components {
         AppStatus: "setup" | "ready" | "resource_admin";
         /** @enum {string} */
         ApprovalStatus: "approved" | "denied";
-        /** @example {
-         *       "approved": {
-         *         "mcps": [
-         *           {
-         *             "instance": {
-         *               "id": "instance-uuid",
-         *               "path": "/bodhi/v1/apps/mcps/instance-uuid/mcp"
-         *             },
-         *             "status": "approved",
-         *             "url": "https://mcp.deepwiki.com/mcp"
-         *           }
-         *         ],
-         *         "version": "1"
-         *       },
-         *       "approved_role": "scope_user_user"
-         *     } */
-        ApproveAccessRequest: {
-            /** @description Role to grant for the approved request (scope_user_user or scope_user_power_user) */
-            approved_role: components["schemas"]["UserScope"];
-            /** @description Approved resources with selections */
-            approved: components["schemas"]["ApprovedResources"];
-        };
         /**
          * @description Request body for approving access with role assignment
          * @example {
@@ -1793,6 +1691,51 @@ export interface components {
             /** @description Role to assign to the user */
             role: components["schemas"]["ResourceRole"];
         };
+        /** @description App identity shown on the consent screen; `redirect_uri` is the validated target the
+         *     flow will return to. */
+        ConsentAppInfo: {
+            client_id: string;
+            name: string;
+            description: string;
+            redirect_uri: string;
+        };
+        /** @description Everything the consent page needs before render. `error` outcomes carry a
+         *     `redirect_url` only when the redirect target was validated; `null` means render
+         *     in-app and navigate nowhere (RFC 6749 §4.1.2.1). */
+        ConsentContextResponse: {
+            app: components["schemas"]["ConsentAppInfo"];
+            scope: components["schemas"]["ConsentScopeInfo"];
+            prior_grant?: null | components["schemas"]["ConsentPriorGrant"];
+            /** @description `false` for sessions below the User role — the page renders a blocked state
+             *     with a decline-only action. */
+            can_approve: boolean;
+            /** @enum {string} */
+            result: "ok";
+        } | {
+            error: string;
+            error_description: string;
+            redirect_url?: string | null;
+            /** @enum {string} */
+            result: "error";
+        };
+        /** @enum {string} */
+        ConsentDecision: "approve" | "deny";
+        ConsentPriorGrant: {
+            id: string;
+            approved_role: components["schemas"]["UserScope"];
+            approved: components["schemas"]["ApprovedResources"];
+            source: components["schemas"]["ConsentPriorGrantSource"];
+        };
+        /** @enum {string} */
+        ConsentPriorGrantSource: "explicit" | "latest";
+        /** @description Parsed app-facing scope driving the consent screen: which sections render and the
+         *     requested role ceiling. `passthrough` tokens are forwarded to the auth server verbatim. */
+        ConsentScopeInfo: {
+            role: components["schemas"]["UserScope"];
+            llms: boolean;
+            mcps: boolean;
+            passthrough: string[];
+        };
         ContextLimits: {
             /** Format: int64 */
             max_input_tokens?: number | null;
@@ -1806,40 +1749,6 @@ export interface components {
         };
         CopyAliasRequest: {
             alias: string;
-        };
-        /** @example {
-         *       "app_client_id": "my-app-client",
-         *       "requested": {
-         *         "mcp_servers": [
-         *           {
-         *             "url": "https://mcp.example.com/mcp"
-         *           }
-         *         ],
-         *         "version": "1"
-         *       },
-         *       "requested_role": "scope_user_user"
-         *     } */
-        CreateAccessRequest: {
-            /** @description App client ID from Keycloak */
-            app_client_id: string;
-            /** @description Role requested for the external app (scope_user_user or scope_user_power_user) */
-            requested_role: components["schemas"]["UserScope"];
-            /** @description Resources requested (tools, etc.) */
-            requested: components["schemas"]["RequestedResources"];
-            /** @description Upgrade the app's current token: the caller must present it in the `Authorization`
-             *     header; the server derives the prior request from the token, never the body. */
-            exchange?: boolean;
-        };
-        /** @example {
-         *       "id": "550e8400-e29b-41d4-a716-446655440000",
-         *       "review_url": "http://localhost:1135/ui/apps/access-requests/review?id=550e8400-e29b-41d4-a716-446655440000",
-         *       "status": "draft"
-         *     } */
-        CreateAccessRequestResponse: {
-            id: string;
-            /** @description Always "draft" */
-            status: components["schemas"]["AppAccessRequestStatus"];
-            review_url: string;
         };
         /** @description Wrapper for creating auth configs with server_id in body instead of path */
         CreateAuthConfig: components["schemas"]["CreateMcpAuthConfigRequest"] & {
@@ -2378,11 +2287,6 @@ export interface components {
             disabled_mcp_count: number;
             auth_config?: null | components["schemas"]["McpAuthConfigResponse"];
         };
-        McpServerReviewInfo: {
-            url: string;
-            /** @description User's MCP instances connected to this server URL */
-            instances: components["schemas"]["Mcp"][];
-        };
         /** @description Describes an OpenAI model offering that can be used with the API. */
         Model: {
             /** @description The model identifier, which can be referenced in the API endpoints. */
@@ -2665,10 +2569,6 @@ export interface components {
              */
             message: string;
         };
-        PreviousGrantInfo: {
-            approved_role: components["schemas"]["UserScope"];
-            approved: components["schemas"]["ApprovedResources"];
-        };
         QueueStatusResponse: {
             /** @description Queue status ("idle" or "processing") */
             status: string;
@@ -2857,6 +2757,38 @@ export interface components {
         SetupResponse: {
             /** @description New application status after successful setup */
             status: components["schemas"]["AppStatus"];
+        };
+        /**
+         * @description Consent decision for one authorize request. `query` is the page's query string exactly
+         *     as received — the backend re-validates it rather than trusting a client-side reading.
+         * @example {
+         *       "approved": {
+         *         "models_access": {
+         *           "ids": [
+         *             "llama3:8b"
+         *           ],
+         *           "type": "specific"
+         *         },
+         *         "version": "1"
+         *       },
+         *       "approved_role": "scope_user_user",
+         *       "decision": "approve",
+         *       "query": "client_id=app-acme&redirect_uri=https%3A%2F%2Facme.dev%2Fcb&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256&scope=scope_user_user"
+         *     }
+         */
+        SubmitConsentRequest: {
+            query: string;
+            decision: components["schemas"]["ConsentDecision"];
+            approved_role?: null | components["schemas"]["UserScope"];
+            approved?: null | components["schemas"]["ApprovedResources"];
+        };
+        /** @description The one mutating consent response: the page navigates to `redirect_url` unconditionally.
+         *     Approve → the auth server's authorize endpoint with the composed scope; deny or a
+         *     redirectable request error → the app's redirect_uri carrying the OAuth error params. */
+        SubmitConsentResponse: {
+            /** @description Created access request id; omitted on deny and on redirected errors. */
+            id?: string | null;
+            redirect_url: string;
         };
         TenantListItem: {
             client_id: string;
@@ -3381,88 +3313,6 @@ export interface operations {
             };
         };
     };
-    approveAppsAccessRequest: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Access request ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        /** @description Approval details with tool selections */
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApproveAccessRequest"];
-            };
-        };
-        responses: {
-            /** @description Request approved */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AccessRequestActionResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Already processed */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-        };
-    };
     approveAccessRequest: {
         parameters: {
             query?: never;
@@ -3534,83 +3384,6 @@ export interface operations {
             };
         };
     };
-    denyAccessRequest: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Access request ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Request denied */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AccessRequestActionResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Already processed */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-        };
-    };
     rejectAccessRequest: {
         parameters: {
             query?: never;
@@ -3659,83 +3432,6 @@ export interface operations {
             };
             /** @description Request not found */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-        };
-    };
-    getAccessRequestReview: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Access request ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Review data retrieved */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AccessRequestReviewResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Request expired */
-            410: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3831,28 +3527,36 @@ export interface operations {
             };
         };
     };
-    getAccessRequestStatus: {
+    submitConsent: {
         parameters: {
-            query: {
-                /** @description App client ID for verification */
-                app_client_id: string;
-            };
+            query?: never;
             header?: never;
-            path: {
-                /** @description Access request ID */
-                id: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        /** @description Consent decision with the original query string */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitConsentRequest"];
+            };
+        };
         responses: {
-            /** @description Status retrieved */
+            /** @description Deny or redirectable request error — no grant created */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AccessRequestStatusResponse"];
+                    "application/json": components["schemas"]["SubmitConsentResponse"];
+                };
+            };
+            /** @description Grant created (approve) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmitConsentResponse"];
                 };
             };
             /** @description Invalid request parameters */
@@ -3882,8 +3586,72 @@ export interface operations {
                     "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
-            /** @description Not found or app_client_id mismatch */
-            404: {
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    getConsentContext: {
+        parameters: {
+            query?: {
+                /** @description OAuth client id of the requesting app */
+                client_id?: string;
+                /** @description App redirect target; exact-matched against the app's registered URIs */
+                redirect_uri?: string;
+                /** @description Must be 'code' */
+                response_type?: string;
+                /** @description Opaque app state, echoed back on every redirect */
+                state?: string;
+                /** @description PKCE challenge */
+                code_challenge?: string;
+                /** @description Must be 'S256' */
+                code_challenge_method?: string;
+                /** @description App-facing scope string (scope_user_*, scope_apps:*, passthrough tokens) */
+                scope?: string;
+                /** @description Prior grant id for reauthorization */
+                source_access_request_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Consent context or a structured OAuth error */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentContextResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4063,76 +3831,6 @@ export interface operations {
             };
             /** @description Insufficient permissions */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-        };
-    };
-    createAccessRequest: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Access request details */
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateAccessRequest"];
-            };
-        };
-        responses: {
-            /** @description Access request created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreateAccessRequestResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BodhiErrorResponse"];
-                };
-            };
-            /** @description App client not found */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };

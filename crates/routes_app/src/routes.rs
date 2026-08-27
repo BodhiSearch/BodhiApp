@@ -13,24 +13,21 @@ use crate::{
 };
 use crate::{
   api_models_create, api_models_destroy, api_models_fetch_models, api_models_formats,
-  api_models_show, api_models_sync, api_models_test, api_models_update,
-  apps_approve_access_request, apps_create_access_request, apps_deny_access_request,
-  apps_get_access_request_review, apps_get_access_request_status, apps_list_user_access,
-  apps_revoke_access_request, auth_callback, auth_initiate, auth_logout, dashboard_auth_callback,
-  dashboard_auth_initiate, dev_clients_dag_handler, dev_db_reset_handler, dev_secrets_handler,
-  dev_tenants_cleanup_handler, envs_handler, health_handler, model_router_create,
-  model_router_destroy, model_router_show, model_router_update, modelfiles_index, models_copy,
-  models_create, models_destroy, models_index, models_pull_archive, models_pull_create,
-  models_pull_index, models_pull_retry, models_pull_show, models_show, models_update, ping_handler,
-  queue_status_handler, refresh_metadata_handler, tenants_activate, tenants_create, tenants_index,
-  tokens_create, tokens_delete, tokens_index, tokens_update, users_access_request_approve,
-  users_access_request_reject, users_access_requests_index, users_access_requests_pending,
-  users_change_role, users_destroy, users_index, users_info, users_request_access,
-  users_request_status, BodhiOAIOpenAPIDoc, BodhiOpenAPIDoc, GlobalErrorResponses,
-  OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_APPROVE,
-  ENDPOINT_ACCESS_REQUESTS_APPS, ENDPOINT_ACCESS_REQUESTS_DENY, ENDPOINT_ACCESS_REQUESTS_PENDING,
-  ENDPOINT_ACCESS_REQUESTS_REVIEW, ENDPOINT_ACCESS_REQUESTS_REVOKE,
-  ENDPOINT_APPS_ACCESS_REQUESTS_ID, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO,
+  api_models_show, api_models_sync, api_models_test, api_models_update, apps_get_consent_context,
+  apps_list_user_access, apps_revoke_access_request, apps_submit_consent, auth_callback,
+  auth_initiate, auth_logout, dashboard_auth_callback, dashboard_auth_initiate,
+  dev_clients_dag_handler, dev_db_reset_handler, dev_secrets_handler, dev_tenants_cleanup_handler,
+  envs_handler, health_handler, model_router_create, model_router_destroy, model_router_show,
+  model_router_update, modelfiles_index, models_copy, models_create, models_destroy, models_index,
+  models_pull_archive, models_pull_create, models_pull_index, models_pull_retry, models_pull_show,
+  models_show, models_update, ping_handler, queue_status_handler, refresh_metadata_handler,
+  tenants_activate, tenants_create, tenants_index, tokens_create, tokens_delete, tokens_index,
+  tokens_update, users_access_request_approve, users_access_request_reject,
+  users_access_requests_index, users_access_requests_pending, users_change_role, users_destroy,
+  users_index, users_info, users_request_access, users_request_status, BodhiOAIOpenAPIDoc,
+  BodhiOpenAPIDoc, GlobalErrorResponses, OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL,
+  ENDPOINT_ACCESS_REQUESTS_APPS, ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVOKE,
+  ENDPOINT_APPS_ACCESS_REQUESTS, ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT, ENDPOINT_APP_INFO,
   ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE,
   ENDPOINT_DASHBOARD_AUTH_CALLBACK, ENDPOINT_DASHBOARD_AUTH_INITIATE, ENDPOINT_DEV_CLIENTS_DAG,
   ENDPOINT_DEV_DB_RESET, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_DEV_TENANTS_CLEANUP,
@@ -115,19 +112,9 @@ pub async fn build_routes(
     .route(ENDPOINT_HEALTH, get(health_handler))
     .route(ENDPOINT_APP_SETUP, post(setup_create))
     // TODO: having as api/ui/logout coz of status code as 200 instead of 302 because of automatic follow redirect by axios
-    .route(ENDPOINT_LOGOUT, post(auth_logout))
-    // App access request status poll (unauthenticated)
-    .route(
-      ENDPOINT_APPS_ACCESS_REQUESTS_ID,
-      get(apps_get_access_request_status),
-    );
+    .route(ENDPOINT_LOGOUT, post(auth_logout));
 
   let mut optional_auth = Router::new()
-    // Anonymous for a fresh request; reads the app's current token when `exchange: true`.
-    .route(
-      ENDPOINT_APPS_REQUEST_ACCESS,
-      post(apps_create_access_request),
-    )
     .route(ENDPOINT_APP_INFO, get(setup_show))
     .route(ENDPOINT_USER_INFO, get(users_info))
     .route(ENDPOINT_AUTH_INITIATE, post(auth_initiate))
@@ -173,6 +160,13 @@ pub async fn build_routes(
   let guest_endpoints = Router::new()
     .route(ENDPOINT_USER_REQUEST_ACCESS, post(users_request_access))
     .route(ENDPOINT_USER_REQUEST_STATUS, get(users_request_status))
+    // App consent flow: reachable by guests (blocked state + decline); the approve
+    // path enforces the User-role floor in-handler.
+    .route(
+      ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT,
+      get(apps_get_consent_context),
+    )
+    .route(ENDPOINT_APPS_ACCESS_REQUESTS, post(apps_submit_consent))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
@@ -341,19 +335,6 @@ pub async fn build_routes(
     .route(
       &format!("{ENDPOINT_MCP_SERVERS}/{{id}}"),
       get(mcp_servers_show),
-    )
-    // App access request review/approve/deny (session-only)
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_REVIEW,
-      get(apps_get_access_request_review),
-    )
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(apps_approve_access_request),
-    )
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_DENY,
-      post(apps_deny_access_request),
     )
     // App token management (session-only): list issued + revoke
     .route(ENDPOINT_ACCESS_REQUESTS_APPS, get(apps_list_user_access))

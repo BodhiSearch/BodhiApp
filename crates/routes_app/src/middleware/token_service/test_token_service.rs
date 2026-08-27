@@ -902,7 +902,7 @@ async fn test_validate_bearer_token_scope_not_found(
     "typ": TOKEN_TYPE_OFFLINE,
     "azp": "external-client",
     "aud": TEST_CLIENT_ID,
-    "scope": "openid email profile roles scope_access_request:nonexistent",
+    "scope": "openid email profile roles scope_access_request:test-client.nonexistent",
   });
   let (external_token, _) = build_token(external_token_claims)?;
 
@@ -956,7 +956,7 @@ async fn test_validate_bearer_token_scope_not_approved(
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
-  let scope = "scope_access_request:draft-test";
+  let scope = "scope_access_request:test-client.draft-test";
 
   let row = AppAccessRequest {
     id: "ar-draft".to_string(),
@@ -1034,7 +1034,7 @@ async fn test_validate_bearer_token_app_client_mismatch(
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
-  let scope = "scope_access_request:app-mismatch-test";
+  let scope = "scope_access_request:test-client.app-mismatch-test";
   let sub = Uuid::new_v4().to_string();
 
   let row = AppAccessRequest {
@@ -1111,7 +1111,7 @@ async fn test_validate_bearer_token_user_mismatch(
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
-  let scope = "scope_access_request:user-mismatch-test";
+  let scope = "scope_access_request:test-client.user-mismatch-test";
 
   let row = AppAccessRequest {
     id: "ar-user-mismatch".to_string(),
@@ -1195,7 +1195,10 @@ async fn test_validate_bearer_token_invalid_status(
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
-  let scope = format!("scope_access_request:status-{}-test", status_label);
+  let scope = format!(
+    "scope_access_request:test-client.status-{}-test",
+    status_label
+  );
   let sub = Uuid::new_v4().to_string();
 
   let row = AppAccessRequest {
@@ -1274,7 +1277,7 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
-  let scope = "scope_access_request:mismatch-test";
+  let scope = "scope_access_request:test-client.mismatch-test";
   let sub = Uuid::new_v4().to_string();
   let record_id = "ar-correct-id";
 
@@ -1369,7 +1372,7 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
-  let scope = "scope_access_request:missing-claim-test";
+  let scope = "scope_access_request:test-client.missing-claim-test";
   let sub = Uuid::new_v4().to_string();
 
   let row = AppAccessRequest {
@@ -1474,7 +1477,7 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
-  let scope = "scope_access_request:success-test";
+  let scope = "scope_access_request:test-client.success-test";
   let sub = Uuid::new_v4().to_string();
   let sub_cl = sub.clone();
   let record_id = "ar-success";
@@ -1607,7 +1610,7 @@ async fn test_validate_bearer_token_cache_hit_returns_role(
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
-  let scope = "scope_access_request:cache-role-test";
+  let scope = "scope_access_request:test-client.cache-role-test";
   let sub = Uuid::new_v4().to_string();
   let sub_cl = sub.clone();
   let record_id = "ar-cache-role";
@@ -1817,7 +1820,7 @@ async fn test_validate_bearer_token_privilege_escalation_rejected(
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
-  let scope = "scope_access_request:escalation-test";
+  let scope = "scope_access_request:test-client.escalation-test";
   let sub = Uuid::new_v4().to_string();
   let record_id = "ar-escalation";
 

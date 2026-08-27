@@ -8,48 +8,14 @@ mod utils;
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
+use routes_app::middleware::access_request_cache_needle;
 use serde_json::Value;
 use services::{
-  test_utils::TEST_TENANT_ID, ApprovedResources, ApprovedResourcesV1, McpGrant, McpRequest,
-  McpServerRequest, ModelGrant,
+  test_utils::TEST_TENANT_ID, AppAccessRequestStatus, AppService, ApprovedResources,
+  ApprovedResourcesV1, McpGrant, McpRequest, McpServerRequest, ModelGrant,
 };
-use utils::{start_test_live_server, ExternalTokenSimulator};
-
-/// The review_url returned by POST /bodhi/v1/apps/request-access reflects the request's
-/// Host (here reqwest's loopback 127.0.0.1) rather than the bind host (0.0.0.0), so the
-/// link the app opens is same-origin with the caller. Anonymous endpoint — no token needed.
-#[anyhow_trace]
-#[tokio::test]
-#[serial_test::serial(live)]
-async fn test_create_access_request_review_url_reflects_request_host() -> anyhow::Result<()> {
-  let server = start_test_live_server().await?;
-  let client = reqwest::Client::new();
-
-  let response = client
-    .post(format!("{}/bodhi/v1/apps/request-access", server.base_url))
-    .json(&serde_json::json!({
-      "app_client_id": "app-live-1",
-      "requested_role": "scope_user_user",
-      "requested": { "version": "1", "mcp_servers": [] }
-    }))
-    .send()
-    .await?;
-
-  assert_eq!(StatusCode::CREATED, response.status());
-  let body: Value = response.json().await?;
-  let id = body["id"].as_str().expect("id present");
-  let review_url = body["review_url"].as_str().expect("review_url present");
-  assert_eq!(
-    format!(
-      "http://127.0.0.1:51135/ui/apps/access-requests/review?id={}",
-      id
-    ),
-    review_url
-  );
-
-  server.handle.shutdown().await?;
-  Ok(())
-}
+use std::sync::Arc;
+use utils::{start_test_live_server, ExternalTokenSimulator, EXTERNAL_USER_ID};
 
 #[anyhow_trace]
 #[tokio::test]
@@ -241,6 +207,295 @@ async fn test_oauth_token_grants_filter_apps_mcps_list() -> anyhow::Result<()> {
     false,
     ids.contains(&ungranted_id),
     "Ungranted MCP instance must NOT appear in the list"
+  );
+
+  server.handle.shutdown().await?;
+  Ok(())
+}
+
+// =============================================================================
+// Guarded route: GET /bodhi/v1/apps/mcps/{id} (access_request_auth_middleware)
+// =============================================================================
+
+/// Seeds an MCP server + one instance owned by the external user under
+/// TEST_TENANT_ID; returns the instance id for grant lists and show requests.
+async fn seed_mcp_instance(app_service: &Arc<dyn AppService>) -> anyhow::Result<String> {
+  seed_mcp_instance_in_tenant(app_service, TEST_TENANT_ID).await
+}
+
+async fn seed_mcp_instance_in_tenant(
+  app_service: &Arc<dyn AppService>,
+  tenant_id: &str,
+) -> anyhow::Result<String> {
+  let mcp_service = app_service.mcp_service();
+  let mcp_server = mcp_service
+    .create_mcp_server(
+      tenant_id,
+      EXTERNAL_USER_ID,
+      McpServerRequest {
+        url: "https://mcp.guard-test.example.com/mcp".to_string(),
+        name: "Guard Test Server".to_string(),
+        description: None,
+        enabled: true,
+        auth_config: None,
+      },
+    )
+    .await?;
+  let mcp = mcp_service
+    .create(
+      tenant_id,
+      EXTERNAL_USER_ID,
+      McpRequest {
+        name: "Guarded MCP".to_string(),
+        slug: "guarded".to_string(),
+        mcp_server_id: Some(mcp_server.id.clone()),
+        description: None,
+        enabled: true,
+        auth_type: Default::default(),
+        auth_config_id: None,
+        credentials: None,
+        oauth_token_id: None,
+      },
+    )
+    .await?;
+  Ok(mcp.id)
+}
+
+fn mcp_grants(mcp_id: &str) -> ApprovedResources {
+  ApprovedResources::V1(ApprovedResourcesV1 {
+    models_list: false,
+    models_access: ModelGrant::Specific { ids: vec![] },
+    mcps_list: false,
+    mcps: vec![],
+    mcps_access: McpGrant::Specific {
+      ids: vec![mcp_id.to_string()],
+    },
+  })
+}
+
+async fn get_apps_mcp_show(
+  base_url: &str,
+  mcp_id: &str,
+  bearer_token: &str,
+) -> anyhow::Result<reqwest::Response> {
+  let client = reqwest::Client::new();
+  Ok(
+    client
+      .get(format!("{}/bodhi/v1/apps/mcps/{}", base_url, mcp_id))
+      .header("Authorization", format!("Bearer {}", bearer_token))
+      .send()
+      .await?,
+  )
+}
+
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_oauth_token_with_backing_row_passes_guarded_route() -> anyhow::Result<()> {
+  let server = start_test_live_server().await?;
+  let mcp_id = seed_mcp_instance(&server.app_service).await?;
+
+  let simulator = ExternalTokenSimulator::new(&server.app_service);
+  let (bearer_token, _row_id) = simulator
+    .create_token_with_backing_row(
+      Some("scope_user_user"),
+      "test-external-app",
+      Some(mcp_grants(&mcp_id)),
+    )
+    .await?;
+
+  let response = get_apps_mcp_show(&server.base_url, &mcp_id, &bearer_token).await?;
+  assert_eq!(
+    StatusCode::OK,
+    response.status(),
+    "Approved backing row matching the token must pass the per-request guard"
+  );
+  let body: Value = response.json().await?;
+  assert_eq!(mcp_id, body["id"].as_str().expect("mcp id present"));
+
+  server.handle.shutdown().await?;
+  Ok(())
+}
+
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_oauth_token_with_revoked_row_rejected_on_guarded_route() -> anyhow::Result<()> {
+  let server = start_test_live_server().await?;
+  let mcp_id = seed_mcp_instance(&server.app_service).await?;
+
+  let simulator = ExternalTokenSimulator::new(&server.app_service);
+  let grants = mcp_grants(&mcp_id);
+  let row = services::AppAccessRequest {
+    status: AppAccessRequestStatus::Revoked,
+    ..simulator.approved_row("test-external-app", &Some(grants.clone()))?
+  };
+  let (bearer_token, _row_id) = simulator
+    .create_token_for_row(
+      Some("scope_user_user"),
+      "test-external-app",
+      Some(grants),
+      row,
+    )
+    .await?;
+
+  let response = get_apps_mcp_show(&server.base_url, &mcp_id, &bearer_token).await?;
+  assert_eq!(
+    StatusCode::FORBIDDEN,
+    response.status(),
+    "Revoked access request must be rejected by the per-request guard"
+  );
+  let body: Value = response.json().await?;
+  assert_eq!(
+    "access_request_auth_error-access_request_not_approved",
+    body["error"]["code"].as_str().expect("error code present")
+  );
+
+  server.handle.shutdown().await?;
+  Ok(())
+}
+
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_oauth_token_with_mismatched_app_client_rejected() -> anyhow::Result<()> {
+  let server = start_test_live_server().await?;
+  let mcp_id = seed_mcp_instance(&server.app_service).await?;
+
+  let simulator = ExternalTokenSimulator::new(&server.app_service);
+  let grants = mcp_grants(&mcp_id);
+  // Row approved for a DIFFERENT app than the token's azp.
+  let row = services::AppAccessRequest {
+    app_client_id: "some-other-app".to_string(),
+    ..simulator.approved_row("test-external-app", &Some(grants.clone()))?
+  };
+  let (bearer_token, _row_id) = simulator
+    .create_token_for_row(
+      Some("scope_user_user"),
+      "test-external-app",
+      Some(grants),
+      row,
+    )
+    .await?;
+
+  let response = get_apps_mcp_show(&server.base_url, &mcp_id, &bearer_token).await?;
+  assert_eq!(
+    StatusCode::FORBIDDEN,
+    response.status(),
+    "Access request approved for a different app must be rejected"
+  );
+  let body: Value = response.json().await?;
+  assert_eq!(
+    "access_request_auth_error-app_client_mismatch",
+    body["error"]["code"].as_str().expect("error code present")
+  );
+
+  server.handle.shutdown().await?;
+  Ok(())
+}
+
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_oauth_token_with_mismatched_user_rejected() -> anyhow::Result<()> {
+  let server = start_test_live_server().await?;
+  let mcp_id = seed_mcp_instance(&server.app_service).await?;
+
+  let simulator = ExternalTokenSimulator::new(&server.app_service);
+  let grants = mcp_grants(&mcp_id);
+  // Row approved by a DIFFERENT user than the token's sub.
+  let row = services::AppAccessRequest {
+    user_id: Some("someone-else".to_string()),
+    ..simulator.approved_row("test-external-app", &Some(grants.clone()))?
+  };
+  let (bearer_token, _row_id) = simulator
+    .create_token_for_row(
+      Some("scope_user_user"),
+      "test-external-app",
+      Some(grants),
+      row,
+    )
+    .await?;
+
+  let response = get_apps_mcp_show(&server.base_url, &mcp_id, &bearer_token).await?;
+  assert_eq!(
+    StatusCode::FORBIDDEN,
+    response.status(),
+    "Access request approved by a different user must be rejected"
+  );
+  let body: Value = response.json().await?;
+  assert_eq!(
+    "access_request_auth_error-user_mismatch",
+    body["error"]["code"].as_str().expect("error code present")
+  );
+
+  server.handle.shutdown().await?;
+  Ok(())
+}
+
+/// Revocation takes effect immediately on the guarded route.
+///
+/// Replicates the revoke handler's two effects directly (DB `update_revocation`
+/// + evicting cached exchanges via `access_request_cache_needle`) rather than
+/// driving POST /access-requests/{id}/revoke: the session-authenticated endpoint
+/// only revokes rows owned by the session user, but this row belongs to the
+/// simulator's external user, so the endpoint could never find it.
+///
+/// Uses the REAL tenant (not TEST_TENANT_ID) and a full-claims bearer, so the
+/// post-eviction request re-enters `handle_external_client_token` and is
+/// rejected by the production scope validation (row no longer Approved).
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_revoked_access_request_rejected_immediately() -> anyhow::Result<()> {
+  let server = start_test_live_server().await?;
+  let tenant = server
+    .app_service
+    .tenant_service()
+    .get_standalone_app()
+    .await?
+    .expect("standalone tenant must exist");
+
+  let mcp_id = seed_mcp_instance_in_tenant(&server.app_service, &tenant.id).await?;
+
+  let simulator = ExternalTokenSimulator::new(&server.app_service);
+  let (bearer_token, row_id) = simulator
+    .create_revalidatable_token(
+      Some("scope_user_user"),
+      "test-external-app",
+      Some(mcp_grants(&mcp_id)),
+      &tenant.id,
+      &tenant.client_id,
+    )
+    .await?;
+
+  let response = get_apps_mcp_show(&server.base_url, &mcp_id, &bearer_token).await?;
+  assert_eq!(
+    StatusCode::OK,
+    response.status(),
+    "Guarded route must be accessible before revocation"
+  );
+
+  server
+    .app_service
+    .db_service()
+    .update_revocation(&tenant.id, &row_id, EXTERNAL_USER_ID)
+    .await?;
+  server
+    .app_service
+    .cache_service()
+    .remove_entries_containing(&access_request_cache_needle(&row_id));
+
+  let response = get_apps_mcp_show(&server.base_url, &mcp_id, &bearer_token).await?;
+  assert_eq!(
+    StatusCode::FORBIDDEN,
+    response.status(),
+    "Same request must be rejected immediately after revocation"
+  );
+  let body: Value = response.json().await?;
+  assert_eq!(
+    "access_request_validation_error-not_approved",
+    body["error"]["code"].as_str().expect("error code present")
   );
 
   server.handle.shutdown().await?;

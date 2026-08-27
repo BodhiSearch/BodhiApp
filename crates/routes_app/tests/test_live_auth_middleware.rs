@@ -154,7 +154,6 @@ async fn test_cross_client_token_exchange_success(
 ) -> anyhow::Result<()> {
   let state = create_test_state(auth_server_config).await?;
 
-  // Draft access requests have NULL tenant_id.
   let db_service = state.db_service();
   let actual_tenant_id = state
     .tenant_service()
@@ -163,64 +162,30 @@ async fn test_cross_client_token_exchange_success(
     .map(|t| t.id)
     .unwrap_or_else(|| TEST_TENANT_ID.to_string());
   let access_request_id = uuid::Uuid::new_v4().to_string();
+
+  // Stateless KC mapper contract: the dotted scope is `<resource-client-id>.<row-id>`
+  // (split on the last dot), composed locally — no consent registration call anymore.
+  let access_request_scope = format!(
+    "{}{}.{}",
+    services::SCOPE_ACCESS_REQUEST_PREFIX,
+    auth_server_config.resource_client_id,
+    access_request_id
+  );
   let now = chrono::Utc::now();
-  let expires_at = now + chrono::Duration::seconds(600);
   let row = services::AppAccessRequest {
-    id: access_request_id.clone(),
-    tenant_id: None,
     app_client_id: auth_server_config.app_client_id.clone(),
-    app_name: None,
-    app_description: None,
-    status: services::AppAccessRequestStatus::Draft,
-    requested: r#"{"version":"1"}"#.to_string(),
-    approved: None,
-    user_id: None,
-    requested_role: "scope_user_user".to_string(),
-    approved_role: None,
-    access_request_scope: None,
-    source_access_request_id: None,
-    error_message: None,
-    expires_at,
-    created_at: now,
-    updated_at: now,
+    access_request_scope: Some(access_request_scope.clone()),
+    ..services::test_utils::approved_request(
+      &access_request_id,
+      &actual_tenant_id,
+      &test_user.user_id,
+      now,
+    )
   };
   db_service.create(&row).await?;
 
-  // KC requires the consent token to be from the resource client, not the app client.
-  let resource_user_token = auth_client
-    .get_user_token(
-      &auth_server_config.resource_client_id,
-      &auth_server_config.resource_client_secret,
-      &test_user.username,
-      &test_user.password,
-      &["openid", "email", "profile", "roles"],
-    )
-    .await?;
-
-  let auth_service = state.auth_service();
-  let kc_response = auth_service
-    .register_access_request_consent(
-      &resource_user_token,
-      &auth_server_config.app_client_id,
-      &access_request_id,
-      "Access approved",
-    )
-    .await?;
-
-  let access_request_scope = kc_response.access_request_scope;
-  let approved_json = r#"{"version":"1"}"#;
-  db_service
-    .update_approval(
-      &access_request_id,
-      &test_user.user_id,
-      &actual_tenant_id,
-      approved_json,
-      "scope_user_user",
-      &access_request_scope,
-    )
-    .await?;
-
-  // Get bearer token WITH scope_access_request:<uuid> — KC injects aud and access_request_id claim
+  // Get bearer token WITH scope_access_request:<client>.<uuid> — KC injects aud and
+  // access_request_id claim via the stateless mapper
   let scopes = vec![
     "openid",
     "email",

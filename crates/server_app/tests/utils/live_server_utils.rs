@@ -207,10 +207,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     db_service.clone(),
     auth_service.clone(),
     time_service.clone(),
-    setting_service.clone(),
-    Arc::new(StubNetworkService {
-      ip: Some("127.0.0.1".to_string()),
-    }),
   ));
 
   let network_service = Arc::new(StubNetworkService {
@@ -589,10 +585,6 @@ pub async fn setup_test_app_service_with_time(
     db_service.clone(),
     auth_service.clone(),
     time_service.clone(),
-    setting_service.clone(),
-    Arc::new(StubNetworkService {
-      ip: Some("127.0.0.1".to_string()),
-    }),
   ));
   let network_service = Arc::new(StubNetworkService {
     ip: Some("127.0.0.1".to_string()),
@@ -977,10 +969,6 @@ pub async fn setup_multitenant_app_service(
     db_service.clone(),
     auth_service.clone(),
     time_service.clone(),
-    setting_service.clone(),
-    Arc::new(StubNetworkService {
-      ip: Some("127.0.0.1".to_string()),
-    }),
   ));
 
   let network_service = Arc::new(StubNetworkService {

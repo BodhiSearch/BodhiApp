@@ -1,17 +1,14 @@
 use crate::test_utils::RequestAuthContextExt;
 use crate::{
-  apps::{
-    AccessRequestActionResponse, AppAccessSummary, CreateAccessRequestResponse,
-    ListAppAccessResponse,
-  },
-  apps_approve_access_request, apps_create_access_request, apps_deny_access_request,
-  apps_list_user_access, apps_revoke_access_request, ResourceAccess,
-  ENDPOINT_ACCESS_REQUESTS_APPROVE, ENDPOINT_ACCESS_REQUESTS_APPS, ENDPOINT_ACCESS_REQUESTS_DENY,
-  ENDPOINT_ACCESS_REQUESTS_REVOKE, ENDPOINT_APPS_REQUEST_ACCESS,
+  apps::{AppAccessSummary, ListAppAccessResponse},
+  apps_get_consent_context, apps_list_user_access, apps_revoke_access_request, apps_submit_consent,
+  ResourceAccess, ENDPOINT_ACCESS_REQUESTS_APPS, ENDPOINT_ACCESS_REQUESTS_REVOKE,
+  ENDPOINT_APPS_ACCESS_REQUESTS, ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT,
 };
 use anyhow_trace::anyhow_trace;
-use axum::{body::Body, http::StatusCode, routing::put};
 use axum::{
+  body::Body,
+  http::StatusCode,
   routing::{get, post},
   Router,
 };
@@ -19,19 +16,22 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::test_utils::ResponseTestExt;
-use services::AppAccessRequestStatus;
-use services::AuthContext;
-use services::ResourceRole;
 use services::{
   test_utils::{
-    AppServiceStubBuilder, FrozenTimeService, SettingServiceStub, StubNetworkService,
-    TEST_TENANT_ID,
+    approved_request, make_request, AppServiceStubBuilder, FrozenTimeService, TEST_TENANT_ID,
   },
-  AppAccessRequest, DbService, DefaultAccessRequestService, MockAuthService,
-  RegisterAccessRequestConsentResponse,
+  AppAccessRequest, AppAccessRequestStatus, AppClientInfo, AuthContext, AuthServiceError,
+  DbService, DefaultAccessRequestService, MockAuthService, ResourceRole,
+  SCOPE_ACCESS_REQUEST_PREFIX,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
+
+const APP_CLIENT_ID: &str = "app-acme";
+const REDIRECT_URI: &str = "https://acme.dev/cb";
+/// The session resource client id baked into `AuthContext::test_session*` factories.
+const RESOURCE_CLIENT_ID: &str = "test-client-id";
+const AUTHORIZE_ENDPOINT: &str = "https://kc.example.com/realms/bodhi/protocol/openid-connect/auth";
 
 struct TestHarness {
   state: Arc<dyn services::AppService>,
@@ -46,14 +46,9 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
   let auth_service: Arc<dyn services::AuthService> = Arc::new(mock_auth);
 
   builder.with_tenant(services::Tenant::test_default()).await;
-  let access_request_service: Arc<dyn services::AccessRequestService> =
-    Arc::new(DefaultAccessRequestService::new(
-      db_service.clone(),
-      auth_service.clone(),
-      time_service.clone(),
-      Arc::new(SettingServiceStub::default()),
-      Arc::new(StubNetworkService { ip: None }),
-    ));
+  let access_request_service: Arc<dyn services::AccessRequestService> = Arc::new(
+    DefaultAccessRequestService::new(db_service.clone(), auth_service.clone(), time_service),
+  );
 
   let app_service = builder
     .auth_service(auth_service)
@@ -61,39 +56,132 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
     .build()
     .await?;
 
-  let state: Arc<dyn services::AppService> = Arc::new(app_service);
-
-  Ok(TestHarness { state, db_service })
+  Ok(TestHarness {
+    state: Arc::new(app_service),
+    db_service,
+  })
 }
 
-async fn seed_draft_request(
+/// MockAuthService resolving `app-acme` with `https://acme.dev/cb` registered.
+fn consent_mock_auth() -> MockAuthService {
+  let mut mock = MockAuthService::default();
+  mock.expect_get_app_client_info().returning(|_, _| {
+    Ok(AppClientInfo {
+      name: "Acme App".to_string(),
+      description: "Acme test app".to_string(),
+      redirect_uris: Some(vec![REDIRECT_URI.to_string()]),
+    })
+  });
+  mock
+}
+
+fn consent_mock_auth_with_authorize() -> MockAuthService {
+  let mut mock = consent_mock_auth();
+  mock
+    .expect_authorize_url()
+    .return_const(AUTHORIZE_ENDPOINT.to_string());
+  mock
+}
+
+fn consent_router(state: Arc<dyn services::AppService>) -> Router {
+  Router::new()
+    .route(
+      ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT,
+      get(apps_get_consent_context),
+    )
+    .route(ENDPOINT_APPS_ACCESS_REQUESTS, post(apps_submit_consent))
+    .with_state(state)
+}
+
+fn management_router(state: Arc<dyn services::AppService>) -> Router {
+  Router::new()
+    .route(ENDPOINT_ACCESS_REQUESTS_APPS, get(apps_list_user_access))
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_REVOKE,
+      post(apps_revoke_access_request),
+    )
+    .with_state(state)
+}
+
+fn base_pairs() -> Vec<(&'static str, String)> {
+  vec![
+    ("client_id", APP_CLIENT_ID.to_string()),
+    ("redirect_uri", REDIRECT_URI.to_string()),
+    ("response_type", "code".to_string()),
+    ("state", "st-123".to_string()),
+    ("code_challenge", "ch-456".to_string()),
+    ("code_challenge_method", "S256".to_string()),
+  ]
+}
+
+fn encode_query(pairs: &[(&str, String)]) -> String {
+  let mut serializer = url::form_urlencoded::Serializer::new(String::new());
+  for (key, value) in pairs {
+    serializer.append_pair(key, value);
+  }
+  serializer.finish()
+}
+
+fn consent_query() -> String {
+  encode_query(&base_pairs())
+}
+
+fn consent_query_with(extra: &[(&str, &str)]) -> String {
+  let mut pairs = base_pairs();
+  for (key, value) in extra {
+    pairs.push((key, value.to_string()));
+  }
+  encode_query(&pairs)
+}
+
+fn get_consent_request(query: &str, ctx: AuthContext) -> axum::http::Request<Body> {
+  axum::http::Request::builder()
+    .method("GET")
+    .uri(format!("{ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT}?{query}"))
+    .body(Body::empty())
+    .unwrap()
+    .with_auth_context(ctx)
+}
+
+fn post_consent_request(
+  body: &Value,
+  ctx: AuthContext,
+) -> anyhow::Result<axum::http::Request<Body>> {
+  Ok(
+    axum::http::Request::builder()
+      .method("POST")
+      .uri(ENDPOINT_APPS_ACCESS_REQUESTS)
+      .header("Content-Type", "application/json")
+      .body(Body::from(serde_json::to_string(body)?))?
+      .with_auth_context(ctx),
+  )
+}
+
+fn user_session(user_id: &str) -> AuthContext {
+  AuthContext::test_session_with_token(user_id, "user@test.com", ResourceRole::User, "dummy-token")
+}
+
+fn session_with_role(user_id: &str, role: ResourceRole) -> AuthContext {
+  AuthContext::test_session_with_token(user_id, "user@test.com", role, "dummy-token")
+}
+
+async fn seed_approved(
   db_service: &dyn DbService,
-  request_id: &str,
-  requested_role: &str,
+  id: &str,
+  user_id: &str,
+  app_client_id: &str,
+  approved_json: &str,
+  created_at: chrono::DateTime<chrono::Utc>,
 ) -> anyhow::Result<AppAccessRequest> {
-  let now = chrono::Utc::now();
   let row = AppAccessRequest {
-    id: request_id.to_string(),
-    tenant_id: Some(TEST_TENANT_ID.to_string()),
-    app_client_id: "test-app-client".to_string(),
-    app_name: Some("Test App".to_string()),
-    app_description: None,
-    status: AppAccessRequestStatus::Draft,
-    requested: r#"{"version":"1","mcp_servers":[{"url":"https://mcp.example.com/mcp"}]}"#
-      .to_string(),
-    approved: None,
-    user_id: None,
-    requested_role: requested_role.to_string(),
-    approved_role: None,
-    access_request_scope: None,
-    source_access_request_id: None,
-    error_message: None,
-    expires_at: now + chrono::Duration::seconds(600),
-    created_at: now,
-    updated_at: now,
+    app_client_id: app_client_id.to_string(),
+    approved: Some(approved_json.to_string()),
+    access_request_scope: Some(format!(
+      "{SCOPE_ACCESS_REQUEST_PREFIX}{RESOURCE_CLIENT_ID}.{id}"
+    )),
+    ..approved_request(id, TEST_TENANT_ID, user_id, created_at)
   };
-  let result = db_service.create(&row).await?;
-  Ok(result)
+  Ok(db_service.create(&row).await?)
 }
 
 async fn seed_mcp_instance(
@@ -137,68 +225,795 @@ async fn seed_mcp_instance(
   Ok(instance.id)
 }
 
-#[allow(clippy::too_many_arguments)]
-async fn seed_approved_request(
-  db_service: &dyn DbService,
-  request_id: &str,
-  user_id: &str,
-  app_client_id: &str,
-  approved_json: &str,
-) -> anyhow::Result<AppAccessRequest> {
-  let now = chrono::Utc::now();
-  let row = AppAccessRequest {
-    id: request_id.to_string(),
-    tenant_id: Some(TEST_TENANT_ID.to_string()),
-    app_client_id: app_client_id.to_string(),
-    app_name: Some("Test App".to_string()),
-    app_description: None,
-    status: AppAccessRequestStatus::Approved,
-    requested: r#"{"version":"1"}"#.to_string(),
-    approved: Some(approved_json.to_string()),
-    user_id: Some(user_id.to_string()),
-    requested_role: "scope_user_user".to_string(),
-    approved_role: Some("scope_user_user".to_string()),
-    access_request_scope: Some(format!("scope_access_request:{request_id}")),
-    source_access_request_id: None,
-    error_message: None,
-    expires_at: now + chrono::Duration::seconds(600),
-    created_at: now,
-    updated_at: now,
-  };
-  let result = db_service.create(&row).await?;
-  Ok(result)
+// ---------------------------------------------------------------------------
+// Consent context (GET)
+// ---------------------------------------------------------------------------
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_get_consent_context_happy_path_defaults() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let router = consent_router(harness.state);
+
+  let response = router
+    .oneshot(get_consent_request(
+      // Empty scope param → role User, both sections requested.
+      &consent_query_with(&[("scope", "")]),
+      user_session("owner-1"),
+    ))
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!("ok", body["result"].as_str().unwrap());
+  assert_eq!(APP_CLIENT_ID, body["app"]["client_id"].as_str().unwrap());
+  assert_eq!("Acme App", body["app"]["name"].as_str().unwrap());
+  assert_eq!(
+    "Acme test app",
+    body["app"]["description"].as_str().unwrap()
+  );
+  assert_eq!(REDIRECT_URI, body["app"]["redirect_uri"].as_str().unwrap());
+  assert_eq!("scope_user_user", body["scope"]["role"].as_str().unwrap());
+  assert_eq!(true, body["scope"]["llms"].as_bool().unwrap());
+  assert_eq!(true, body["scope"]["mcps"].as_bool().unwrap());
+  assert_eq!(0, body["scope"]["passthrough"].as_array().unwrap().len());
+  assert_eq!(true, body["can_approve"].as_bool().unwrap());
+  assert!(body.get("prior_grant").is_none());
+  Ok(())
 }
 
-fn management_router(state: Arc<dyn services::AppService>) -> Router {
-  Router::new()
-    .route(ENDPOINT_ACCESS_REQUESTS_APPS, get(apps_list_user_access))
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_REVOKE,
-      post(apps_revoke_access_request),
-    )
-    .with_state(state)
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_get_consent_context_guest_cannot_approve() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let router = consent_router(harness.state);
+
+  let response = router
+    .oneshot(get_consent_request(
+      &consent_query(),
+      session_with_role("guest-1", ResourceRole::Guest),
+    ))
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!("ok", body["result"].as_str().unwrap());
+  assert_eq!(false, body["can_approve"].as_bool().unwrap());
+  Ok(())
 }
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_get_consent_context_prior_grant_explicit() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  seed_approved(
+    harness.db_service.as_ref(),
+    "ar-prior",
+    "owner-1",
+    APP_CLIENT_ID,
+    r#"{"version":"1","models_list":true,"models_access":{"type":"specific","ids":["alias-x"]}}"#,
+    chrono::Utc::now(),
+  )
+  .await?;
+
+  let router = consent_router(harness.state);
+  let response = router
+    .oneshot(get_consent_request(
+      &consent_query_with(&[("source_access_request_id", "ar-prior")]),
+      user_session("owner-1"),
+    ))
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!("ok", body["result"].as_str().unwrap());
+  assert_eq!("ar-prior", body["prior_grant"]["id"].as_str().unwrap());
+  assert_eq!("explicit", body["prior_grant"]["source"].as_str().unwrap());
+  assert_eq!(
+    "scope_user_user",
+    body["prior_grant"]["approved_role"].as_str().unwrap()
+  );
+  assert_eq!(
+    "alias-x",
+    body["prior_grant"]["approved"]["models_access"]["ids"][0]
+      .as_str()
+      .unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_get_consent_context_prior_grant_latest() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let now = chrono::Utc::now();
+  seed_approved(
+    harness.db_service.as_ref(),
+    "ar-older",
+    "owner-1",
+    APP_CLIENT_ID,
+    r#"{"version":"1"}"#,
+    now - chrono::Duration::hours(2),
+  )
+  .await?;
+  seed_approved(
+    harness.db_service.as_ref(),
+    "ar-newer",
+    "owner-1",
+    APP_CLIENT_ID,
+    r#"{"version":"1"}"#,
+    now,
+  )
+  .await?;
+
+  let router = consent_router(harness.state);
+  let response = router
+    .oneshot(get_consent_request(
+      &consent_query(),
+      user_session("owner-1"),
+    ))
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!("ar-newer", body["prior_grant"]["id"].as_str().unwrap());
+  assert_eq!("latest", body["prior_grant"]["source"].as_str().unwrap());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_get_consent_context_non_matching_source_ignored_no_latest_fallback(
+) -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let now = chrono::Utc::now();
+  // A grant belonging to another user, named explicitly as the source.
+  seed_approved(
+    harness.db_service.as_ref(),
+    "ar-foreign",
+    "someone-else",
+    APP_CLIENT_ID,
+    r#"{"version":"1"}"#,
+    now,
+  )
+  .await?;
+  // The caller has a latest grant, but an explicit non-matching source must NOT fall back.
+  seed_approved(
+    harness.db_service.as_ref(),
+    "ar-mine",
+    "owner-1",
+    APP_CLIENT_ID,
+    r#"{"version":"1"}"#,
+    now,
+  )
+  .await?;
+
+  let router = consent_router(harness.state);
+  let response = router
+    .oneshot(get_consent_request(
+      &consent_query_with(&[("source_access_request_id", "ar-foreign")]),
+      user_session("owner-1"),
+    ))
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!("ok", body["result"].as_str().unwrap());
+  assert!(body.get("prior_grant").is_none());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_get_consent_context_unknown_client_error_union_no_redirect() -> anyhow::Result<()> {
+  let mut mock_auth = MockAuthService::default();
+  mock_auth.expect_get_app_client_info().returning(|_, _| {
+    Err(AuthServiceError::AuthServiceApiError {
+      status: 404,
+      body: "client not found".to_string(),
+    })
+  });
+  let harness = build_test_harness(mock_auth).await?;
+
+  let router = consent_router(harness.state);
+  let response = router
+    .oneshot(get_consent_request(
+      &consent_query(),
+      user_session("owner-1"),
+    ))
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!("error", body["result"].as_str().unwrap());
+  assert_eq!("unauthorized_client", body["error"].as_str().unwrap());
+  assert!(body.get("redirect_url").is_none());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_get_consent_context_redirect_uri_mismatch_error_union_no_redirect(
+) -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let mut pairs = base_pairs();
+  pairs[1] = ("redirect_uri", "https://evil.dev/cb".to_string());
+
+  let router = consent_router(harness.state);
+  let response = router
+    .oneshot(get_consent_request(
+      &encode_query(&pairs),
+      user_session("owner-1"),
+    ))
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!("error", body["result"].as_str().unwrap());
+  assert_eq!("invalid_request", body["error"].as_str().unwrap());
+  assert!(body.get("redirect_url").is_none());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_get_consent_context_invalid_scope_error_union_with_redirect() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+
+  let router = consent_router(harness.state);
+  let response = router
+    .oneshot(get_consent_request(
+      &consent_query_with(&[("scope", "scope_apps:garbage")]),
+      user_session("owner-1"),
+    ))
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!("error", body["result"].as_str().unwrap());
+  assert_eq!("invalid_scope", body["error"].as_str().unwrap());
+  let redirect_url = body["redirect_url"].as_str().unwrap();
+  assert!(redirect_url.starts_with(REDIRECT_URI));
+  assert!(redirect_url.contains("error_source=bodhi"));
+  assert!(redirect_url.contains("state=st-123"));
+  Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Submit consent (POST) — approve
+// ---------------------------------------------------------------------------
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_approve_happy_path() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth_with_authorize()).await?;
+  let router = consent_router(harness.state);
+
+  let body = json!({
+    "query": consent_query(),
+    "decision": "approve",
+    "approved_role": "scope_user_user",
+    "approved": {"version": "1"}
+  });
+  let response = router
+    .oneshot(post_consent_request(&body, user_session("approver-1"))?)
+    .await?;
+  assert_eq!(StatusCode::CREATED, response.status());
+
+  let body = response.json::<Value>().await?;
+  let id = body["id"].as_str().expect("approve returns the row id");
+  let expected_scope =
+    format!("openid profile email roles {SCOPE_ACCESS_REQUEST_PREFIX}{RESOURCE_CLIENT_ID}.{id}");
+  let expected_url = format!(
+    "{AUTHORIZE_ENDPOINT}?response_type=code&client_id=app-acme\
+     &redirect_uri=https%3A%2F%2Facme.dev%2Fcb&state=st-123&code_challenge=ch-456\
+     &code_challenge_method=S256&scope=openid+profile+email+roles+scope_access_request%3A{RESOURCE_CLIENT_ID}.{id}"
+  );
+  assert_eq!(expected_url, body["redirect_url"].as_str().unwrap());
+
+  let url = url::Url::parse(body["redirect_url"].as_str().unwrap())?;
+  let pairs: Vec<(String, String)> = url
+    .query_pairs()
+    .map(|(k, v)| (k.into_owned(), v.into_owned()))
+    .collect();
+  assert!(pairs.contains(&("response_type".to_string(), "code".to_string())));
+  assert!(pairs.contains(&("client_id".to_string(), APP_CLIENT_ID.to_string())));
+  assert!(pairs.contains(&("redirect_uri".to_string(), REDIRECT_URI.to_string())));
+  assert!(pairs.contains(&("state".to_string(), "st-123".to_string())));
+  assert!(pairs.contains(&("code_challenge".to_string(), "ch-456".to_string())));
+  assert!(pairs.contains(&("code_challenge_method".to_string(), "S256".to_string())));
+  assert!(pairs.contains(&("scope".to_string(), expected_scope.clone())));
+
+  let row = harness
+    .db_service
+    .get(TEST_TENANT_ID, id)
+    .await?
+    .expect("approved row persisted");
+  assert_eq!(AppAccessRequestStatus::Approved, row.status);
+  assert_eq!(Some("approver-1".to_string()), row.user_id);
+  assert_eq!(
+    Some(format!(
+      "{SCOPE_ACCESS_REQUEST_PREFIX}{RESOURCE_CLIENT_ID}.{id}"
+    )),
+    row.access_request_scope
+  );
+  assert_eq!(None, row.source_access_request_id);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_approve_passthrough_scope_survives() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth_with_authorize()).await?;
+  let router = consent_router(harness.state);
+
+  let body = json!({
+    "query": consent_query_with(&[("scope", "scope_user_user offline_access")]),
+    "decision": "approve",
+    "approved_role": "scope_user_user",
+    "approved": {"version": "1"}
+  });
+  let response = router
+    .oneshot(post_consent_request(&body, user_session("approver-1"))?)
+    .await?;
+  assert_eq!(StatusCode::CREATED, response.status());
+
+  let body = response.json::<Value>().await?;
+  let id = body["id"].as_str().unwrap();
+  let url = url::Url::parse(body["redirect_url"].as_str().unwrap())?;
+  let scope = url
+    .query_pairs()
+    .find(|(k, _)| k == "scope")
+    .map(|(_, v)| v.into_owned())
+    .expect("scope param present");
+  assert_eq!(
+    format!("openid profile email roles offline_access {SCOPE_ACCESS_REQUEST_PREFIX}{RESOURCE_CLIENT_ID}.{id}"),
+    scope
+  );
+  Ok(())
+}
+
+#[rstest]
+#[case::approved_exceeds_requested("", ResourceRole::PowerUser, "scope_user_power_user")]
+#[case::approved_exceeds_approver_ceiling(
+  "scope_user_power_user",
+  ResourceRole::User,
+  "scope_user_power_user"
+)]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_approve_privilege_escalation_forbidden(
+  #[case] requested_scope: &str,
+  #[case] approver_role: ResourceRole,
+  #[case] approved_role: &str,
+) -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let router = consent_router(harness.state);
+
+  let body = json!({
+    "query": consent_query_with(&[("scope", requested_scope)]),
+    "decision": "approve",
+    "approved_role": approved_role,
+    "approved": {"version": "1"}
+  });
+  let response = router
+    .oneshot(post_consent_request(
+      &body,
+      session_with_role("approver-1", approver_role),
+    )?)
+    .await?;
+  assert_eq!(StatusCode::FORBIDDEN, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "apps_route_error-privilege_escalation",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_approve_valid_downgrade() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth_with_authorize()).await?;
+  let router = consent_router(harness.state);
+
+  let body = json!({
+    "query": consent_query_with(&[("scope", "scope_user_power_user")]),
+    "decision": "approve",
+    "approved_role": "scope_user_user",
+    "approved": {"version": "1"}
+  });
+  let response = router
+    .oneshot(post_consent_request(
+      &body,
+      session_with_role("approver-1", ResourceRole::PowerUser),
+    )?)
+    .await?;
+  assert_eq!(StatusCode::CREATED, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert!(body["id"].as_str().is_some());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_approve_guest_forbidden() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let router = consent_router(harness.state);
+
+  let body = json!({
+    "query": consent_query(),
+    "decision": "approve",
+    "approved_role": "scope_user_user",
+    "approved": {"version": "1"}
+  });
+  let response = router
+    .oneshot(post_consent_request(
+      &body,
+      session_with_role("guest-1", ResourceRole::Guest),
+    )?)
+    .await?;
+  assert_eq!(StatusCode::FORBIDDEN, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "apps_route_error-insufficient_privileges",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[case::missing_approved_role(json!({
+  "query": "", "decision": "approve", "approved": {"version": "1"}
+}))]
+#[case::missing_approved(json!({
+  "query": "", "decision": "approve", "approved_role": "scope_user_user"
+}))]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_approve_missing_fields_bad_request(
+  #[case] mut body: Value,
+) -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let router = consent_router(harness.state);
+  body["query"] = Value::String(consent_query());
+
+  let response = router
+    .oneshot(post_consent_request(&body, user_session("approver-1"))?)
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "apps_route_error-consent_field_missing",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_approve_grant_exceeds_scope_rejected() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let router = consent_router(harness.state);
+
+  // Scope suppressed MCPs, yet the grant carries an MCP approval.
+  let body = json!({
+    "query": consent_query_with(&[("scope", "scope_apps:mcps:false")]),
+    "decision": "approve",
+    "approved_role": "scope_user_user",
+    "approved": {
+      "version": "1",
+      "mcps": [{
+        "url": "https://mcp.example.com/mcp",
+        "status": "approved",
+        "instance": {"id": "any-instance"}
+      }]
+    }
+  });
+  let response = router
+    .oneshot(post_consent_request(&body, user_session("approver-1"))?)
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "app_scope_error-grant_exceeds_scope",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_approve_mcp_instance_not_owned() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let router = consent_router(harness.state);
+
+  let body = json!({
+    "query": consent_query(),
+    "decision": "approve",
+    "approved_role": "scope_user_user",
+    "approved": {
+      "version": "1",
+      "mcps": [{
+        "url": "https://mcp.example.com/mcp",
+        "status": "approved",
+        "instance": {"id": "nonexistent-instance"}
+      }]
+    }
+  });
+  let response = router
+    .oneshot(post_consent_request(&body, user_session("approver-1"))?)
+    .await?;
+  assert_eq!(StatusCode::FORBIDDEN, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "apps_route_error-mcp_instance_not_owned",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_approve_mcp_instance_disabled() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let instance_id = seed_mcp_instance(
+    harness.state.as_ref(),
+    "approver-1",
+    "https://mcp.example.com/mcp",
+    "disabled-tool",
+    false,
+  )
+  .await?;
+  let router = consent_router(harness.state);
+
+  let body = json!({
+    "query": consent_query(),
+    "decision": "approve",
+    "approved_role": "scope_user_user",
+    "approved": {
+      "version": "1",
+      "mcps": [{
+        "url": "https://mcp.example.com/mcp",
+        "status": "approved",
+        "instance": {"id": instance_id}
+      }]
+    }
+  });
+  let response = router
+    .oneshot(post_consent_request(&body, user_session("approver-1"))?)
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "apps_route_error-mcp_instance_not_configured",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_approve_stores_resolving_source_id() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth_with_authorize()).await?;
+  seed_approved(
+    harness.db_service.as_ref(),
+    "ar-prior",
+    "approver-1",
+    APP_CLIENT_ID,
+    r#"{"version":"1"}"#,
+    chrono::Utc::now(),
+  )
+  .await?;
+  let router = consent_router(harness.state);
+
+  let body = json!({
+    "query": consent_query_with(&[("source_access_request_id", "ar-prior")]),
+    "decision": "approve",
+    "approved_role": "scope_user_user",
+    "approved": {"version": "1"}
+  });
+  let response = router
+    .oneshot(post_consent_request(&body, user_session("approver-1"))?)
+    .await?;
+  assert_eq!(StatusCode::CREATED, response.status());
+
+  let body = response.json::<Value>().await?;
+  let id = body["id"].as_str().unwrap();
+  let row = harness
+    .db_service
+    .get(TEST_TENANT_ID, id)
+    .await?
+    .expect("approved row persisted");
+  assert_eq!(Some("ar-prior".to_string()), row.source_access_request_id);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_approve_drops_non_resolving_source_id() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth_with_authorize()).await?;
+  // The named source belongs to a different user — must not be stored.
+  seed_approved(
+    harness.db_service.as_ref(),
+    "ar-foreign",
+    "someone-else",
+    APP_CLIENT_ID,
+    r#"{"version":"1"}"#,
+    chrono::Utc::now(),
+  )
+  .await?;
+  let router = consent_router(harness.state);
+
+  let body = json!({
+    "query": consent_query_with(&[("source_access_request_id", "ar-foreign")]),
+    "decision": "approve",
+    "approved_role": "scope_user_user",
+    "approved": {"version": "1"}
+  });
+  let response = router
+    .oneshot(post_consent_request(&body, user_session("approver-1"))?)
+    .await?;
+  assert_eq!(StatusCode::CREATED, response.status());
+
+  let body = response.json::<Value>().await?;
+  let id = body["id"].as_str().unwrap();
+  let row = harness
+    .db_service
+    .get(TEST_TENANT_ID, id)
+    .await?
+    .expect("approved row persisted");
+  assert_eq!(None, row.source_access_request_id);
+  Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Submit consent (POST) — deny + query failures
+// ---------------------------------------------------------------------------
+
+#[rstest]
+#[case::user(ResourceRole::User)]
+#[case::guest(ResourceRole::Guest)]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_deny_redirects_with_access_denied(
+  #[case] role: ResourceRole,
+) -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let router = consent_router(harness.state);
+
+  let body = json!({
+    "query": consent_query(),
+    "decision": "deny"
+  });
+  let response = router
+    .oneshot(post_consent_request(
+      &body,
+      session_with_role("denier-1", role),
+    )?)
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert!(body.get("id").is_none(), "deny creates no row");
+  let redirect_url = body["redirect_url"].as_str().unwrap();
+  assert!(redirect_url.starts_with(REDIRECT_URI));
+  let url = url::Url::parse(redirect_url)?;
+  let pairs: Vec<(String, String)> = url
+    .query_pairs()
+    .map(|(k, v)| (k.into_owned(), v.into_owned()))
+    .collect();
+  assert!(pairs.contains(&("error".to_string(), "access_denied".to_string())));
+  assert!(pairs.contains(&("error_source".to_string(), "bodhi".to_string())));
+  assert!(pairs.contains(&("state".to_string(), "st-123".to_string())));
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_redirect_mismatch_rejected_in_app() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let router = consent_router(harness.state);
+
+  let mut pairs = base_pairs();
+  pairs[1] = ("redirect_uri", "https://evil.dev/cb".to_string());
+  let body = json!({
+    "query": encode_query(&pairs),
+    "decision": "approve",
+    "approved_role": "scope_user_user",
+    "approved": {"version": "1"}
+  });
+  let response = router
+    .oneshot(post_consent_request(&body, user_session("approver-1"))?)
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "apps_route_error-consent_rejected",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_submit_consent_redirectable_bad_query_returns_error_redirect() -> anyhow::Result<()> {
+  let harness = build_test_harness(consent_mock_auth()).await?;
+  let router = consent_router(harness.state);
+
+  let body = json!({
+    "query": consent_query_with(&[("scope", "scope_apps:garbage")]),
+    "decision": "approve",
+    "approved_role": "scope_user_user",
+    "approved": {"version": "1"}
+  });
+  let response = router
+    .oneshot(post_consent_request(&body, user_session("approver-1"))?)
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert!(body.get("id").is_none(), "no row on a redirected error");
+  let redirect_url = body["redirect_url"].as_str().unwrap();
+  assert!(redirect_url.starts_with(REDIRECT_URI));
+  assert!(redirect_url.contains("error=invalid_scope"));
+  assert!(redirect_url.contains("error_source=bodhi"));
+  Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// List + revoke (unchanged endpoints)
+// ---------------------------------------------------------------------------
 
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_list_user_access_returns_only_callers_approved_with_summary() -> anyhow::Result<()> {
   let harness = build_test_harness(MockAuthService::default()).await?;
-  seed_approved_request(
+  seed_approved(
     harness.db_service.as_ref(),
     "ar-mine",
     "owner-1",
     "app-mine",
     r#"{"version":"1","models_list":true,"models_access":{"type":"specific","ids":["alias-x"]},"mcps_list":false,"mcps_access":{"type":"specific","ids":["mcp-1"]}}"#,
+    chrono::Utc::now(),
   )
   .await?;
   // Another user's grant must NOT appear.
-  seed_approved_request(
+  seed_approved(
     harness.db_service.as_ref(),
     "ar-other",
     "owner-2",
     "app-other",
     r#"{"version":"1"}"#,
+    chrono::Utc::now(),
   )
   .await?;
 
@@ -207,12 +1022,7 @@ async fn test_list_user_access_returns_only_callers_approved_with_summary() -> a
     .method("GET")
     .uri(ENDPOINT_ACCESS_REQUESTS_APPS)
     .body(Body::empty())?
-    .with_auth_context(AuthContext::test_session_with_token(
-      "owner-1",
-      "owner1@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
+    .with_auth_context(user_session("owner-1"));
   let response = router.oneshot(request).await?;
   assert_eq!(StatusCode::OK, response.status());
 
@@ -243,12 +1053,13 @@ async fn test_list_user_access_returns_only_callers_approved_with_summary() -> a
 #[anyhow_trace]
 async fn test_revoke_access_request_transitions_to_revoked() -> anyhow::Result<()> {
   let harness = build_test_harness(MockAuthService::default()).await?;
-  seed_approved_request(
+  seed_approved(
     harness.db_service.as_ref(),
     "ar-revoke",
     "owner-1",
     "app-1",
     r#"{"version":"1"}"#,
+    chrono::Utc::now(),
   )
   .await?;
 
@@ -257,12 +1068,7 @@ async fn test_revoke_access_request_transitions_to_revoked() -> anyhow::Result<(
     .method("POST")
     .uri("/bodhi/v1/access-requests/ar-revoke/revoke")
     .body(Body::empty())?
-    .with_auth_context(AuthContext::test_session_with_token(
-      "owner-1",
-      "owner1@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
+    .with_auth_context(user_session("owner-1"));
   let response = router.oneshot(request).await?;
   assert_eq!(StatusCode::OK, response.status());
   let summary = response.json::<AppAccessSummary>().await?;
@@ -274,12 +1080,7 @@ async fn test_revoke_access_request_transitions_to_revoked() -> anyhow::Result<(
     .method("GET")
     .uri(ENDPOINT_ACCESS_REQUESTS_APPS)
     .body(Body::empty())?
-    .with_auth_context(AuthContext::test_session_with_token(
-      "owner-1",
-      "owner1@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
+    .with_auth_context(user_session("owner-1"));
   let list_resp = list_router.oneshot(list_req).await?;
   let body = list_resp.json::<ListAppAccessResponse>().await?;
   assert_eq!(0, body.data.len());
@@ -291,12 +1092,13 @@ async fn test_revoke_access_request_transitions_to_revoked() -> anyhow::Result<(
 #[anyhow_trace]
 async fn test_revoke_access_request_not_owner_rejected() -> anyhow::Result<()> {
   let harness = build_test_harness(MockAuthService::default()).await?;
-  seed_approved_request(
+  seed_approved(
     harness.db_service.as_ref(),
     "ar-revoke-2",
     "owner-1",
     "app-1",
     r#"{"version":"1"}"#,
+    chrono::Utc::now(),
   )
   .await?;
 
@@ -306,12 +1108,7 @@ async fn test_revoke_access_request_not_owner_rejected() -> anyhow::Result<()> {
     .method("POST")
     .uri("/bodhi/v1/access-requests/ar-revoke-2/revoke")
     .body(Body::empty())?
-    .with_auth_context(AuthContext::test_session_with_token(
-      "attacker",
-      "attacker@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
+    .with_auth_context(user_session("attacker"));
   let response = router.oneshot(request).await?;
   assert_ne!(StatusCode::OK, response.status());
   Ok(())
@@ -323,836 +1120,17 @@ async fn test_revoke_access_request_not_owner_rejected() -> anyhow::Result<()> {
 async fn test_revoke_non_approved_request_rejected() -> anyhow::Result<()> {
   let harness = build_test_harness(MockAuthService::default()).await?;
   // A draft (never approved) cannot be revoked.
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    "ar-draft-revoke",
-    "scope_user_user",
-  )
-  .await?;
+  let row = make_request("ar-draft-revoke", TEST_TENANT_ID, chrono::Utc::now());
+  harness.db_service.create(&row).await?;
 
   let router = management_router(harness.state);
   let request = axum::http::Request::builder()
     .method("POST")
     .uri("/bodhi/v1/access-requests/ar-draft-revoke/revoke")
     .body(Body::empty())?
-    .with_auth_context(AuthContext::test_session_with_token(
-      "owner-1",
-      "owner1@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
+    .with_auth_context(user_session("owner-1"));
   let response = router.oneshot(request).await?;
   assert_ne!(StatusCode::OK, response.status());
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_approve_access_request_success() -> anyhow::Result<()> {
-  let request_id = "ar-approve-ok";
-  let user_id = "test-user-1";
-
-  let mut mock_auth = MockAuthService::default();
-  mock_auth
-    .expect_register_access_request_consent()
-    .times(1)
-    .returning(move |_, _, _, _| {
-      Ok(RegisterAccessRequestConsentResponse {
-        access_request_id: "ar-approve-ok".to_string(),
-        access_request_scope: "scope_access_request:ar-approve-ok".to_string(),
-      })
-    });
-
-  let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
-
-  let router = Router::new()
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(apps_approve_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "approved_role": "scope_user_user",
-    "approved": {
-      "version": "1",
-      "mcps": []
-    }
-  });
-
-  let request = axum::http::Request::builder()
-    .method("PUT")
-    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_session_with_token(
-      user_id,
-      "user@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::OK, response.status());
-
-  let result = response.json::<AccessRequestActionResponse>().await?;
-  assert_eq!(AppAccessRequestStatus::Approved, result.status);
-  assert_eq!(
-    Some("scope_access_request:ar-approve-ok".to_string()),
-    result.access_request_scope
-  );
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_create_access_request_review_url_reflects_host() -> anyhow::Result<()> {
-  let harness = build_test_harness(MockAuthService::default()).await?;
-  let router = Router::new()
-    .route(
-      ENDPOINT_APPS_REQUEST_ACCESS,
-      post(apps_create_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "app_client_id": "app-client-1",
-    "requested_role": "scope_user_user",
-    "requested": { "version": "1", "mcp_servers": [] }
-  });
-
-  // A loopback Host is reflected into the review URL (fixes the default 0.0.0.0 link).
-  let request = axum::http::Request::builder()
-    .method("POST")
-    .uri(ENDPOINT_APPS_REQUEST_ACCESS)
-    .header("Content-Type", "application/json")
-    .header("Host", "127.0.0.1:1135")
-    .body(Body::from(serde_json::to_string(&body)?))?;
-  let response = router.clone().oneshot(request).await?;
-  assert_eq!(StatusCode::CREATED, response.status());
-  let created = response.json::<CreateAccessRequestResponse>().await?;
-  assert_eq!(
-    format!(
-      "http://127.0.0.1:1135/ui/apps/access-requests/review?id={}",
-      created.id
-    ),
-    created.review_url
-  );
-
-  // No Host header → falls back to the configured public server URL (localhost default).
-  let request = axum::http::Request::builder()
-    .method("POST")
-    .uri(ENDPOINT_APPS_REQUEST_ACCESS)
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?;
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::CREATED, response.status());
-  let created = response.json::<CreateAccessRequestResponse>().await?;
-  assert_eq!(
-    format!(
-      "http://localhost:1135/ui/apps/access-requests/review?id={}",
-      created.id
-    ),
-    created.review_url
-  );
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_approve_access_request_mcp_instance_not_owned() -> anyhow::Result<()> {
-  let request_id = "ar-not-owned";
-  let user_id = "test-user-2";
-
-  let mock_auth = MockAuthService::default();
-  let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
-  // No MCP instance seeded for this user -> "not owned"
-
-  let router = Router::new()
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(apps_approve_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "approved_role": "scope_user_user",
-    "approved": {
-      "version": "1",
-      "mcps": [{
-        "url": "https://mcp.example.com/mcp",
-        "status": "approved",
-        "instance": {"id": "nonexistent-instance"}
-      }]
-    }
-  });
-
-  let request = axum::http::Request::builder()
-    .method("PUT")
-    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_session_with_token(
-      user_id,
-      "user@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::FORBIDDEN, response.status());
-
-  let body = response.json::<Value>().await?;
-  assert_eq!(
-    "apps_route_error-mcp_instance_not_owned",
-    body["error"]["code"].as_str().unwrap()
-  );
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_approve_access_request_with_model_and_extra_mcp_grants() -> anyhow::Result<()> {
-  let request_id = "ar-extended";
-  let user_id = "test-user-extended";
-
-  let mut mock_auth = MockAuthService::default();
-  mock_auth
-    .expect_register_access_request_consent()
-    .times(1)
-    .returning(move |_, _, _, _| {
-      Ok(RegisterAccessRequestConsentResponse {
-        access_request_id: "ar-extended".to_string(),
-        access_request_scope: "scope_access_request:ar-extended".to_string(),
-      })
-    });
-
-  let harness = build_test_harness(mock_auth).await?;
-  // Owner-extra MCP must reference an owned + enabled instance.
-  let extra_id = seed_mcp_instance(
-    harness.state.as_ref(),
-    user_id,
-    "https://extra.example.com/mcp",
-    "extra-tool",
-    true,
-  )
-  .await?;
-  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
-
-  let router = Router::new()
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(apps_approve_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "approved_role": "scope_user_user",
-    "approved": {
-      "version": "1",
-      "models_list": true,
-      "models_access": {"type": "specific", "ids": ["alias-x"]},
-      "mcps_list": false,
-      "mcps": [],
-      "mcps_access": {"type": "specific", "ids": [extra_id]}
-    }
-  });
-
-  let request = axum::http::Request::builder()
-    .method("PUT")
-    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_session_with_token(
-      user_id,
-      "user@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::OK, response.status());
-  let result = response.json::<AccessRequestActionResponse>().await?;
-  assert_eq!(AppAccessRequestStatus::Approved, result.status);
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_approve_access_request_extra_mcp_not_owned() -> anyhow::Result<()> {
-  let request_id = "ar-extra-not-owned";
-  let user_id = "test-user-extra-no";
-
-  let mock_auth = MockAuthService::default();
-  let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
-
-  let router = Router::new()
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(apps_approve_access_request),
-    )
-    .with_state(harness.state);
-
-  // Owner-extra grant references an instance the user does not own → 403.
-  let body = json!({
-    "approved_role": "scope_user_user",
-    "approved": {
-      "version": "1",
-      "mcps": [],
-      "mcps_access": {"type": "specific", "ids": ["nonexistent-extra"]}
-    }
-  });
-
-  let request = axum::http::Request::builder()
-    .method("PUT")
-    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_session_with_token(
-      user_id,
-      "user@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::FORBIDDEN, response.status());
-  let body = response.json::<Value>().await?;
-  assert_eq!(
-    "apps_route_error-mcp_instance_not_owned",
-    body["error"]["code"].as_str().unwrap()
-  );
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_approve_access_request_cross_url_instance() -> anyhow::Result<()> {
-  let request_id = "ar-cross-url";
-  let user_id = "test-user-cross";
-
-  let mut mock_auth = MockAuthService::default();
-  mock_auth
-    .expect_register_access_request_consent()
-    .times(1)
-    .returning(move |_, _, _, _| {
-      Ok(RegisterAccessRequestConsentResponse {
-        access_request_id: "ar-cross-url".to_string(),
-        access_request_scope: "scope_access_request:ar-cross-url".to_string(),
-      })
-    });
-
-  let harness = build_test_harness(mock_auth).await?;
-  // Requested URL is https://mcp.example.com/mcp (from seed_draft_request); the user's only
-  // instance points at a different gateway URL. Approval must still succeed.
-  let instance_id = seed_mcp_instance(
-    harness.state.as_ref(),
-    user_id,
-    "https://gateway.composio.dev/gmail/mcp",
-    "gmail-via-gateway",
-    true,
-  )
-  .await?;
-
-  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
-
-  let router = Router::new()
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(apps_approve_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "approved_role": "scope_user_user",
-    "approved": {
-      "version": "1",
-      "mcps": [{
-        "url": "https://mcp.example.com/mcp",
-        "status": "approved",
-        "instance": {"id": instance_id}
-      }]
-    }
-  });
-
-  let request = axum::http::Request::builder()
-    .method("PUT")
-    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_session_with_token(
-      user_id,
-      "user@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::OK, response.status());
-
-  let result = response.json::<AccessRequestActionResponse>().await?;
-  assert_eq!(AppAccessRequestStatus::Approved, result.status);
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_review_lists_all_instances_match_first() -> anyhow::Result<()> {
-  let request_id = "ar-review-order";
-  let user_id = "test-user-review";
-
-  let mut mock_auth = MockAuthService::default();
-  mock_auth
-    .expect_authorize_url()
-    .return_const("https://kc.example.com/realms/bodhi/protocol/openid-connect/auth".to_string());
-  let harness = build_test_harness(mock_auth).await?;
-
-  // One instance on a different URL, one on the exact requested URL.
-  seed_mcp_instance(
-    harness.state.as_ref(),
-    user_id,
-    "https://gateway.composio.dev/gmail/mcp",
-    "gmail-gateway",
-    true,
-  )
-  .await?;
-  let matching_id = seed_mcp_instance(
-    harness.state.as_ref(),
-    user_id,
-    "https://mcp.example.com/mcp",
-    "gmail-direct",
-    true,
-  )
-  .await?;
-
-  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
-
-  let router = Router::new()
-    .route(
-      crate::ENDPOINT_ACCESS_REQUESTS_REVIEW,
-      axum::routing::get(crate::apps_get_access_request_review),
-    )
-    .with_state(harness.state);
-
-  let request = axum::http::Request::builder()
-    .method("GET")
-    .uri(format!("/bodhi/v1/access-requests/{}/review", request_id))
-    .body(Body::empty())?
-    .with_auth_context(AuthContext::test_session(
-      user_id,
-      "user@test.com",
-      ResourceRole::User,
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::OK, response.status());
-
-  let body = response.json::<Value>().await?;
-  let instances = body["mcps_info"][0]["instances"]
-    .as_array()
-    .expect("instances array");
-  assert_eq!(2, instances.len(), "both configured instances are listed");
-  assert_eq!(matching_id, instances[0]["id"].as_str().unwrap());
-  assert_eq!(
-    "https://mcp.example.com/mcp",
-    instances[0]["mcp_server"]["url"].as_str().unwrap()
-  );
-  assert_eq!(
-    "https://kc.example.com/realms/bodhi/protocol/openid-connect/auth",
-    body["auth_endpoint"].as_str().unwrap()
-  );
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_deny_access_request_success() -> anyhow::Result<()> {
-  let request_id = "ar-deny-1";
-  let user_id = "test-user-5";
-
-  let mock_auth = MockAuthService::default();
-  let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
-
-  let router = Router::new()
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_DENY,
-      post(apps_deny_access_request),
-    )
-    .with_state(harness.state);
-
-  let request = axum::http::Request::builder()
-    .method("POST")
-    .uri(format!("/bodhi/v1/access-requests/{}/deny", request_id))
-    .body(Body::empty())?
-    .with_auth_context(AuthContext::test_session(
-      user_id,
-      "user@test.com",
-      ResourceRole::User,
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::OK, response.status());
-
-  let result = response.json::<AccessRequestActionResponse>().await?;
-  assert_eq!(AppAccessRequestStatus::Denied, result.status);
-  assert_eq!(None, result.access_request_scope);
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_approve_privilege_escalation_user_grants_power_user() -> anyhow::Result<()> {
-  let request_id = "ar-priv-esc";
-  let user_id = "test-user-6";
-
-  let mock_auth = MockAuthService::default();
-  let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    "scope_user_power_user",
-  )
-  .await?;
-
-  let router = Router::new()
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(apps_approve_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "approved_role": "scope_user_power_user",
-    "approved": {
-      "version": "1",
-      "mcps": []
-    }
-  });
-
-  // User has resource_user role — max grantable is scope_user_user, cannot grant scope_user_power_user
-  let request = axum::http::Request::builder()
-    .method("PUT")
-    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_session_with_token(
-      user_id,
-      "user@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::FORBIDDEN, response.status());
-
-  let body = response.json::<Value>().await?;
-  assert_eq!(
-    "apps_route_error-privilege_escalation",
-    body["error"]["code"].as_str().unwrap()
-  );
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_approve_valid_downgrade_power_user_grants_user() -> anyhow::Result<()> {
-  let request_id = "ar-downgrade";
-  let user_id = "test-user-7";
-
-  let mut mock_auth = MockAuthService::default();
-  mock_auth
-    .expect_register_access_request_consent()
-    .times(1)
-    .returning(move |_, _, _, _| {
-      Ok(RegisterAccessRequestConsentResponse {
-        access_request_id: "ar-downgrade".to_string(),
-        access_request_scope: "scope_access_request:ar-downgrade".to_string(),
-      })
-    });
-
-  let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    "scope_user_power_user",
-  )
-  .await?;
-
-  let router = Router::new()
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(apps_approve_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "approved_role": "scope_user_user",
-    "approved": {
-      "version": "1",
-      "mcps": []
-    }
-  });
-
-  // User has resource_power_user role — max grantable is scope_user_power_user
-  // Approving scope_user_user (downgrade) is valid
-  let request = axum::http::Request::builder()
-    .method("PUT")
-    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_session_with_token(
-      user_id,
-      "user@test.com",
-      ResourceRole::PowerUser,
-      "dummy-token",
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::OK, response.status());
-
-  let result = response.json::<AccessRequestActionResponse>().await?;
-  assert_eq!(AppAccessRequestStatus::Approved, result.status);
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_approve_privilege_escalation_approved_exceeds_requested() -> anyhow::Result<()> {
-  let request_id = "ar-priv-esc-exceed";
-  let user_id = "test-user-8";
-
-  let mock_auth = MockAuthService::default();
-  let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
-
-  let router = Router::new()
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(apps_approve_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "approved_role": "scope_user_power_user",
-    "approved": {
-      "version": "1",
-      "mcps": []
-    }
-  });
-
-  // Approver has PowerUser role (can grant up to power_user), but approved_role exceeds requested_role
-  let request = axum::http::Request::builder()
-    .method("PUT")
-    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_session_with_token(
-      user_id,
-      "user@test.com",
-      ResourceRole::PowerUser,
-      "dummy-token",
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::FORBIDDEN, response.status());
-
-  let body = response.json::<Value>().await?;
-  assert_eq!(
-    "apps_route_error-privilege_escalation",
-    body["error"]["code"].as_str().unwrap()
-  );
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_create_access_request_unknown_version() -> anyhow::Result<()> {
-  let mock_auth = MockAuthService::default();
-  let harness = build_test_harness(mock_auth).await?;
-
-  let router = Router::new()
-    .route(
-      crate::ENDPOINT_APPS_REQUEST_ACCESS,
-      post(crate::apps_create_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "app_client_id": "test-app-client",
-    "requested_role": "scope_user_user",
-    "requested": {
-      "version": "99",
-      "mcp_servers": []
-    }
-  });
-
-  let request = axum::http::Request::builder()
-    .method("POST")
-    .uri("/bodhi/v1/apps/request-access")
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_session(
-      "user-1",
-      "user@test.com",
-      ResourceRole::User,
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::BAD_REQUEST, response.status());
-
-  let body = response.json::<Value>().await?;
-  assert_eq!(
-    "json_rejection_error",
-    body["error"]["code"].as_str().unwrap()
-  );
-  let message = body["error"]["message"].as_str().unwrap();
-  assert!(
-    message.contains("Unsupported resources version"),
-    "Expected message about unsupported version, got: {}",
-    message
-  );
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_approve_access_request_unknown_version() -> anyhow::Result<()> {
-  let mock_auth = MockAuthService::default();
-  let harness = build_test_harness(mock_auth).await?;
-  let request_id = "ar-unknown-ver";
-  let user_id = "user-1";
-
-  seed_draft_request(harness.db_service.as_ref(), request_id, "scope_user_user").await?;
-
-  let router = Router::new()
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(apps_approve_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "approved_role": "scope_user_user",
-    "approved": {
-      "version": "99",
-      "mcps": []
-    }
-  });
-
-  let request = axum::http::Request::builder()
-    .method("PUT")
-    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_session_with_token(
-      user_id,
-      "user@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::BAD_REQUEST, response.status());
-
-  let body = response.json::<Value>().await?;
-  assert_eq!(
-    "json_rejection_error",
-    body["error"]["code"].as_str().unwrap()
-  );
-  let message = body["error"]["message"].as_str().unwrap();
-  assert!(
-    message.contains("Unsupported resources version"),
-    "Expected message about unsupported version, got: {}",
-    message
-  );
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_review_access_request_invalid_requested_json() -> anyhow::Result<()> {
-  let mock_auth = MockAuthService::default();
-  let harness = build_test_harness(mock_auth).await?;
-
-  let now = chrono::Utc::now();
-  let row = AppAccessRequest {
-    id: "ar-bad-json".to_string(),
-    tenant_id: Some(TEST_TENANT_ID.to_string()),
-    app_client_id: "test-app-client".to_string(),
-    app_name: None,
-    app_description: None,
-    status: AppAccessRequestStatus::Draft,
-    requested: "not-valid-json".to_string(),
-    approved: None,
-    user_id: None,
-    requested_role: "scope_user_user".to_string(),
-    approved_role: None,
-    access_request_scope: None,
-    source_access_request_id: None,
-    error_message: None,
-    expires_at: now + chrono::Duration::seconds(600),
-    created_at: now,
-    updated_at: now,
-  };
-  harness.db_service.create(&row).await?;
-
-  let router = Router::new()
-    .route(
-      crate::ENDPOINT_ACCESS_REQUESTS_REVIEW,
-      axum::routing::get(crate::apps_get_access_request_review),
-    )
-    .with_state(harness.state);
-
-  let request = axum::http::Request::builder()
-    .method("GET")
-    .uri("/bodhi/v1/access-requests/ar-bad-json/review")
-    .body(Body::empty())?
-    .with_auth_context(AuthContext::test_session(
-      "user-1",
-      "user@test.com",
-      ResourceRole::User,
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
-
-  let body = response.json::<Value>().await?;
-  assert_eq!(
-    "apps_route_error-invalid_requested_json",
-    body["error"]["code"].as_str().unwrap()
-  );
-
   Ok(())
 }
 
@@ -1161,23 +1139,10 @@ fn app_access_summary_clamps_tampered_approved_role() {
   use services::UserScope;
   let ts: chrono::DateTime<chrono::Utc> = "2024-01-01T00:00:00Z".parse().unwrap();
   let row = |approved_role: Option<&str>| AppAccessRequest {
-    id: "ar-1".to_string(),
-    tenant_id: Some(TEST_TENANT_ID.to_string()),
-    app_client_id: "app".to_string(),
-    app_name: None,
-    app_description: None,
-    status: AppAccessRequestStatus::Approved,
-    requested: r#"{"version":"1"}"#.to_string(),
-    approved: None,
-    user_id: Some("u".to_string()),
     requested_role: "scope_user_power_user".to_string(),
     approved_role: approved_role.map(|s| s.to_string()),
-    access_request_scope: None,
-    source_access_request_id: None,
-    error_message: None,
-    expires_at: ts,
-    created_at: ts,
-    updated_at: ts,
+    approved: None,
+    ..approved_request("ar-1", TEST_TENANT_ID, "u", ts)
   };
 
   // A (DB-tampered) role above the caller's ceiling is clamped down for display.
@@ -1191,248 +1156,4 @@ fn app_access_summary_clamps_tampered_approved_role() {
   // No ceiling (non-session principal) ⇒ no clamp.
   let s = crate::AppAccessSummary::from_row(row(Some("scope_user_power_user")), None);
   assert_eq!(Some(UserScope::PowerUser), s.approved_role);
-}
-
-/// Seed a Draft whose `source_access_request_id` points at a prior request.
-async fn seed_draft_with_source(
-  db_service: &dyn DbService,
-  request_id: &str,
-  app_client_id: &str,
-  source_id: Option<&str>,
-) -> anyhow::Result<AppAccessRequest> {
-  let now = chrono::Utc::now();
-  let row = AppAccessRequest {
-    id: request_id.to_string(),
-    tenant_id: None,
-    app_client_id: app_client_id.to_string(),
-    app_name: Some("Upgrade App".to_string()),
-    app_description: None,
-    status: AppAccessRequestStatus::Draft,
-    requested: r#"{"version":"1","models_access":true,"mcp_servers":[]}"#.to_string(),
-    approved: None,
-    user_id: None,
-    requested_role: "scope_user_user".to_string(),
-    approved_role: None,
-    access_request_scope: None,
-    source_access_request_id: source_id.map(|s| s.to_string()),
-    error_message: None,
-    expires_at: now + chrono::Duration::seconds(600),
-    created_at: now,
-    updated_at: now,
-  };
-  Ok(db_service.create(&row).await?)
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_create_access_request_exchange_stores_source_id() -> anyhow::Result<()> {
-  let harness = build_test_harness(MockAuthService::default()).await?;
-  let router = Router::new()
-    .route(
-      crate::ENDPOINT_APPS_REQUEST_ACCESS,
-      post(crate::apps_create_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "app_client_id": "test-app-client",
-    "requested_role": "scope_user_user",
-    "requested": {"version": "1", "mcp_servers": []},
-    "exchange": true
-  });
-  let request = axum::http::Request::builder()
-    .method("POST")
-    .uri("/bodhi/v1/apps/request-access")
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_external_app(
-      "user-1",
-      services::UserScope::User,
-      "test-app-client",
-      Some("ar-source-1"),
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::CREATED, response.status());
-  let created = response.json::<Value>().await?;
-  let created_id = created["id"].as_str().unwrap().to_string();
-
-  let draft = harness
-    .db_service
-    .get("", &created_id)
-    .await?
-    .expect("draft persisted");
-  assert_eq!(
-    Some("ar-source-1".to_string()),
-    draft.source_access_request_id
-  );
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_create_access_request_exchange_without_auth_rejected() -> anyhow::Result<()> {
-  let harness = build_test_harness(MockAuthService::default()).await?;
-  let router = Router::new()
-    .route(
-      crate::ENDPOINT_APPS_REQUEST_ACCESS,
-      post(crate::apps_create_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "app_client_id": "test-app-client",
-    "requested_role": "scope_user_user",
-    "requested": {"version": "1", "mcp_servers": []},
-    "exchange": true
-  });
-  // No auth context populated (anonymous) — exchange must be rejected.
-  let request = axum::http::Request::builder()
-    .method("POST")
-    .uri("/bodhi/v1/apps/request-access")
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?;
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-  let body = response.json::<Value>().await?;
-  assert_eq!(
-    "apps_route_error-exchange_requires_auth",
-    body["error"]["code"].as_str().unwrap()
-  );
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_create_access_request_exchange_app_client_mismatch_rejected() -> anyhow::Result<()> {
-  let harness = build_test_harness(MockAuthService::default()).await?;
-  let router = Router::new()
-    .route(
-      crate::ENDPOINT_APPS_REQUEST_ACCESS,
-      post(crate::apps_create_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "app_client_id": "test-app-client",
-    "requested_role": "scope_user_user",
-    "requested": {"version": "1", "mcp_servers": []},
-    "exchange": true
-  });
-  // Token belongs to a different app than the one named in the request body.
-  let request = axum::http::Request::builder()
-    .method("POST")
-    .uri("/bodhi/v1/apps/request-access")
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_external_app(
-      "user-1",
-      services::UserScope::User,
-      "other-app-client",
-      Some("ar-source-1"),
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-  Ok(())
-}
-
-fn review_router(state: Arc<dyn services::AppService>) -> Router {
-  Router::new()
-    .route(
-      crate::ENDPOINT_ACCESS_REQUESTS_REVIEW,
-      get(crate::apps_get_access_request_review),
-    )
-    .with_state(state)
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_review_embeds_previous_grant_for_exchange() -> anyhow::Result<()> {
-  let mut mock_auth = MockAuthService::default();
-  mock_auth
-    .expect_authorize_url()
-    .return_const("https://kc.example.com/auth".to_string());
-  let harness = build_test_harness(mock_auth).await?;
-
-  let approved_json = r#"{"version":"1","models_list":true,"models_access":{"type":"specific","ids":["model-a"]},"mcps_list":true,"mcps":[],"mcps_access":{"type":"specific","ids":[]}}"#;
-  seed_approved_request(
-    harness.db_service.as_ref(),
-    "ar-source-1",
-    "user-1",
-    "test-app-client",
-    approved_json,
-  )
-  .await?;
-  seed_draft_with_source(
-    harness.db_service.as_ref(),
-    "ar-upgrade-1",
-    "test-app-client",
-    Some("ar-source-1"),
-  )
-  .await?;
-
-  let request = axum::http::Request::builder()
-    .method("GET")
-    .uri("/bodhi/v1/access-requests/ar-upgrade-1/review")
-    .body(Body::empty())?
-    .with_auth_context(AuthContext::test_session(
-      "user-1",
-      "user@test.com",
-      ResourceRole::User,
-    ));
-
-  let response = review_router(harness.state).oneshot(request).await?;
-  assert_eq!(StatusCode::OK, response.status());
-  let body = response.json::<Value>().await?;
-  let prev = &body["previous_grant"];
-  assert_eq!("scope_user_user", prev["approved_role"].as_str().unwrap());
-  assert_eq!(true, prev["approved"]["models_list"].as_bool().unwrap());
-  assert_eq!(
-    "model-a",
-    prev["approved"]["models_access"]["ids"][0]
-      .as_str()
-      .unwrap()
-  );
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_review_omits_previous_grant_when_source_missing() -> anyhow::Result<()> {
-  let mut mock_auth = MockAuthService::default();
-  mock_auth
-    .expect_authorize_url()
-    .return_const("https://kc.example.com/auth".to_string());
-  let harness = build_test_harness(mock_auth).await?;
-
-  seed_draft_with_source(
-    harness.db_service.as_ref(),
-    "ar-upgrade-2",
-    "test-app-client",
-    Some("does-not-exist"),
-  )
-  .await?;
-
-  let request = axum::http::Request::builder()
-    .method("GET")
-    .uri("/bodhi/v1/access-requests/ar-upgrade-2/review")
-    .body(Body::empty())?
-    .with_auth_context(AuthContext::test_session(
-      "user-1",
-      "user@test.com",
-      ResourceRole::User,
-    ));
-
-  let response = review_router(harness.state).oneshot(request).await?;
-  assert_eq!(StatusCode::OK, response.status());
-  let body = response.json::<Value>().await?;
-  assert!(body["previous_grant"].is_null());
-  Ok(())
 }

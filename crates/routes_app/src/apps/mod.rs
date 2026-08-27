@@ -1,4 +1,5 @@
 mod apps_api_schemas;
+mod consent;
 mod error;
 mod routes_apps;
 
@@ -7,5 +8,6 @@ mod routes_apps;
 mod test_access_request_auth;
 
 pub use apps_api_schemas::*;
+pub use consent::*;
 pub use error::*;
 pub use routes_apps::*;

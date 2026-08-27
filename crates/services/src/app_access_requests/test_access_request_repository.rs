@@ -1,37 +1,14 @@
-use crate::{
-  app_access_requests::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus},
-  db::DbError,
-  new_ulid,
-  test_utils::{sea_context, setup_env, TEST_TENANT_ID},
-};
 use anyhow_trace::anyhow_trace;
 use chrono::Duration;
-use errmeta::AppError;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
 
-fn make_request(id: &str, now: chrono::DateTime<chrono::Utc>) -> AppAccessRequest {
-  AppAccessRequest {
-    id: id.to_string(),
-    tenant_id: Some(TEST_TENANT_ID.to_string()),
-    app_client_id: "test-client".to_string(),
-    app_name: Some("Test App".to_string()),
-    app_description: Some("A test application".to_string()),
-    status: AppAccessRequestStatus::Draft,
-    requested: r#"{"version":"1"}"#.to_string(),
-    approved: None,
-    user_id: None,
-    requested_role: "scope_user_user".to_string(),
-    approved_role: None,
-    access_request_scope: None,
-    source_access_request_id: None,
-    error_message: None,
-    expires_at: now + Duration::hours(1),
-    created_at: now,
-    updated_at: now,
-  }
-}
+use crate::{
+  app_access_requests::{AccessRequestRepository, AppAccessRequestStatus},
+  new_ulid,
+  test_utils::{approved_request, make_request, sea_context, setup_env, TEST_TENANT_ID},
+};
 
 #[rstest]
 #[anyhow_trace]
@@ -43,103 +20,20 @@ async fn test_create_and_get_access_request(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
   let id = new_ulid();
-  let row = make_request(&id, ctx.now);
+  let row = make_request(&id, TEST_TENANT_ID, ctx.now);
 
   let created = ctx.service.create(&row).await?;
   assert_eq!(row, created);
 
   let fetched = ctx.service.get(TEST_TENANT_ID, &id).await?;
-  assert!(fetched.is_some());
-  assert_eq!(row, fetched.unwrap());
+  assert_eq!(Some(row), fetched);
 
   let not_found = ctx.service.get(TEST_TENANT_ID, "nonexistent").await?;
   assert!(not_found.is_none());
 
-  Ok(())
-}
-
-#[rstest]
-#[anyhow_trace]
-#[tokio::test]
-#[serial(pg_app)]
-async fn test_update_approval(
-  _setup_env: (),
-  #[values("sqlite", "postgres")] db_type: &str,
-) -> anyhow::Result<()> {
-  let ctx = sea_context(db_type).await;
-  let id = new_ulid();
-  let row = make_request(&id, ctx.now);
-  ctx.service.create(&row).await?;
-
-  let approved_json = r#"{"version":"1"}"#;
-  let updated = ctx
-    .service
-    .update_approval(
-      &id,
-      "approver-user",
-      TEST_TENANT_ID,
-      approved_json,
-      "scope_user_user",
-      &format!("scope_access_request:{}", id),
-    )
-    .await?;
-
-  assert_eq!(AppAccessRequestStatus::Approved, updated.status);
-  assert_eq!(Some("approver-user".to_string()), updated.user_id);
-  assert_eq!(Some(approved_json.to_string()), updated.approved);
-  assert_eq!(Some("scope_user_user".to_string()), updated.approved_role);
-  assert_eq!(
-    Some(format!("scope_access_request:{}", id)),
-    updated.access_request_scope
-  );
-
-  Ok(())
-}
-
-#[rstest]
-#[anyhow_trace]
-#[tokio::test]
-#[serial(pg_app)]
-async fn test_update_denial(
-  _setup_env: (),
-  #[values("sqlite", "postgres")] db_type: &str,
-) -> anyhow::Result<()> {
-  let ctx = sea_context(db_type).await;
-  let id = new_ulid();
-  let row = make_request(&id, ctx.now);
-  ctx.service.create(&row).await?;
-
-  let updated = ctx.service.update_denial(&id, "denier-user").await?;
-
-  assert_eq!(AppAccessRequestStatus::Denied, updated.status);
-  assert_eq!(Some("denier-user".to_string()), updated.user_id);
-
-  Ok(())
-}
-
-#[rstest]
-#[anyhow_trace]
-#[tokio::test]
-#[serial(pg_app)]
-async fn test_update_failure(
-  _setup_env: (),
-  #[values("sqlite", "postgres")] db_type: &str,
-) -> anyhow::Result<()> {
-  let ctx = sea_context(db_type).await;
-  let id = new_ulid();
-  let row = make_request(&id, ctx.now);
-  ctx.service.create(&row).await?;
-
-  let updated = ctx
-    .service
-    .update_failure(&id, "token exchange failed")
-    .await?;
-
-  assert_eq!(AppAccessRequestStatus::Failed, updated.status);
-  assert_eq!(
-    Some("token exchange failed".to_string()),
-    updated.error_message
-  );
+  // `get` is tenant-strict: a foreign tenant never sees the row.
+  let cross_tenant = ctx.service.get("other-tenant", &id).await?;
+  assert!(cross_tenant.is_none());
 
   Ok(())
 }
@@ -154,32 +48,26 @@ async fn test_get_by_access_request_scope(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
   let id = new_ulid();
-  let row = make_request(&id, ctx.now);
+  let scope = format!("scope_access_request:resource-client.{}", id);
+  let mut row = approved_request(&id, TEST_TENANT_ID, "user-1", ctx.now);
+  row.access_request_scope = Some(scope.clone());
   ctx.service.create(&row).await?;
-
-  let scope = format!("scope_access_request:{}", id);
-  ctx
-    .service
-    .update_approval(
-      &id,
-      "user-1",
-      TEST_TENANT_ID,
-      r#"{"version":"1"}"#,
-      "scope_user_user",
-      &scope,
-    )
-    .await?;
 
   let found = ctx
     .service
     .get_by_access_request_scope(TEST_TENANT_ID, &scope)
     .await?;
-  assert!(found.is_some());
-  assert_eq!(id, found.unwrap().id);
+  assert_eq!(Some(id), found.map(|r| r.id));
+
+  let wrong_tenant = ctx
+    .service
+    .get_by_access_request_scope("other-tenant", &scope)
+    .await?;
+  assert!(wrong_tenant.is_none());
 
   let not_found = ctx
     .service
-    .get_by_access_request_scope("", "nonexistent-scope")
+    .get_by_access_request_scope(TEST_TENANT_ID, "nonexistent-scope")
     .await?;
   assert!(not_found.is_none());
 
@@ -190,150 +78,65 @@ async fn test_get_by_access_request_scope(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_get_marks_expired_draft(
+async fn test_latest_approved_for_app_user(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = new_ulid();
-  let mut row = make_request(&id, ctx.now);
-  row.expires_at = ctx.now - Duration::minutes(5);
-  ctx.service.create(&row).await?;
 
-  let fetched = ctx.service.get(TEST_TENANT_ID, &id).await?;
-  assert!(fetched.is_some());
-  let fetched = fetched.unwrap();
-  assert_eq!(AppAccessRequestStatus::Expired, fetched.status);
+  let older = new_ulid();
+  ctx
+    .service
+    .create(&approved_request(&older, TEST_TENANT_ID, "owner", ctx.now))
+    .await?;
+  let newer = new_ulid();
+  ctx
+    .service
+    .create(&approved_request(
+      &newer,
+      TEST_TENANT_ID,
+      "owner",
+      ctx.now + Duration::minutes(1),
+    ))
+    .await?;
+  // Excluded despite newer created_at: other app client, other user, non-approved status.
+  let mut other_app = approved_request(
+    &new_ulid(),
+    TEST_TENANT_ID,
+    "owner",
+    ctx.now + Duration::minutes(2),
+  );
+  other_app.app_client_id = "other-client".to_string();
+  ctx.service.create(&other_app).await?;
+  ctx
+    .service
+    .create(&approved_request(
+      &new_ulid(),
+      TEST_TENANT_ID,
+      "other-user",
+      ctx.now + Duration::minutes(2),
+    ))
+    .await?;
+  let mut revoked = approved_request(
+    &new_ulid(),
+    TEST_TENANT_ID,
+    "owner",
+    ctx.now + Duration::minutes(2),
+  );
+  revoked.status = AppAccessRequestStatus::Revoked;
+  ctx.service.create(&revoked).await?;
 
-  Ok(())
-}
+  let latest = ctx
+    .service
+    .latest_approved_for_app_user(TEST_TENANT_ID, "test-client", "owner")
+    .await?;
+  assert_eq!(Some(newer), latest.map(|r| r.id));
 
-#[rstest]
-#[anyhow_trace]
-#[tokio::test]
-#[serial(pg_app)]
-async fn test_get_returns_draft_when_not_expired(
-  _setup_env: (),
-  #[values("sqlite", "postgres")] db_type: &str,
-) -> anyhow::Result<()> {
-  let ctx = sea_context(db_type).await;
-  let id = new_ulid();
-  let row = make_request(&id, ctx.now);
-  ctx.service.create(&row).await?;
-
-  let fetched = ctx.service.get(TEST_TENANT_ID, &id).await?;
-  assert!(fetched.is_some());
-  let fetched = fetched.unwrap();
-  assert_eq!(AppAccessRequestStatus::Draft, fetched.status);
-
-  Ok(())
-}
-
-enum UpdateOp {
-  Approval,
-  Denial,
-  Failure,
-}
-
-async fn perform_update(
-  service: &crate::db::DefaultDbService,
-  id: &str,
-  op: &UpdateOp,
-) -> Result<AppAccessRequest, DbError> {
-  match op {
-    UpdateOp::Approval => {
-      service
-        .update_approval(
-          id,
-          "user-1",
-          TEST_TENANT_ID,
-          r#"{"version":"1"}"#,
-          "scope_user_user",
-          "scope",
-        )
-        .await
-    }
-    UpdateOp::Denial => service.update_denial(id, "user-1").await,
-    UpdateOp::Failure => service.update_failure(id, "some error").await,
-  }
-}
-
-async fn transition_to_non_draft(
-  service: &crate::db::DefaultDbService,
-  id: &str,
-  op: &UpdateOp,
-) -> Result<(), DbError> {
-  match op {
-    UpdateOp::Approval => {
-      service
-        .update_approval(
-          id,
-          "user-1",
-          TEST_TENANT_ID,
-          r#"{"version":"1"}"#,
-          "scope_user_user",
-          "scope",
-        )
-        .await?;
-    }
-    UpdateOp::Denial => {
-      service.update_denial(id, "user-1").await?;
-    }
-    UpdateOp::Failure => {
-      service.update_failure(id, "original error").await?;
-    }
-  }
-  Ok(())
-}
-
-#[rstest]
-#[case::approval(UpdateOp::Approval)]
-#[case::denial(UpdateOp::Denial)]
-#[case::failure(UpdateOp::Failure)]
-#[anyhow_trace]
-#[tokio::test]
-#[serial(pg_app)]
-async fn test_update_rejects_expired_draft(
-  _setup_env: (),
-  #[values("sqlite", "postgres")] db_type: &str,
-  #[case] op: UpdateOp,
-) -> anyhow::Result<()> {
-  let ctx = sea_context(db_type).await;
-  let id = new_ulid();
-  let mut row = make_request(&id, ctx.now);
-  row.expires_at = ctx.now - Duration::minutes(5);
-  ctx.service.create(&row).await?;
-
-  let result = perform_update(&ctx.service, &id, &op).await;
-  assert!(result.is_err());
-  let err = result.unwrap_err();
-  assert_eq!("db_error-access_request_expired", err.code());
-
-  Ok(())
-}
-
-#[rstest]
-#[case::approval(UpdateOp::Approval)]
-#[case::denial(UpdateOp::Denial)]
-#[case::failure(UpdateOp::Failure)]
-#[anyhow_trace]
-#[tokio::test]
-#[serial(pg_app)]
-async fn test_update_rejects_non_draft(
-  _setup_env: (),
-  #[values("sqlite", "postgres")] db_type: &str,
-  #[case] op: UpdateOp,
-) -> anyhow::Result<()> {
-  let ctx = sea_context(db_type).await;
-  let id = new_ulid();
-  let row = make_request(&id, ctx.now);
-  ctx.service.create(&row).await?;
-  transition_to_non_draft(&ctx.service, &id, &op).await?;
-
-  let result = perform_update(&ctx.service, &id, &op).await;
-  assert!(result.is_err());
-  let err = result.unwrap_err();
-  assert_eq!("db_error-access_request_not_draft", err.code());
+  let none = ctx
+    .service
+    .latest_approved_for_app_user(TEST_TENANT_ID, "unknown-client", "owner")
+    .await?;
+  assert!(none.is_none());
 
   Ok(())
 }

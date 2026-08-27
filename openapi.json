@@ -11,7 +11,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.0.59-dev"
+    "version": "0.0.60-dev"
   },
   "servers": [
     {
@@ -306,113 +306,6 @@
       }
     },
     "/bodhi/v1/access-requests/{id}/approve": {
-      "put": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Approve Access Request",
-        "description": "Approve access request with tool instance selections. Requires session auth.",
-        "operationId": "approveAppsAccessRequest",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Access request ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "Approval details with tool selections",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApproveAccessRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Request approved",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccessRequestActionResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Already processed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session_auth": []
-          }
-        ]
-      },
       "post": {
         "tags": [
           "auth"
@@ -506,104 +399,6 @@
         ]
       }
     },
-    "/bodhi/v1/access-requests/{id}/deny": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Deny Access Request",
-        "description": "Deny access request. Requires session auth.",
-        "operationId": "denyAccessRequest",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Access request ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Request denied",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccessRequestActionResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Already processed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session_auth": []
-          }
-        ]
-      }
-    },
     "/bodhi/v1/access-requests/{id}/reject": {
       "post": {
         "tags": [
@@ -683,104 +478,6 @@
             "session_auth": [
               "resource_manager"
             ]
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/access-requests/{id}/review": {
-      "get": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Get Access Request Review",
-        "description": "Get full access request details for review page. Returns data regardless of status. Requires session auth.",
-        "operationId": "getAccessRequestReview",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Access request ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Review data retrieved",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccessRequestReviewResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "410": {
-            "description": "Request expired",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session_auth": []
           }
         ]
       }
@@ -883,41 +580,42 @@
         ]
       }
     },
-    "/bodhi/v1/apps/access-requests/{id}": {
-      "get": {
+    "/bodhi/v1/apps/access-requests": {
+      "post": {
         "tags": [
           "auth"
         ],
-        "summary": "Get Access Request Status",
-        "description": "Poll access request status. Requires app_client_id query parameter for security.",
-        "operationId": "getAccessRequestStatus",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Access request ID",
-            "required": true,
-            "schema": {
-              "type": "string"
+        "summary": "Submit Consent Decision",
+        "description": "The single mutating consent call. Re-validates the authorize request from the echoed query string; on approve creates an already-approved access request and returns the auth server's authorize URL with the composed scope; on deny returns the app's redirect_uri carrying error=access_denied. The page navigates to redirect_url unconditionally. Approve requires the User role; deny is allowed for any authenticated session.",
+        "operationId": "submitConsent",
+        "requestBody": {
+          "description": "Consent decision with the original query string",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitConsentRequest"
+              }
             }
           },
-          {
-            "name": "app_client_id",
-            "in": "query",
-            "description": "App client ID for verification",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "Status retrieved",
+            "description": "Deny or redirectable request error — no grant created",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AccessRequestStatusResponse"
+                  "$ref": "#/components/schemas/SubmitConsentResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Grant created (approve)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitConsentResponse"
                 }
               }
             }
@@ -952,8 +650,139 @@
               }
             }
           },
-          "404": {
-            "description": "Not found or app_client_id mismatch",
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/apps/access-requests/consent": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Consent Context",
+        "description": "Validate an OAuth authorize request (passed as the raw query string, exactly as received by /ui/apps/auth/) and return everything the consent page needs: app identity, parsed scope sections, prior grant, and whether the caller may approve. Always 200 with an ok/error union; error outcomes carry a redirect_url only when the redirect target was validated. Requires session auth (any role — guests see a blocked state).",
+        "operationId": "getConsentContext",
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "query",
+            "description": "OAuth client id of the requesting app",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "redirect_uri",
+            "in": "query",
+            "description": "App redirect target; exact-matched against the app's registered URIs",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "response_type",
+            "in": "query",
+            "description": "Must be 'code'",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "Opaque app state, echoed back on every redirect",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code_challenge",
+            "in": "query",
+            "description": "PKCE challenge",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code_challenge_method",
+            "in": "query",
+            "description": "Must be 'S256'",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "App-facing scope string (scope_user_*, scope_apps:*, passthrough tokens)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "source_access_request_id",
+            "in": "query",
+            "description": "Prior grant id for reauthorization",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Consent context or a structured OAuth error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentContextResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -974,7 +803,9 @@
           }
         },
         "security": [
-          {}
+          {
+            "session_auth": []
+          }
         ]
       }
     },
@@ -1192,92 +1023,6 @@
           {
             "bearer_oauth_token": []
           }
-        ]
-      }
-    },
-    "/bodhi/v1/apps/request-access": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Create Access Request",
-        "description": "Create an access request for an app to access user resources. Always creates a draft for user review. Anonymous, except `exchange: true` requires the app's current token in the Authorization header.",
-        "operationId": "createAccessRequest",
-        "requestBody": {
-          "description": "Access request details",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateAccessRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Access request created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateAccessRequestResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "App client not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BodhiErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {}
         ]
       }
     },
@@ -7765,132 +7510,6 @@
   },
   "components": {
     "schemas": {
-      "AccessRequestActionResponse": {
-        "type": "object",
-        "required": [
-          "status"
-        ],
-        "properties": {
-          "status": {
-            "$ref": "#/components/schemas/AppAccessRequestStatus"
-          },
-          "access_request_scope": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Dynamic scope minted on approval; the review page appends it to `auth_url` before redirecting to Keycloak."
-          }
-        }
-      },
-      "AccessRequestReviewResponse": {
-        "type": "object",
-        "required": [
-          "id",
-          "app_client_id",
-          "status",
-          "requested_role",
-          "requested",
-          "auth_endpoint"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "app_client_id": {
-            "type": "string"
-          },
-          "app_name": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "From KC, if available"
-          },
-          "app_description": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "From KC, if available"
-          },
-          "status": {
-            "$ref": "#/components/schemas/AppAccessRequestStatus"
-          },
-          "requested_role": {
-            "type": "string"
-          },
-          "requested": {
-            "$ref": "#/components/schemas/RequestedResources"
-          },
-          "mcps_info": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/McpServerReviewInfo"
-            }
-          },
-          "auth_endpoint": {
-            "type": "string",
-            "description": "Canonical Keycloak authorize endpoint the review page validates the app-supplied `auth_url` against."
-          },
-          "previous_grant": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/PreviousGrantInfo",
-                "description": "Grant the app's current token already holds, for the review form to pre-select (upgrade only)."
-              }
-            ]
-          }
-        }
-      },
-      "AccessRequestStatusResponse": {
-        "type": "object",
-        "required": [
-          "id",
-          "status",
-          "requested_role"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "status": {
-            "$ref": "#/components/schemas/AppAccessRequestStatus",
-            "description": "One of: \"draft\", \"approved\", \"denied\", \"failed\""
-          },
-          "requested_role": {
-            "$ref": "#/components/schemas/UserScope"
-          },
-          "approved_role": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/UserScope",
-                "description": "Present when approved"
-              }
-            ]
-          },
-          "access_request_scope": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Present when user-approved with tools"
-          }
-        },
-        "example": {
-          "access_request_scope": "scope_access_request:550e8400-e29b-41d4-a716-446655440000",
-          "approved_role": "scope_user_user",
-          "id": "550e8400-e29b-41d4-a716-446655440000",
-          "requested_role": "scope_user_user",
-          "status": "approved"
-        }
-      },
       "Alias": {
         "oneOf": [
           {
@@ -8759,39 +8378,6 @@
           "denied"
         ]
       },
-      "ApproveAccessRequest": {
-        "type": "object",
-        "required": [
-          "approved_role",
-          "approved"
-        ],
-        "properties": {
-          "approved_role": {
-            "$ref": "#/components/schemas/UserScope",
-            "description": "Role to grant for the approved request (scope_user_user or scope_user_power_user)"
-          },
-          "approved": {
-            "$ref": "#/components/schemas/ApprovedResources",
-            "description": "Approved resources with selections"
-          }
-        },
-        "example": {
-          "approved": {
-            "mcps": [
-              {
-                "instance": {
-                  "id": "instance-uuid",
-                  "path": "/bodhi/v1/apps/mcps/instance-uuid/mcp"
-                },
-                "status": "approved",
-                "url": "https://mcp.deepwiki.com/mcp"
-              }
-            ],
-            "version": "1"
-          },
-          "approved_role": "scope_user_user"
-        }
-      },
       "ApproveUserAccessRequest": {
         "type": "object",
         "description": "Request body for approving access with role assignment",
@@ -9030,6 +8616,164 @@
           }
         }
       },
+      "ConsentAppInfo": {
+        "type": "object",
+        "description": "App identity shown on the consent screen; `redirect_uri` is the validated target the\nflow will return to.",
+        "required": [
+          "client_id",
+          "name",
+          "description",
+          "redirect_uri"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "redirect_uri": {
+            "type": "string"
+          }
+        }
+      },
+      "ConsentContextResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "app",
+              "scope",
+              "can_approve",
+              "result"
+            ],
+            "properties": {
+              "app": {
+                "$ref": "#/components/schemas/ConsentAppInfo"
+              },
+              "scope": {
+                "$ref": "#/components/schemas/ConsentScopeInfo"
+              },
+              "prior_grant": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ConsentPriorGrant"
+                  }
+                ]
+              },
+              "can_approve": {
+                "type": "boolean",
+                "description": "`false` for sessions below the User role — the page renders a blocked state\nwith a decline-only action."
+              },
+              "result": {
+                "type": "string",
+                "enum": [
+                  "ok"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "error",
+              "error_description",
+              "result"
+            ],
+            "properties": {
+              "error": {
+                "type": "string"
+              },
+              "error_description": {
+                "type": "string"
+              },
+              "redirect_url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "result": {
+                "type": "string",
+                "enum": [
+                  "error"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Everything the consent page needs before render. `error` outcomes carry a\n`redirect_url` only when the redirect target was validated; `null` means render\nin-app and navigate nowhere (RFC 6749 §4.1.2.1)."
+      },
+      "ConsentDecision": {
+        "type": "string",
+        "enum": [
+          "approve",
+          "deny"
+        ]
+      },
+      "ConsentPriorGrant": {
+        "type": "object",
+        "required": [
+          "id",
+          "approved_role",
+          "approved",
+          "source"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "approved_role": {
+            "$ref": "#/components/schemas/UserScope"
+          },
+          "approved": {
+            "$ref": "#/components/schemas/ApprovedResources"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ConsentPriorGrantSource"
+          }
+        }
+      },
+      "ConsentPriorGrantSource": {
+        "type": "string",
+        "enum": [
+          "explicit",
+          "latest"
+        ]
+      },
+      "ConsentScopeInfo": {
+        "type": "object",
+        "description": "Parsed app-facing scope driving the consent screen: which sections render and the\nrequested role ceiling. `passthrough` tokens are forwarded to the auth server verbatim.",
+        "required": [
+          "role",
+          "llms",
+          "mcps",
+          "passthrough"
+        ],
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/UserScope"
+          },
+          "llms": {
+            "type": "boolean"
+          },
+          "mcps": {
+            "type": "boolean"
+          },
+          "passthrough": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "ContextLimits": {
         "type": "object",
         "properties": {
@@ -9095,69 +8839,6 @@
           "alias": {
             "type": "string"
           }
-        }
-      },
-      "CreateAccessRequest": {
-        "type": "object",
-        "required": [
-          "app_client_id",
-          "requested_role",
-          "requested"
-        ],
-        "properties": {
-          "app_client_id": {
-            "type": "string",
-            "description": "App client ID from Keycloak"
-          },
-          "requested_role": {
-            "$ref": "#/components/schemas/UserScope",
-            "description": "Role requested for the external app (scope_user_user or scope_user_power_user)"
-          },
-          "requested": {
-            "$ref": "#/components/schemas/RequestedResources",
-            "description": "Resources requested (tools, etc.)"
-          },
-          "exchange": {
-            "type": "boolean",
-            "description": "Upgrade the app's current token: the caller must present it in the `Authorization`\nheader; the server derives the prior request from the token, never the body."
-          }
-        },
-        "example": {
-          "app_client_id": "my-app-client",
-          "requested": {
-            "mcp_servers": [
-              {
-                "url": "https://mcp.example.com/mcp"
-              }
-            ],
-            "version": "1"
-          },
-          "requested_role": "scope_user_user"
-        }
-      },
-      "CreateAccessRequestResponse": {
-        "type": "object",
-        "required": [
-          "id",
-          "status",
-          "review_url"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "status": {
-            "$ref": "#/components/schemas/AppAccessRequestStatus",
-            "description": "Always \"draft\""
-          },
-          "review_url": {
-            "type": "string"
-          }
-        },
-        "example": {
-          "id": "550e8400-e29b-41d4-a716-446655440000",
-          "review_url": "http://localhost:1135/ui/apps/access-requests/review?id=550e8400-e29b-41d4-a716-446655440000",
-          "status": "draft"
         }
       },
       "CreateAuthConfig": {
@@ -10916,25 +10597,6 @@
         ],
         "description": "MCP server response with computed mcp counts and optional auth config."
       },
-      "McpServerReviewInfo": {
-        "type": "object",
-        "required": [
-          "url",
-          "instances"
-        ],
-        "properties": {
-          "url": {
-            "type": "string"
-          },
-          "instances": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Mcp"
-            },
-            "description": "User's MCP instances connected to this server URL"
-          }
-        }
-      },
       "Model": {
         "type": "object",
         "description": "Describes an OpenAI model offering that can be used with the API.",
@@ -11800,21 +11462,6 @@
           "message": "pong"
         }
       },
-      "PreviousGrantInfo": {
-        "type": "object",
-        "required": [
-          "approved_role",
-          "approved"
-        ],
-        "properties": {
-          "approved_role": {
-            "$ref": "#/components/schemas/UserScope"
-          },
-          "approved": {
-            "$ref": "#/components/schemas/ApprovedResources"
-          }
-        }
-      },
       "QueueStatusResponse": {
         "type": "object",
         "required": [
@@ -12313,6 +11960,77 @@
         },
         "example": {
           "status": "resource_admin"
+        }
+      },
+      "SubmitConsentRequest": {
+        "type": "object",
+        "description": "Consent decision for one authorize request. `query` is the page's query string exactly\nas received — the backend re-validates it rather than trusting a client-side reading.",
+        "required": [
+          "query",
+          "decision"
+        ],
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/ConsentDecision"
+          },
+          "approved_role": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UserScope",
+                "description": "Required when `decision` is `approve`."
+              }
+            ]
+          },
+          "approved": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ApprovedResources",
+                "description": "Required when `decision` is `approve`."
+              }
+            ]
+          }
+        },
+        "example": {
+          "approved": {
+            "models_access": {
+              "ids": [
+                "llama3:8b"
+              ],
+              "type": "specific"
+            },
+            "version": "1"
+          },
+          "approved_role": "scope_user_user",
+          "decision": "approve",
+          "query": "client_id=app-acme&redirect_uri=https%3A%2F%2Facme.dev%2Fcb&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256&scope=scope_user_user"
+        }
+      },
+      "SubmitConsentResponse": {
+        "type": "object",
+        "description": "The one mutating consent response: the page navigates to `redirect_url` unconditionally.\nApprove → the auth server's authorize endpoint with the composed scope; deny or a\nredirectable request error → the app's redirect_uri carrying the OAuth error params.",
+        "required": [
+          "redirect_url"
+        ],
+        "properties": {
+          "id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Created access request id; omitted on deny and on redirected errors."
+          },
+          "redirect_url": {
+            "type": "string"
+          }
         }
       },
       "TenantListItem": {

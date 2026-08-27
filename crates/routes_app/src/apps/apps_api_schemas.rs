@@ -1,83 +1,104 @@
 use crate::ResourceAccess;
 use serde::{Deserialize, Serialize};
-use services::{
-  AppAccessRequest, AppAccessRequestStatus, ApprovedResources, RequestedResources, UserScope,
-};
+use services::{AppAccessRequest, AppAccessRequestStatus, ApprovedResources, UserScope};
 use utoipa::ToSchema;
 
-// Response for POST /apps/request-access
+/// App identity shown on the consent screen; `redirect_uri` is the validated target the
+/// flow will return to.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[schema(example = json!({
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "status": "draft",
-    "review_url": "http://localhost:1135/ui/apps/access-requests/review?id=550e8400-e29b-41d4-a716-446655440000"
-}))]
-pub struct CreateAccessRequestResponse {
-  pub id: String,
-  pub status: AppAccessRequestStatus,
-  pub review_url: String,
+pub struct ConsentAppInfo {
+  pub client_id: String,
+  pub name: String,
+  pub description: String,
+  pub redirect_uri: String,
 }
 
-// Response for GET /apps/access-requests/:id (status polling by apps)
+/// Parsed app-facing scope driving the consent screen: which sections render and the
+/// requested role ceiling. `passthrough` tokens are forwarded to the auth server verbatim.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[schema(example = json!({
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "status": "approved",
-    "requested_role": "scope_user_user",
-    "approved_role": "scope_user_user",
-    "access_request_scope": "scope_access_request:550e8400-e29b-41d4-a716-446655440000"
-}))]
-pub struct AccessRequestStatusResponse {
-  pub id: String,
-  pub status: AppAccessRequestStatus,
-  pub requested_role: UserScope,
-  /// Present when approved
-  pub approved_role: Option<UserScope>,
-  /// Present when user-approved with tools
-  pub access_request_scope: Option<String>,
+pub struct ConsentScopeInfo {
+  pub role: UserScope,
+  pub llms: bool,
+  pub mcps: bool,
+  pub passthrough: Vec<String>,
 }
 
-// Response for GET /access-requests/:id/review (review page data)
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct AccessRequestReviewResponse {
-  pub id: String,
-  pub app_client_id: String,
-  /// From KC, if available
-  pub app_name: Option<String>,
-  /// From KC, if available
-  pub app_description: Option<String>,
-  pub status: AppAccessRequestStatus,
-  pub requested_role: String,
-  pub requested: RequestedResources,
-  #[serde(default)]
-  pub mcps_info: Vec<McpServerReviewInfo>,
-  /// Canonical Keycloak authorize endpoint the review page validates the app-supplied `auth_url` against.
-  pub auth_endpoint: String,
-  /// Grant the app's current token already holds, for the review form to pre-select (upgrade only).
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub previous_grant: Option<PreviousGrantInfo>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ConsentPriorGrantSource {
+  /// Named by `source_access_request_id` — a reauthorization; prefill the diff.
+  Explicit,
+  /// Newest prior grant for this app+user — offer as an unselected restore affordance.
+  Latest,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct PreviousGrantInfo {
+pub struct ConsentPriorGrant {
+  pub id: String,
   pub approved_role: UserScope,
   pub approved: ApprovedResources,
+  pub source: ConsentPriorGrantSource,
 }
 
+/// Everything the consent page needs before render. `error` outcomes carry a
+/// `redirect_url` only when the redirect target was validated; `null` means render
+/// in-app and navigate nowhere (RFC 6749 §4.1.2.1).
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct McpServerReviewInfo {
-  pub url: String,
-  /// User's MCP instances connected to this server URL
-  pub instances: Vec<services::Mcp>,
+#[serde(tag = "result", rename_all = "snake_case")]
+pub enum ConsentContextResponse {
+  Ok {
+    app: ConsentAppInfo,
+    scope: ConsentScopeInfo,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    prior_grant: Option<ConsentPriorGrant>,
+    /// `false` for sessions below the User role — the page renders a blocked state
+    /// with a decline-only action.
+    can_approve: bool,
+  },
+  Error {
+    error: String,
+    error_description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    redirect_url: Option<String>,
+  },
 }
 
-// Response for PUT /access-requests/:id/approve and POST /access-requests/:id/deny
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ConsentDecision {
+  Approve,
+  Deny,
+}
+
+/// Consent decision for one authorize request. `query` is the page's query string exactly
+/// as received — the backend re-validates it rather than trusting a client-side reading.
+#[derive(Debug, Clone, Serialize, Deserialize, validator::Validate, ToSchema)]
+#[schema(example = json!({
+    "query": "client_id=app-acme&redirect_uri=https%3A%2F%2Facme.dev%2Fcb&response_type=code&state=abc&code_challenge=xyz&code_challenge_method=S256&scope=scope_user_user",
+    "decision": "approve",
+    "approved_role": "scope_user_user",
+    "approved": {"version": "1", "models_access": {"type": "specific", "ids": ["llama3:8b"]}}
+}))]
+pub struct SubmitConsentRequest {
+  pub query: String,
+  pub decision: ConsentDecision,
+  /// Required when `decision` is `approve`.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub approved_role: Option<UserScope>,
+  /// Required when `decision` is `approve`.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub approved: Option<ApprovedResources>,
+}
+
+/// The one mutating consent response: the page navigates to `redirect_url` unconditionally.
+/// Approve → the auth server's authorize endpoint with the composed scope; deny or a
+/// redirectable request error → the app's redirect_uri carrying the OAuth error params.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct AccessRequestActionResponse {
-  pub status: AppAccessRequestStatus,
-  /// Dynamic scope minted on approval; the review page appends it to `auth_url` before redirecting to Keycloak.
+pub struct SubmitConsentResponse {
+  /// Created access request id; omitted on deny and on redirected errors.
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub access_request_scope: Option<String>,
+  pub id: Option<String>,
+  pub redirect_url: String,
 }
 
 /// One issued app token (approved access request) with its effective grant summary.

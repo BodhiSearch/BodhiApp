@@ -117,14 +117,6 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     page_size: Option<u32>,
   ) -> Result<UserListResponse>;
 
-  async fn register_access_request_consent(
-    &self,
-    user_token: &str,
-    app_client_id: &str,
-    access_request_id: &str,
-    description: &str,
-  ) -> Result<RegisterAccessRequestConsentResponse>;
-
   fn authorize_url(&self) -> String;
 
   /// KC endpoint: GET /users/apps/{app_client_id}/info
@@ -169,15 +161,13 @@ struct KeycloakError {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegisterAccessRequestConsentResponse {
-  pub access_request_id: String,
-  pub access_request_scope: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppClientInfo {
   pub name: String,
   pub description: String,
+  /// Registered redirect URIs, sorted; `[]` when none. Absent (`None`) means an older
+  /// auth-server extension that predates the field — skip redirect validation then.
+  #[serde(default)]
+  pub redirect_uris: Option<Vec<String>>,
 }
 
 impl From<KeycloakError> for AuthServiceError {
@@ -763,59 +753,6 @@ impl AuthService for KeycloakAuthService {
     }
   }
 
-  async fn register_access_request_consent(
-    &self,
-    user_token: &str,
-    app_client_id: &str,
-    access_request_id: &str,
-    description: &str,
-  ) -> Result<RegisterAccessRequestConsentResponse> {
-    let endpoint = format!("{}/users/request-access", self.auth_api_url());
-
-    log::log_http_request("POST", &endpoint, "auth_service", None);
-
-    let request_body = serde_json::json!({
-      "app_client_id": app_client_id,
-      "access_request_id": access_request_id,
-      "description": description,
-    });
-
-    let response = self
-      .client
-      .post(&endpoint)
-      .json(&request_body)
-      .header("Authorization", format!("Bearer {}", user_token))
-      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
-      .send()
-      .await?;
-
-    let status = response.status();
-
-    if status.is_success() {
-      // 201 Created or 200 OK (idempotent retry)
-      Ok(
-        response
-          .json::<RegisterAccessRequestConsentResponse>()
-          .await?,
-      )
-    } else if status == 409 {
-      // UUID collision - different context
-      let error_text = response.text().await?;
-      log::log_http_error("POST", &endpoint, "auth_service", &error_text);
-      Err(AuthServiceError::TokenExchangeError(format!(
-        "UUID collision (409): {}",
-        error_text
-      )))
-    } else {
-      let error_text = response.text().await?;
-      log::log_http_error("POST", &endpoint, "auth_service", &error_text);
-      Err(AuthServiceError::AuthServiceApiError {
-        status: status.as_u16(),
-        body: error_text,
-      })
-    }
-  }
-
   fn authorize_url(&self) -> String {
     format!("{}/protocol/openid-connect/auth", self.auth_url())
   }
@@ -825,7 +762,6 @@ impl AuthService for KeycloakAuthService {
     app_client_id: &str,
     user_token: &str,
   ) -> Result<AppClientInfo> {
-    // TODO: KC endpoint not yet implemented
     let endpoint = format!("{}/users/apps/{}/info", self.auth_api_url(), app_client_id);
 
     log::log_http_request("GET", &endpoint, "auth_service", None);

@@ -163,11 +163,9 @@ impl AppServiceBuilder {
     let concurrency_service = Self::build_concurrency_service();
     let network_service = Self::build_network_service();
     let access_request_service = Self::build_access_request_service(
-      setting_service.clone(),
       db_service.clone(),
       auth_service.clone(),
       time_service.clone(),
-      network_service.clone(),
     );
     let mcp_service = Self::build_mcp_service(db_service.clone(), time_service.clone())?;
 
@@ -330,18 +328,14 @@ impl AppServiceBuilder {
   }
 
   fn build_access_request_service(
-    setting_service: Arc<dyn SettingService>,
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
     time_service: Arc<dyn TimeService>,
-    network_service: Arc<dyn NetworkService>,
   ) -> Arc<dyn AccessRequestService> {
     Arc::new(DefaultAccessRequestService::new(
       db_service,
       auth_service,
       time_service,
-      setting_service,
-      network_service,
     ))
   }
 

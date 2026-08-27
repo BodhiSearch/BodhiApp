@@ -6,7 +6,7 @@ use services::{
   db::{DbService, TimeService},
   extract_claims, token_checksum, ApprovedResources, AuthService, CacheService, Claims,
   ConcurrencyService, ExpClaims, ScopeClaims, SettingService, Tenant, TenantError, TenantService,
-  TokenError, TokenStatus, BODHIAPP_TOKEN_PREFIX, TOKEN_CHECKSUM_LEN,
+  TokenError, TokenStatus, BODHIAPP_TOKEN_PREFIX, SCOPE_ACCESS_REQUEST_PREFIX, TOKEN_CHECKSUM_LEN,
 };
 use services::{ResourceRole, TokenGrants, TokenScope, UserScope};
 use sha2::{Digest, Sha256};
@@ -256,7 +256,7 @@ impl DefaultTokenService {
     let access_request_scopes: Vec<&str> = claims
       .scope
       .split_whitespace()
-      .filter(|s| s.starts_with("scope_access_request:"))
+      .filter(|s| s.starts_with(SCOPE_ACCESS_REQUEST_PREFIX))
       .collect();
 
     let access_request_scope = access_request_scopes.first().copied();

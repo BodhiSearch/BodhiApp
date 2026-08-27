@@ -1,53 +1,31 @@
 use async_trait::async_trait;
-use chrono::Duration;
 use std::sync::Arc;
 
+use super::app_scopes::access_request_scope_value;
 use super::error::{AccessRequestError, Result};
-use super::{
-  AppAccessRequest, AppAccessRequestStatus, ApprovalStatus, ApprovedResources, RequestedResources,
-};
+use super::{AppAccessRequest, AppAccessRequestStatus, CreateApprovedAccessRequest};
 use crate::db::{DbService, TimeService};
 use crate::new_ulid;
 use crate::AuthService;
-use crate::NetworkService;
-use crate::SettingService;
-use crate::UserScope;
 
-/// App access request lifecycle service.
-///
-/// Intentionally NOT auth-scoped: requests are created anonymously (before login) and
-/// only bound to a tenant/user at approval, unlike other domain services that scope
-/// visibility by tenant_id/user_id from creation.
-///
-/// Exposed on AuthScopedAppService as a non-auth-scoped passthrough for convenience.
+/// App access request lifecycle service. Rows are created already-approved at consent
+/// (the user is authenticated there), with tenant/user bound from the session.
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
-  /// tenant_id is NULL — bound at approval time. `source_access_request_id` is the
-  /// prior request an upgrade elevates (handler resolves it from the caller's token).
-  async fn create_draft(
-    &self,
-    app_client_id: String,
-    requested: RequestedResources,
-    requested_role: UserScope,
-    source_access_request_id: Option<String>,
-  ) -> Result<AppAccessRequest>;
+  /// Create an Approved row; its `access_request_scope` is the dotted dynamic scope
+  /// `scope_access_request:<resource-client-id>.<row-id>` the Keycloak mapper parses.
+  async fn create_approved(&self, input: CreateApprovedAccessRequest) -> Result<AppAccessRequest>;
 
-  async fn get_request(&self, id: &str) -> Result<Option<AppAccessRequest>>;
+  async fn get_request(&self, tenant_id: &str, id: &str) -> Result<Option<AppAccessRequest>>;
 
-  /// `tenant_id` binds the draft to the approver's active tenant.
-  #[allow(clippy::too_many_arguments)]
-  async fn approve_request(
+  /// Newest approved grant for `(tenant, app, user)` — the reauthorize prefill source.
+  async fn latest_approved_for_app_user(
     &self,
-    id: &str,
-    user_id: &str,
     tenant_id: &str,
-    user_token: &str,
-    approved: ApprovedResources,
-    approved_role: UserScope,
-  ) -> Result<AppAccessRequest>;
-
-  async fn deny_request(&self, id: &str, user_id: &str) -> Result<AppAccessRequest>;
+    app_client_id: &str,
+    user_id: &str,
+  ) -> Result<Option<AppAccessRequest>>;
 
   /// Approved access requests (issued app tokens) owned by `user_id` in `tenant_id`.
   async fn list_approved_for_user(
@@ -64,16 +42,7 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     user_id: &str,
   ) -> Result<AppAccessRequest>;
 
-  /// Review URL for the app to open in the user's browser. `request_host` is the validated
-  /// `Host` header of the originating request, reflected into the URL when it is one of the
-  /// server's known-valid hosts (see `SettingService::resolve_public_server_url`).
-  async fn build_review_url<'a>(
-    &self,
-    request_host: Option<&'a str>,
-    access_request_id: &str,
-  ) -> String;
-
-  /// Canonical authorize endpoint the review page validates the app-supplied `auth_url` against.
+  /// Canonical Keycloak authorize endpoint the consent flow redirects to.
   fn build_authorize_endpoint(&self) -> String;
 }
 
@@ -82,8 +51,6 @@ pub struct DefaultAccessRequestService {
   db_service: Arc<dyn DbService>,
   auth_service: Arc<dyn AuthService>,
   time_service: Arc<dyn TimeService>,
-  setting_service: Arc<dyn SettingService>,
-  network_service: Arc<dyn NetworkService>,
 }
 
 impl DefaultAccessRequestService {
@@ -91,71 +58,44 @@ impl DefaultAccessRequestService {
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
     time_service: Arc<dyn TimeService>,
-    setting_service: Arc<dyn SettingService>,
-    network_service: Arc<dyn NetworkService>,
   ) -> Self {
     Self {
       db_service,
       auth_service,
       time_service,
-      setting_service,
-      network_service,
-    }
-  }
-
-  fn generate_description(&self, approved: &ApprovedResources) -> String {
-    let mut lines = Vec::new();
-    match approved {
-      ApprovedResources::V1(v1) => {
-        for approval in &v1.mcps {
-          if approval.status == ApprovalStatus::Approved {
-            lines.push(format!("- MCP: {}", approval.url));
-          }
-        }
-      }
-    }
-    if lines.is_empty() {
-      "Access approved".to_string()
-    } else {
-      lines.join("\n")
     }
   }
 }
 
 #[async_trait]
 impl AccessRequestService for DefaultAccessRequestService {
-  async fn create_draft(
-    &self,
-    app_client_id: String,
-    requested: RequestedResources,
-    requested_role: UserScope,
-    source_access_request_id: Option<String>,
-  ) -> Result<AppAccessRequest> {
-    let access_request_id = new_ulid();
+  async fn create_approved(&self, input: CreateApprovedAccessRequest) -> Result<AppAccessRequest> {
+    let id = new_ulid();
+    let access_request_scope = access_request_scope_value(&input.resource_client_id, &id)?;
+
+    let requested_json = serde_json::to_string(&input.requested)
+      .map_err(|e| AccessRequestError::Serialization(e.to_string()))?;
+    let approved_json = serde_json::to_string(&input.approved)
+      .map_err(|e| AccessRequestError::Serialization(e.to_string()))?;
 
     let now = self.time_service.utc_now();
-    let expires_at = now + Duration::minutes(10);
-
-    let requested_json = serde_json::to_string(&requested).map_err(|e| {
-      AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e))
-    })?;
-
     let row = AppAccessRequest {
-      id: access_request_id,
-      tenant_id: None,
-      app_client_id,
+      id,
+      tenant_id: Some(input.tenant_id),
+      app_client_id: input.app_client_id,
       app_name: None,
       app_description: None,
-      status: AppAccessRequestStatus::Draft,
+      status: AppAccessRequestStatus::Approved,
       requested: requested_json,
-      approved: None,
-      user_id: None,
-      requested_role: requested_role.to_string(),
-      approved_role: None,
-      access_request_scope: None,
-      source_access_request_id,
+      approved: Some(approved_json),
+      user_id: Some(input.user_id),
+      requested_role: input.requested_role.to_string(),
+      approved_role: Some(input.approved_role.to_string()),
+      access_request_scope: Some(access_request_scope),
+      source_access_request_id: input.source_access_request_id,
       error_message: None,
-      expires_at,
+      // Approved rows never expire; the column is NOT NULL so it carries the creation time.
+      expires_at: now,
       created_at: now,
       updated_at: now,
     };
@@ -164,102 +104,22 @@ impl AccessRequestService for DefaultAccessRequestService {
     Ok(created_row)
   }
 
-  async fn get_request(&self, id: &str) -> Result<Option<AppAccessRequest>> {
-    let row = self.db_service.get("", id).await?;
+  async fn get_request(&self, tenant_id: &str, id: &str) -> Result<Option<AppAccessRequest>> {
+    let row = self.db_service.get(tenant_id, id).await?;
     Ok(row)
   }
 
-  async fn approve_request(
+  async fn latest_approved_for_app_user(
     &self,
-    id: &str,
-    user_id: &str,
     tenant_id: &str,
-    user_token: &str,
-    approved: ApprovedResources,
-    approved_role: UserScope,
-  ) -> Result<AppAccessRequest> {
+    app_client_id: &str,
+    user_id: &str,
+  ) -> Result<Option<AppAccessRequest>> {
     let row = self
-      .get_request(id)
-      .await?
-      .ok_or_else(|| AccessRequestError::NotFound(id.to_string()))?;
-
-    match row.status {
-      AppAccessRequestStatus::Draft => {}
-      AppAccessRequestStatus::Expired => {
-        return Err(AccessRequestError::Expired(id.to_string()));
-      }
-      _ => {
-        return Err(AccessRequestError::AlreadyProcessed(id.to_string()));
-      }
-    }
-
-    let requested_resources: RequestedResources = serde_json::from_str(&row.requested)
-      .map_err(|e| AccessRequestError::InvalidStatus(format!("Invalid requested JSON: {}", e)))?;
-    if requested_resources.version() != approved.version() {
-      return Err(AccessRequestError::VersionMismatch {
-        requested_version: requested_resources.version().to_string(),
-        approved_version: approved.version().to_string(),
-      });
-    }
-
-    let description = self.generate_description(&approved);
-
-    let kc_response = match self
-      .auth_service
-      .register_access_request_consent(user_token, &row.app_client_id, id, &description)
-      .await
-    {
-      Ok(resp) => resp,
-      Err(e) => {
-        let error_msg = e.to_string();
-        if error_msg.contains("409") || error_msg.contains("UUID collision") {
-          let failure_msg =
-            "KC registration failed: UUID collision (409). Please retry with new request.";
-          let failed_row = self.db_service.update_failure(id, failure_msg).await?;
-          return Ok(failed_row);
-        } else {
-          return Err(AccessRequestError::KcRegistrationFailed(error_msg));
-        }
-      }
-    };
-
-    let approved_json = serde_json::to_string(&approved).map_err(|e| {
-      AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e))
-    })?;
-
-    let updated_row = self
       .db_service
-      .update_approval(
-        id,
-        user_id,
-        tenant_id,
-        &approved_json,
-        &approved_role.to_string(),
-        &kc_response.access_request_scope,
-      )
+      .latest_approved_for_app_user(tenant_id, app_client_id, user_id)
       .await?;
-
-    Ok(updated_row)
-  }
-
-  async fn deny_request(&self, id: &str, user_id: &str) -> Result<AppAccessRequest> {
-    let row = self
-      .get_request(id)
-      .await?
-      .ok_or_else(|| AccessRequestError::NotFound(id.to_string()))?;
-
-    match row.status {
-      AppAccessRequestStatus::Draft => {}
-      AppAccessRequestStatus::Expired => {
-        return Err(AccessRequestError::Expired(id.to_string()));
-      }
-      _ => {
-        return Err(AccessRequestError::AlreadyProcessed(id.to_string()));
-      }
-    }
-
-    let updated_row = self.db_service.update_denial(id, user_id).await?;
-    Ok(updated_row)
+    Ok(row)
   }
 
   async fn list_approved_for_user(
@@ -281,29 +141,12 @@ impl AccessRequestService for DefaultAccessRequestService {
     user_id: &str,
   ) -> Result<AppAccessRequest> {
     // The token-exchange path requires status == Approved, so flipping to Revoked
-    // stops the app token. Keycloak consent is left in place (best-effort); a
-    // revoked record fails exchange regardless.
+    // stops the app token.
     let updated_row = self
       .db_service
       .update_revocation(tenant_id, id, user_id)
       .await?;
     Ok(updated_row)
-  }
-
-  async fn build_review_url<'a>(
-    &self,
-    request_host: Option<&'a str>,
-    access_request_id: &str,
-  ) -> String {
-    let server_ip = self.network_service.get_server_ip();
-    let base = self
-      .setting_service
-      .resolve_public_server_url(request_host, server_ip.as_deref())
-      .await;
-    format!(
-      "{}/ui/apps/access-requests/review?id={}",
-      base, access_request_id
-    )
   }
 
   fn build_authorize_endpoint(&self) -> String {

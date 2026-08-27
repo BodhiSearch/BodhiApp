@@ -1,7 +1,7 @@
-use crate::app_access_requests::{AppAccessRequest, AppAccessRequestStatus};
+use crate::{AppAccessRequest, AppAccessRequestStatus};
 use chrono::Duration;
 
-pub(crate) fn make_request(
+pub fn make_request(
   id: &str,
   tenant_id: &str,
   now: chrono::DateTime<chrono::Utc>,
@@ -27,7 +27,7 @@ pub(crate) fn make_request(
   }
 }
 
-pub(crate) fn approved_request(
+pub fn approved_request(
   id: &str,
   tenant_id: &str,
   user_id: &str,

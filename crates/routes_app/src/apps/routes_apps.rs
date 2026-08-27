@@ -1,337 +1,280 @@
+use crate::apps::consent::{
+  build_error_redirect, evaluate_consent_query, ConsentReady, OAUTH_ERROR_ACCESS_DENIED,
+};
 use crate::apps::{
-  AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
-  AppAccessSummary, AppsRouteError, CreateAccessRequestResponse, ListAppAccessResponse,
+  AppAccessSummary, AppsRouteError, ConsentAppInfo, ConsentContextResponse, ConsentDecision,
+  ConsentPriorGrant, ConsentPriorGrantSource, ConsentScopeInfo, ListAppAccessResponse,
+  SubmitConsentRequest, SubmitConsentResponse,
 };
 use crate::{AuthScope, BodhiErrorResponse, ValidatedJson, API_TAG_AUTH};
 use axum::{
-  extract::{Path, Query},
+  extract::{Path, RawQuery},
   http::StatusCode,
   response::Json,
 };
-use serde::Deserialize;
 use services::{
-  AppAccessRequestStatus, ApprovalStatus, ApproveAccessRequest, ApprovedResources,
-  CreateAccessRequest, McpGrant, RequestedResources,
+  compose_keycloak_scope, validate_grant_against_scope, AppAccessRequest, AppAccessRequestStatus,
+  ApprovalStatus, ApprovedResources, CreateApprovedAccessRequest, McpGrant, RequestedResources,
+  RequestedResourcesV1, UserScope,
 };
-use services::{ResourceRole, UserScope};
-use tracing::{debug, info};
+use services::{AuthContext, ResourceRole};
 
-pub const ENDPOINT_APPS_REQUEST_ACCESS: &str = "/bodhi/v1/apps/request-access";
-pub const ENDPOINT_APPS_ACCESS_REQUESTS_ID: &str = "/bodhi/v1/apps/access-requests/{id}";
-pub const ENDPOINT_ACCESS_REQUESTS_REVIEW: &str = "/bodhi/v1/access-requests/{id}/review";
-pub const ENDPOINT_ACCESS_REQUESTS_APPROVE: &str = "/bodhi/v1/access-requests/{id}/approve";
-pub const ENDPOINT_ACCESS_REQUESTS_DENY: &str = "/bodhi/v1/access-requests/{id}/deny";
+pub const ENDPOINT_APPS_ACCESS_REQUESTS: &str = "/bodhi/v1/apps/access-requests";
+pub const ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT: &str = "/bodhi/v1/apps/access-requests/consent";
 pub const ENDPOINT_ACCESS_REQUESTS_APPS: &str = "/bodhi/v1/access-requests/apps";
 pub const ENDPOINT_ACCESS_REQUESTS_REVOKE: &str = "/bodhi/v1/access-requests/{id}/revoke";
 
-// Query params for GET /apps/access-requests/:id (polling by apps)
-#[derive(Debug, Deserialize)]
-pub struct AccessRequestStatusQuery {
-  pub app_client_id: String,
-}
-
-/// Create access request (POST /apps/request-access)
-#[utoipa::path(
-    post,
-    path = ENDPOINT_APPS_REQUEST_ACCESS,
-    tag = API_TAG_AUTH,
-    operation_id = "createAccessRequest",
-    summary = "Create Access Request",
-    description = "Create an access request for an app to access user resources. Always creates a draft for user review. Anonymous, except `exchange: true` requires the app's current token in the Authorization header.",
-    request_body(
-        content = CreateAccessRequest,
-        description = "Access request details"
-    ),
-    responses(
-        (status = 201, description = "Access request created", body = CreateAccessRequestResponse),
-        (status = 400, description = "Invalid request", body = BodhiErrorResponse),
-        (status = 404, description = "App client not found", body = BodhiErrorResponse),
-    ),
-    security(())
-)]
-pub async fn apps_create_access_request(
-  auth_scope: AuthScope,
-  headers: axum::http::HeaderMap,
-  ValidatedJson(request): ValidatedJson<CreateAccessRequest>,
-) -> Result<(StatusCode, Json<CreateAccessRequestResponse>), BodhiErrorResponse> {
-  debug!(
-    "Creating access request for app_client_id: {}",
-    request.app_client_id
-  );
-
-  // Exchange: derive the prior request from the caller's own app token (never the body).
-  let source_access_request_id = if request.exchange {
-    match auth_scope.auth_context() {
-      services::AuthContext::ExternalApp {
-        app_client_id,
-        access_request_id: Some(source_id),
-        ..
-      } if *app_client_id == request.app_client_id => Some(source_id.clone()),
-      _ => return Err(AppsRouteError::ExchangeRequiresAuth)?,
-    }
-  } else {
-    None
-  };
-
-  let access_request_service = auth_scope.access_request_service();
-  let created = access_request_service
-    .create_draft(
-      request.app_client_id,
-      request.requested,
-      request.requested_role,
-      source_access_request_id,
-    )
-    .await?;
-
-  let request_host = crate::shared::utils::extract_request_host(&headers);
-  let review_url = access_request_service
-    .build_review_url(request_host.as_deref(), &created.id)
-    .await;
-  info!(
-    "Access request {} created with review_url: {}",
-    created.id, review_url
-  );
-  Ok((
-    StatusCode::CREATED,
-    Json(CreateAccessRequestResponse {
-      id: created.id,
-      status: AppAccessRequestStatus::Draft,
-      review_url,
-    }),
-  ))
-}
-
-/// Get access request status (GET /apps/access-requests/:id)
+/// Consent context (GET /apps/access-requests/consent)
 #[utoipa::path(
     get,
-    path = ENDPOINT_APPS_ACCESS_REQUESTS_ID,
+    path = ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT,
     tag = API_TAG_AUTH,
-    operation_id = "getAccessRequestStatus",
-    summary = "Get Access Request Status",
-    description = "Poll access request status. Requires app_client_id query parameter for security.",
+    operation_id = "getConsentContext",
+    summary = "Get Consent Context",
+    description = "Validate an OAuth authorize request (passed as the raw query string, exactly as received by /ui/apps/auth/) and return everything the consent page needs: app identity, parsed scope sections, prior grant, and whether the caller may approve. Always 200 with an ok/error union; error outcomes carry a redirect_url only when the redirect target was validated. Requires session auth (any role — guests see a blocked state).",
     params(
-        ("id" = String, Path, description = "Access request ID"),
-        ("app_client_id" = String, Query, description = "App client ID for verification")
+        ("client_id" = Option<String>, Query, description = "OAuth client id of the requesting app"),
+        ("redirect_uri" = Option<String>, Query, description = "App redirect target; exact-matched against the app's registered URIs"),
+        ("response_type" = Option<String>, Query, description = "Must be 'code'"),
+        ("state" = Option<String>, Query, description = "Opaque app state, echoed back on every redirect"),
+        ("code_challenge" = Option<String>, Query, description = "PKCE challenge"),
+        ("code_challenge_method" = Option<String>, Query, description = "Must be 'S256'"),
+        ("scope" = Option<String>, Query, description = "App-facing scope string (scope_user_*, scope_apps:*, passthrough tokens)"),
+        ("source_access_request_id" = Option<String>, Query, description = "Prior grant id for reauthorization"),
     ),
     responses(
-        (status = 200, description = "Status retrieved", body = AccessRequestStatusResponse),
-        (status = 404, description = "Not found or app_client_id mismatch", body = BodhiErrorResponse),
-    ),
-    security(())
-)]
-pub async fn apps_get_access_request_status(
-  auth_scope: AuthScope,
-  Path(id): Path<String>,
-  Query(query): Query<AccessRequestStatusQuery>,
-) -> Result<Json<AccessRequestStatusResponse>, BodhiErrorResponse> {
-  debug!("Getting access request status for id: {}", id);
-
-  let access_request_service = auth_scope.access_request_service();
-  let request = access_request_service
-    .get_request(&id)
-    .await?
-    .ok_or(AppsRouteError::NotFound)?;
-
-  if request.app_client_id != query.app_client_id {
-    return Err(AppsRouteError::NotFound)?;
-  }
-
-  let requested_role: UserScope = request.requested_role.parse()?;
-  let approved_role: Option<UserScope> = request.approved_role.map(|r| r.parse()).transpose()?;
-
-  Ok(Json(AccessRequestStatusResponse {
-    id: request.id,
-    status: request.status,
-    requested_role,
-    approved_role,
-    access_request_scope: request.access_request_scope,
-  }))
-}
-
-/// Get access request review data (GET /access-requests/:id/review)
-#[utoipa::path(
-    get,
-    path = ENDPOINT_ACCESS_REQUESTS_REVIEW,
-    tag = API_TAG_AUTH,
-    operation_id = "getAccessRequestReview",
-    summary = "Get Access Request Review",
-    description = "Get full access request details for review page. Returns data regardless of status. Requires session auth.",
-    params(
-        ("id" = String, Path, description = "Access request ID")
-    ),
-    responses(
-        (status = 200, description = "Review data retrieved", body = AccessRequestReviewResponse),
-        (status = 404, description = "Not found", body = BodhiErrorResponse),
-        (status = 410, description = "Request expired", body = BodhiErrorResponse),
+        (status = 200, description = "Consent context or a structured OAuth error", body = ConsentContextResponse),
     ),
     security(
         ("session_auth" = [])
     )
 )]
-pub async fn apps_get_access_request_review(
+pub async fn apps_get_consent_context(
   auth_scope: AuthScope,
-  Path(id): Path<String>,
-) -> Result<Json<AccessRequestReviewResponse>, BodhiErrorResponse> {
-  let access_request_service = auth_scope.access_request_service();
-  let request = access_request_service
-    .get_request(&id)
-    .await?
-    .ok_or(AppsRouteError::NotFound)?;
-
-  let requested: RequestedResources =
-    serde_json::from_str(&request.requested).map_err(|_| AppsRouteError::InvalidRequestedJson)?;
-
-  let mcps_svc = auth_scope.mcps();
-  let all_user_mcp_entities = mcps_svc.list().await?;
-  let all_user_mcps: Vec<services::Mcp> = all_user_mcp_entities
-    .into_iter()
-    .map(|e| e.into())
-    .collect();
-
-  let mut mcps_info = Vec::new();
-
-  match &requested {
-    RequestedResources::V1(v1) => {
-      for mcp_server_req in &v1.mcp_servers {
-        // Surface every configured instance so the user can connect the request to any of their
-        // MCPs (e.g. the same tool reached via a gateway), with exact-URL matches sorted first.
-        let (mut matches, others): (Vec<_>, Vec<_>) = all_user_mcps
-          .iter()
-          .cloned()
-          .partition(|m| m.mcp_server.url == mcp_server_req.url);
-        matches.extend(others);
-
-        mcps_info.push(crate::apps::McpServerReviewInfo {
-          url: mcp_server_req.url.clone(),
-          instances: matches,
-        });
-      }
-    }
-  }
-
-  let previous_grant = match &request.source_access_request_id {
-    Some(source_id) => {
-      resolve_previous_grant(&*access_request_service, source_id, &request.app_client_id).await
-    }
-    None => None,
-  };
-
-  Ok(Json(AccessRequestReviewResponse {
-    id: request.id,
-    app_client_id: request.app_client_id,
-    app_name: request.app_name,
-    app_description: request.app_description,
-    status: request.status,
-    requested_role: request.requested_role,
-    requested,
-    mcps_info,
-    auth_endpoint: access_request_service.build_authorize_endpoint(),
-    previous_grant,
-  }))
-}
-
-/// Prior grant for an upgrade review; `None` (form uses defaults) when the source is
-/// missing, not approved, from a different app, or unparsable.
-async fn resolve_previous_grant(
-  service: &dyn services::AccessRequestService,
-  source_id: &str,
-  app_client_id: &str,
-) -> Option<crate::apps::PreviousGrantInfo> {
-  let source = service.get_request(source_id).await.ok().flatten()?;
-  if source.status != AppAccessRequestStatus::Approved || source.app_client_id != app_client_id {
-    return None;
-  }
-  let approved: ApprovedResources = serde_json::from_str(source.approved.as_deref()?).ok()?;
-  let approved_role: UserScope = source.approved_role.as_deref()?.parse().ok()?;
-  Some(crate::apps::PreviousGrantInfo {
-    approved_role,
-    approved,
-  })
-}
-
-/// Approve access request (PUT /access-requests/:id/approve)
-#[utoipa::path(
-    put,
-    path = ENDPOINT_ACCESS_REQUESTS_APPROVE,
-    tag = API_TAG_AUTH,
-    operation_id = "approveAppsAccessRequest",
-    summary = "Approve Access Request",
-    description = "Approve access request with tool instance selections. Requires session auth.",
-    params(
-        ("id" = String, Path, description = "Access request ID")
-    ),
-    request_body(
-        content = ApproveAccessRequest,
-        description = "Approval details with tool selections"
-    ),
-    responses(
-        (status = 200, description = "Request approved", body = AccessRequestActionResponse),
-        (status = 400, description = "Invalid request", body = BodhiErrorResponse),
-        (status = 404, description = "Not found", body = BodhiErrorResponse),
-        (status = 409, description = "Already processed", body = BodhiErrorResponse),
-    ),
-    security(
-        ("session_auth" = [])
-    )
-)]
-pub async fn apps_approve_access_request(
-  auth_scope: AuthScope,
-  Path(id): Path<String>,
-  ValidatedJson(approval_input): ValidatedJson<ApproveAccessRequest>,
-) -> Result<Json<AccessRequestActionResponse>, BodhiErrorResponse> {
-  let user_id = auth_scope.require_user_id()?;
+  RawQuery(raw_query): RawQuery,
+) -> Result<Json<ConsentContextResponse>, BodhiErrorResponse> {
   let token = auth_scope
     .auth_context()
     .token()
     .ok_or(AppsRouteError::InsufficientPrivileges)?;
-  let tenant_id = auth_scope.require_tenant_id()?;
+  let auth_service = auth_scope.auth_service();
 
-  let approver_role = match auth_scope.auth_context() {
-    services::AuthContext::Session { role, .. }
-    | services::AuthContext::MultiTenantSession { role, .. } => {
-      if !role.has_access_to(&ResourceRole::User) {
-        return Err(AppsRouteError::InsufficientPrivileges)?;
+  let ready =
+    match evaluate_consent_query(&*auth_service, token, raw_query.as_deref().unwrap_or("")).await {
+      Ok(ready) => ready,
+      Err(failure) => {
+        return Ok(Json(ConsentContextResponse::Error {
+          error: failure.error.to_string(),
+          error_description: failure.error_description,
+          redirect_url: failure.redirect_url,
+        }))
       }
-      role
-    }
-    services::AuthContext::Anonymous { .. }
-    | services::AuthContext::ApiToken { .. }
-    | services::AuthContext::ExternalApp { .. } => {
-      return Err(AppsRouteError::InsufficientPrivileges)?
-    }
-  };
-  let max_grantable = if *approver_role >= ResourceRole::PowerUser {
-    UserScope::PowerUser
-  } else {
-    UserScope::User
-  };
+    };
 
-  let approved_scope = approval_input.approved_role;
+  let can_approve = matches!(
+    auth_scope.auth_context(),
+    AuthContext::Session { role, .. } | AuthContext::MultiTenantSession { role, .. }
+      if role.has_access_to(&ResourceRole::User)
+  );
+  let prior_grant = resolve_prior_grant(&auth_scope, &ready).await?;
 
-  // Fetch the access request to get requested_role for privilege escalation check
+  Ok(Json(ConsentContextResponse::Ok {
+    app: ConsentAppInfo {
+      client_id: ready.client_id,
+      name: ready.app_info.name,
+      description: ready.app_info.description,
+      redirect_uri: ready.redirect_uri,
+    },
+    scope: ConsentScopeInfo {
+      role: ready.scope.role,
+      llms: ready.scope.llms,
+      mcps: ready.scope.mcps,
+      passthrough: ready.scope.passthrough,
+    },
+    prior_grant,
+    can_approve,
+  }))
+}
+
+/// Prior grant offered on the consent screen. An explicit `source_access_request_id` that
+/// does not resolve to this app+user's approved grant is ignored (fresh authorization).
+async fn resolve_prior_grant(
+  auth_scope: &AuthScope,
+  ready: &ConsentReady,
+) -> Result<Option<ConsentPriorGrant>, BodhiErrorResponse> {
+  let ctx = auth_scope.auth_context();
+  let (Some(tenant_id), Some(user_id)) = (ctx.tenant_id(), ctx.user_id()) else {
+    return Ok(None);
+  };
   let access_request_service = auth_scope.access_request_service();
-  let request = access_request_service
-    .get_request(&id)
-    .await?
-    .ok_or(AppsRouteError::NotFound)?;
 
-  let requested_scope: UserScope = request.requested_role.parse()?;
+  if let Some(source_id) = &ready.source_access_request_id {
+    let row = access_request_service
+      .get_request(tenant_id, source_id)
+      .await?;
+    return Ok(row.and_then(|row| {
+      to_prior_grant(
+        row,
+        &ready.client_id,
+        user_id,
+        ConsentPriorGrantSource::Explicit,
+      )
+    }));
+  }
 
-  if approved_scope > requested_scope {
+  let row = access_request_service
+    .latest_approved_for_app_user(tenant_id, &ready.client_id, user_id)
+    .await?;
+  Ok(row.and_then(|row| {
+    to_prior_grant(
+      row,
+      &ready.client_id,
+      user_id,
+      ConsentPriorGrantSource::Latest,
+    )
+  }))
+}
+
+fn to_prior_grant(
+  row: AppAccessRequest,
+  app_client_id: &str,
+  user_id: &str,
+  source: ConsentPriorGrantSource,
+) -> Option<ConsentPriorGrant> {
+  if row.status != AppAccessRequestStatus::Approved
+    || row.app_client_id != app_client_id
+    || row.user_id.as_deref() != Some(user_id)
+  {
+    return None;
+  }
+  let approved: ApprovedResources = serde_json::from_str(row.approved.as_deref()?).ok()?;
+  let approved_role: UserScope = row.approved_role.as_deref()?.parse().ok()?;
+  Some(ConsentPriorGrant {
+    id: row.id,
+    approved_role,
+    approved,
+    source,
+  })
+}
+
+/// Submit consent decision (POST /apps/access-requests)
+#[utoipa::path(
+    post,
+    path = ENDPOINT_APPS_ACCESS_REQUESTS,
+    tag = API_TAG_AUTH,
+    operation_id = "submitConsent",
+    summary = "Submit Consent Decision",
+    description = "The single mutating consent call. Re-validates the authorize request from the echoed query string; on approve creates an already-approved access request and returns the auth server's authorize URL with the composed scope; on deny returns the app's redirect_uri carrying error=access_denied. The page navigates to redirect_url unconditionally. Approve requires the User role; deny is allowed for any authenticated session.",
+    request_body(
+        content = SubmitConsentRequest,
+        description = "Consent decision with the original query string"
+    ),
+    responses(
+        (status = 201, description = "Grant created (approve)", body = SubmitConsentResponse),
+        (status = 200, description = "Deny or redirectable request error — no grant created", body = SubmitConsentResponse),
+        (status = 400, description = "Invalid request (rendered in-app)", body = BodhiErrorResponse),
+        (status = 403, description = "Caller may not approve", body = BodhiErrorResponse),
+    ),
+    security(
+        ("session_auth" = [])
+    )
+)]
+pub async fn apps_submit_consent(
+  auth_scope: AuthScope,
+  ValidatedJson(request): ValidatedJson<SubmitConsentRequest>,
+) -> Result<(StatusCode, Json<SubmitConsentResponse>), BodhiErrorResponse> {
+  let token = auth_scope
+    .auth_context()
+    .token()
+    .ok_or(AppsRouteError::InsufficientPrivileges)?;
+  let auth_service = auth_scope.auth_service();
+
+  let ready = match evaluate_consent_query(&*auth_service, token, &request.query).await {
+    Ok(ready) => ready,
+    // A redirectable failure still completes the flow: the page navigates to the app.
+    Err(failure) => match failure.redirect_url {
+      Some(redirect_url) => {
+        return Ok((
+          StatusCode::OK,
+          Json(SubmitConsentResponse {
+            id: None,
+            redirect_url,
+          }),
+        ))
+      }
+      None => {
+        return Err(AppsRouteError::ConsentRejected {
+          error: failure.error.to_string(),
+          error_description: failure.error_description,
+        })?
+      }
+    },
+  };
+
+  match request.decision {
+    ConsentDecision::Deny => {
+      // Evaluation already validated redirect_uri parses as a URL, so this cannot fail.
+      let redirect_url = build_error_redirect(
+        &ready.redirect_uri,
+        OAUTH_ERROR_ACCESS_DENIED,
+        "user denied the access request",
+        Some(&ready.state),
+      )
+      .ok_or_else(|| AppsRouteError::ConsentRejected {
+        error: "server_error".to_string(),
+        error_description: "failed to compose the denial redirect".to_string(),
+      })?;
+      Ok((
+        StatusCode::OK,
+        Json(SubmitConsentResponse {
+          id: None,
+          redirect_url,
+        }),
+      ))
+    }
+    ConsentDecision::Approve => approve_consent(&auth_scope, request, ready).await,
+  }
+}
+
+async fn approve_consent(
+  auth_scope: &AuthScope,
+  request: SubmitConsentRequest,
+  ready: ConsentReady,
+) -> Result<(StatusCode, Json<SubmitConsentResponse>), BodhiErrorResponse> {
+  match auth_scope.auth_context() {
+    AuthContext::Session { role, .. } | AuthContext::MultiTenantSession { role, .. }
+      if role.has_access_to(&ResourceRole::User) => {}
+    _ => return Err(AppsRouteError::InsufficientPrivileges)?,
+  }
+  let max_grantable =
+    caller_max_user_scope(auth_scope).ok_or(AppsRouteError::InsufficientPrivileges)?;
+
+  let approved_role = request
+    .approved_role
+    .ok_or_else(|| AppsRouteError::ConsentFieldMissing("approved_role".to_string()))?;
+  let approved = request
+    .approved
+    .ok_or_else(|| AppsRouteError::ConsentFieldMissing("approved".to_string()))?;
+
+  let requested_scope = ready.scope.role;
+  if approved_role > requested_scope {
     return Err(AppsRouteError::PrivilegeEscalation {
-      approved: approved_scope.to_string(),
+      approved: approved_role.to_string(),
       max_allowed: requested_scope.to_string(),
     })?;
   }
-  if approved_scope > max_grantable {
+  if approved_role > max_grantable {
     return Err(AppsRouteError::PrivilegeEscalation {
-      approved: approved_scope.to_string(),
+      approved: approved_role.to_string(),
       max_allowed: max_grantable.to_string(),
     })?;
   }
 
+  // The grant may not exceed what the scope requested (tampered-POST guard).
+  validate_grant_against_scope(&ready.scope, approved.v1()).map_err(AppsRouteError::from)?;
+
   // Validate MCP instances using auth-scoped services (enforces ownership via user_id)
-  match &approval_input.approved {
+  match &approved {
     ApprovedResources::V1(v1) => {
       for approval in &v1.mcps {
         if approval.status == ApprovalStatus::Approved {
@@ -378,56 +321,76 @@ pub async fn apps_approve_access_request(
     }
   }
 
-  let updated = access_request_service
-    .approve_request(
-      &id,
-      user_id,
-      tenant_id,
-      token,
-      approval_input.approved,
-      approved_scope,
-    )
+  let tenant_id = auth_scope.require_tenant_id()?;
+  let user_id = auth_scope.require_user_id()?;
+  let resource_client_id = auth_scope.require_client_id()?;
+  let access_request_service = auth_scope.access_request_service();
+
+  // Store the source id only when it resolves to this app+user's own approved grant.
+  let source_access_request_id = match &ready.source_access_request_id {
+    Some(source_id) => access_request_service
+      .get_request(tenant_id, source_id)
+      .await?
+      .filter(|row| {
+        row.status == AppAccessRequestStatus::Approved
+          && row.app_client_id == ready.client_id
+          && row.user_id.as_deref() == Some(user_id)
+      })
+      .map(|row| row.id),
+    None => None,
+  };
+
+  // Audit record of what the scope requested, in the stored envelope shape.
+  let requested = RequestedResources::V1(RequestedResourcesV1 {
+    models_list: false,
+    models_access: ready.scope.llms,
+    mcps_list: false,
+    mcps_access: ready.scope.mcps,
+    mcp_servers: Vec::new(),
+  });
+
+  let row = access_request_service
+    .create_approved(CreateApprovedAccessRequest {
+      app_client_id: ready.client_id.clone(),
+      tenant_id: tenant_id.to_string(),
+      user_id: user_id.to_string(),
+      resource_client_id: resource_client_id.to_string(),
+      requested,
+      requested_role: ready.scope.role,
+      approved,
+      approved_role,
+      source_access_request_id,
+    })
     .await?;
 
-  Ok(Json(AccessRequestActionResponse {
-    status: updated.status,
-    access_request_scope: updated.access_request_scope,
-  }))
-}
+  let access_request_scope = row
+    .access_request_scope
+    .as_deref()
+    .ok_or(AppsRouteError::MissingAccessRequestScope)?;
+  let kc_scope = compose_keycloak_scope(&ready.scope, access_request_scope);
 
-/// Deny access request (POST /access-requests/:id/deny)
-#[utoipa::path(
-    post,
-    path = ENDPOINT_ACCESS_REQUESTS_DENY,
-    tag = API_TAG_AUTH,
-    operation_id = "denyAccessRequest",
-    summary = "Deny Access Request",
-    description = "Deny access request. Requires session auth.",
-    params(
-        ("id" = String, Path, description = "Access request ID")
-    ),
-    responses(
-        (status = 200, description = "Request denied", body = AccessRequestActionResponse),
-        (status = 404, description = "Not found", body = BodhiErrorResponse),
-        (status = 409, description = "Already processed", body = BodhiErrorResponse),
-    ),
-    security(
-        ("session_auth" = [])
-    )
-)]
-pub async fn apps_deny_access_request(
-  auth_scope: AuthScope,
-  Path(id): Path<String>,
-) -> Result<Json<AccessRequestActionResponse>, BodhiErrorResponse> {
-  let user_id = auth_scope.require_user_id()?;
+  let authorize_query = url::form_urlencoded::Serializer::new(String::new())
+    .append_pair("response_type", "code")
+    .append_pair("client_id", &ready.client_id)
+    .append_pair("redirect_uri", &ready.redirect_uri)
+    .append_pair("state", &ready.state)
+    .append_pair("code_challenge", &ready.code_challenge)
+    .append_pair("code_challenge_method", "S256")
+    .append_pair("scope", &kc_scope)
+    .finish();
+  let redirect_url = format!(
+    "{}?{}",
+    access_request_service.build_authorize_endpoint(),
+    authorize_query
+  );
 
-  let access_request_service = auth_scope.access_request_service();
-  let updated = access_request_service.deny_request(&id, user_id).await?;
-
-  Ok(Json(AccessRequestActionResponse {
-    status: updated.status,
-    access_request_scope: None,
-  }))
+  Ok((
+    StatusCode::CREATED,
+    Json(SubmitConsentResponse {
+      id: Some(row.id),
+      redirect_url,
+    }),
+  ))
 }
 
 /// List the caller's issued app tokens (GET /access-requests/apps)
@@ -467,8 +430,7 @@ pub async fn apps_list_user_access(
 /// token-exchange privilege ceiling. Non-session principals ⇒ `None` (no clamp).
 fn caller_max_user_scope(auth_scope: &AuthScope) -> Option<UserScope> {
   match auth_scope.auth_context() {
-    services::AuthContext::Session { role, .. }
-    | services::AuthContext::MultiTenantSession { role, .. } => {
+    AuthContext::Session { role, .. } | AuthContext::MultiTenantSession { role, .. } => {
       Some(if *role >= ResourceRole::PowerUser {
         UserScope::PowerUser
       } else {

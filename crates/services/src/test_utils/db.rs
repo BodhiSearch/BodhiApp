@@ -1359,49 +1359,6 @@ impl AccessRequestRepository for TestDbService {
       .tap(|_| self.notify("access_request_get"))
   }
 
-  async fn update_approval(
-    &self,
-    id: &str,
-    user_id: &str,
-    tenant_id: &str,
-    approved: &str,
-    approved_role: &str,
-    access_request_scope: &str,
-  ) -> Result<AppAccessRequest, DbError> {
-    self
-      .inner
-      .update_approval(
-        id,
-        user_id,
-        tenant_id,
-        approved,
-        approved_role,
-        access_request_scope,
-      )
-      .await
-      .tap(|_| self.notify("access_request_update_approval"))
-  }
-
-  async fn update_denial(&self, id: &str, user_id: &str) -> Result<AppAccessRequest, DbError> {
-    self
-      .inner
-      .update_denial(id, user_id)
-      .await
-      .tap(|_| self.notify("access_request_update_denial"))
-  }
-
-  async fn update_failure(
-    &self,
-    id: &str,
-    error_message: &str,
-  ) -> Result<AppAccessRequest, DbError> {
-    self
-      .inner
-      .update_failure(id, error_message)
-      .await
-      .tap(|_| self.notify("access_request_update_failure"))
-  }
-
   async fn get_by_access_request_scope(
     &self,
     tenant_id: &str,
@@ -1424,6 +1381,19 @@ impl AccessRequestRepository for TestDbService {
       .list_approved_for_user(tenant_id, user_id)
       .await
       .tap(|_| self.notify("access_request_list_approved_for_user"))
+  }
+
+  async fn latest_approved_for_app_user(
+    &self,
+    tenant_id: &str,
+    app_client_id: &str,
+    user_id: &str,
+  ) -> Result<Option<AppAccessRequest>, DbError> {
+    self
+      .inner
+      .latest_approved_for_app_user(tenant_id, app_client_id, user_id)
+      .await
+      .tap(|_| self.notify("access_request_latest_approved_for_app_user"))
   }
 
   async fn update_revocation(
@@ -1713,17 +1683,6 @@ mockall::mock! {
   impl AccessRequestRepository for DbService {
     async fn create(&self, row: &AppAccessRequest) -> Result<AppAccessRequest, DbError>;
     async fn get(&self, tenant_id: &str, id: &str) -> Result<Option<AppAccessRequest>, DbError>;
-    async fn update_approval(
-      &self,
-      id: &str,
-      user_id: &str,
-      tenant_id: &str,
-      approved: &str,
-      approved_role: &str,
-      access_request_scope: &str,
-    ) -> Result<AppAccessRequest, DbError>;
-    async fn update_denial(&self, id: &str, user_id: &str) -> Result<AppAccessRequest, DbError>;
-    async fn update_failure(&self, id: &str, error_message: &str) -> Result<AppAccessRequest, DbError>;
     async fn get_by_access_request_scope(
       &self,
       tenant_id: &str,
@@ -1734,6 +1693,12 @@ mockall::mock! {
       tenant_id: &str,
       user_id: &str,
     ) -> Result<Vec<AppAccessRequest>, DbError>;
+    async fn latest_approved_for_app_user(
+      &self,
+      tenant_id: &str,
+      app_client_id: &str,
+      user_id: &str,
+    ) -> Result<Option<AppAccessRequest>, DbError>;
     async fn update_revocation(
       &self,
       tenant_id: &str,

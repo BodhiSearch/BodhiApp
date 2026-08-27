@@ -278,47 +278,20 @@ impl ResourceGrants for ApprovedResourcesV1 {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, validator::Validate, ToSchema)]
-#[schema(example = json!({
-    "app_client_id": "my-app-client",
-    "requested_role": "scope_user_user",
-    "requested": {
-        "version": "1",
-        "mcp_servers": [
-            {"url": "https://mcp.example.com/mcp"}
-        ]
-    }
-}))]
-pub struct CreateAccessRequest {
-  /// App client ID from Keycloak
+/// Service input for creating an already-approved access request row at consent.
+/// The user is authenticated when consenting, so the row is born Approved with
+/// tenant/user bound — there is no Draft stage.
+#[derive(Debug, Clone)]
+pub struct CreateApprovedAccessRequest {
   pub app_client_id: String,
-  /// Role requested for the external app (scope_user_user or scope_user_power_user)
-  pub requested_role: crate::UserScope,
-  /// Resources requested (tools, etc.)
+  pub tenant_id: String,
+  pub user_id: String,
+  /// The tenant's Keycloak resource client id — the audience segment of the dynamic scope.
+  pub resource_client_id: String,
   pub requested: RequestedResources,
-  /// Upgrade the app's current token: the caller must present it in the `Authorization`
-  /// header; the server derives the prior request from the token, never the body.
-  #[serde(default)]
-  pub exchange: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, validator::Validate, ToSchema)]
-#[schema(example = json!({
-    "approved_role": "scope_user_user",
-    "approved": {
-        "version": "1",
-        "mcps": [
-            {
-                "url": "https://mcp.deepwiki.com/mcp",
-                "status": "approved",
-                "instance": {"id": "instance-uuid", "path": "/bodhi/v1/apps/mcps/instance-uuid/mcp"}
-            }
-        ]
-    }
-}))]
-pub struct ApproveAccessRequest {
-  /// Role to grant for the approved request (scope_user_user or scope_user_power_user)
-  pub approved_role: crate::UserScope,
-  /// Approved resources with selections
+  pub requested_role: crate::UserScope,
   pub approved: ApprovedResources,
+  pub approved_role: crate::UserScope,
+  /// Prior approved request this reauthorization supersedes; `None` for a fresh grant.
+  pub source_access_request_id: Option<String>,
 }

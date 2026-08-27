@@ -11,24 +11,6 @@ pub trait AccessRequestRepository: Send + Sync {
 
   async fn get(&self, tenant_id: &str, id: &str) -> Result<Option<AppAccessRequest>, DbError>;
 
-  async fn update_approval(
-    &self,
-    id: &str,
-    user_id: &str,
-    tenant_id: &str,
-    approved: &str, // JSON string
-    approved_role: &str,
-    access_request_scope: &str,
-  ) -> Result<AppAccessRequest, DbError>;
-
-  async fn update_denial(&self, id: &str, user_id: &str) -> Result<AppAccessRequest, DbError>;
-
-  async fn update_failure(
-    &self,
-    id: &str,
-    error_message: &str,
-  ) -> Result<AppAccessRequest, DbError>;
-
   async fn get_by_access_request_scope(
     &self,
     tenant_id: &str,
@@ -41,6 +23,14 @@ pub trait AccessRequestRepository: Send + Sync {
     tenant_id: &str,
     user_id: &str,
   ) -> Result<Vec<AppAccessRequest>, DbError>;
+
+  /// Newest approved access request for `(tenant, app, user)`.
+  async fn latest_approved_for_app_user(
+    &self,
+    tenant_id: &str,
+    app_client_id: &str,
+    user_id: &str,
+  ) -> Result<Option<AppAccessRequest>, DbError>;
 
   /// Transition an Approved request owned by `user_id` to Revoked.
   async fn update_revocation(
@@ -88,235 +78,16 @@ impl AccessRequestRepository for DefaultDbService {
   async fn get(&self, tenant_id: &str, id: &str) -> Result<Option<AppAccessRequest>, DbError> {
     let tenant_id_owned = tenant_id.to_string();
     let id_owned = id.to_string();
-    let now = self.time_service.utc_now();
 
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
-          let mut query = app_access_request_entity::Entity::find_by_id(&id_owned);
-          if !tenant_id_owned.is_empty() {
-            query = query.filter(app_access_request_entity::Column::TenantId.eq(&tenant_id_owned));
-          }
-          let result = query.one(txn).await.map_err(DbError::from)?;
-          match result {
-            Some(model) => {
-              let row = AppAccessRequest::from(model);
-              if row.status == AppAccessRequestStatus::Draft && row.expires_at < now {
-                let active = app_access_request_entity::ActiveModel {
-                  id: Set(row.id.clone()),
-                  status: Set(AppAccessRequestStatus::Expired),
-                  updated_at: Set(now),
-                  ..Default::default()
-                };
-                let model = active.update(txn).await.map_err(DbError::from)?;
-                Ok(Some(AppAccessRequest::from(model)))
-              } else {
-                Ok(Some(row))
-              }
-            }
-            None => Ok(None),
-          }
-        })
-      })
-      .await
-  }
-
-  async fn update_approval(
-    &self,
-    id: &str,
-    user_id: &str,
-    tenant_id: &str,
-    approved: &str,
-    approved_role: &str,
-    access_request_scope: &str,
-  ) -> Result<AppAccessRequest, DbError> {
-    let now = self.time_service.utc_now();
-    let id_owned = id.to_string();
-    let user_id_owned = user_id.to_string();
-    let tenant_id_owned = tenant_id.to_string();
-    let approved_owned = approved.to_string();
-    let approved_role_owned = approved_role.to_string();
-    let access_request_scope_owned = access_request_scope.to_string();
-
-    // Look up the record directly (bypasses RLS) to confirm it exists
-    app_access_request_entity::Entity::find_by_id(&id_owned)
-      .one(&self.db)
-      .await
-      .map_err(DbError::from)?
-      .ok_or_else(|| DbError::ItemNotFound {
-        id: id_owned.clone(),
-        item_type: "app_access_request".to_string(),
-      })?;
-
-    // Use the provided tenant_id for RLS context (binds draft to tenant)
-    self
-      .with_tenant_txn(tenant_id, |txn| {
-        Box::pin(async move {
-          // Re-read within transaction — RLS allows NULL tenant_id rows
-          let row = app_access_request_entity::Entity::find_by_id(&id_owned)
+          let result = app_access_request_entity::Entity::find_by_id(&id_owned)
+            .filter(app_access_request_entity::Column::TenantId.eq(&tenant_id_owned))
             .one(txn)
             .await
-            .map_err(DbError::from)?
-            .map(AppAccessRequest::from)
-            .ok_or_else(|| DbError::ItemNotFound {
-              id: id_owned.clone(),
-              item_type: "app_access_request".to_string(),
-            })?;
-          if row.status == AppAccessRequestStatus::Draft {
-            if row.expires_at < now {
-              let active = app_access_request_entity::ActiveModel {
-                id: Set(id_owned.clone()),
-                status: Set(AppAccessRequestStatus::Expired),
-                updated_at: Set(now),
-                ..Default::default()
-              };
-              active.update(txn).await.map_err(DbError::from)?;
-              return Err(DbError::AccessRequestExpired(id_owned));
-            }
-          } else {
-            return Err(DbError::AccessRequestNotDraft {
-              id: id_owned,
-              status: row.status.to_string(),
-            });
-          }
-
-          let active = app_access_request_entity::ActiveModel {
-            id: Set(row.id.clone()),
-            tenant_id: Set(Some(tenant_id_owned)),
-            status: Set(AppAccessRequestStatus::Approved),
-            user_id: Set(Some(user_id_owned)),
-            approved: Set(Some(approved_owned)),
-            approved_role: Set(Some(approved_role_owned)),
-            access_request_scope: Set(Some(access_request_scope_owned)),
-            updated_at: Set(now),
-            ..Default::default()
-          };
-          let model = active.update(txn).await.map_err(DbError::from)?;
-          Ok(AppAccessRequest::from(model))
-        })
-      })
-      .await
-  }
-
-  async fn update_denial(&self, id: &str, user_id: &str) -> Result<AppAccessRequest, DbError> {
-    let now = self.time_service.utc_now();
-    let id_owned = id.to_string();
-    let user_id_owned = user_id.to_string();
-
-    // Look up tenant_id from the record first (bypasses RLS)
-    let row = app_access_request_entity::Entity::find_by_id(&id_owned)
-      .one(&self.db)
-      .await
-      .map_err(DbError::from)?
-      .ok_or_else(|| DbError::ItemNotFound {
-        id: id_owned.clone(),
-        item_type: "app_access_request".to_string(),
-      })?;
-    let tenant_id = row.tenant_id.clone().unwrap_or_default();
-
-    self
-      .with_tenant_txn(&tenant_id, |txn| {
-        Box::pin(async move {
-          let row = app_access_request_entity::Entity::find_by_id(&id_owned)
-            .one(txn)
-            .await
-            .map_err(DbError::from)?
-            .map(AppAccessRequest::from)
-            .ok_or_else(|| DbError::ItemNotFound {
-              id: id_owned.clone(),
-              item_type: "app_access_request".to_string(),
-            })?;
-          if row.status == AppAccessRequestStatus::Draft {
-            if row.expires_at < now {
-              let active = app_access_request_entity::ActiveModel {
-                id: Set(id_owned.clone()),
-                status: Set(AppAccessRequestStatus::Expired),
-                updated_at: Set(now),
-                ..Default::default()
-              };
-              active.update(txn).await.map_err(DbError::from)?;
-              return Err(DbError::AccessRequestExpired(id_owned));
-            }
-          } else {
-            return Err(DbError::AccessRequestNotDraft {
-              id: id_owned,
-              status: row.status.to_string(),
-            });
-          }
-
-          let active = app_access_request_entity::ActiveModel {
-            id: Set(row.id.clone()),
-            status: Set(AppAccessRequestStatus::Denied),
-            user_id: Set(Some(user_id_owned)),
-            updated_at: Set(now),
-            ..Default::default()
-          };
-          let model = active.update(txn).await.map_err(DbError::from)?;
-          Ok(AppAccessRequest::from(model))
-        })
-      })
-      .await
-  }
-
-  async fn update_failure(
-    &self,
-    id: &str,
-    error_message: &str,
-  ) -> Result<AppAccessRequest, DbError> {
-    let now = self.time_service.utc_now();
-    let id_owned = id.to_string();
-    let error_message_owned = error_message.to_string();
-
-    // Look up tenant_id from the record first (bypasses RLS)
-    let row = app_access_request_entity::Entity::find_by_id(&id_owned)
-      .one(&self.db)
-      .await
-      .map_err(DbError::from)?
-      .ok_or_else(|| DbError::ItemNotFound {
-        id: id_owned.clone(),
-        item_type: "app_access_request".to_string(),
-      })?;
-    let tenant_id = row.tenant_id.clone().unwrap_or_default();
-
-    self
-      .with_tenant_txn(&tenant_id, |txn| {
-        Box::pin(async move {
-          let row = app_access_request_entity::Entity::find_by_id(&id_owned)
-            .one(txn)
-            .await
-            .map_err(DbError::from)?
-            .map(AppAccessRequest::from)
-            .ok_or_else(|| DbError::ItemNotFound {
-              id: id_owned.clone(),
-              item_type: "app_access_request".to_string(),
-            })?;
-          if row.status == AppAccessRequestStatus::Draft {
-            if row.expires_at < now {
-              let active = app_access_request_entity::ActiveModel {
-                id: Set(id_owned.clone()),
-                status: Set(AppAccessRequestStatus::Expired),
-                updated_at: Set(now),
-                ..Default::default()
-              };
-              active.update(txn).await.map_err(DbError::from)?;
-              return Err(DbError::AccessRequestExpired(id_owned));
-            }
-          } else {
-            return Err(DbError::AccessRequestNotDraft {
-              id: id_owned,
-              status: row.status.to_string(),
-            });
-          }
-
-          let active = app_access_request_entity::ActiveModel {
-            id: Set(row.id.clone()),
-            status: Set(AppAccessRequestStatus::Failed),
-            error_message: Set(Some(error_message_owned)),
-            updated_at: Set(now),
-            ..Default::default()
-          };
-          let model = active.update(txn).await.map_err(DbError::from)?;
-          Ok(AppAccessRequest::from(model))
+            .map_err(DbError::from)?;
+          Ok(result.map(AppAccessRequest::from))
         })
       })
       .await
@@ -365,6 +136,34 @@ impl AccessRequestRepository for DefaultDbService {
             .await
             .map_err(DbError::from)?;
           Ok(rows.into_iter().map(AppAccessRequest::from).collect())
+        })
+      })
+      .await
+  }
+
+  async fn latest_approved_for_app_user(
+    &self,
+    tenant_id: &str,
+    app_client_id: &str,
+    user_id: &str,
+  ) -> Result<Option<AppAccessRequest>, DbError> {
+    let tenant_id_owned = tenant_id.to_string();
+    let app_client_id_owned = app_client_id.to_string();
+    let user_id_owned = user_id.to_string();
+
+    self
+      .with_tenant_txn(tenant_id, |txn| {
+        Box::pin(async move {
+          let row = app_access_request_entity::Entity::find()
+            .filter(app_access_request_entity::Column::TenantId.eq(&tenant_id_owned))
+            .filter(app_access_request_entity::Column::AppClientId.eq(&app_client_id_owned))
+            .filter(app_access_request_entity::Column::UserId.eq(&user_id_owned))
+            .filter(app_access_request_entity::Column::Status.eq(AppAccessRequestStatus::Approved))
+            .order_by_desc(app_access_request_entity::Column::CreatedAt)
+            .one(txn)
+            .await
+            .map_err(DbError::from)?;
+          Ok(row.map(AppAccessRequest::from))
         })
       })
       .await

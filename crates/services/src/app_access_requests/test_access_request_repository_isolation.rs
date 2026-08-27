@@ -1,10 +1,9 @@
 use crate::{
-  app_access_requests::{
-    test_access_request_builders::{approved_request, make_request},
-    AccessRequestRepository, AppAccessRequestStatus,
-  },
+  app_access_requests::{AccessRequestRepository, AppAccessRequestStatus},
   new_ulid,
-  test_utils::{sea_context, setup_env, TEST_TENANT_B_ID, TEST_TENANT_ID},
+  test_utils::{
+    approved_request, make_request, sea_context, setup_env, TEST_TENANT_B_ID, TEST_TENANT_ID,
+  },
   DbError,
 };
 use anyhow_trace::anyhow_trace;

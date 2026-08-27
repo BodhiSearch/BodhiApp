@@ -1,3 +1,4 @@
+mod access_requests;
 mod app;
 mod auth;
 mod auth_context;
@@ -19,6 +20,7 @@ mod session;
 mod settings;
 mod test_data;
 
+pub use access_requests::*;
 pub use app::*;
 pub use auth::*;
 pub use bodhi::*;
