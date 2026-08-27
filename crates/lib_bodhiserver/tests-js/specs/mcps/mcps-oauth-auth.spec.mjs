@@ -1,5 +1,5 @@
 import { McpFixtures } from '@/fixtures/mcpFixtures.mjs';
-import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
+import { AppsAuthPage } from '@/pages/AppsAuthPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { McpsPage } from '@/pages/McpsPage.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
@@ -149,7 +149,7 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
     const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
     const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
 
-    await test.step('Phase 2: Configure external app with OAuth MCP request', async () => {
+    await test.step('Phase 2: Configure external app for the consent flow', async () => {
       await app.navigate();
       await app.config.configureOAuthForm({
         bodhiServerUrl: sharedServerUrl,
@@ -157,24 +157,18 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email',
-        requested: JSON.stringify({
-          version: '1',
-          mcp_servers: [{ url: McpFixtures.OAUTH_MCP_URL }],
-        }),
+        scope: 'scope_user_user',
       });
     });
 
-    await test.step('Phase 3: Submit access request and approve with OAuth MCP', async () => {
+    await test.step('Phase 3: Start authorize and approve with the OAuth MCP granted', async () => {
       await app.config.submitAccessRequest();
       await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
       // Single-step: approving redirects the browser straight to Keycloak (SSO-silent, since the
       // user is already logged in), which returns to the app's /callback with the code.
-      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-      await reviewPage.approveWithMcps([
-        { url: McpFixtures.OAUTH_MCP_URL, instanceId: mcpInstanceId },
-      ]);
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
+      await consentPage.approveWithMcps([mcpInstanceId]);
 
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
@@ -284,7 +278,7 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
     const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
     const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
 
-    await test.step('Phase 2: Configure external app and submit access request', async () => {
+    await test.step('Phase 2: Configure external app and start authorize', async () => {
       await app.navigate();
       await app.config.configureOAuthForm({
         bodhiServerUrl: sharedServerUrl,
@@ -292,26 +286,27 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email',
-        requested: JSON.stringify({
-          version: '1',
-          mcp_servers: [{ url: McpFixtures.OAUTH_MCP_URL }],
-        }),
+        scope: 'scope_user_user',
       });
       await app.config.submitAccessRequest();
       await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
     });
 
-    await test.step('Phase 3: Deny the access request on review page', async () => {
-      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-      await reviewPage.waitForReviewPage();
-      await reviewPage.clickDeny();
+    let originalState;
+    await test.step('Phase 3: Deny the request on the consent page', async () => {
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
+      await consentPage.waitForConsentPage();
+      // The authorize params ride on the consent page URL; capture the app's state.
+      originalState = new URL(page.url()).searchParams.get('state');
+      expect(originalState).toBeTruthy();
+      await consentPage.clickDeny();
     });
 
-    await test.step('Phase 4: App lands on error_url with an OAuth error marked error_source=bodhi', async () => {
-      const { error, errorSource } = await app.oauth.expectOAuthError('access_denied');
+    await test.step('Phase 4: App callback receives error_source=bodhi with the original state', async () => {
+      const { error, errorSource, state } = await app.oauth.expectOAuthError('access_denied');
       expect(error).toBe('access_denied');
       expect(errorSource).toBe('bodhi');
+      expect(state).toBe(originalState);
     });
   });
 
@@ -355,12 +350,8 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri: `${SHARED_STATIC_SERVER_URL}/callback`,
-        scope: 'openid profile email',
+        scope: 'scope_user_user',
         flowType: 'popup',
-        requested: JSON.stringify({
-          version: '1',
-          mcp_servers: [{ url: McpFixtures.OAUTH_MCP_URL }],
-        }),
       });
     });
 
@@ -370,12 +361,10 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
       const popup = await popupPromise;
       await popup.waitForLoadState('domcontentloaded');
 
-      // Review + approve happen inside the popup; it then flows through Keycloak and posts the
+      // Consent + approve happen inside the popup; it then flows through Keycloak and posts the
       // authorization code back to the opener, which owns the PKCE verifier and exchanges it.
-      const reviewPage = new AccessRequestReviewPage(popup, sharedServerUrl);
-      await reviewPage.approveWithMcps([
-        { url: McpFixtures.OAUTH_MCP_URL, instanceId: mcpInstanceId },
-      ]);
+      const consentPage = new AppsAuthPage(popup, sharedServerUrl);
+      await consentPage.approveWithMcps([mcpInstanceId]);
 
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });

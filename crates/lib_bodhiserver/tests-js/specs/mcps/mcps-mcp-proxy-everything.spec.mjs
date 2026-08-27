@@ -1,5 +1,5 @@
 import { McpFixtures } from '@/fixtures/mcpFixtures.mjs';
-import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
+import { AppsAuthPage } from '@/pages/AppsAuthPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { McpInspectorPage } from '@/pages/McpInspectorPage.mjs';
 import { McpsPage } from '@/pages/McpsPage.mjs';
@@ -89,10 +89,6 @@ test.describe(
           clientId: appClient.clientId,
           redirectUri,
           scope: 'openid profile email',
-          requested: JSON.stringify({
-            version: '1',
-            mcp_servers: [{ url: McpFixtures.EVERYTHING_SERVER_MCP_URL }],
-          }),
         });
       });
 
@@ -100,10 +96,8 @@ test.describe(
         await app.config.submitAccessRequest();
         await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-        const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-        await reviewPage.approveWithMcps([
-          { url: McpFixtures.EVERYTHING_SERVER_MCP_URL, instanceId: mcpId },
-        ]);
+        const consentPage = new AppsAuthPage(page, sharedServerUrl);
+        await consentPage.approveWithMcps([mcpId]);
 
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
       });
@@ -264,18 +258,12 @@ test.describe(
           clientId: appClient.clientId,
           redirectUri,
           scope: 'openid profile email',
-          requested: JSON.stringify({
-            version: '1',
-            mcp_servers: [{ url: McpFixtures.EVERYTHING_SERVER_MCP_URL }],
-          }),
         });
         await app.config.submitAccessRequest();
         await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-        const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-        await reviewPage.approveWithMcps([
-          { url: McpFixtures.EVERYTHING_SERVER_MCP_URL, instanceId: mcpId },
-        ]);
+        const consentPage = new AppsAuthPage(page, sharedServerUrl);
+        await consentPage.approveWithMcps([mcpId]);
 
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
 

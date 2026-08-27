@@ -9,7 +9,6 @@ export class ConfigSection {
     scope: '[data-testid="input-scope"]',
     requestedRole: '[data-testid="select-requested-role"]',
     flowType: '[data-testid="select-flow-type"]',
-    requested: '[data-testid="input-requested"]',
     confidentialToggle: '[data-testid="toggle-confidential"]',
     clientSecret: '[data-testid="input-client-secret"]',
     submitButton: '[data-testid="btn-request-access"]',
@@ -31,7 +30,6 @@ export class ConfigSection {
     scope,
     requestedRole,
     flowType,
-    requested,
   }) {
     await this.page.fill(this.selectors.bodhiServerUrl, bodhiServerUrl);
     await this.page.fill(this.selectors.authServerUrl, authServerUrl);
@@ -45,7 +43,6 @@ export class ConfigSection {
     if (flowType) {
       await this.setFlowType(flowType);
     }
-    await this.page.fill(this.selectors.requested, requested || '');
   }
 
   async setRequestedRole(value) {

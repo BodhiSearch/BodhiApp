@@ -1,6 +1,6 @@
 import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
 import { McpFixtures } from '@/fixtures/mcpFixtures.mjs';
-import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
+import { AppsAuthPage } from '@/pages/AppsAuthPage.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { AppTokensPage } from '@/pages/AppTokensPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
@@ -47,12 +47,17 @@ test.describe('App Tokens - grants, enforcement & revoke', { tag: '@oauth' }, ()
     const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
     const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
 
-    await test.step('Owner logs in to Bodhi', async () => {
+    await test.step('Owner logs in to Bodhi and registers a model', async () => {
       const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
       await loginPage.performOAuthLogin();
+      // The listing step asserts a non-empty catalog; register our own model so the
+      // test does not depend on models left behind by earlier specs.
+      const modelsPage = new ModelsListPageV2(page, sharedServerUrl);
+      const apiModelFormPage = new ApiModelFormPage(page, sharedServerUrl);
+      await registerApiModelViaUI(modelsPage, apiModelFormPage, testApiKey);
     });
 
-    await test.step('External app requests access with model + MCP grant controls', async () => {
+    await test.step('External app starts authorize with the default scope (both sections)', async () => {
       await app.navigate();
       await app.config.configureOAuthForm({
         bodhiServerUrl: sharedServerUrl,
@@ -60,24 +65,17 @@ test.describe('App Tokens - grants, enforcement & revoke', { tag: '@oauth' }, ()
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid email profile roles',
-        // Ask for the model + MCP grant controls (no by-url MCPs → no instance selection needed).
-        requested: JSON.stringify({
-          version: '1',
-          models_list: true,
-          models_access: true,
-          mcps_list: true,
-          mcps_access: true,
-        }),
+        // Default app scope: model + MCP sections both render on the consent page.
+        scope: 'scope_user_user',
       });
       await app.config.submitAccessRequest();
       await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
     });
 
     await test.step('Owner approves: list models on, model access = Specific (none)', async () => {
-      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
       // Specific with nothing selected ⇒ a deterministic "no model access" grant.
-      await reviewPage.approveWithGrants({ listModels: true, modelIds: [], listMcps: true });
+      await consentPage.approveWithGrants({ listModels: true, modelIds: [], listMcps: true });
 
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
@@ -194,7 +192,7 @@ test.describe('App Tokens - grants, enforcement & revoke', { tag: '@oauth' }, ()
       expect(restrictedMcpId).toBeTruthy();
     });
 
-    await test.step('External app requests model + MCP grant controls', async () => {
+    await test.step('External app starts authorize with the default scope (both sections)', async () => {
       await app.navigate();
       await app.config.configureOAuthForm({
         bodhiServerUrl: sharedServerUrl,
@@ -202,23 +200,16 @@ test.describe('App Tokens - grants, enforcement & revoke', { tag: '@oauth' }, ()
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid email profile roles',
-        requested: JSON.stringify({
-          version: '1',
-          models_list: true,
-          models_access: true,
-          mcps_list: true,
-          mcps_access: true,
-        }),
+        scope: 'scope_user_user',
       });
       await app.config.submitAccessRequest();
       await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
     });
 
     await test.step('Owner approves one specific model + one specific MCP (owner-extra grant)', async () => {
-      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
       // list-all OFF so non-granted resources are hidden (404), not just connect-denied.
-      await reviewPage.approveWithGrants({
+      await consentPage.approveWithGrants({
         modelIds: [grantedModelId],
         mcpIds: [grantedMcpId],
       });

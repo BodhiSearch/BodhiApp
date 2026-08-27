@@ -1,18 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Input, Label, Checkbox, Textarea } from '@/components/ui';
+import { Button, Input, Label, Checkbox } from '@/components/ui';
 import type { OAuthConfig } from '@/context/AuthContext';
 import { useAuth } from '@/context/AuthContext';
-import { requestAccess } from '@/lib/api';
 import { saveConfig, loadConfig } from '@/lib/storage';
-import {
-  buildAuthUrl,
-  buildReviewRedirect,
-  exchangeCodeForToken,
-  generateCodeChallenge,
-  generateCodeVerifier,
-  generateState,
-} from '@/lib/oauth';
+import { buildAuthUrl, exchangeCodeForToken, generatePkce } from '@/lib/oauth';
 import type { OAuthResult } from '@/pages/OAuthCallbackPage';
 import { OAUTH_RESULT_KEY } from '@/pages/OAuthCallbackPage';
 
@@ -33,7 +25,6 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
   const [scope, setScope] = useState('openid profile email roles');
   const [requestedRole, setRequestedRole] = useState('scope_user_user');
   const [flowType, setFlowType] = useState<'redirect' | 'popup'>('redirect');
-  const [requested, setRequested] = useState('{"version":"1","mcp_servers":[{"url":"https://mcp.example.com/mcp"}]}');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(initialError || null);
@@ -56,7 +47,7 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
         return;
       }
       try {
-        const tokenData = await exchangeCodeForToken(result.code, config);
+        const tokenData = await exchangeCodeForToken(result.code, result.state, config);
         setToken(tokenData.access_token);
         navigate('/rest', { replace: true });
       } catch (err) {
@@ -80,61 +71,39 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
       return;
     }
 
-    let parsedRequested: Record<string, unknown> | undefined;
-    if (requested.trim().length > 0) {
-      try {
-        parsedRequested = JSON.parse(requested.trim());
-      } catch (err) {
-        setError('Invalid JSON in Requested Resources: ' + (err instanceof Error ? err.message : String(err)));
-        return;
-      }
-    }
-
-    // Generate PKCE + state up front and build the full Keycloak authorize URL — Bodhi appends
-    // the dynamic scope on approval and redirects straight to Keycloak (single-step flow).
-    const codeVerifier = generateCodeVerifier();
-    const state = generateState();
-    const codeChallenge = await generateCodeChallenge(codeVerifier);
-
-    const config: OAuthConfig = {
-      bodhiServerUrl,
-      authServerUrl,
-      realm,
-      clientId,
-      isConfidential,
-      clientSecret,
-      redirectUri,
-      scope,
-      requested,
-      codeVerifier,
-      state,
-    };
-    saveConfig(config);
-
-    setLoading(true);
-
     try {
-      const data = await requestAccess(bodhiServerUrl, {
-        app_client_id: clientId,
-        requested_role: requestedRole,
-        requested: parsedRequested ?? { version: '1' },
-      });
+      const { codeVerifier, codeChallenge, state } = await generatePkce();
 
-      if (data.status !== 'draft') {
-        throw new Error('Unexpected response status: ' + data.status);
-      }
+      // Requested role rides along as a scope token; BodhiApp's consent page consumes it.
+      const effectiveScope = scope.split(/\s+/).includes(requestedRole)
+        ? scope
+        : `${scope} ${requestedRole}`.trim();
+
+      const config: OAuthConfig = {
+        bodhiServerUrl,
+        authServerUrl,
+        realm,
+        clientId,
+        isConfidential,
+        clientSecret,
+        redirectUri,
+        scope: effectiveScope,
+        codeVerifier,
+        state,
+      };
+      saveConfig(config);
+
+      setLoading(true);
 
       const authUrl = buildAuthUrl(config, codeChallenge, state);
-      const reviewTarget = buildReviewRedirect(data.review_url, authUrl, redirectUri);
-
       if (flowType === 'popup') {
-        window.open(reviewTarget, '_bodhi_review', 'width=600,height=700');
+        window.open(authUrl, '_bodhi_auth', 'width=600,height=700');
       } else {
-        window.location.href = reviewTarget;
+        window.location.href = authUrl;
       }
     } catch (err) {
-      console.error('Access request error:', err);
-      setError('Access request failed: ' + (err instanceof Error ? err.message : String(err)));
+      console.error('Authorize error:', err);
+      setError('Authorize failed: ' + (err instanceof Error ? err.message : String(err)));
       setLoading(false);
     }
   };
@@ -235,7 +204,7 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="requested-role">Requested Role</Label>
+          <Label htmlFor="requested-role">Requested Role (appended to scope)</Label>
           <select
             id="requested-role"
             data-testid="select-requested-role"
@@ -262,18 +231,6 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
           </select>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="requested">Requested Resources (JSON)</Label>
-          <Textarea
-            id="requested"
-            data-testid="input-requested"
-            value={requested}
-            onChange={(e) => setRequested(e.target.value)}
-            placeholder='{"version":"1","mcp_servers":[{"url":"https://mcp.example.com/mcp"}]}'
-            rows={3}
-          />
-        </div>
-
         <div className="pt-2">
           <Button
             type="submit"
@@ -289,7 +246,7 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
       {loading && (
         <div data-testid="access-request-loading" className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
           <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm italic">Requesting access...</span>
+          <span className="text-sm italic">Redirecting to authorization...</span>
         </div>
       )}
 

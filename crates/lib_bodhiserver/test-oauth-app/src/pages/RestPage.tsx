@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ReauthorizeSection } from '@/components/ReauthorizeSection';
 import { RestClientSection } from '@/components/RestClientSection';
 import { useAuth } from '@/context/AuthContext';
 import { loadToken } from '@/lib/storage';
@@ -23,6 +24,7 @@ export function RestPage() {
   return (
     <div data-testid="page-rest" data-test-state="loaded" className="w-full max-w-3xl py-6 px-4 space-y-5">
       <RestClientSection />
+      <ReauthorizeSection />
     </div>
   );
 }

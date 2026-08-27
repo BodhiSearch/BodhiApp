@@ -10,7 +10,6 @@ export interface OAuthConfig {
   clientSecret: string;
   redirectUri: string;
   scope: string;
-  requested: string;
   codeVerifier?: string;
   state?: string;
 }

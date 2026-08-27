@@ -90,7 +90,7 @@ Most common flakiness source. Prefer `data-testid`/`data-test-state` assertions 
 Use appropriate wait helpers, never fixed timeouts:
 - No KC session: `waitForAuthServerRedirect(authUrl)`
 - After KC login/auto-redirect: `waitForTokenExchange(appUrl)`
-- Access-request flows: `waitForAccessRequestCallback(appUrl)`
+- Consent flows: `waitForAccessRequestRedirect(bodhiUrl)` (bodhi-origin wait) + `AppsAuthPage.waitForConsentPage()`
 
 ### SPA Navigation
 Call `waitForSPAReady()` after any navigation. Use `page.waitForURL()` for route changes, not `page.goto()` + immediate assertion.

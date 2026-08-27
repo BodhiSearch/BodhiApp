@@ -18,17 +18,21 @@ export class RESTPage {
     terminal:
       '[data-testid="section-rest-client"][data-test-state="success"], [data-testid="section-rest-client"][data-test-state="error"]',
     navLink: '[data-testid="nav-rest"]',
-    reviewLink: '[data-testid="link-rest-review"]',
+    reauthorizeScope: '[data-testid="input-reauthorize-scope"]',
+    reauthorizeButton: '[data-testid="btn-reauthorize"]',
   };
 
   constructor(page) {
     this.page = page;
   }
 
-  /** Follow the review link shown after a successful request-access POST (exchange flow). */
-  async clickReviewLink() {
-    await this.page.locator(this.selectors.reviewLink).waitFor();
-    await this.page.click(this.selectors.reviewLink);
+  /**
+   * Start a fresh authorize navigation (same window) with the given scope; the app
+   * carries source_access_request_id from the current token's access_request_id claim.
+   */
+  async reauthorize(scope) {
+    await this.page.fill(this.selectors.reauthorizeScope, scope);
+    await this.page.click(this.selectors.reauthorizeButton);
   }
 
   async navigateTo() {

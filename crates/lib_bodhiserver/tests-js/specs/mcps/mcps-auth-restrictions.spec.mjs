@@ -1,5 +1,5 @@
 import { McpFixtures } from '@/fixtures/mcpFixtures.mjs';
-import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
+import { AppsAuthPage } from '@/pages/AppsAuthPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { McpsPage } from '@/pages/McpsPage.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
@@ -19,8 +19,6 @@ import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
  * 2. WITHOUT MCP access request -> MCP list returns empty for OAuth token
  * 3. Approved MCP -> 200, restricted MCP -> 404 (hidden, existence not revealed)
  */
-
-const MCP_URL = McpFixtures.MCP_URL;
 
 test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'] }, () => {
   let authServerConfig;
@@ -68,7 +66,6 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: JSON.stringify({ version: '1', mcp_servers: [{ url: MCP_URL }] }),
       });
     });
 
@@ -76,8 +73,8 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       await app.config.submitAccessRequest();
       await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-      await reviewPage.approveWithMcps([{ url: MCP_URL, instanceId: mcpInstanceId }]);
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
+      await consentPage.approveWithMcps([mcpInstanceId]);
 
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
@@ -141,7 +138,6 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: JSON.stringify({ version: '1' }),
       });
     });
 
@@ -149,8 +145,8 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       await app.config.submitAccessRequest();
       await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-      await reviewPage.approve();
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
+      await consentPage.approve();
 
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
@@ -215,7 +211,6 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: JSON.stringify({ version: '1', mcp_servers: [{ url: MCP_URL }] }),
       });
     });
 
@@ -223,8 +218,8 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       await app.config.submitAccessRequest();
       await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-      await reviewPage.approveWithMcps([{ url: MCP_URL, instanceId: approvedInstanceId }]);
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
+      await consentPage.approveWithMcps([approvedInstanceId]);
 
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });

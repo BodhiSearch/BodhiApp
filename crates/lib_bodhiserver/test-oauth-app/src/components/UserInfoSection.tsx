@@ -39,7 +39,7 @@ export function UserInfoSection() {
           {loading ? 'Fetching...' : 'Fetch User Info'}
         </Button>
         {error && <p data-testid="user-info-error" className="text-sm text-destructive">{error}</p>}
-        {response && (
+        {Boolean(response) && (
           <pre data-testid="user-info-response" className="code-block">
             {JSON.stringify(response, null, 2)}
           </pre>

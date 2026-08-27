@@ -9,7 +9,13 @@ export const OAUTH_RESULT_KEY = 'bodhi_oauth_result';
 
 export type OAuthResult =
   | { type: 'success'; code: string; state: string }
-  | { type: 'error'; error: string; errorSource: string | null; errorDescription: string | null };
+  | {
+      type: 'error';
+      error: string;
+      errorSource: string | null;
+      errorDescription: string | null;
+      state: string | null;
+    };
 
 function isPopup(): boolean {
   return !!window.opener && window.opener !== window;
@@ -36,6 +42,7 @@ export function OAuthCallbackPage() {
           error,
           errorSource: searchParams.get('error_source'),
           errorDescription: searchParams.get('error_description'),
+          state,
         }
       : { type: 'success', code: code ?? '', state: state ?? '' };
 
@@ -54,6 +61,7 @@ export function OAuthCallbackPage() {
         const params = new URLSearchParams({ error: res.error });
         if (res.errorSource) params.set('error_source', res.errorSource);
         if (res.errorDescription) params.set('error_description', res.errorDescription);
+        if (res.state) params.set('state', res.state);
         navigate(`/?${params.toString()}`, { replace: true });
         return;
       }
@@ -67,7 +75,7 @@ export function OAuthCallbackPage() {
         return;
       }
       try {
-        const tokenData = await exchangeCodeForToken(res.code, config);
+        const tokenData = await exchangeCodeForToken(res.code, res.state, config);
         setToken(tokenData.access_token);
         window.history.replaceState({}, document.title, window.location.pathname);
         navigate('/rest', { replace: true });

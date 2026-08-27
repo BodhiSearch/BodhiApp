@@ -96,7 +96,7 @@ Multi-tenant requires PostgreSQL containers: `docker compose -f docker/docker-co
 ## Known Quirks
 
 - **Model selection before API token**: Select model FIRST, then set token (model selection re-renders and clears token input)
-- **OAuth flow variants**: With KC session: `waitForTokenExchange()`. Without: `waitForAuthServerRedirect()` + `handleLogin()` + `waitForTokenExchange()`. Access-request: `waitForAccessRequestCallback()`
+- **OAuth flow variants**: With KC session: `waitForTokenExchange()`. Without: `waitForAuthServerRedirect()` + `handleLogin()` + `waitForTokenExchange()`. Consent flow: the test app navigates top-level to `${bodhiUrl}/ui/apps/auth/?<oauth params>` — `OAuthSection.waitForAccessRequestRedirect()` (bodhi-origin wait) still applies; then `AppsAuthPage.waitForConsentPage()` waits on `consent-page[data-test-state="ready"]` before approve (`approve`/`approveWithGrants`/`approveWithMcps`) or `clickDeny()`; approval flows through Keycloak to the app's `/callback`, and `waitForTokenExchange()` = `/rest` landing. Deny returns `error=access_denied&error_source=bodhi&state=<original>` to the app
 - **SPA navigation**: Call `waitForSPAReady()` after navigation. Use `page.waitForURL()` for route changes
 - **Page object lifecycle**: Create in `beforeEach` (Playwright's `page` is per-test)
 - **KC session persistence**: Consent auto-skipped on reused app client

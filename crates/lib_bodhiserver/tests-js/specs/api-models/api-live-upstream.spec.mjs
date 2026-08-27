@@ -7,7 +7,7 @@
 // compatibility regressions.
 import { expect, test } from '@/fixtures.mjs';
 import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
-import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
+import { AppsAuthPage } from '@/pages/AppsAuthPage.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
@@ -297,16 +297,15 @@ test.describe('Live upstream - OAuth app token', () => {
           clientId: appClient.clientId,
           redirectUri,
           scope: 'openid profile email',
-          requested: JSON.stringify({ version: '1' }),
         });
 
         await app.config.submitAccessRequest();
         await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-        const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
+        const consentPage = new AppsAuthPage(page, sharedServerUrl);
         // Grant all models so the exchanged app token can infer (consent defaults to
         // Specific/none under fail-closed grants).
-        await reviewPage.approveWithGrants({ allModels: true });
+        await consentPage.approveWithGrants({ allModels: true });
 
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
 

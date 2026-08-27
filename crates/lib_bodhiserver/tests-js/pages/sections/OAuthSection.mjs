@@ -58,9 +58,10 @@ export class OAuthSection {
     const error = url.searchParams.get('error');
     const errorDescription = url.searchParams.get('error_description');
     const errorSource = url.searchParams.get('error_source');
+    const state = url.searchParams.get('state');
     if (expectedError && error !== expectedError) {
       throw new Error(`Expected OAuth error '${expectedError}' but got '${error}'`);
     }
-    return { error, errorDescription, errorSource };
+    return { error, errorDescription, errorSource, state };
   }
 }

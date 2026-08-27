@@ -1,5 +1,5 @@
 import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
-import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
+import { AppsAuthPage } from '@/pages/AppsAuthPage.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
@@ -57,16 +57,15 @@ test.describe('OAuth Chat Streaming', () => {
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: JSON.stringify({ version: '1' }),
       });
 
       await app.config.submitAccessRequest();
       await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
       // Grant all models so the exchanged app token can infer (consent defaults to
       // Specific/none under fail-closed grants).
-      await reviewPage.approveWithGrants({ allModels: true });
+      await consentPage.approveWithGrants({ allModels: true });
 
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });

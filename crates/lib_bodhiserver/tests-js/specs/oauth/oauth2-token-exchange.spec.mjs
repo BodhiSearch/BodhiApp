@@ -1,4 +1,4 @@
-import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
+import { AppsAuthPage } from '@/pages/AppsAuthPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { OAuth2Fixtures } from '@/fixtures/oauth2Fixtures.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
@@ -24,13 +24,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
   });
 
   test.describe('Complete OAuth2 Flow', () => {
-    let testData;
-
-    test.beforeEach(async () => {
-      testData = OAuth2Fixtures.getOAuth2TestData();
-    });
-
-    test('should complete OAuth2 Token Exchange flow with dynamic audience', async ({
+    test('should complete OAuth2 authorize flow via the consent page', async ({
       page,
       sharedServerUrl,
     }) => {
@@ -38,6 +32,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
       const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
 
       const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
 
       await test.step('Login to Bodhi server', async () => {
         const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
@@ -48,25 +43,30 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
         await app.navigate();
       });
 
-      await test.step('Configure OAuth form', async () => {
+      await test.step('Configure OAuth form with default scope', async () => {
         await app.config.configureOAuthForm({
           bodhiServerUrl: sharedServerUrl,
           authServerUrl: authServerConfig.authUrl,
           realm: authServerConfig.authRealm,
           clientId: appClient.clientId,
           redirectUri,
-          scope: testData.scopes,
-          requested: JSON.stringify({ version: '1' }),
+          scope: 'scope_user_user',
         });
       });
 
-      await test.step('Submit access request and approve via review page', async () => {
+      await test.step('Start authorize navigation to the consent page', async () => {
         await app.config.submitAccessRequest();
         await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
+        await consentPage.waitForConsentPage();
+      });
 
-        const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-        await reviewPage.approve();
+      await test.step('Default scope renders both resource sections', async () => {
+        await expect(page.locator(consentPage.selectors.modelsSection)).toBeVisible();
+        await expect(page.locator(consentPage.selectors.mcpsSection)).toBeVisible();
+      });
 
+      await test.step('Approve; Keycloak authorizes and the app exchanges the code', async () => {
+        await consentPage.clickApprove();
         // KC session already exists from performOAuthLogin, so Keycloak auto-redirects
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
       });
@@ -92,13 +92,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
   });
 
   test.describe('Role Downgrade Flow', () => {
-    let testData;
-
-    test.beforeEach(async () => {
-      testData = OAuth2Fixtures.getOAuth2TestData();
-    });
-
-    test('should downgrade role from power_user to user on review approval', async ({
+    test('should downgrade role from power_user to user on consent approval', async ({
       page,
       sharedServerUrl,
     }) => {
@@ -106,6 +100,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
       const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
 
       const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
 
       await test.step('Login to Bodhi server', async () => {
         const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
@@ -116,25 +111,31 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
         await app.navigate();
       });
 
-      await test.step('Configure OAuth form with power_user role', async () => {
+      await test.step('Configure OAuth form: power_user role, MCP access suppressed', async () => {
         await app.config.configureOAuthForm({
           bodhiServerUrl: sharedServerUrl,
           authServerUrl: authServerConfig.authUrl,
           realm: authServerConfig.authRealm,
           clientId: appClient.clientId,
           redirectUri,
-          scope: testData.scopes,
+          scope: 'scope_apps:mcps:false',
           requestedRole: 'scope_user_power_user',
-          requested: JSON.stringify({ version: '1' }),
         });
       });
 
-      await test.step('Submit access request and downgrade role on review page', async () => {
+      await test.step('Start authorize navigation to the consent page', async () => {
         await app.config.submitAccessRequest();
         await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
+        await consentPage.waitForConsentPage();
+      });
 
-        const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-        await reviewPage.approveWithRole('scope_user_user');
+      await test.step('scope_apps:mcps:false suppresses the MCP section', async () => {
+        await expect(page.locator(consentPage.selectors.modelsSection)).toBeVisible();
+        await expect(page.locator(consentPage.selectors.mcpsSection)).toHaveCount(0);
+      });
+
+      await test.step('Downgrade role to user and approve', async () => {
+        await consentPage.approveWithRole('scope_user_user');
 
         // KC session already exists from performOAuthLogin, so Keycloak auto-redirects
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
@@ -160,28 +161,15 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
     });
   });
 
-  test.describe('Exchange / Upgrade Flow', () => {
-    let testData;
-
-    test.beforeEach(async () => {
-      testData = OAuth2Fixtures.getOAuth2TestData();
-    });
-
-    test('exchange pre-populates the review from the source grant and elevates the token', async ({
+  test.describe('Reauthorize / Upgrade Flow', () => {
+    test('reauthorize pre-fills the consent from the source grant and elevates the token', async ({
       page,
       sharedServerUrl,
     }) => {
       const appClient = getPreConfiguredAppClient();
       const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
       const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
-      // The app asks for model + MCP access + both listings; the owner grants concretely.
-      const requested = JSON.stringify({
-        version: '1',
-        models_list: true,
-        models_access: true,
-        mcps_list: true,
-        mcps_access: true,
-      });
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
 
       await test.step('Login to Bodhi server', async () => {
         const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
@@ -196,13 +184,11 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
           realm: authServerConfig.authRealm,
           clientId: appClient.clientId,
           redirectUri,
-          scope: testData.scopes,
-          requested,
+          scope: 'scope_user_user',
         });
         await app.config.submitAccessRequest();
         await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
-        const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-        await reviewPage.approveWithGrants({
+        await consentPage.approveWithGrants({
           listModels: true,
           allModels: true,
           listMcps: true,
@@ -221,34 +207,24 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
         expect(info.access.mcps.type).toBe('all');
       });
 
-      await test.step('Submit an exchange request (elevate to power_user) with the current token', async () => {
-        await app.rest.sendRequest({
-          method: 'POST',
-          url: '/bodhi/v1/apps/request-access',
-          useAuth: true,
-          body: {
-            exchange: true,
-            app_client_id: appClient.clientId,
-            requested_role: 'scope_user_power_user',
-            requested: JSON.parse(requested),
-          },
-        });
-        expect(await app.rest.getResponseStatus()).toBe(201);
+      await test.step('Reauthorize with an elevated scope from the REST page', async () => {
+        await app.rest.reauthorize('scope_user_power_user');
+        await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
+        await consentPage.waitForConsentPage();
       });
 
-      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-      await test.step('Review is pre-populated from the source grant', async () => {
-        await app.rest.clickReviewLink();
-        await reviewPage.waitForReviewPage();
+      await test.step('Consent is pre-filled from the source grant (explicit reauth)', async () => {
+        await expect(page.locator(consentPage.selectors.reauthBanner)).toBeVisible();
         // Listings held by the source grant load pre-checked.
-        expect(await reviewPage.isListModelsChecked()).toBe(true);
-        expect(await reviewPage.isListMcpsChecked()).toBe(true);
+        expect(await consentPage.isListModelsChecked()).toBe(true);
+        expect(await consentPage.isListMcpsChecked()).toBe(true);
       });
 
-      await test.step('Approve the upgrade — role defaults to the elevated power_user', async () => {
-        // Grants are already pre-populated (all models/MCPs, listings on); role defaults to
-        // the requested power_user. Approve commits the remaining set.
-        await reviewPage.clickApprove();
+      await test.step('Select power_user role and approve the upgrade', async () => {
+        // Grants are pre-populated (all models/MCPs, listings on); select the elevated
+        // role explicitly and approve to commit the upgraded grant.
+        await consentPage.selectApprovedRole('scope_user_power_user');
+        await consentPage.clickApprove();
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
       });
 
@@ -261,6 +237,97 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
         expect(info.role).toBe('scope_user_power_user');
         expect(info.access.models.type).toBe('all');
         expect(info.access.mcps.type).toBe('all');
+      });
+    });
+  });
+
+  test.describe('Consent Surface', () => {
+    test('role-only scope: summary shown, approved token has no inference access', async ({
+      page,
+      sharedServerUrl,
+    }) => {
+      const appClient = getPreConfiguredAppClient();
+      const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
+      const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
+
+      await test.step('Login to Bodhi server', async () => {
+        const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+        await loginPage.performOAuthLogin();
+      });
+
+      await test.step('Configure a role-only scope and start authorize', async () => {
+        await app.navigate();
+        await app.config.configureOAuthForm({
+          bodhiServerUrl: sharedServerUrl,
+          authServerUrl: authServerConfig.authUrl,
+          realm: authServerConfig.authRealm,
+          clientId: appClient.clientId,
+          redirectUri,
+          scope: 'scope_user_user scope_apps:llms:false scope_apps:mcps:false',
+        });
+        await app.config.submitAccessRequest();
+        await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
+        await consentPage.waitForConsentPage();
+      });
+
+      await test.step('Consent shows the role-only summary and no resource sections', async () => {
+        await expect(page.locator(consentPage.selectors.roleOnlySummary)).toBeVisible();
+        await expect(page.locator(consentPage.selectors.modelsSection)).toHaveCount(0);
+        await expect(page.locator(consentPage.selectors.mcpsSection)).toHaveCount(0);
+      });
+
+      await test.step('Approve; the app receives a token', async () => {
+        await consentPage.clickApprove();
+        await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
+      });
+
+      await test.step('Role-gated API works but inference is forbidden (403)', async () => {
+        await app.rest.sendRequest({ method: 'GET', url: '/bodhi/v1/user' });
+        expect(await app.rest.getResponseStatus()).toBe(200);
+        const info = await app.rest.getResponse();
+        expect(info.auth_status).toBe('logged_in');
+        expect(info.role).toBe('scope_user_user');
+
+        await app.rest.sendRequest({
+          method: 'POST',
+          url: '/v1/chat/completions',
+          body: { model: 'gpt-4', messages: [{ role: 'user', content: 'hi' }] },
+        });
+        expect(await app.rest.getResponseStatus()).toBe(403);
+      });
+    });
+
+    test('unregistered redirect_uri: in-app consent error, no redirect back to the app', async ({
+      page,
+      sharedServerUrl,
+    }) => {
+      const appClient = getPreConfiguredAppClient();
+      const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
+      const consentPage = new AppsAuthPage(page, sharedServerUrl);
+
+      await test.step('Login to Bodhi server', async () => {
+        const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+        await loginPage.performOAuthLogin();
+      });
+
+      await test.step('Start authorize with an unregistered redirect_uri', async () => {
+        await app.navigate();
+        await app.config.configureOAuthForm({
+          bodhiServerUrl: sharedServerUrl,
+          authServerUrl: authServerConfig.authUrl,
+          realm: authServerConfig.authRealm,
+          clientId: appClient.clientId,
+          redirectUri: `${SHARED_STATIC_SERVER_URL}/unregistered-callback`,
+          scope: 'scope_user_user',
+        });
+        await app.config.submitAccessRequest();
+        await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
+      });
+
+      await test.step('Consent shows an in-app error and stays on the Bodhi origin', async () => {
+        await consentPage.waitForError();
+        expect(new URL(page.url()).origin).toBe(new URL(sharedServerUrl).origin);
       });
     });
   });

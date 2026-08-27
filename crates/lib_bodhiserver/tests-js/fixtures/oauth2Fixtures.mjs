@@ -15,15 +15,6 @@ export class OAuth2Fixtures {
     };
   }
 
-  static getOAuth2TestData() {
-    return {
-      serverName: 'OAuth2 Test Server Instance',
-      clientName: 'OAuth2 Test App Client',
-      clientDescription: 'Test app client for OAuth2 Token Exchange v2 testing',
-      scopes: 'openid email profile roles',
-    };
-  }
-
   static getErrorTestConfig(authServerConfig, port) {
     return {
       appStatus: 'ready',
