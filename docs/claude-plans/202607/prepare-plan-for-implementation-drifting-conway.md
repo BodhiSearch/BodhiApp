@@ -27,9 +27,9 @@ away.
 **Scope of this plan:** `keycloak-bodhi-ext` and `BodhiApp` only. SDK and third-party app updates are
 planned separately.
 
-**Design spec:** `docs/archive/auth-params-design.md`. Two corrections to it are recorded below and
-must be applied to that document: `scope_user_*` are **not** Keycloak scopes, and the resource
-audience travels in its **own** dynamic scope rather than a dotted prefix.
+**Design spec:** `docs/archive/auth-params-design.md`. One correction to it is recorded below and
+must be applied to that document: `scope_user_*` are **not** Keycloak client scopes and must never be
+forwarded to Keycloak.
 
 ---
 
@@ -77,14 +77,24 @@ is a worse failure than an error on a human-facing screen.
 ### Keycloak-facing — composed by the BodhiApp backend
 
 ```
-openid profile email roles scope_access_request:<uuid> scope_resource:<resource-client-id>
+openid profile email roles scope_access_request:<resource-client-id>.<uuid>
 ```
 
-**Two dynamic scopes, one job each.** This replaces the dotted
-`scope_access_request:<resource-client-id>.<uuid>` form from the earlier revision, and is better for
-three reasons: no split-on-first-dot parsing (Keycloak client ids are not guaranteed dot-free), each
-mapper stays single-purpose and trivially testable, and the audience concern is named for what it is.
-Since BodhiApp composes this string server-side, constructing two scopes costs nothing.
+**One dynamic scope, one mapper.** A two-scope variant (`scope_access_request:<uuid>` plus a separate
+`scope_resource:<resource-client-id>`) was considered and rejected: it would mean registering a
+second dynamic client scope, mirroring it into two `.ftl` test realm templates, running a realm
+import at every environment, maintaining two protocol mappers, and first spiking whether Keycloak
+26.6.4 even accepts two different dynamic scopes in one request. The dotted form needs none of that.
+
+**The existing realm config already accepts it.** `scope_access_request` is declared with
+`dynamic.scope.regexp: scope_access_request:(.*)` (`realm-import-files/common.json`), so a dotted
+value matches unchanged — **no realm-config change and no `make import.*` step**.
+
+**Parse by splitting on the LAST `.`,** not the first. The uuid segment is a ULID or UUID and can
+never contain a dot, so a last-dot split is correct regardless of what the client id contains.
+Resource client ids are generated as `bodhi-resource-<uuid>` / `test-resource-<uuid>`
+(`Constants.java:11-12`, `ResourceService.java:129`) and are dot-free today, but a last-dot split
+removes the assumption rather than depending on it.
 
 **`scope_user_*` must NOT be forwarded.** An earlier revision said to; that was wrong and would have
 broken the flow. Verified:
@@ -102,56 +112,30 @@ unnecessary: the effective role comes from the DB row — `token_service.rs:376-
 
 ---
 
-## Phase 0 — Spike: two dynamic scopes in one request
-
-**This gates the whole design and must run first.** The two-scope form is very likely fine —
-Keycloak 26.6.4 runs with `--features=token-exchange,dynamic-scopes,organization` (`Dockerfile:44`),
-and the existing mapper already handles multiple values of the *same* dynamic template. But two
-*different* dynamic templates in one request is not something this codebase has ever exercised, and
-[keycloak#42877](https://github.com/keycloak/keycloak/issues/42877) shows Keycloak has had real bugs
-in exactly this area — a scope-name-prefix collision (`scope1` + `scope1:A`) returning
-`Invalid scopes:` with dynamic-scopes disabled, fixed for 26.4.0.
-
-Note the shape of that bug carries a naming rule we must respect: **never register a plain scope that
-is a `:`-prefix of another.** `scope_apps` is never registered with Keycloak, so `scope_apps:llms` is
-safe; `scope_resource` follows the same name/regexp pattern as the working `scope_access_request`.
-
-Run in the existing Testcontainers harness (`BaseTest`) or via `httpyac-scripts/`:
-
-1. Register `scope_resource` as an optional dynamic client scope, regexp `scope_resource:(.*)`.
-2. Request a token with `scope=openid profile email roles scope_access_request:<uuid> scope_resource:<resource-client-id>`.
-3. Assert HTTP 200, `aud` contains the resource client id, `access_request_id` equals the uuid, and
-   `aud` is a **single** value.
-
-**If it fails:** fall back to the dotted single-scope form
-`scope_access_request:<resource-client-id>.<uuid>`, splitting on the first `.`, and add a guard
-rejecting resource client ids containing a dot. Everything downstream of the mapper is unchanged, so
-this fallback costs only the mapper body and its tests.
-
----
-
 ## Sequencing and gates
 
-The Playwright E2E suite authenticates against the live `dev-id.getbodhi.app`, so the two repos
-cannot be verified independently.
+The Playwright E2E suite authenticates against the live `main-id.getbodhi.app` — the Railway `main`
+environment (`INTEG_TEST_MAIN_AUTH_URL` in `crates/lib_bodhiserver/tests-js/.env.test`, default at
+`test-helpers.mjs:66`). Note this is `main`, **not** `dev`: `dev-id.getbodhi.app` also exists
+(`railway.toml:76-87`) but nothing in the E2E suite points at it. So the two repos cannot be verified
+independently, and the Keycloak image must reach `main` before BodhiApp can be tested.
 
 ```
-Phase 0  spike                       →  decides the scope shape
 Phase 1  keycloak-bodhi-ext          →  merge, tag, build image
-Phase 2  GATE: deploy dev + realm import
+Phase 2  GATE: deploy image to main  →  no realm import needed
 Phase 3  BodhiApp backend
-Phase 4  BodhiApp frontend + E2E     →  verified against dev Keycloak
-Phase 5  GATE: production cutover    →  image + realm import + BodhiApp
+Phase 4  BodhiApp frontend + E2E     →  verified against main Keycloak
+Phase 5  GATE: production cutover    →  image + BodhiApp
 ```
 
-**New vs the earlier plan: a realm import is now required.** Adding the `scope_resource` client scope
-changes `realm-import-files/common.json`, so `make import.dev` (and the prod equivalent) must run
-after each deploy. The earlier revision claimed no realm change was needed; that was true only of the
-dotted form.
+**No realm import, and no DDL.** The dotted value matches the existing
+`scope_access_request:(.*)` regexp, and the `bodhi_access_request` table is retained rather than
+dropped. Each gate is therefore a plain image deploy, and rollback at any point is a redeploy of the
+previous image.
 
-**Production cutover invalidates every existing app grant.** Existing tokens carry the old undotted
-scope with no `scope_resource`; after the mapper change they get no audience and are rejected. With
-one production app this is acceptable, but it is a user-visible re-authorization.
+**Production cutover invalidates every existing app grant.** Existing tokens carry an undotted
+`scope_access_request:<uuid>`; after the mapper change that yields no audience and the token is
+rejected. With one production app this is acceptable, but it is a user-visible re-authorization.
 
 ---
 
@@ -172,21 +156,21 @@ Emitting the key unconditionally lets the Rust side model it as `Option<Vec<Stri
 means "older extension, skip validation" and `Some([])` means "registered with no URIs, every match
 fails". Do not collapse those.
 
-### 1.2 Register `scope_resource` and split the mappers
+### 1.2 Make the mapper stateless
 
-- `realm-import-files/common.json` — new client scope `scope_resource`, `is.dynamic.scope: true`,
-  `dynamic.scope.regexp: scope_resource:(.*)`, `include.in.token.scope: true`,
-  `display.on.consent.screen: false`, added to `defaultOptionalClientScopes`. **Optional, never
-  default** — a default-assigned dynamic scope can land in a token without the parameter that makes
-  it dynamic.
-- Mirror the same block into `src/test/resources/import-files/bodhi-realm-setup.ftl` and
-  `bodhi-realm-integration-setup.ftl`, which duplicate the scope config for tests.
-- **Two single-purpose mappers**, each attached to its own scope:
-  - `scope_resource` → validate the value names a realm client carrying `bodhi.client_type=resource`
-    (constants at `ResourceService.java:60-62`); `token.addAudience(value)`; keep the "one resource
-    audience per token" guard here.
-  - `scope_access_request` → set claim `access_request_id` = value. No lookup, no validation beyond
-    Keycloak's own non-empty regexp enforcement.
+**No realm-config change.** `scope_access_request` keeps its existing declaration and regexp; a
+dotted value already matches. Nothing to mirror into the `.ftl` test templates, no `make import.*`.
+
+`AccessRequestScopeProtocolMapper.java` — replace the body of the scope loop (currently `:82-98`).
+The single existing mapper keeps doing both jobs:
+
+1. Split the scope value on the **last** `.` → `resourceClientId` and `uuid`. Reject if there is no
+   dot, or if either side is empty.
+2. `realm.getClientByClientId(resourceClientId)`; reject if absent, or if its `bodhi.client_type`
+   attribute is not `resource` (constants at `ResourceService.java:60-62`). This is what stops an app
+   naming an arbitrary realm client as its audience.
+3. `token.addAudience(resourceClientId)` and set claim `access_request_id` = `uuid`.
+4. Keep the existing "one resource audience per token" guard (`:100-105`).
 
 Delete the `AccessRequestRepository.findById` lookup and the user/client checks — BodhiApp enforces
 `azp` at `token_service.rs:290-300` and `sub` at `:313-323` before the exchange.
@@ -228,10 +212,12 @@ Delete the `AccessRequestRepository.findById` lookup and the user/client checks 
 and `testMapperRejectsNonExistentAccessRequest` are no longer meaningful at the Keycloak layer —
 that authority moved to BodhiApp, and Phase 3.4 adds the Rust tests that carry it. Replace with:
 
-- `scope_resource` value names no client → rejected
+- value with no `.` separator, or an empty side → rejected
+- resource-client segment names no client → rejected
 - names a client whose `bodhi.client_type != resource` → rejected
-- two `scope_resource` values for different clients → rejected
-- well-formed pair → `aud` is exactly the resource client, `access_request_id` is the uuid
+- two `scope_access_request` values naming different resource clients → rejected
+- well-formed value → `aud` is exactly the resource client, `access_request_id` is the uuid
+- a resource client id containing a dot still resolves correctly (last-dot split)
 
 The suite also gets materially faster: no pre-registration round trip per test.
 
@@ -240,8 +226,9 @@ The suite also gets materially faster: no pre-registration round trip per test.
 `make test` → `make ci.quality` → `make openapi` (committed artifacts, nothing in CI diffs them) →
 `make release-server` tags `release/vX.Y.Z` → Actions pushes to `ghcr.io/bodhisearch/bodhi-auth-server`.
 
-**Gate:** Railway deploy is a manual dashboard action (`SETUP.md:94`, `railway.toml:75-99`). Confirm
-the running image digest, then run `make import.dev` for the `scope_resource` scope.
+**Gate:** Railway deploy to the `main` environment is a manual dashboard action (`SETUP.md:94`,
+`railway.toml:102-113`). Confirm
+the running image digest. **No realm import is needed** — no client-scope config changed.
 
 ---
 
@@ -430,9 +417,9 @@ authorize entry point on a different origin from the token endpoint:
 
 ```ts
 const as = {
-  issuer: 'https://dev-id.getbodhi.app/realms/bodhi',
+  issuer: 'https://main-id.getbodhi.app/realms/bodhi',
   authorization_endpoint: `${bodhiUrl}/ui/apps/auth/`,
-  token_endpoint: 'https://dev-id.getbodhi.app/realms/bodhi/protocol/openid-connect/token',
+  token_endpoint: 'https://main-id.getbodhi.app/realms/bodhi/protocol/openid-connect/token',
 };
 ```
 
@@ -476,7 +463,7 @@ and verifiably matching.
 **Before each commit:** `make format`, `make test.backend`, `cd crates/bodhi && npm test`, and from
 Phase 4 `make test.e2e`.
 
-**End-to-end in dev**, after Phase 4:
+**End-to-end against the main Keycloak**, after Phase 4:
 
 1. `make build.dev-server && make app.run.live`
 2. Drive the rewritten `test-oauth-app` through a full authorization in Chrome — navigate to
@@ -495,7 +482,7 @@ Phase 4 `make test.e2e`.
 9. Revoke from App Tokens → token stops working.
 
 **Multi-tenant:** repeat 2-4 to confirm the tenant resolves from the session and the right resource
-client id lands in `scope_resource`.
+client id lands in the scope's resource-client segment.
 
 ---
 
@@ -511,17 +498,16 @@ the `@Entity` class, which finds `bodhi_access_request` and its rows untouched. 
 the only migration is data-only. There is no irreversible step in this plan.
 
 **Riskiest remaining step: the cutover window.** Between the Keycloak deploy and BodhiApp landing,
-dev is knowingly broken — the new mappers emit no audience for legacy single-scope tokens, and the
+the `main` environment is knowingly broken — the new mappers emit no audience for legacy single-scope tokens, and the
 old BodhiApp calls a `users/request-access` endpoint that no longer exists. In production the same
 window invalidates every existing app grant until the user re-authorizes. Keep the two deploys close
-together and verify dev fully first.
+together and verify against `main` fully first.
 
 **The mapper's failure mode is silent** — a token issued with no audience fails later at BodhiApp's
 front door, not at issuance. `testCrossResourceExchangeFails` and
 `testTokenExchangeFailsWithoutAccessRequestScope` are what keep this honest; run them before tagging.
 
-**The manual Railway deploy and realm import are outside CI.** Nothing asserts the running
-image matches the tag, nothing diffs `openapi.json`/`openapi.yaml`, and nothing verifies the
-`scope_resource` scope actually landed. All three need a human check at the gate.
+**The manual Railway deploy is outside CI.** Nothing asserts the running image matches the tag, and
+nothing diffs the committed `openapi.json`/`openapi.yaml`. Both need a human check at the gate.
 
 Phase 3's migration is data-only; the rows it marks `revoked` were already unusable.
