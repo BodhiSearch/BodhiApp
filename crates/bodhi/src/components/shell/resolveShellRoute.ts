@@ -4,7 +4,7 @@ import { BASE_PATH } from '@/lib/constants';
  * Layout classification for the root shell: which routes render OUTSIDE the AppShell.
  *
  * - Bare routes (setup wizard, login, auth/oauth callbacks, request-access, root redirectors, and
- *   the standalone OAuth access-request review) render through `BareLayout` (slim topbar).
+ *   the standalone OAuth consent screen) render through `BareLayout` (slim topbar).
  * - Fullscreen routes (the setup wizard) render the Outlet directly — no chrome at all.
  *
  * Everything else is an app (shell) route. Section/sub-page highlight for app routes comes from
@@ -13,7 +13,7 @@ import { BASE_PATH } from '@/lib/constants';
  * INTERIM: this central prefix switch could eventually be replaced by route-declared layout
  * (`staticData.layout` / pathless `_bare` routes); see screen-v2/techdebt.md.
  */
-const BARE_PREFIXES = ['/setup', '/login', '/auth', '/request-access', '/mcps/oauth', '/apps/access-requests/review'];
+const BARE_PREFIXES = ['/setup', '/login', '/auth', '/request-access', '/mcps/oauth', '/apps/auth'];
 
 /** Strips the `/ui` basepath and any trailing slash. */
 function normalize(pathname: string): string {

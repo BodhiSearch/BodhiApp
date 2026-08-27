@@ -1,9 +1,13 @@
-import type { AccessRequestReviewResponse, AppAccessSummary, ListAppAccessResponse } from '@/hooks/apps';
+import type {
+  AppAccessSummary,
+  ConsentAppInfo,
+  ConsentContextResponse,
+  ConsentPriorGrant,
+  ListAppAccessResponse,
+} from '@/hooks/apps';
 
-const REQUEST_ID = '550e8400-e29b-41d4-a716-446655440000';
 const APP_CLIENT_ID = 'test-app-client';
-export const MOCK_AUTH_ENDPOINT = 'https://id.example.com/realms/bodhi/protocol/openid-connect/auth';
-const AUTH_ENDPOINT = MOCK_AUTH_ENDPOINT;
+const REDIRECT_URI = 'https://myapp.example.com/callback';
 
 export const mockAppAccessSummary: AppAccessSummary = {
   id: 'app-grant-1',
@@ -39,512 +43,71 @@ export const mockAppAccessListEmpty: ListAppAccessResponse = { data: [] };
 
 export const mockAppAccessRevoked: AppAccessSummary = { ...mockAppAccessSummary, status: 'revoked' };
 
-export const mockDraftReviewResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'Test Application',
-  app_description: 'A test third-party application',
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'draft',
-  requested_role: 'scope_user_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }],
-  },
-  mcps_info: [
-    {
-      url: 'https://mcp.deepwiki.com/mcp',
-      instances: [
-        {
-          id: 'mcp-instance-1',
-          name: 'DeepWiki',
-          slug: 'deepwiki-prod',
-          path: '/mcp/deepwiki-prod',
-          enabled: true,
-          mcp_server: {
-            id: 'mcp-server-1',
-            url: 'https://mcp.deepwiki.com/mcp',
-            name: 'DeepWiki MCP',
-            enabled: true,
-          },
-          auth_type: 'public',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ],
-    },
-  ],
+type ConsentOk = Extract<ConsentContextResponse, { result: 'ok' }>;
+
+export const mockConsentAppInfo: ConsentAppInfo = {
+  client_id: APP_CLIENT_ID,
+  name: 'Test Application',
+  description: 'A test third-party application',
+  redirect_uri: REDIRECT_URI,
 };
 
-export const mockDraftNoInstancesResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'Test Application',
-  app_description: 'A test third-party application',
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'draft',
-  requested_role: 'scope_user_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [{ url: 'https://mcp.example.com/mcp' }],
-  },
-  mcps_info: [
-    {
-      url: 'https://mcp.example.com/mcp',
-      instances: [],
-    },
-  ],
+/** Defaults: both sections requested, role User, can_approve, no prior grant. */
+export const mockConsentOk = (overrides: Partial<ConsentOk> = {}): ConsentContextResponse => ({
+  result: 'ok',
+  app: mockConsentAppInfo,
+  scope: { role: 'scope_user_user', llms: true, mcps: true, passthrough: [] },
+  prior_grant: null,
+  can_approve: true,
+  ...overrides,
+});
+
+export const mockConsentOkPowerUser: ConsentContextResponse = mockConsentOk({
+  scope: { role: 'scope_user_power_user', llms: true, mcps: true, passthrough: [] },
+});
+
+export const mockConsentRoleOnly: ConsentContextResponse = mockConsentOk({
+  scope: { role: 'scope_user_user', llms: false, mcps: false, passthrough: [] },
+});
+
+export const mockConsentBlocked: ConsentContextResponse = mockConsentOk({ can_approve: false });
+
+export const mockConsentErrorInApp: ConsentContextResponse = {
+  result: 'error',
+  error: 'invalid_request',
+  error_description: 'redirect_uri does not match the registered redirect URIs',
+  redirect_url: null,
 };
 
-export const mockApprovedReviewResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'Test Application',
-  app_description: 'A test third-party application',
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'approved',
-  requested_role: 'scope_user_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [],
-  },
-  mcps_info: [],
+export const MOCK_ERROR_REDIRECT_URL = `${REDIRECT_URI}?error=invalid_scope&error_description=unknown+scope&error_source=bodhi&state=xyz789`;
+
+export const mockConsentErrorRedirect: ConsentContextResponse = {
+  result: 'error',
+  error: 'invalid_scope',
+  error_description: 'unknown scope',
+  redirect_url: MOCK_ERROR_REDIRECT_URL,
 };
 
-export const mockFailedReviewResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'Test Application',
-  app_description: null,
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'failed',
-  requested_role: 'scope_user_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [],
-  },
-  mcps_info: [],
-};
-
-export const mockExpiredReviewResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'Test Application',
-  app_description: null,
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'expired',
-  requested_role: 'scope_user_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [],
-  },
-  mcps_info: [],
-};
-
-export const mockDeniedReviewResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'Test Application',
-  app_description: null,
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'denied',
-  requested_role: 'scope_user_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [],
-  },
-  mcps_info: [],
-};
-
-export const mockDraftRedirectResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'Redirect App',
-  app_description: 'An app using redirect flow',
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'draft',
-  requested_role: 'scope_user_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }],
-  },
-  mcps_info: [
-    {
-      url: 'https://mcp.deepwiki.com/mcp',
-      instances: [
-        {
-          id: 'mcp-instance-1',
-          name: 'DeepWiki',
-          slug: 'deepwiki-prod',
-          path: '/mcp/deepwiki-prod',
-          enabled: true,
-          mcp_server: {
-            id: 'mcp-server-1',
-            url: 'https://mcp.deepwiki.com/mcp',
-            name: 'DeepWiki MCP',
-            enabled: true,
-          },
-          auth_type: 'public',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ],
-    },
-  ],
-};
-
-export const mockDraftMultiToolResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'Multi-MCP App',
-  app_description: 'An app requesting multiple MCP servers',
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'draft',
-  requested_role: 'scope_user_power_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }, { url: 'https://mcp.weather.com/mcp' }],
-  },
-  mcps_info: [
-    {
-      url: 'https://mcp.deepwiki.com/mcp',
-      instances: [
-        {
-          id: 'mcp-instance-1',
-          name: 'DeepWiki',
-          slug: 'deepwiki-prod',
-          path: '/mcp/deepwiki-prod',
-          enabled: true,
-          mcp_server: {
-            id: 'mcp-server-1',
-            url: 'https://mcp.deepwiki.com/mcp',
-            name: 'DeepWiki MCP',
-            enabled: true,
-          },
-          auth_type: 'public',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ],
-    },
-    {
-      url: 'https://mcp.weather.com/mcp',
-      instances: [
-        {
-          id: 'mcp-instance-2',
-          name: 'Weather',
-          slug: 'weather-prod',
-          path: '/mcp/weather-prod',
-          enabled: true,
-          mcp_server: {
-            id: 'mcp-server-2',
-            url: 'https://mcp.weather.com/mcp',
-            name: 'Weather MCP',
-            enabled: true,
-          },
-          auth_type: 'public',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ],
-    },
-  ],
-};
-
-export const mockDraftMultiToolMixedResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'Mixed MCP App',
-  app_description: 'An app with mixed MCP availability',
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'draft',
-  requested_role: 'scope_user_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }, { url: 'https://mcp.calculator.com/mcp' }],
-  },
-  mcps_info: [
-    {
-      url: 'https://mcp.deepwiki.com/mcp',
-      instances: [
-        {
-          id: 'mcp-instance-1',
-          name: 'DeepWiki',
-          slug: 'deepwiki-prod',
-          path: '/mcp/deepwiki-prod',
-          enabled: true,
-          mcp_server: {
-            id: 'mcp-server-1',
-            url: 'https://mcp.deepwiki.com/mcp',
-            name: 'DeepWiki MCP',
-            enabled: true,
-          },
-          auth_type: 'public',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ],
-    },
-    {
-      url: 'https://mcp.calculator.com/mcp',
-      instances: [],
-    },
-  ],
-};
-
-export const mockDraftMcpResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'MCP App',
-  app_description: 'An app requesting MCP access',
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'draft',
-  requested_role: 'scope_user_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }],
-  },
-  mcps_info: [
-    {
-      url: 'https://mcp.deepwiki.com/mcp',
-      instances: [
-        {
-          id: 'mcp-instance-1',
-          name: 'DeepWiki',
-          slug: 'deepwiki-prod',
-          path: '/mcp/deepwiki-prod',
-          enabled: true,
-          mcp_server: {
-            id: 'mcp-server-1',
-            url: 'https://mcp.deepwiki.com/mcp',
-            name: 'DeepWiki MCP',
-            enabled: true,
-          },
-          auth_type: 'public',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ],
-    },
-  ],
-};
-
-// Draft where the user's instances span multiple server URLs: an exact-URL match (sorted first)
-// plus a non-matching instance reached via a gateway. Mirrors the backend's all-instances payload.
-export const mockDraftMcpCrossUrlResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'MCP App',
-  app_description: 'An app requesting MCP access',
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'draft',
-  requested_role: 'scope_user_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }],
-  },
-  mcps_info: [
-    {
-      url: 'https://mcp.deepwiki.com/mcp',
-      instances: [
-        {
-          id: 'mcp-instance-1',
-          name: 'DeepWiki',
-          slug: 'deepwiki-prod',
-          path: '/mcp/deepwiki-prod',
-          enabled: true,
-          mcp_server: {
-            id: 'mcp-server-1',
-            url: 'https://mcp.deepwiki.com/mcp',
-            name: 'DeepWiki MCP',
-            enabled: true,
-          },
-          auth_type: 'public',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        {
-          id: 'mcp-instance-gw',
-          name: 'DeepWiki via Gateway',
-          slug: 'deepwiki-gateway',
-          path: '/mcp/deepwiki-gateway',
-          enabled: true,
-          mcp_server: {
-            id: 'mcp-server-gw',
-            url: 'https://gateway.composio.dev/deepwiki/mcp',
-            name: 'Composio Gateway',
-            enabled: true,
-          },
-          auth_type: 'public',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ],
-    },
-  ],
-};
-
-export const mockDraftMixedResourcesResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'Mixed Resources App',
-  app_description: 'An app requesting MCPs',
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'draft',
-  requested_role: 'scope_user_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }],
-  },
-  mcps_info: [
-    {
-      url: 'https://mcp.deepwiki.com/mcp',
-      instances: [
-        {
-          id: 'mcp-instance-1',
-          name: 'DeepWiki',
-          slug: 'deepwiki-prod',
-          path: '/mcp/deepwiki-prod',
-          enabled: true,
-          mcp_server: {
-            id: 'mcp-server-1',
-            url: 'https://mcp.deepwiki.com/mcp',
-            name: 'DeepWiki MCP',
-            enabled: true,
-          },
-          auth_type: 'public',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ],
-    },
-  ],
-};
-
-export const mockDraftMcpNoInstancesResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'MCP No Instances App',
-  app_description: 'An app requesting MCP with no instances',
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'draft',
-  requested_role: 'scope_user_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [{ url: 'https://mcp.example.com/mcp' }],
-  },
-  mcps_info: [
-    {
-      url: 'https://mcp.example.com/mcp',
-      instances: [],
-    },
-  ],
-};
-
-/** Draft request where the app asks for the model + MCP grant controls (all four
- *  UI-driver flags on) plus a by-url MCP. Drives the AI Models + Connected Tools sections. */
-export const mockDraftWithGrantFlagsResponse: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'Grants App',
-  app_description: 'An app requesting model and MCP grant controls',
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'draft',
-  requested_role: 'scope_user_user',
-  requested: {
+const priorGrant = (source: ConsentPriorGrant['source']): ConsentPriorGrant => ({
+  id: 'prior-grant-1',
+  approved_role: 'scope_user_user',
+  approved: {
     version: '1' as const,
     models_list: true,
-    models_access: true,
+    models_access: { type: 'specific', ids: ['model-a'] },
     mcps_list: true,
-    mcps_access: true,
-    mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }],
+    mcps: [],
+    mcps_access: { type: 'specific', ids: ['mcp-x'] },
   },
-  mcps_info: [
-    {
-      url: 'https://mcp.deepwiki.com/mcp',
-      instances: [
-        {
-          id: 'mcp-instance-1',
-          name: 'DeepWiki',
-          slug: 'deepwiki-prod',
-          path: '/mcp/deepwiki-prod',
-          enabled: true,
-          mcp_server: {
-            id: 'mcp-server-1',
-            url: 'https://mcp.deepwiki.com/mcp',
-            name: 'DeepWiki MCP',
-            enabled: true,
-          },
-          auth_type: 'public',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ],
-    },
-  ],
-};
-// Upgrade/exchange draft: same requested surface as mockDraftWithGrantFlagsResponse,
-// plus a `previous_grant` the review form should pre-select.
-export const mockUpgradeReviewResponse: AccessRequestReviewResponse = {
-  ...mockDraftWithGrantFlagsResponse,
-  app_name: 'Upgrade App',
-  // The app asks to elevate to power_user; the source grant was a plain user.
-  requested_role: 'scope_user_power_user',
-  previous_grant: {
-    approved_role: 'scope_user_user',
-    approved: {
-      version: '1' as const,
-      models_list: true,
-      models_access: { type: 'specific', ids: ['model-a'] },
-      mcps_list: true,
-      mcps: [
-        {
-          url: 'https://mcp.deepwiki.com/mcp',
-          status: 'approved',
-          instance: { id: 'mcp-instance-1', path: '/mcp/deepwiki-prod' },
-        },
-      ],
-      mcps_access: { type: 'specific', ids: [] },
-    },
-  },
-};
+  source,
+});
 
-export const mockDraftReviewResponsePowerUser: AccessRequestReviewResponse = {
-  id: REQUEST_ID,
-  app_client_id: APP_CLIENT_ID,
-  app_name: 'Power User App',
-  app_description: 'An app requesting power user access',
-  auth_endpoint: AUTH_ENDPOINT,
-  status: 'draft',
-  requested_role: 'scope_user_power_user',
-  requested: {
-    version: '1' as const,
-    mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }],
-  },
-  mcps_info: [
-    {
-      url: 'https://mcp.deepwiki.com/mcp',
-      instances: [
-        {
-          id: 'mcp-instance-1',
-          name: 'DeepWiki',
-          slug: 'deepwiki-prod',
-          path: '/mcp/deepwiki-prod',
-          enabled: true,
-          mcp_server: {
-            id: 'mcp-server-1',
-            url: 'https://mcp.deepwiki.com/mcp',
-            name: 'DeepWiki MCP',
-            enabled: true,
-          },
-          auth_type: 'public',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ],
-    },
-  ],
-};
+export const mockConsentPriorGrantExplicit: ConsentContextResponse = mockConsentOk({
+  prior_grant: priorGrant('explicit'),
+});
 
-export const MOCK_REQUEST_ID = REQUEST_ID;
-export const MOCK_APP_CLIENT_ID = APP_CLIENT_ID;
+export const mockConsentPriorGrantLatest: ConsentContextResponse = mockConsentOk({
+  prior_grant: priorGrant('latest'),
+});
+
+export const MOCK_REDIRECT_URI = REDIRECT_URI;

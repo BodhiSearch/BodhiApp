@@ -1,11 +1,15 @@
 import {
-  ENDPOINT_ACCESS_REQUESTS_APPROVE,
   ENDPOINT_ACCESS_REQUESTS_APPS,
-  ENDPOINT_ACCESS_REQUESTS_DENY,
-  ENDPOINT_ACCESS_REQUESTS_REVIEW,
   ENDPOINT_ACCESS_REQUESTS_REVOKE,
+  ENDPOINT_APPS_ACCESS_REQUESTS,
+  ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT,
 } from '@/hooks/apps';
-import type { AccessRequestReviewResponse, AppAccessSummary, ListAppAccessResponse } from '@/hooks/apps';
+import type {
+  AppAccessSummary,
+  ConsentContextResponse,
+  ListAppAccessResponse,
+  SubmitConsentResponse,
+} from '@/hooks/apps';
 import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '@/test-utils/msw-v2/setup';
 
 export function mockListAppAccess(data: ListAppAccessResponse, { stub = true }: { stub?: boolean } = {}) {
@@ -31,39 +35,40 @@ export function mockRevokeAppAccess(revoked: AppAccessSummary, { stub }: { stub?
   ];
 }
 
-export function mockAppAccessRequestReview(reviewData: AccessRequestReviewResponse, { stub }: { stub?: boolean } = {}) {
+/**
+ * onUrl, when provided, captures the full request URL so tests can assert the raw
+ * query string reached the server without re-encoding.
+ */
+export function mockConsentContext(
+  body: ConsentContextResponse,
+  { stub = true, onUrl }: { stub?: boolean; onUrl?: (url: string) => void } = {}
+) {
   let hasBeenCalled = false;
-
   return [
-    typedHttp.get(ENDPOINT_ACCESS_REQUESTS_REVIEW, async ({ params, response }) => {
-      if (params.id !== reviewData.id) return;
+    typedHttp.get(ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT, async ({ request, response }) => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
-
-      return response(200 as const).json(reviewData);
+      onUrl?.(request.url);
+      return response(200 as const).json(body);
     }),
   ];
 }
 
-export function mockAppAccessRequestReviewError(
-  id: string,
+export function mockConsentContextError(
   {
     code = INTERNAL_SERVER_ERROR.code,
     message = INTERNAL_SERVER_ERROR.message,
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 404 | 410 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
-
   return [
-    typedHttp.get(ENDPOINT_ACCESS_REQUESTS_REVIEW, async ({ params, response }) => {
-      if (params.id !== id) return;
+    typedHttp.get(ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT, async ({ response }) => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
-
       const errorData = { code, message, type, ...rest };
       return response(status).json({ error: errorData });
     }),
@@ -73,93 +78,39 @@ export function mockAppAccessRequestReviewError(
 /**
  * onBody, when provided, captures the request body for assertion.
  */
-export function mockAppAccessRequestApprove(
-  id: string,
-  {
-    stub,
-    onBody,
-    accessRequestScope,
-  }: { stub?: boolean; onBody?: (body: unknown) => void; accessRequestScope?: string } = {}
+export function mockSubmitConsent(
+  data: SubmitConsentResponse,
+  { stub, onBody, status = 200 }: { stub?: boolean; onBody?: (body: unknown) => void; status?: 200 | 201 } = {}
 ) {
   let hasBeenCalled = false;
-
   return [
-    typedHttp.put(ENDPOINT_ACCESS_REQUESTS_APPROVE, async ({ params, request, response }) => {
-      if (params.id !== id) return;
+    typedHttp.post(ENDPOINT_APPS_ACCESS_REQUESTS, async ({ request, response }) => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
-
       if (onBody) {
         const body = await request.json();
         onBody(body);
       }
-
-      return response(200 as const).json({
-        status: 'approved',
-        access_request_scope: accessRequestScope ?? `scope_access_request:${id}`,
-      });
+      return response(status).json(data);
     }),
   ];
 }
 
-export function mockAppAccessRequestApproveError(
-  id: string,
+export function mockSubmitConsentError(
   {
     code = INTERNAL_SERVER_ERROR.code,
     message = INTERNAL_SERVER_ERROR.message,
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 404 | 409 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
-
   return [
-    typedHttp.put(ENDPOINT_ACCESS_REQUESTS_APPROVE, async ({ params, response }) => {
-      if (params.id !== id) return;
+    typedHttp.post(ENDPOINT_APPS_ACCESS_REQUESTS, async ({ response }) => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
-
-      const errorData = { code, message, type, ...rest };
-      return response(status).json({ error: errorData });
-    }),
-  ];
-}
-
-export function mockAppAccessRequestDeny(id: string, { stub }: { stub?: boolean } = {}) {
-  let hasBeenCalled = false;
-
-  return [
-    typedHttp.post(ENDPOINT_ACCESS_REQUESTS_DENY, async ({ params, response }) => {
-      if (params.id !== id) return;
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
-      return response(200 as const).json({ status: 'denied' });
-    }),
-  ];
-}
-
-export function mockAppAccessRequestDenyError(
-  id: string,
-  {
-    code = INTERNAL_SERVER_ERROR.code,
-    message = INTERNAL_SERVER_ERROR.message,
-    type = INTERNAL_SERVER_ERROR.type,
-    status = INTERNAL_SERVER_ERROR.status,
-    ...rest
-  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 404 | 409 | 500 } = {},
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-
-  return [
-    typedHttp.post(ENDPOINT_ACCESS_REQUESTS_DENY, async ({ params, response }) => {
-      if (params.id !== id) return;
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
       const errorData = { code, message, type, ...rest };
       return response(status).json({ error: errorData });
     }),

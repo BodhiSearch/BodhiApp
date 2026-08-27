@@ -24,6 +24,8 @@ interface AppInitializerProps {
   allowedStatus?: AppStatus | AppStatus[];
   authenticated?: boolean;
   minRole?: MinRole;
+  /** Render for no-role/guest sessions instead of bouncing to request-access (consent page only). */
+  skipRoleGate?: boolean;
 }
 
 export default function AppInitializer({
@@ -31,6 +33,7 @@ export default function AppInitializer({
   allowedStatus,
   authenticated = false,
   minRole,
+  skipRoleGate = false,
 }: AppInitializerProps) {
   const navigate = useNavigate();
 
@@ -83,7 +86,10 @@ export default function AppInitializer({
     }
 
     if (authenticated && userInfo?.auth_status === 'logged_in') {
-      if (!userInfo.role || userInfo.role === 'resource_guest' || userInfo.role === 'resource_anonymous') {
+      if (
+        !skipRoleGate &&
+        (!userInfo.role || userInfo.role === 'resource_guest' || userInfo.role === 'resource_anonymous')
+      ) {
         navigate({ to: ROUTE_REQUEST_ACCESS });
         return;
       }
@@ -98,7 +104,7 @@ export default function AppInitializer({
         }
       }
     }
-  }, [authenticated, userInfo, minRole, navigate, appLoading, userLoading, appError, userError]);
+  }, [authenticated, userInfo, minRole, skipRoleGate, navigate, appLoading, userLoading, appError, userError]);
 
   if (appLoading || userLoading) {
     return <Loading message="Initializing app..." />;

@@ -47,7 +47,14 @@ function filterCacheKey(filter?: ModelsFilter): string {
     .join('&');
 }
 
-export function useListModels(page: number, pageSize: number, sort: string, sortOrder: string, filter?: ModelsFilter) {
+export function useListModels(
+  page: number,
+  pageSize: number,
+  sort: string,
+  sortOrder: string,
+  filter?: ModelsFilter,
+  options?: { enabled?: boolean }
+) {
   return useQuery<PaginatedAliasResponse>(
     modelKeys.list(page, pageSize, sort, sortOrder, filterCacheKey(filter)),
     ENDPOINT_MODELS,
@@ -59,7 +66,7 @@ export function useListModels(page: number, pageSize: number, sort: string, sort
       ...buildModelsFilterParams(filter),
     },
     // Keep the prior page visible during a facet/page refetch so the list doesn't flash empty.
-    { placeholderData: keepPreviousData }
+    { placeholderData: keepPreviousData, ...options }
   );
 }
 

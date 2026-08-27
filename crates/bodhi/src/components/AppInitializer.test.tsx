@@ -317,6 +317,25 @@ describe('AppInitializer role-based access control', () => {
     expect(navigateMock).toHaveBeenCalledWith({ to: '/request-access/' });
   });
 
+  it('renders children for a guest role when skipRoleGate is set (consent page)', async () => {
+    server.use(
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({
+        username: 'test@example.com',
+        role: 'resource_guest',
+      })
+    );
+
+    await renderWithSetup(
+      <AppInitializer allowedStatus="ready" authenticated={true} skipRoleGate>
+        <div>Protected content</div>
+      </AppInitializer>
+    );
+
+    expect(screen.getByText('Protected content')).toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalledWith({ to: '/request-access/' });
+  });
+
   it('prioritizes auth check over role check', async () => {
     server.use(...mockAppInfo({ status: 'ready' }), ...mockUserLoggedOut());
 

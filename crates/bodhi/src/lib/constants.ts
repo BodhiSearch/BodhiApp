@@ -16,7 +16,6 @@ export const ROUTE_SETUP_API_MODELS = '/setup/api-models/';
 export const ROUTE_SETUP_BROWSER_EXTENSION = '/setup/browser-extension/';
 
 export const ROUTE_REQUEST_ACCESS = '/request-access/';
-export const ROUTE_APP_REVIEW_ACCESS = '/apps/access-requests/review/';
 export const ROUTE_ACCESS_REQUESTS_ALL = '/users/access-requests/';
 export const ROUTE_USERS = '/users/';
 export const ROUTE_UNAUTHORIZED = '/unauthorized/';

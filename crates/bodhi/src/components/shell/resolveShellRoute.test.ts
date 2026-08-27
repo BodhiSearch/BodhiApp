@@ -12,8 +12,8 @@ describe('isBareRoute', () => {
     '/auth/callback/',
     '/request-access/',
     '/mcps/oauth/callback/',
-    // the standalone OAuth access-request review (in scope, rendered via BareLayout)
-    '/apps/access-requests/review/',
+    // the standalone OAuth consent screen (in scope, rendered via BareLayout)
+    '/apps/auth/',
   ])('treats %s as bare', (p) => {
     expect(isBareRoute(p)).toBe(true);
   });

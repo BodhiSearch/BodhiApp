@@ -41,7 +41,7 @@ src/routes/
 ├── tokens/                 # /tokens → API tokens
 ├── settings/               # /settings → app settings
 ├── users/                  # /users → user management
-├── apps/access-requests/review/ # /apps/access-requests/review
+├── apps/auth/              # /apps/auth → OAuth consent screen (app authorize requests)
 ├── request-access/         # /request-access → access request form
 └── setup/                  # /setup → multi-step onboarding
     ├── route.tsx            # Layout route wrapping all setup steps

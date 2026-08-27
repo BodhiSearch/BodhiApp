@@ -1,13 +1,14 @@
 import {
-  AccessRequestActionResponse,
-  AccessRequestReviewResponse,
   AppAccessSummary,
-  ApproveAccessRequest,
-  ListAppAccessResponse,
-  McpApproval,
-  McpServerReviewInfo,
   BodhiErrorResponse,
-  RequestedResources,
+  ConsentAppInfo,
+  ConsentContextResponse,
+  ConsentDecision,
+  ConsentPriorGrant,
+  ConsentScopeInfo,
+  ListAppAccessResponse,
+  SubmitConsentRequest,
+  SubmitConsentResponse,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
@@ -15,60 +16,54 @@ import { useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 import { extractErrorMessage } from '@/lib/errorUtils';
 
-import { appAccessRequestKeys, ENDPOINT_ACCESS_REQUESTS, ENDPOINT_ACCESS_REQUESTS_APPS } from './constants';
+import {
+  appAccessRequestKeys,
+  ENDPOINT_ACCESS_REQUESTS,
+  ENDPOINT_ACCESS_REQUESTS_APPS,
+  ENDPOINT_APPS_ACCESS_REQUESTS,
+  ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT,
+} from './constants';
 
 export type {
-  AccessRequestActionResponse,
-  AccessRequestReviewResponse,
   AppAccessSummary,
-  ApproveAccessRequest,
+  ConsentAppInfo,
+  ConsentContextResponse,
+  ConsentDecision,
+  ConsentPriorGrant,
+  ConsentScopeInfo,
   ListAppAccessResponse,
-  McpApproval,
-  McpServerReviewInfo,
-  RequestedResources,
+  SubmitConsentRequest,
+  SubmitConsentResponse,
 };
 
-export function useGetAppAccessRequestReview(
-  id: string | null,
-  options?: { enabled?: boolean }
-): UseQueryResult<AccessRequestReviewResponse, AxiosError<BodhiErrorResponse>> {
-  return useQuery<AccessRequestReviewResponse>(
-    appAccessRequestKeys.detail(id ?? ''),
-    `${ENDPOINT_ACCESS_REQUESTS}/${id}/review`,
-    undefined,
-    {
-      enabled: !!id,
-      retry: false,
-      ...options,
-    }
-  );
+/**
+ * `search` is the page's raw, already-encoded query string (leading '?').
+ * It is appended verbatim — axios `params` would re-encode and corrupt it.
+ */
+export function useGetConsentContext(
+  search: string
+): UseQueryResult<ConsentContextResponse, AxiosError<BodhiErrorResponse>> {
+  const endpoint = search ? `${ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT}${search}` : ENDPOINT_APPS_ACCESS_REQUESTS_CONSENT;
+  return useQuery<ConsentContextResponse>(appAccessRequestKeys.consent(search), endpoint, undefined, {
+    retry: false,
+  });
 }
 
-export function useApproveAppAccessRequest(options?: {
-  onSuccess?: (data: AccessRequestActionResponse) => void;
+export function useSubmitConsent(options?: {
+  onSuccess?: (data: SubmitConsentResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<
-  AxiosResponse<AccessRequestActionResponse>,
-  AxiosError<BodhiErrorResponse>,
-  { id: string; body: ApproveAccessRequest }
-> {
+}): UseMutationResult<AxiosResponse<SubmitConsentResponse>, AxiosError<BodhiErrorResponse>, SubmitConsentRequest> {
   const queryClient = useQueryClient();
-  return useMutationQuery<AccessRequestActionResponse, { id: string; body: ApproveAccessRequest }>(
-    ({ id }) => `${ENDPOINT_ACCESS_REQUESTS}/${id}/approve`,
-    'put',
-    {
-      onSuccess: (response) => {
-        queryClient.invalidateQueries({ queryKey: appAccessRequestKeys.all });
-        options?.onSuccess?.(response.data);
-      },
-      onError: (error: AxiosError<BodhiErrorResponse>) => {
-        options?.onError?.(extractErrorMessage(error, 'Failed to approve access request'));
-      },
+  return useMutationQuery<SubmitConsentResponse, SubmitConsentRequest>(ENDPOINT_APPS_ACCESS_REQUESTS, 'post', {
+    onSuccess: (response) => {
+      // Only the grants list — invalidating `.all` would refetch the consent query mid-redirect.
+      queryClient.invalidateQueries({ queryKey: appAccessRequestKeys.list() });
+      options?.onSuccess?.(response.data);
     },
-    {
-      transformBody: ({ body }) => body,
-    }
-  );
+    onError: (error: AxiosError<BodhiErrorResponse>) => {
+      options?.onError?.(extractErrorMessage(error, 'Failed to submit consent decision'));
+    },
+  });
 }
 
 export function useListAppAccess(options?: {
@@ -95,29 +90,6 @@ export function useRevokeAppAccess(options?: {
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
         options?.onError?.(extractErrorMessage(error, 'Failed to revoke app access'));
-      },
-    },
-    {
-      transformBody: () => undefined,
-    }
-  );
-}
-
-export function useDenyAppAccessRequest(options?: {
-  onSuccess?: (data: AccessRequestActionResponse) => void;
-  onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<AccessRequestActionResponse>, AxiosError<BodhiErrorResponse>, { id: string }> {
-  const queryClient = useQueryClient();
-  return useMutationQuery<AccessRequestActionResponse, { id: string }>(
-    ({ id }) => `${ENDPOINT_ACCESS_REQUESTS}/${id}/deny`,
-    'post',
-    {
-      onSuccess: (response) => {
-        queryClient.invalidateQueries({ queryKey: appAccessRequestKeys.all });
-        options?.onSuccess?.(response.data);
-      },
-      onError: (error: AxiosError<BodhiErrorResponse>) => {
-        options?.onError?.(extractErrorMessage(error, 'Failed to deny access request'));
       },
     },
     {

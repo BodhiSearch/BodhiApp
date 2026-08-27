@@ -1,8 +1,8 @@
-import type { McpGrant, ModelGrant, PreviousGrantInfo, UserScope } from '@bodhiapp/ts-client';
+import type { ConsentPriorGrant, McpGrant, ModelGrant, UserScope } from '@bodhiapp/ts-client';
 
 import type { AccessMode } from '@/components/access-picker';
 
-/** Review-form state pre-selected from a prior grant (upgrade/exchange mode). */
+/** Consent-form state pre-selected from a prior grant (reauthorization). */
 export interface PreselectState {
   listModels: boolean;
   modelMode: AccessMode;
@@ -10,8 +10,6 @@ export interface PreselectState {
   listMcps: boolean;
   mcpExtraMode: AccessMode;
   mcpsExtra: string[];
-  approvedMcps: Record<string, boolean>;
-  selectedMcpInstances: Record<string, string>;
   approvedRole: UserScope;
 }
 
@@ -23,19 +21,10 @@ const fromGrant = (g: ModelGrant | McpGrant | undefined): { mode: AccessMode; id
   return grant.type === 'all' ? { mode: 'all', ids: [] } : { mode: 'specific', ids: grant.ids };
 };
 
-export function previousGrantToState(previous: PreviousGrantInfo): PreselectState {
+export function previousGrantToState(previous: ConsentPriorGrant): PreselectState {
   const approved = previous.approved;
   const modelGrant = fromGrant(approved.models_access);
   const mcpGrant = fromGrant(approved.mcps_access);
-
-  const approvedMcps: Record<string, boolean> = {};
-  const selectedMcpInstances: Record<string, string> = {};
-  for (const mcp of approved.mcps ?? []) {
-    approvedMcps[mcp.url] = mcp.status === 'approved';
-    if (mcp.status === 'approved' && mcp.instance) {
-      selectedMcpInstances[mcp.url] = mcp.instance.id;
-    }
-  }
 
   return {
     listModels: approved.models_list ?? false,
@@ -44,8 +33,6 @@ export function previousGrantToState(previous: PreviousGrantInfo): PreselectStat
     listMcps: approved.mcps_list ?? false,
     mcpExtraMode: mcpGrant.mode,
     mcpsExtra: mcpGrant.ids,
-    approvedMcps,
-    selectedMcpInstances,
     approvedRole: previous.approved_role,
   };
 }
