@@ -42,7 +42,7 @@ jobs:
       commit_sha: ${{ steps.version.outputs.commit_sha }}
       release_tag: ${{ steps.release.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
@@ -106,16 +106,16 @@ jobs:
       app_binary_tag: ${{ steps.set-tag.outputs.app_binary_tag }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
           submodules: recursive
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -123,7 +123,7 @@ jobs:
 
       - name: Build and push multi-platform app-binary image
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./devops/app-binary.Dockerfile
@@ -177,16 +177,16 @@ jobs:
             special_note: '⭐ **Multi-platform support**: This image automatically selects the correct architecture (AMD64 or ARM64) for your platform.'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
           submodules: recursive
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -194,7 +194,7 @@ jobs:
 
       - name: Build and push ${{ matrix.variant }} image
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./devops/${{ matrix.variant }}.Dockerfile
@@ -288,7 +288,7 @@ jobs:
 
       - name: Upload build info artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-info-multiplatform-${{ matrix.variant }}
           path: build-info-${{ matrix.variant }}.json
@@ -302,7 +302,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all build info artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: build-info-multiplatform-*
           path: build-artifacts
@@ -354,7 +354,7 @@ jobs:
           cat release.json | jq .
 
       - name: Upload release info artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-info-multiplatform
           path: release.json
@@ -367,7 +367,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release info artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-info-multiplatform
           path: release-artifacts
@@ -522,7 +522,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.check.outputs.should_release == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.extract-version.outputs.release_tag }}
           name: 'Docker Multi-Platform Images ${{ needs.extract-version.outputs.build_variant }} ${{ needs.extract-version.outputs.tag_version }}'

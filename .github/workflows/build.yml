@@ -65,7 +65,7 @@ jobs:
             librsvg2-dev \
             patchelf
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
           submodules: recursive
@@ -157,7 +157,7 @@ jobs:
       pull-requests: write
       actions: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
           submodules: recursive
@@ -180,13 +180,13 @@ jobs:
           working-directory: crates/lib_bodhiserver
 
       - name: Download bodhiserver_dev binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bodhiserver-dev-x86_64-unknown-linux-gnu
           path: target/debug/
 
       - name: Download llama_server_proc binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: llama-server-binaries-x86_64-unknown-linux-gnu
           path: crates/llama_server_proc/bin/
@@ -263,7 +263,7 @@ jobs:
           INTEG_TEST_MT_TENANT_SECRET: ${{ secrets.INTEG_TEST_MT_TENANT_SECRET }}
 
       - name: Publish Playwright test results
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: (success() || failure()) && steps.playwright-run.outcome != 'skipped'
         with:
           name: Playwright Tests (Linux)
@@ -272,7 +272,7 @@ jobs:
           fail-on-error: false
 
       - name: Upload test results on failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: test-results-linux

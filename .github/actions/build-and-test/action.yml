@@ -31,7 +31,7 @@ runs:
         CI_DEFAULT_VARIANT: cpu
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4.0.1
+      uses: codecov/codecov-action@v7
       if: success() && inputs.codecov-token != ''
       continue-on-error: true
       with:
@@ -43,7 +43,7 @@ runs:
         flags: ${{ inputs.target }},bodhi
 
     - name: Upload llama_server_proc binaries
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: llama-server-binaries-${{ inputs.target }}
         path: crates/llama_server_proc/bin/
@@ -54,7 +54,7 @@ runs:
       run: make ci.ui.unit
 
     - name: Upload UI coverage reports to Codecov
-      uses: codecov/codecov-action@v4.0.1
+      uses: codecov/codecov-action@v7
       if: success() && inputs.codecov-token != ''
       continue-on-error: true
       with:

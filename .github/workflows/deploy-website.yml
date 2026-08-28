@@ -30,7 +30,7 @@ jobs:
       release_tag: ${{ steps.release.outputs.tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set release tag
         id: release
@@ -49,19 +49,19 @@ jobs:
           pattern-description: 'getbodhi.app/vX.Y.Z'
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: 'npm'
           cache-dependency-path: getbodhi.app/package-lock.json
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
         with:
           static_site_generator: next
 
       - name: Restore cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             getbodhi.app/.next/cache
@@ -105,7 +105,7 @@ jobs:
         run: npm run build
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./getbodhi.app/out
 
@@ -118,7 +118,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   update-homebrew:
     if: needs.deploy.result == 'success'
@@ -128,7 +128,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: main
 
@@ -159,7 +159,7 @@ jobs:
           echo "DMG SHA256: ${DMG_SHA256:0:16}..."
 
       - name: Trigger homebrew-apps update
-        uses: peter-evans/repository-dispatch@v3
+        uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.GH_FAT_HOMEBREW }}
           repository: BodhiSearch/homebrew-apps
@@ -185,12 +185,12 @@ jobs:
         working-directory: getbodhi.app
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: main
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
 

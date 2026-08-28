@@ -40,7 +40,7 @@ jobs:
             libappindicator3-dev \
             librsvg2-dev \
             patchelf
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
           submodules: recursive
@@ -122,19 +122,19 @@ jobs:
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Playwright
         uses: ./.github/actions/setup-playwright
         with:
           platform: ${{ matrix.platform }}
           working-directory: crates/lib_bodhiserver
       - name: Download bodhiserver_dev binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bodhiserver-dev-${{ matrix.target }}
           path: target/debug/
       - name: Download llama_server_proc binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: llama-server-binaries-${{ matrix.target }}
           path: crates/llama_server_proc/bin/
@@ -197,7 +197,7 @@ jobs:
           INTEG_TEST_DEV_CONSOLE_CLIENT_ID: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_ID }}
           INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET }}
       - name: Publish Playwright test results
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: (success() || failure()) && steps.playwright-run.outcome != 'skipped'
         with:
           name: Playwright Tests (${{ matrix.target }})
@@ -205,7 +205,7 @@ jobs:
           reporter: java-junit
           fail-on-error: false
       - name: Upload Playwright test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure() && steps.playwright-run.outcome != 'skipped'
         with:
           name: playwright-results-${{ matrix.target }}
@@ -214,7 +214,7 @@ jobs:
             crates/lib_bodhiserver/playwright-report/
           retention-days: 7
       - name: Upload Playwright HTML report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always() && steps.playwright-run.outcome != 'skipped'
         with:
           name: playwright-report-${{ matrix.target }}

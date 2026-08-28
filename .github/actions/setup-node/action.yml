@@ -9,7 +9,7 @@ runs:
   using: composite
   steps:
     - name: setup node
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
         node-version: lts/jod
         registry-url: 'https://registry.npmjs.org'
@@ -25,7 +25,7 @@ runs:
       run: echo "NPM_CACHE_DIR=$(npm config get cache)" >> $GITHUB_ENV
 
     - name: Cache npm dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ env.NPM_CACHE_DIR }}
         key: ${{ runner.os }}-npm-${{ hashFiles('crates/bodhi/package-lock.json', 'crates/lib_bodhiserver/package-lock.json', 'crates/lib_bodhiserver_napi/package-lock.json', 'ts-client/package-lock.json') }}
