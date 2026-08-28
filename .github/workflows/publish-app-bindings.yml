@@ -64,7 +64,7 @@ jobs:
           submodules: recursive
       - uses: Swatinem/rust-cache@v2
       - name: install Rust 1.93.0
-        uses: dtolnay/rust-toolchain@1.93.0
+        uses: dtolnay/rust-toolchain@1.100.0
         with:
           targets: ${{ matrix.settings.target }}
       - name: Setup Node.js
