@@ -228,3 +228,10 @@ cython_debug/
 # Applies to both the frozen ai-docs/ bin and the migrated docs/archive/ copies.
 ai-docs/claude-plans/**/analysis/
 docs/archive/claude-plans/**/analysis/
+
+# graphify (knowledge graph) — graphify-out/graph.json hit 89MB on a crates/-scoped scan
+# (near GitHub's 100MB hard limit; safishamsi/graphify#947 covers this exact monorepo-scan
+# failure mode), and graph.json/manifest.json embed absolute per-machine paths that would
+# leak across a clone (safishamsi/graphify#722) or churn on every contributor's mtimes
+# (Graphify-Labs/graphify#369). Ignore the whole generated tree; regenerate with /graphify.
+graphify-out/
