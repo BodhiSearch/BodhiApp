@@ -15,10 +15,10 @@ docs.context-update-dry-run: ## Preview changes that would be made to AI context
 
 # Website release URLs
 website.update-releases: ## Update website release URLs from latest releases
-	$(MAKE) -C getbodhi.app update_releases
+	$(MAKE) -C getbodhi-app update_releases
 
 website.update-releases-check: ## Check latest releases (dry-run)
-	$(MAKE) -C getbodhi.app update_releases.check
+	$(MAKE) -C getbodhi-app update_releases.check
 
 website.release: ## Create and push tag for website release
-	$(MAKE) -C getbodhi.app release
+	$(MAKE) -C getbodhi-app release
