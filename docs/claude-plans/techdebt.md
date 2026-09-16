@@ -96,4 +96,132 @@ Deferred work items intentionally scoped out of their originating effort, to be 
   same dead branch remains in the sibling `waitForToastOptional`.
 - **Why deferred**: intentionally kept N11 scoped to the finding; trivial.
 - **Fix**: collapse the branch in `waitForToastOptional` the same way.
+
+# Remote Access
+
+Gaps carried out of the Cloudflare named-tunnel work
+([`202609/remote-access-plan.md`](202609/remote-access-plan.md)). Decisions referenced as D1–D10 and
+risks as R1–R6 are defined in that plan.
+
+## `/bodhi/v1/info` discovery: three accepted gaps
+- **Source**: [`202609/remote-access-info-discovery.md`](202609/remote-access-info-discovery.md), shipped
+  in `38058130`. All three were named in the plan and deliberately left out of scope.
+- **RunPod reports itself as not public.** `on_runpod_enabled()` already forces `https` and a public
+  `*.proxy.runpod.net` host, so those instances genuinely are reachable — but `url_public` is
+  env-declared only (owner decision: absence means false, nothing infers it), so they answer `false`.
+  Deriving it there would contradict that decision, so it needs an explicit call rather than a patch.
+- **"Unavailable" and "available but unconfigured" are indistinguishable.** `remote_access` is omitted
+  in both cases, so a third-party onboarding flow cannot tell "this build cannot do Remote Access"
+  from "it can — tell the user to switch it on". The endpoint's primary question ("can I reach it
+  now?") is unaffected, which is why this was accepted.
+- **The anonymous build fingerprint is now internet-facing.** `/bodhi/v1/info` has always published
+  `version` and `commit_sha` without auth. That was low-risk on a LAN-only instance; with a live
+  tunnel it is an exact build identifier on the open internet, which helps someone match a known CVE
+  to a specific build. Pre-existing, but its risk profile changed with this feature — worth a
+  deliberate decision on whether to coarsen or gate it.
+
+## No end-to-end coverage: the Playwright journey was skipped
+- **Source**: Remote Access plan — Phase 6 exit gate, scoped out by the owner on 2026-09-18.
+- **What**: Phase 6 called for one Playwright journey of many `test.step()`s against the fake
+  connector. It was **not written**, and Phase 6 closed on docs and cleanup only. Concretely there is
+  no tunnels page object in `crates/lib_bodhiserver/tests-js/pages/`, no tunnel spec, and
+  `make test.e2e` exercises nothing of Remote Access.
+- **Why skipped — the blocker**: the fake `cloudflared`
+  (`services/src/test_utils/tunnels.rs`) can replace the binary through
+  `BODHI_TUNNEL_CLOUDFLARED_PATH`, but the Cloudflare API base URL is only injectable via
+  `DefaultTunnelService::with_cloudflare_api`, which is `#[cfg(any(test, feature = "test-utils"))]`.
+  A real server process therefore still calls `api.cloudflare.com` for the zone and DNS lookups, so
+  the states that motivated the plan — creating, dns-conflict, live — are unreachable in E2E without
+  a real Cloudflare account. The owner chose the existing 24 `services` tests and 45 component tests
+  over adding a production-visible setting purely for testing.
+- **What is consequently uncovered end to end**: enable → live → disable → re-enable through the real
+  HTTP stack; the DNS-conflict confirm path; the auth-sync states as served by the real backend; and
+  any regression in the `/bodhi/v1/tunnel*` routes' wiring that unit tests mock past.
+- **Fix**: add a Cloudflare API base URL setting gated to non-production builds, then write the
+  journey per `docs/conventions/testing.md` (one `test()`, many `test.step()`s, shared server).
+
+## Chrome verification is not driven by the fake connector
+- **Source**: Remote Access plan — Phase 4 and Phase 5 automated gates, 2026-09-18.
+- **What**: Both gates ask for Chrome at desktop and 430px *driven by the fake `cloudflared`*, so
+  every state is reachable from a real backend. In practice the browser check covered the `off` and
+  setup states against a live backend; the rest (creating, dns-conflict, kc-fail-net, kc-fail-auth,
+  live) were verified by component tests only. A layout regression in those states would not be
+  caught.
+- **Why deferred**: blocked on the same API-base injection as the item above.
+- **Fix**: same fix; then walk the states in Chrome at both widths.
+
+## Remote Access is undefined under a clustered deployment (D10)
+- **Source**: Remote Access plan — decision D10, 2026-09-18.
+- **What**: The feature assumes one instance. The tunnel name derives from the instance's OAuth client
+  id, so every replica of a clustered deployment resolves the *same* name, each starts its own
+  connector against it, and Cloudflare load-balances one public hostname across unrelated instances.
+  Sessions would land on arbitrary replicas.
+- **Why deferred**: Remote Access is a native, single-instance feature; fixing it means electing one
+  connector per deployment, which is a different feature.
+- **Fix**: none planned. `BODHI_TUNNEL` must stay unset (its default) for non-native deployments. If
+  this is ever wanted in a cluster, tunnel identity needs a deployment-level owner, not an
+  instance-level one.
+
+## Turning remote access off leaves the DNS record behind
+- **Source**: Remote Access — owner decision, 2026-09-18.
+- **What**: `disable()` stops the connector but leaves the CNAME pointing at the tunnel, so while
+  remote access is off a visitor to the address gets Cloudflare's 1033 "tunnel not found" page rather
+  than a clean NXDOMAIN. Deliberate: re-enabling is then instant and the address keeps its identity.
+  Separate from the Keycloak registration, which D9 says is never cleared on disable because the PATCH
+  is gateway-keyed and a later change overwrites it.
+- **Why deferred**: chosen behaviour, not an oversight. Recorded so the 1033 page is not later
+  mistaken for a bug.
+- **Fix**: none planned; the FAQ explains it. If it becomes a support burden, delete the record on
+  disable and accept the propagation delay on re-enable.
+
+## `BODHI_TUNNEL_ORIGIN_CERT` vs the bare `TUNNEL_ORIGIN_CERT` env var
+- **Source**: Remote Access planning — unresolved, 2026-09-18.
+- **What**: `TUNNEL_ORIGIN_CERT` is what we *write* into the connector's environment;
+  `BODHI_TUNNEL_ORIGIN_CERT` is the setting we *read*. Someone already exporting the bare
+  `TUNNEL_ORIGIN_CERT` for their own `cloudflared` use will find the app ignores it and reports the
+  certificate missing, which reads as a bug.
+- **Why deferred**: never decided whether honouring a non-namespaced variable is desirable, since it
+  breaks the `BODHI_*` convention every other setting follows.
+- **Fix**: either honour `TUNNEL_ORIGIN_CERT` as a lowest-precedence read path, or say so explicitly
+  in the certificate FAQ entry. Doing neither is the current state.
+
+## `scrub_secrets` is an entropy heuristic, not a parser
+- **Source**: Remote Access Phase 3 (R6), 2026-09-18.
+- **What**: `DefaultTunnelService::scrub_secrets` redacts runs of ≥40 characters that mix case and
+  digits (or any run ≥80). It is deliberately biased toward readability: lowercase runs survive so
+  tunnel names, hostnames and paths stay diagnosable. A short secret, or one that happens to be all
+  lowercase, would pass through; a long mixed-case identifier that is *not* secret would be redacted.
+- **Why deferred**: cloudflared's output has no schema to parse, and the tokens actually at risk
+  (connector token, Cloudflare API token) are long and base64-ish, which the heuristic catches. Tested
+  against the real token shape in `scrubs_opaque_secrets_while_keeping_the_text_diagnosable`.
+- **Fix**: if cloudflared gains structured log output, key off field names instead.
+
+## Auth-sync configuration errors are reported as `rejected`
+- **Source**: Remote Access Phase 3 (D9), 2026-09-18.
+- **What**: `TunnelAuthSyncState` has two failure states, matching the two messages the design
+  specifies. "No standalone authorization client is configured" and "Authorization synchronization is
+  unavailable" are neither — they are internal configuration faults — but map to `rejected` because,
+  like a refusal, retrying the network cannot help. The user is then told Keycloak refused, which is
+  not literally what happened.
+- **Why deferred**: both indicate a broken install rather than a state a normal user reaches, and a
+  third failure state would add a UI branch the design does not have.
+- **Fix**: if these prove reachable in practice, add a distinct state and copy.
+
+## `Retry sync` is offered even when Keycloak refused
+- **Source**: Remote Access Phase 3 / design `ra-app.jsx`, 2026-09-18.
+- **What**: The design shows `Retry sync` on both sign-in failure states. On `kc-fail-net` retrying is
+  the remedy; on `kc-fail-auth` the client's permissions must change first, so retrying unchanged
+  fails again identically.
+- **Why deferred**: followed the design rather than diverging mid-implementation.
+- **Fix**: on `kc-fail-auth`, hide the button or relabel it so it does not read as the fix.
+
+## Orphaned tunnels can only be cleaned up with the CLI
+- **Source**: Remote Access — one-time cleanup performed 2026-09-18.
+- **What**: The pre-plan code minted a new tunnel per subdomain, leaving four orphans on the owner's
+  account; they were removed by hand with `cloudflared tunnel delete`. Nothing in the app lists or
+  removes tunnels it no longer uses. D1 (client-id-derived name) prevents *new* orphans, so this is
+  cleanup for existing accounts only.
+- **Why deferred**: a one-off for one known account; a management UI is disproportionate.
+- **Fix**: if it recurs, surface `cloudflared tunnel list` filtered to `bodhi-app-tunnel-*` with a
+  delete affordance for names that do not match this instance.
 </content>

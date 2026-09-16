@@ -65,6 +65,9 @@ src/components/
 ├── ui/                          # Shadcn/ui base components (button, input, dialog, etc.)
 ├── navigation/                  # AppHeader, AppNavigation, AppBreadcrumb
 ├── api-models/                  # ApiModelForm, providers, form fields, actions
+├── faq-rail/                    # Reusable in-page help for the shell's right rail: pass FaqGroup[]
+│                                #   as data, deep-link with <FaqLink id>, lay out commands with
+│                                #   <FaqCommand os>. Styling in faq-rail.css. Nothing page-specific.
 ├── setup/                       # BrowserExtensionCard, BrowserSelector
 ├── AppInitializer.tsx           # App status check and routing
 ├── ClientProviders.tsx          # QueryClientProvider wrapper
