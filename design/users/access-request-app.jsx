@@ -1,3 +1,7 @@
+/* ═══════════════════════════════════════════════════
+   ACCESS REQUEST REVIEW — Full page React app
+   Depends on: BodhiSidebar, ModelAccessPicker
+═══════════════════════════════════════════════════ */
 const { useState, useEffect, useRef } = React;
 
 const IS_ADMIN = true;
@@ -66,6 +70,7 @@ const PREV_GRANT = {
   extraMcps: ['filesystem', 'github'],   // user-driven MCP grants the prior token already carried
 };
 
+/* ── Icon helper ── */
 function Icon({ name, size = 14 }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -79,7 +84,9 @@ function Icon({ name, size = 14 }) {
   return <span ref={ref} style={{display:'inline-flex',width:size,height:size,alignItems:'center',justifyContent:'center',flexShrink:0}} />;
 }
 
-/* Placeholder for forms that open in separate window. */
+/* ── Placeholder dialog — stands in for forms that open in a separate window ──
+   MCP servers / instances can't be configured from this consent flow (or a side
+   panel); the real app launches a dedicated window. Here we just acknowledge that. */
 function PlaceholderDialog({ icon, title, subtitle, message, onClose }) {
   useEffect(() => {
     const onKey = e => { if (e.key === 'Escape') onClose(); };
@@ -107,6 +114,7 @@ function PlaceholderDialog({ icon, title, subtitle, message, onClose }) {
   );
 }
 
+/* ── Model Slot ── */
 function ModelSlot({ slot, enabled, onToggle, slotMode, onSlotModeChange, selectedIds, onToggleModel, onReorder, granted, isNew, grantedMode, grantedIds, singleValue, onSingleChange }) {
   const suggested = ALL_MODELS.filter(m => m.suggested.includes(slot.id)).map(m => m.id);
   const isSingle = slot.selection === 'single';
@@ -142,6 +150,7 @@ function ModelSlot({ slot, enabled, onToggle, slotMode, onSlotModeChange, select
   );
 }
 
+/* ── MCP Row ── */
 function McpRow({ server, enabled, onToggle, onStateChange, onInstanceSelect, isAdmin, onShowPlaceholder, granted, isNew }) {
   return (
     <div className={`mcp-row${granted?' is-granted':''}${isNew?' is-new':''}`}>
@@ -172,8 +181,10 @@ function McpRow({ server, enabled, onToggle, onStateChange, onInstanceSelect, is
   );
 }
 
-function AccessRequestForm({ scenario }) {
+/* ── Form ── */
+function AccessRequestForm({ scenario, activeRole = 'Admin' }) {
   const isUpgrade = scenario === 'upgrade';
+  const isAdmin = activeRole === 'Admin';
   // In UPGRADE mode the form reads its initial state from the submitted token
   // (PREV_GRANT): previously-granted slots load in their granted tier with the
   // granted models pre-selected — those are never reset. New-request mode keeps
@@ -268,7 +279,7 @@ function AccessRequestForm({ scenario }) {
           <div className="app-subtitle">is requesting access to your resources.</div>
           <div className="app-desc">{REQUEST.appDesc}</div>
         </div>
-        <span className="tag tag-muted">Role: {IS_ADMIN?'Admin':'User'}</span>
+        <span className="tag tag-muted">Role: {activeRole}</span>
       </div>
 
       <div className="form-divider"></div>
@@ -339,7 +350,7 @@ function AccessRequestForm({ scenario }) {
       {mcpServers.map(server => (
         <McpRow key={server.id} server={server} enabled={mcpEnabled[server.id]}
           onToggle={toggleMcp} onStateChange={updateState} onInstanceSelect={updateInst}
-          isAdmin={IS_ADMIN} onShowPlaceholder={setPlaceholder}
+          isAdmin={isAdmin} onShowPlaceholder={setPlaceholder}
           granted={mcpGranted(server.id)} isNew={mcpIsNew(server.id)} />
       ))}
 
@@ -385,6 +396,7 @@ function AccessRequestForm({ scenario }) {
   );
 }
 
+/* ── Theme toggle (top bar) ── */
 function StdThemeToggle() {
   const [dark, setDark] = useState(() => window.bodhiTheme && window.bodhiTheme.resolved === 'dark');
   useEffect(() => {
@@ -399,6 +411,7 @@ function StdThemeToggle() {
   );
 }
 
+/* ── Demo scenario switch (review aid; sits OUTSIDE the consent card) ── */
 function ScenarioSwitch({ scenario, onChange }) {
   return (
     <div className="ar-scenario-switch" role="tablist" aria-label="Demo scenario">
@@ -409,6 +422,7 @@ function ScenarioSwitch({ scenario, onChange }) {
   );
 }
 
+/* ── Full page app (standalone — no shell, no breadcrumb) ── */
 function AccessRequestApp() {
   const [scenario, setScenario] = useState(() => {
     const p = new URLSearchParams(window.location.search).get('mode');
@@ -420,6 +434,7 @@ function AccessRequestApp() {
     if (next === 'upgrade') url.searchParams.set('mode', 'upgrade'); else url.searchParams.delete('mode');
     window.history.replaceState(null, '', url);
   };
+  const [activeOrg, setActiveOrg] = useState(() => (window.SHELL_TENANTS || [{ role: 'Admin' }])[0]);
   useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
   return (
     <div className="std-page">
@@ -434,10 +449,12 @@ function AccessRequestApp() {
         <div className="std-topbar-right">
           <ScenarioSwitch scenario={scenario} onChange={changeScenario} />
           <StdThemeToggle />
+          <span className="std-topbar-div" />
+          <StdAccountMenu user={{ initials: 'YO', name: 'Yogesh', email: 'yogesh@email.com' }} onSwitchOrg={setActiveOrg} />
         </div>
       </div>
       <div className="std-main is-fill">
-        <AccessRequestForm key={scenario} scenario={scenario} />
+        <AccessRequestForm key={scenario} scenario={scenario} activeRole={activeOrg.role} />
       </div>
     </div>
   );

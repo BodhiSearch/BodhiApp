@@ -1,4 +1,34 @@
-/* 3-column layout (sidebar / main / rail) with collapse, mobile drawers, resizing. */
+/* ═══════════════════════════════════════════════════════════════
+   Bodhi App Shell — APPSHELL layout + search
+   shared/shell-app.jsx   (load last of the shell modules)
+
+   The 3-column layout frame (sidebar / main / rail) with collapse,
+   mobile drawers, and persisted column resizing — plus the shared
+   <ShellSearch> input. Composes the pieces from shell-core /
+   shell-chrome / shell-user.
+
+   <AppShell
+     section="models" subPage="my-models"   primary-nav highlight + sub-pages
+     user={{ initials, name, role }}
+     resizeKey="models"                      localStorage namespace for column widths
+     sidebarWidth={240} railWidth={340} headerHeight={56} bandHeight={52}
+     breadcrumb={[{label,href},{label,current}]}
+     headerActions={<…/>}                    right of the header band (main)
+     sidebar={<…/>}                          page body below the nav (filters, etc.)
+     footer={<…/>}                           override user chip (optional)
+     toolbar / sidebarToolbar / railToolbar   shared toolbar band cells (optional)
+     banner={<…/>}                           main-column alert sub-band (optional)
+     rail={<…/>} railHeader={<…/>}           right panel (optional → 3rd column)
+     railDefaultOpen={true}                  start with the rail showing (desktop)
+     railToggleIcon="circle-help"            swap the panel-right toggle for another icon
+     railToggleTitle="Help"                  its tooltip
+     contentClass="narrow|wide|flush"
+     mainScroll={true}  railScroll={true}    set false to manage your own scroll region
+   >{main content}</AppShell>
+
+   Exports: AppShell, ShellSearch (plus everything from the other
+   shell modules, all on window).
+═══════════════════════════════════════════════════════════════ */
 function AppShell({
   section = 'chat', subPage = null, user = {}, resizeKey = section,
   sidebarWidth = 240, railWidth = 340, headerHeight = 56, bandHeight = 52,
@@ -7,6 +37,7 @@ function AppShell({
   brand, sidebar, footer, banner,
   toolbar, sidebarToolbar, railToolbar,
   rail, railHeader, railDefaultOpen = true, railCollapsible = true,
+  railToggleIcon = 'panel-right', railToggleTitle = 'Toggle detail panel',
   navBase = '',
   contentClass = '', mainScroll = true, railScroll = true,
   children,
@@ -33,6 +64,7 @@ function AppShell({
   const effCollapsed = collapsed && !isMobile;
   const railIsCollapsed = railCollapsible ? railCollapsed : false;   // pinned-open when not collapsible (desktop)
 
+  /* ── column resize (widths persist; collapse does not) ── */
   React.useEffect(() => {
     const shell = shellRef.current; if (!shell) return;
     const sw = parseFloat(localStorage.getItem(`bodhi.${resizeKey}.sideW`));
@@ -103,6 +135,7 @@ function AppShell({
     <ShellContext.Provider value={ctx}>
       <div className={shellClass} style={shellStyle} ref={shellRef}>
 
+        {/* ══ SIDEBAR ══ */}
         <aside className={'shell-col shell-sidebar' + (effCollapsed ? ' is-collapsed' : '')}>
           <div className="shell-headrow shell-brand">{brand || <ShellBrand collapsed={effCollapsed} />}</div>
           {hasBand && !effCollapsed && <div className="shell-bandrow shell-sb-band">{sidebarToolbar}</div>}
@@ -120,6 +153,7 @@ function AppShell({
           <div className="shell-foot">{footer || <ShellFooter user={user} collapsed={effCollapsed} />}</div>
         </aside>
 
+        {/* ══ MAIN ══ */}
         <main className="shell-col shell-main">
           <div className="shell-headrow shell-header">
             <button className="shell-icon-btn shell-sb-toggle" onClick={toggleSidebar}
@@ -130,8 +164,9 @@ function AppShell({
             <div className="shell-head-actions">
               {headerActions}
               {hasRail && (isMobile || railCollapsible) && (
-                <button className="shell-icon-btn shell-rail-toggle" onClick={toggleRail} title="Toggle detail panel">
-                  <ShellIcon name="panel-right" size={16} />
+                <button className={'shell-icon-btn shell-rail-toggle' + (railToggleIcon !== 'panel-right' ? ' no-flip' : '') + (!railIsCollapsed || railOpen ? ' is-on' : '')}
+                        onClick={toggleRail} title={railToggleTitle} aria-pressed={!railIsCollapsed || railOpen}>
+                  <ShellIcon name={railToggleIcon} size={16} />
                 </button>
               )}
             </div>
@@ -145,6 +180,7 @@ function AppShell({
           </div>
         </main>
 
+        {/* ══ RAIL ══ */}
         {hasRail && (
           <aside className="shell-col shell-rail">
             {railHeader !== undefined && <div className="shell-headrow" style={{ padding: '0 8px 0 14px' }}>{railHeader}</div>}
@@ -153,6 +189,7 @@ function AppShell({
           </aside>
         )}
 
+        {/* ══ RESIZE HANDLES (hover-reveal) ══ */}
         {!isMobile && (
           <div className="shell-resize left" style={{ left: 'var(--shell-sb-track)', transform: 'translateX(-50%)' }}
                onPointerDown={e => startDrag('left', e)} onDoubleClick={() => resetWidth('left')}>
@@ -166,6 +203,7 @@ function AppShell({
           </div>
         )}
 
+        {/* ══ TOOLTIP + DRAWER SCRIM ══ */}
         <GlobalTooltip />
         <div className="shell-scrim" onClick={() => { setSbOpen(false); setRailOpen(false); }} />
       </div>
@@ -173,6 +211,10 @@ function AppShell({
   );
 }
 
+/* ── Reusable search input (shared across pages) ──
+   <ShellSearch value={q} onChange={setQ} placeholder="…" size="md|sm" kbd="⌘K" />
+   onChange receives the new string value. Consistent height, centered
+   icon, focus ring — use everywhere instead of hand-rolled search boxes. */
 function ShellSearch({ value = '', onChange, placeholder, size = 'md', kbd, autoFocus, onKeyDown }) {
   const cls = 'shell-search' + (size === 'sm' ? ' sm' : '') + (kbd ? ' has-kbd' : '');
   return (

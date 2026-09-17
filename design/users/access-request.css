@@ -131,6 +131,7 @@
 
 /* Demo scenario switch — top bar, OUTSIDE the consent card */
 .std-topbar-right { display: flex; align-items: center; gap: 12px; }
+.std-topbar-div { width: 1px; height: 22px; background: hsl(var(--border)); flex: none; }
 .ar-scenario-switch { display: inline-flex; align-items: center; gap: 3px; padding: 3px; border-radius: 9px; background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); }
 .ar-scenario-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: hsl(var(--faint-foreground)); padding: 0 3px 0 5px; }
 .ar-scenario-btn { height: 26px; padding: 0 11px; border-radius: 6px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; background: transparent; color: hsl(var(--muted-foreground)); transition: color 100ms, background 100ms; }

@@ -34,6 +34,7 @@ function liveState() { ensureSeed(); return liveRead() || { v: 2, elicit: [], sa
 
 function uid(p) { return p + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
+/* ── reads ── */
 function byNewest(a, b) { return (b.ts || 0) - (a.ts || 0); }
 function liveElicitations(instId) {
   return liveState().elicit.filter(r => !instId || r.instId === instId).slice().sort(byNewest);
@@ -84,6 +85,7 @@ function liveAddRun(o) {
   liveWrite(st);
 }
 
+/* ── writes: resolve (also finishes the paused tool-run) ── */
 function rtMeta() { return '200 OK · ' + (180 + Math.floor(Math.random() * 260)) + 'ms'; }
 function finishRun(st, runId, outcome, result) {
   const run = st.runs[runId];
@@ -122,6 +124,7 @@ function liveResolveSampling(id, action, info) {
   return req.runId;
 }
 
+/* ── the tool's final result, by outcome (shown back on Tools) ── */
 function buildElicitResult(action, content) {
   if (action === 'accept') return {
     content: [{ type: 'text', text: '✅ Thanks — the server used the details you provided to finish the run.' }],
@@ -149,12 +152,14 @@ function runToDisplay(run) {
     raw: run.raw, request: run.request, meta: run.meta, token: run.resolvedTs };
 }
 
+/* ── last chat model (Bodhi persists it; we read it as the default) ── */
 function lastChatModel() {
   try { const m = localStorage.getItem('bodhi.pg.lastModel'); if (m && LIVE_MODELS.includes(m)) return m; } catch (e) {}
   return LIVE_MODELS[0];
 }
 function writeLastModel(m) { try { localStorage.setItem('bodhi.pg.lastModel', m); } catch (e) {} }
 
+/* ── inject typed notes into a sampling request ── */
 function samplingParamsWithNotes(base, notes) {
   const p = JSON.parse(JSON.stringify(base));
   if (notes && p.messages && p.messages[0] && p.messages[0].content) {
@@ -163,6 +168,10 @@ function samplingParamsWithNotes(base, notes) {
   return p;
 }
 
+/* ════════════════════════════════════════════════════════════════
+   2 · SEED  (1 waiting + a couple resolved, per page — for the
+   everything instance only, so other MCPs show clean empty states)
+═══════════════════════════════════════════════════════════════════ */
 function ensureSeed() {
   const cur = liveRead();
   if (cur && cur.v === 2) return;
@@ -219,6 +228,9 @@ function ensureSeed() {
   try { localStorage.setItem(LIVE_NS, JSON.stringify(state)); } catch (e) {}
 }
 
+/* ════════════════════════════════════════════════════════════════
+   3 · REACTIVITY HOOKS
+═══════════════════════════════════════════════════════════════════ */
 function useLiveBump() {
   const [n, setN] = useState(0);
   useEffect(() => {
@@ -230,6 +242,9 @@ function useLiveBump() {
   return n;
 }
 
+/* ════════════════════════════════════════════════════════════════
+   4 · SMALL HELPERS / PRIMITIVES
+═══════════════════════════════════════════════════════════════════ */
 function relTime(ts) {
   if (!ts) return '';
   const s = Math.round((Date.now() - ts) / 1000);
@@ -256,6 +271,7 @@ function StatusChip({ status }) {
   return <span className={'pg-st ' + m.cls}>{m.dot ? <span className="pg-livedot" /> : <Ic name={m.icon} size={11} />}{m.label}</span>;
 }
 
+/* the inbox row (list side) */
 function InboxRow({ req }) {
   const from = req.fromToolTitle || req.fromToolName || 'a tool';
   return (
@@ -273,6 +289,7 @@ function InboxRow({ req }) {
   );
 }
 
+/* collapsed wire payload (the Developer / raw view) */
 function RawDisclosure({ payload, tag, label }) {
   const [open, setOpen] = useState(false);
   const json = typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2);
@@ -293,6 +310,7 @@ function RawDisclosure({ payload, tag, label }) {
   );
 }
 
+/* "which run is asking" line */
 function AskingLine({ req }) {
   return (
     <div className="pg-asking">
@@ -303,6 +321,9 @@ function AskingLine({ req }) {
   );
 }
 
+/* ════════════════════════════════════════════════════════════════
+   5 · SCHEMA-DRIVEN AUTO-FORM  (the elicitation form builder)
+═══════════════════════════════════════════════════════════════════ */
 function fieldKind(p) {
   if (!p) return 'string';
   if (p.type === 'boolean') return 'boolean';
@@ -482,6 +503,7 @@ function SchemaForm({ schema, values, onChange, errors }) {
   );
 }
 
+/* the returning beat shown right before auto-return to Tools */
 function ReturningPanel({ outcome }) {
   const map = {
     accept: { ic: 'check', t: 'Saved — thank you' }, approve: { ic: 'check', t: 'Done' },
@@ -497,6 +519,9 @@ function ReturningPanel({ outcome }) {
   );
 }
 
+/* ════════════════════════════════════════════════════════════════
+   6 · ELICITATION DETAIL
+═══════════════════════════════════════════════════════════════════ */
 function returnToTool(req) {
   const inst = { instId: req.instId, instName: req.instName, serverId: req.serverId };
   const base = window.capHref ? window.capHref('tools', inst) : 'MCP-Playground-Tools.html?' + instQS(inst);
@@ -580,6 +605,9 @@ function ResolvedElicitation({ req }) {
   );
 }
 
+/* ════════════════════════════════════════════════════════════════
+   7 · SAMPLING DETAIL
+═══════════════════════════════════════════════════════════════════ */
 function SamplingPreview({ params }) {
   return (
     <div className="pg-chatprev">
@@ -752,6 +780,9 @@ function ResolvedSampling({ req }) {
   );
 }
 
+/* ════════════════════════════════════════════════════════════════
+   8 · TOOLS-SIDE "WAITING ON YOU…" + the live empty state
+═══════════════════════════════════════════════════════════════════ */
 function WaitingPanel({ switching, interaction, requestId, inst }) {
   const label = interaction === 'sampling' ? 'Sampling' : 'Elicitation';
   if (switching) {
@@ -788,6 +819,9 @@ function LiveEmpty({ cap }) {
   );
 }
 
+/* ════════════════════════════════════════════════════════════════
+   9 · LIVE_CONFIG  (merged into CAP_CONFIG by pg-views)
+═══════════════════════════════════════════════════════════════════ */
 const LIVE_CONFIG = {
   elicitation: {
     live: true,

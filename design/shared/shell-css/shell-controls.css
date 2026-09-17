@@ -209,3 +209,15 @@
   background: hsl(var(--background)); border: 2px solid var(--c-lotus-text);
   cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,.15);
 }
+
+
+/* ── Sidebar section nav (promoted from the Settings page; shared by
+   Settings and Remote Access sidebar slots) ── */
+.section-nav { display: flex; flex-direction: column; gap: 2px; }
+.snav-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: hsl(var(--muted-foreground)); padding: 6px 8px 4px; }
+.snav-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 7px; border: none; background: none; width: 100%; text-align: left; font-family: var(--font-sans); font-size: 12.5px; color: hsl(var(--muted-foreground)); cursor: pointer; transition: background 80ms, color 80ms; }
+.snav-item svg { width: 13px; height: 13px; flex: none; }
+.snav-item:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.snav-item.active { background: var(--c-indigo-bg); color: var(--c-indigo-text); font-weight: 600; }
+.snav-count { margin-left: auto; font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 99px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+.snav-item.active .snav-count { background: var(--c-indigo-bg); color: var(--c-indigo-text); }

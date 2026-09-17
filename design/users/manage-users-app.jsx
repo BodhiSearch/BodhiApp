@@ -1,3 +1,8 @@
+/* ═══════════════════════════════════════════════════
+   MANAGE USERS — Settings page (on AppShell)
+   Sidebar views: Access Requests (Pending zone + History zone) · All Users
+   manage-users-app.jsx  (load after bodhi-app-shell.jsx + bodhi-list.jsx + tweaks-panel.jsx)
+═══════════════════════════════════════════════════ */
 
 const MU_TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "tenancy": "multi"
@@ -33,6 +38,7 @@ const TABS = [
   { id: 'users',    label: 'All Users',       icon: 'users' },
 ];
 
+/* ── Sidebar view list (collapse-aware) ── */
 function ManageUsersSidebar({ activeTab, setActiveTab, pendingCount }) {
   const { collapsed } = useShell();
   const tabs = TABS.map(t => ({ ...t, badge: t.id === 'requests' && pendingCount > 0 ? pendingCount : null }));
@@ -71,6 +77,7 @@ function ManageUsersSidebar({ activeTab, setActiveTab, pendingCount }) {
   );
 }
 
+/* ── Badges ── */
 function StatusBadge({ status }) {
   if (status === 'Pending')  return <span className="mu-badge mu-badge-pending"><Ic name="clock" size={11} />{status}</span>;
   if (status === 'Approved') return <span className="mu-badge mu-badge-approved"><Ic name="check" size={11} />{status}</span>;
@@ -82,6 +89,7 @@ function RoleBadge({ role }) {
   return <span className={`mu-badge ${cls}`}>{role}</span>;
 }
 
+/* ── Toast ── */
 function Toast({ message, show, icon }) {
   return (
     <div className={`mu-toast${show ? ' show' : ''}`}>
@@ -91,6 +99,7 @@ function Toast({ message, show, icon }) {
   );
 }
 
+/* ── Confirm dialog ── */
 function ConfirmDialog({ title, body, confirmLabel, confirmClass, onConfirm, onCancel }) {
   return (
     <div className="mu-overlay" onClick={onCancel}>
@@ -106,6 +115,9 @@ function ConfirmDialog({ title, body, confirmLabel, confirmClass, onConfirm, onC
   );
 }
 
+/* ══════════════════════════════════════════════════
+   VIEW: ACCESS REQUESTS  (Pending zone + History zone)
+══════════════════════════════════════════════════ */
 function AccessRequestsView({ requests, setRequests, setUsers, showToast }) {
   const [search, setSearch] = React.useState('');
   const [roleMap, setRoleMap] = React.useState(() => {
@@ -215,6 +227,9 @@ function AccessRequestsView({ requests, setRequests, setUsers, showToast }) {
   );
 }
 
+/* ══════════════════════════════════════════════════
+   VIEW: ALL USERS  (list only — details/actions in the rail)
+══════════════════════════════════════════════════ */
 function AllUsersView({ users, search, setSearch, selId, onSelect }) {
   const { openRail } = useShell();
   useListKeyNav();
@@ -272,6 +287,7 @@ function AllUsersView({ users, search, setSearch, selId, onSelect }) {
 
 function userInitial(username) { return (username || '?').trim().charAt(0).toUpperCase(); }
 
+/* ── Rail header (railHeader slot) ── */
 function UserDetailHeader({ user, onClose }) {
   return (
     <div className="dp-head">
@@ -285,6 +301,7 @@ function UserDetailHeader({ user, onClose }) {
   );
 }
 
+/* ── Rail body (rail slot) — role form + remove ── */
 function UserDetailPanel({ user, onSave, onRemove }) {
   const [draftRole, setDraftRole] = React.useState(user ? user.role : 'User');
   const [confirm, setConfirm] = React.useState(false);
@@ -344,6 +361,7 @@ function UserDetailPanel({ user, onSave, onRemove }) {
   );
 }
 
+/* ── GitHub header action ── */
 function GitHubBtn() {
   return (
     <button className="mu-icon-btn" title="View on GitHub">
@@ -352,6 +370,9 @@ function GitHubBtn() {
   );
 }
 
+/* ══════════════════════════════════════════════════
+   MAIN APP
+══════════════════════════════════════════════════ */
 function ManageUsersApp() {
   const [tweaks, setTweak] = useTweaks(MU_TWEAK_DEFAULTS);
 

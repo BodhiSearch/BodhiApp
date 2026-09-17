@@ -14,6 +14,7 @@
    Published to window so the page app reads them as globals.
 ═══════════════════════════════════════════════════════════════ */
 
+/* ── PROMPTS ─────────────────────────────────────────────────── */
 const SERVER_PROMPTS = {
   deepwiki: [
     { name: 'explain_repo', title: 'Explain a repository', icon: 'book-open',
@@ -57,6 +58,7 @@ const SERVER_PROMPTS = {
   ],
 };
 
+/* ── RESOURCES ───────────────────────────────────────────────── */
 const SERVER_RESOURCES = {
   deepwiki: [
     { uri: 'wiki://facebook/react/overview', name: 'React — Overview', icon: 'file-text', mimeType: 'text/markdown',
@@ -81,6 +83,7 @@ const SERVER_RESOURCES = {
   ],
 };
 
+/* ── RESOURCE TEMPLATES ──────────────────────────────────────── */
 const SERVER_TEMPLATES = {
   deepwiki: [
     { uriTemplate: 'wiki://{owner}/{repo}/{topic}', name: 'Wiki page', icon: 'file-search', mimeType: 'text/markdown',
@@ -111,6 +114,7 @@ const promptsFor   = id => SERVER_PROMPTS[id]   || [];
 const resourcesFor = id => SERVER_RESOURCES[id] || [];
 const templatesFor = id => SERVER_TEMPLATES[id] || [];
 
+/* Capability counts for a server id — drives the rail badges + Overview. */
 function capabilityCounts(serverId) {
   const toolList = (typeof playgroundToolsFor === 'function')
     ? playgroundToolsFor(serverId)

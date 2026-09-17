@@ -11,6 +11,7 @@
    pinned right rail (pg-chrome) and the detail here in the centre.
 ═══════════════════════════════════════════════════════════════ */
 
+/* ── shared run simulator ────────────────────────────────────── */
 function useRunner() {
   const [run, setRun] = useState(null);
   const exec = ({ request, kind, build, meta, raw }) => {
@@ -33,6 +34,7 @@ function chatHref(inst, kind, name) {
   return 'Chat.html?mcp=' + encodeURIComponent(inst ? inst.instId : '') + '&' + kind + '=' + encodeURIComponent(name);
 }
 
+/* ── detail header (icon · name · desc · actions) ────────────── */
 function DetailHead({ icon, name, mono, desc, tag, actions }) {
   return (
     <div className="pg-dh">
@@ -49,6 +51,7 @@ function DetailHead({ icon, name, mono, desc, tag, actions }) {
   );
 }
 
+/* the centre "pick something" placeholder when nothing is selected */
 function PickSomething({ what }) {
   return <div className="pg-pick"><Ic name="mouse-pointer-click" size={26} /><div>Pick {what} on the right to begin.</div></div>;
 }
@@ -96,13 +99,15 @@ function ToolDetail({ tool, inst }) {
   const [values, setValues] = useState({});
   const [errors, setErrors] = useState({});
   const [run, exec, setRun] = useRunner();
-  const bump = useLiveBump();
+  const bump = useLiveBump();                      // re-read the cross-page store on change
 
   useEffect(() => { setValues({}); setErrors({}); setRun(null); }, [tool.name]);
 
   const args = tool.params.map(p => ({ name: p.name, label: prettyKey(p.name), required: p.required, desc: p.desc, placeholder: p.placeholder, type: p.type }));
   const isInteractive = !!tool.interaction;
 
+  /* a paused / resumed run for an interactive tool, from the store. The
+     ?resume= run wins (auto-return targets it); else the latest for this tool. */
   let storeRun = null;
   if (isInteractive) {
     const resumeId = urlParams().get('resume');
@@ -116,6 +121,7 @@ function ToolDetail({ tool, inst }) {
     if (Object.keys(errs).length) { setErrors(errs); setTimeout(() => setErrors({}), 2200); return; }
 
     if (isInteractive) {
+      // start the call; the server "sends back" a request → auto-switch to its page
       const runId = uid('run');
       let requestId;
       if (tool.interaction === 'elicitation') {
@@ -139,6 +145,7 @@ function ToolDetail({ tool, inst }) {
     exec({ request, kind: 'tool', build: () => model, raw: toolResultEnvelope(model) });
   };
 
+  /* what to show beneath the inputs */
   let resultArea;
   if (run && run.phase === 'switching') {
     resultArea = <WaitingPanel switching interaction={tool.interaction} />;

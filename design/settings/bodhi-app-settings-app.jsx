@@ -1,6 +1,11 @@
+/* ═══════════════════════════════════════════════════
+   BODHI APP SETTINGS — Settings page (on AppShell)
+   bodhi-app-settings-app.jsx  (load after bodhi-app-shell.jsx + tweaks-panel.jsx)
+═══════════════════════════════════════════════════ */
 const { useState, useEffect, useRef, useMemo } = React;
 const Ic = ShellIcon;
 
+/* ── Section groups ── */
 const SECTIONS = [
   { id: 'app',    icon: 'settings-2', name: 'App Config',    label: 'App Config',     headerName: 'App Config',                          headerDesc: 'Core application settings and paths' },
   { id: 'model',  icon: 'database',   name: 'Model Files',   label: 'Model Files',    headerName: 'Model Files Configuration',           headerDesc: 'Model file storage and configuration' },
@@ -8,6 +13,7 @@ const SECTIONS = [
   { id: 'server', icon: 'server',     name: 'Server Config', label: 'Server Config',  headerName: 'Server Configuration',                headerDesc: 'Server connection and networking settings' },
 ];
 
+/* ── Settings data ── */
 const SETTINGS = [
   { key: 'BODHI_HOME', section: 'app', sectionLabel: 'App Configuration',
     desc: 'The home directory for Bodhi application. All app data, configs and logs are stored here.',
@@ -66,6 +72,7 @@ function highlight(text, query) {
   return (<>{text.slice(0, idx)}<mark>{text.slice(idx, idx + query.length)}</mark>{text.slice(idx + query.length)}</>);
 }
 
+/* ── Sidebar: settings-group nav (collapse-aware) ── */
 function SettingsSidebar({ counts, active, onNavigate }) {
   const { collapsed } = useShell();
   if (collapsed) {
@@ -102,6 +109,7 @@ function SettingsSidebar({ counts, active, onNavigate }) {
   );
 }
 
+/* ── Setting row ── */
 function SettingRow({ s, value, source, isPending, active, search, tweaks, onOpen }) {
   const atDefault = value === s.defaultVal;
   const isEnv = source === 'environment';
@@ -139,6 +147,7 @@ function SettingRow({ s, value, source, isPending, active, search, tweaks, onOpe
   );
 }
 
+/* ── Rail header (railHeader slot) ── */
 function SettingDetailHeader({ s, onClose }) {
   return (
     <div className="dp-head">
@@ -154,6 +163,7 @@ function SettingDetailHeader({ s, onClose }) {
   );
 }
 
+/* ── Rail body (rail slot) — edit form with save/cancel ── */
 function SettingDetailPanel({ settingKey, values, sources, onSave, onClose }) {
   const s = SETTINGS.find(x => x.key === settingKey);
   const [draft, setDraft] = useState('');
@@ -238,6 +248,7 @@ function SettingDetailPanel({ settingKey, values, sources, onSave, onClose }) {
   );
 }
 
+/* ── Main content (child of AppShell so it can open the rail) ── */
 function SettingsBody({ search, setSearch, filter, setFilter, setFilterChip, isVisible, anyVisible,
                         values, sources, pendingRestart, tweaks, q, selKey, onSelect,
                         scrollRef, sectionRefs, onScroll }) {
@@ -294,6 +305,7 @@ function SettingsBody({ search, setSearch, filter, setFilter, setFilterChip, isV
   );
 }
 
+/* ── Main App ── */
 function AppSettingsApp() {
   const [tweaks] = useState({ desc: true, type: true, highlight: true });
 
@@ -399,7 +411,7 @@ function AppSettingsApp() {
   return (
     <>
       <AppShell
-        section="settings" subPage={null} resizeKey="settings"
+        section="settings" subPage="app-settings" resizeKey="settings"
         breadcrumb={[
           { label: 'Bodhi', href: 'Chat.html' },
           { label: 'App Settings', current: true },

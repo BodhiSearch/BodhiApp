@@ -26,7 +26,9 @@
 .shell-icon-btn svg { width: 16px; height: 16px; transition: transform 200ms var(--ease-lotus, ease); }
 .shell-sb-toggle { margin-right: 2px; }
 .shell.sb-collapsed .shell-sb-toggle svg { transform: scaleX(-1); }
-.shell.rail-collapsed .shell-rail-toggle svg { transform: scaleX(-1); }
+.shell.rail-collapsed .shell-rail-toggle:not(.no-flip) svg { transform: scaleX(-1); }
+/* custom-icon rail toggles (e.g. a help icon) don't mirror; they highlight when open */
+.shell-rail-toggle.no-flip.is-on { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
 
 .shell-toolbar { padding: 0 clamp(12px, 2vw, 20px); gap: 10px; }
 .shell-sb-band { padding: 0 12px; }
