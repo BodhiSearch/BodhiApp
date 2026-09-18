@@ -19,6 +19,13 @@ CMAKE_COMMON_FLAGS := -DLLAMA_FATAL_WARNINGS=OFF -DLLAMA_CURL=OFF -DLLAMA_OPENSS
 # Platform-specific variables
 ifeq ($(shell uname -s),Darwin)
   NCPU := $(shell sysctl -n hw.logicalcpu)
+  MACOS_SDKROOT := $(shell xcrun --sdk macosx --show-sdk-path 2>/dev/null)
+  ifeq ($(strip $(MACOS_SDKROOT)),)
+    $(error No active macOS SDK found. Install Xcode Command Line Tools with 'xcode-select --install' or select Xcode with 'sudo xcode-select --switch /path/to/Xcode.app')
+  endif
+  # Preserve the caller's compiler (including Homebrew clang for OpenMP), but
+  # pair it with the SDK selected by xcode-select instead of its own default.
+  CMAKE_COMMON_FLAGS += -DCMAKE_OSX_SYSROOT="$(MACOS_SDKROOT)"
 else
   NCPU := $(shell nproc)
 endif
