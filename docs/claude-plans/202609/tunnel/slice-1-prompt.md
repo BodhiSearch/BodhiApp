@@ -54,21 +54,15 @@ These are settled decisions, not preferences. Each has a reason; ignoring one wi
 
 These came out of reading `cloudflared` 2026.9.1 source and the BodhiApp codebase directly. They are reliable. Where a pointer is given, read that section rather than re-researching the topic; the research lives in `docs/research/tunnel/`.
 
-**On the Cloudflare CLI** — `10-cloudflared-cli-named-tunnel-lifecycle.md`:
-- The full lifecycle you need (`create`, route a DNS name, `run`) is documented there with exact flags, file paths, and JSON output shapes. **Its follow-up section §A pins the exact argument order for the `run` invocation, traced to source — treat that as the contract** rather than inferring flag placement.
-- **Readiness is a real signal, not a guess.** The connector exposes a metrics listener with an endpoint that reports how many edge connections are established. Follow-up §B explains why polling that beats scraping log lines. Use it to decide when "connecting" becomes "connected".
-- §6 covers the version window, §7 covers a `PATH` gap that bites GUI-launched apps specifically — relevant to you, since the desktop app is GUI-launched.
-- Follow-up §D specifies a fake `cloudflared` contract for tests. Whether you need it this slice is your call; see §8.
+**On the Cloudflare CLI and credentials** — `named-tunnel-operating-model.md` records the selected lifecycle, connector invocation, `/ready` signal, and `cert.pem` contract. `cert.pem` alone is sufficient for creating the tunnel and routing the DNS name on a single-owner account.
 
-**On what the origin cert authorizes** — `11-cloudflare-oauth-and-api-token-options.md`, the follow-up titled *"cert.pem and DNS routing — resolved"*: `cert.pem` alone is sufficient for creating the tunnel **and** routing the DNS name, on a single-owner account. This was an open question and the answer is yes. Do not design a manual-CNAME fallback as the expected path; at most it is an error branch for restricted team-member accounts.
-
-**On what reaches your origin through the tunnel** — `21-codebase-settings-network-and-info.md`, the follow-up titled *"headers at the origin — resolved"*:
+**On what reaches your origin through the tunnel** — `bodhiapp-integration-and-risks.md` records the current request-origin contract:
 - `X-Forwarded-Proto: https` **does** arrive at the loopback origin. The Cloudflare edge adds it and `cloudflared` passes it through untouched.
 - The `Host` header arrives **unmodified, as the public hostname**, because `cloudflared` only rewrites it when explicitly configured to, which we do not do. Consequently `X-Forwarded-Host` is **absent**.
 - Therefore: matching `Host` against the configured tunnel hostname is the deterministic way to tell "this request came in over the tunnel". No header is unique to tunnel traffic.
 - **Do not use `--http-host-header`.** It is unnecessary given the above, and setting it starts injecting headers that change this picture.
 
-**On streaming and edge limits** — `13-cloudflare-edge-behavior-for-llm-api-traffic.md`: server-sent events work through the tunnel; the relevant risk is a timeout on long non-streaming requests. Worth skimming before the chat step of the demo, so you can tell a product limitation from your own bug.
+**On streaming and edge limits** — `bodhiapp-integration-and-risks.md`: server-sent events work through the named tunnel; the relevant risk is a timeout on long non-streaming requests.
 
 ## 6. Codebase facts you will need
 

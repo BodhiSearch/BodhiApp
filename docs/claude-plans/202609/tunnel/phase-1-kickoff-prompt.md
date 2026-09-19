@@ -18,13 +18,10 @@ Land each phase as **one commit straight to `main`** (trunk-based; no branches, 
 ## 2. Read first, in this order
 
 1. **The plan** — `docs/claude-plans/202609/tunnel/cloudflare-tunnel-implementation-plan.md`. Read all of it once; §0, §2 and the Phase 0 / Phase 1 entries in §3 and §4 are the working text. **§0 is load-bearing**: two items the earlier drafts treated as open risks are resolved, and the plan deletes the contingencies they implied. Do not reintroduce them.
-2. **Research, only the sections you need** (all under `docs/research/tunnel/`):
-   - `10-cloudflared-cli-named-tunnel-lifecycle.md` — §1 (`login` output strings), §6 (version window), §7 (PATH gap when launched from Finder), and the follow-up §A (the pinned run argv) and §D (the stub contract). **§A is the contract; do not reorder its flags.**
-   - `14-cloudflared-binary-detection-install-download.md` — §1 (per-OS install commands for the guide) and §2 (well-known binary paths, both Windows candidates).
-   - `21-codebase-settings-network-and-info.md` — §1 (the `is_native()` read-time default pattern) and the finalized schema in the "§6 — Finalized schema" follow-up.
-   - `22-codebase-login-flow-and-keycloak-spi-redirect-uris.md` — §2.3 (the SPI endpoint shape) and the follow-up §D (release/verify sequencing). Phase 0 lives here.
-   - `23-codebase-persistence-routes-and-backend-tests.md` — §c (route module skeleton, endpoint constants, openapi registration) and §d (test-plan skeletons).
-   - `24-codebase-frontend-settings-v2-and-e2e.md` — the Screen V2 page and E2E shapes. Note its `TunnelStatus`/`state`/`ENDPOINT_TUNNEL_STATUS` naming is **superseded** by doc 21's follow-up §2; use `TunnelStatusResponse` / `status` / `ENDPOINT_TUNNEL`.
+2. **Current research** under `docs/research/tunnel/`:
+   - `named-tunnel-operating-model.md` for Cloudflare prerequisites, credentials, commands, and supervision
+   - `bodhiapp-integration-and-risks.md` for settings, auth, API, UI, and validation contracts
+   - `quick-tunnel-decision.md` for the account-less tunnel no-go decision
 3. **Repo conventions** — root `CLAUDE.md`, `crates/CLAUDE.md`, `MDFILES.md`. Testing skills: `.claude/skills/test-services/SKILL.md` and `.claude/skills/test-routes-app/SKILL.md` — load the matching one before writing tests at that layer.
 
 Do **not** read the three superseded drafts in the scratchpad; the plan supersedes them.
