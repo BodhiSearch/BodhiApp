@@ -13,6 +13,7 @@ docs/research/accelerator/
 docs/research/platform-gtm/
 docs/marketing/
 deep-research/
+.firecrawl/
 
 **/.vscode/**/*
 !/.vscode/keybindings-mac.json
