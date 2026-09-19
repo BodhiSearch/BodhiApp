@@ -1,37 +1,37 @@
 {
   "desktop": {
-    "version": "0.0.60",
-    "tag": "app/v0.0.60",
-    "released_at": "2026-08-28T06:05:26Z",
+    "version": "0.0.61",
+    "tag": "app/v0.0.61",
+    "released_at": "2026-09-19T09:16:22Z",
     "platforms": {
       "macos": {
         "silicon": {
-          "version": "0.0.60",
-          "tag": "app/v0.0.60",
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.60/Bodhi_App.dmg",
+          "version": "0.0.61",
+          "tag": "app/v0.0.61",
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.61/Bodhi_App.dmg",
           "filename": "Bodhi_App.dmg",
-          "size": 23142332,
-          "sha256": "814eff5883fc38310ce50093fe36f26b304fa32e81d475da13a52410a07ecfc8"
+          "size": 23260577,
+          "sha256": "e9cea86a7e4acb2f565c66eeac2a48954efde5da4191ce0787858eda22c01322"
         }
       },
       "windows": {
         "x64": {
-          "version": "0.0.60",
-          "tag": "app/v0.0.60",
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.60/Bodhi_App.msi",
+          "version": "0.0.61",
+          "tag": "app/v0.0.61",
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.61/Bodhi_App.msi",
           "filename": "Bodhi_App.msi",
-          "size": 17014784,
-          "sha256": "de8688df9c49d3a736341f5ccdb246cef0a5df3088e20f4e3eb6ac1bdf93666c"
+          "size": 17117184,
+          "sha256": "7ec4b890097839a9ccc7381b1bfca02735a5a4a4e03c970c4ac49626bdfc328a"
         }
       },
       "linux": {
         "x64": {
-          "version": "0.0.60",
-          "tag": "app/v0.0.60",
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.60/Bodhi_App.rpm",
+          "version": "0.0.61",
+          "tag": "app/v0.0.61",
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.61/Bodhi_App.rpm",
           "filename": "Bodhi_App.rpm",
-          "size": 20194410,
-          "sha256": "1bffe843daf5e433af063b9936e957969d1139545ca47eca2ce0fe3701395a87"
+          "size": 20323801,
+          "sha256": "5b8a4bfdfc9b9556155dd85573ab0707cf5b94a254891b313b9cacc2b23319ce"
         }
       }
     }
@@ -46,7 +46,10 @@
         "version": "0.0.26",
         "tag": "docker/v0.0.26",
         "latest_tag": "latest-cpu",
-        "platforms": ["linux/amd64", "linux/arm64"],
+        "platforms": [
+          "linux/amd64",
+          "linux/arm64"
+        ],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cpu",
         "docker_flags": [],
         "description": "Multi-platform: AMD64 + ARM64"
@@ -55,9 +58,13 @@
         "version": "0.0.26",
         "tag": "docker/v0.0.26",
         "latest_tag": "latest-cuda",
-        "platforms": ["linux/amd64"],
+        "platforms": [
+          "linux/amd64"
+        ],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cuda",
-        "docker_flags": ["--gpus all"],
+        "docker_flags": [
+          "--gpus all"
+        ],
         "description": "NVIDIA GPU acceleration",
         "gpu_type": "NVIDIA"
       },
@@ -65,9 +72,15 @@
         "version": "0.0.26",
         "tag": "docker/v0.0.26",
         "latest_tag": "latest-rocm",
-        "platforms": ["linux/amd64"],
+        "platforms": [
+          "linux/amd64"
+        ],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-rocm",
-        "docker_flags": ["--device=/dev/kfd", "--device=/dev/dri", "--group-add video"],
+        "docker_flags": [
+          "--device=/dev/kfd",
+          "--device=/dev/dri",
+          "--group-add video"
+        ],
         "description": "AMD GPU acceleration",
         "gpu_type": "AMD"
       },
@@ -75,9 +88,13 @@
         "version": "0.0.26",
         "tag": "docker/v0.0.26",
         "latest_tag": "latest-vulkan",
-        "platforms": ["linux/amd64"],
+        "platforms": [
+          "linux/amd64"
+        ],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-vulkan",
-        "docker_flags": ["--device=/dev/dri"],
+        "docker_flags": [
+          "--device=/dev/dri"
+        ],
         "description": "Cross-vendor GPU acceleration",
         "gpu_type": "Vulkan"
       },
@@ -85,9 +102,13 @@
         "version": "0.0.26",
         "tag": "docker/v0.0.26",
         "latest_tag": "latest-intel",
-        "platforms": ["linux/amd64"],
+        "platforms": [
+          "linux/amd64"
+        ],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-intel",
-        "docker_flags": ["--device=/dev/dri"],
+        "docker_flags": [
+          "--device=/dev/dri"
+        ],
         "description": "Intel GPU acceleration (SYCL)",
         "gpu_type": "Intel"
       },
@@ -95,7 +116,10 @@
         "version": "0.0.26",
         "tag": "docker/v0.0.26",
         "latest_tag": "latest-cann",
-        "platforms": ["linux/amd64", "linux/arm64"],
+        "platforms": [
+          "linux/amd64",
+          "linux/arm64"
+        ],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cann",
         "docker_flags": [
           "--device=/dev/davinci0",
@@ -110,9 +134,13 @@
         "version": "0.0.26",
         "tag": "docker/v0.0.26",
         "latest_tag": "latest-musa",
-        "platforms": ["linux/amd64"],
+        "platforms": [
+          "linux/amd64"
+        ],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-musa",
-        "docker_flags": ["--device=/dev/musa"],
+        "docker_flags": [
+          "--device=/dev/musa"
+        ],
         "description": "Moore Threads GPU acceleration",
         "gpu_type": "Moore Threads"
       }
