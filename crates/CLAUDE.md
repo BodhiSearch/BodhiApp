@@ -33,6 +33,11 @@ Sub-module docs (load when working inside these modules):
 - `mod.rs` files: ONLY module declarations (`mod xxx;`) and re-exports (`pub use xxx::*;`). No logic.
 - Domain modules follow `*_objs.rs` for types, `error.rs` for errors, `service.rs` for business logic.
 
+### Comments
+- Comment only the non-obvious **why**: a constraint, a hard-won finding, a decision that the next reader would otherwise undo. One or two lines.
+- Never restate what the code already says, and never narrate a change ("now uses X", "moved from Y").
+- If a crate's `CLAUDE.md` / `PACKAGE.md` already explains it, link there instead of repeating it in the source.
+
 ### Re-export Rules
 - `services` re-exports all `errmeta` types — downstream crates import from `services::` only, never `errmeta::` directly.
 - `services` re-exports `db::*` — use `services::DbService` not `services::db::DbService`.

@@ -6,7 +6,7 @@ use crate::{
   AuthScopedMcpService, AuthScopedModelRouterService, AuthScopedTenantService,
   AuthScopedTokenService, AuthScopedUserAccessRequestService, AuthScopedUserService, AuthService,
   CacheService, ConcurrencyService, DataService, HealthRegistry, HubService, NetworkService,
-  QueueProducer, SessionService, SettingService, TenantService,
+  QueueProducer, SessionService, SettingService, TenantService, TunnelService,
 };
 use std::sync::Arc;
 
@@ -101,6 +101,10 @@ impl AuthScopedAppService {
 
   pub fn network(&self) -> Arc<dyn NetworkService> {
     self.app_service.network_service()
+  }
+
+  pub fn tunnels(&self) -> Arc<dyn TunnelService> {
+    self.app_service.tunnel_service()
   }
 
   pub fn sessions(&self) -> Arc<dyn SessionService> {

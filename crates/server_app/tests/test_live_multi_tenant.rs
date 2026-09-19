@@ -94,6 +94,10 @@ async fn test_multi_tenant_full_flow() -> anyhow::Result<()> {
   let info: Value = resp.json().await?;
   assert_eq!("ready", info["status"].as_str().unwrap());
   assert_eq!("multi_tenant", info["deployment"].as_str().unwrap());
+  // Public reachability is declared by the deployment, never inferred, so an unconfigured server
+  // says no. A container deployment runs no tunnel, so the key is absent rather than empty.
+  assert_eq!(false, info["url_public"].as_bool().unwrap());
+  assert!(info.get("remote_access").is_none(), "got: {info}");
 
   // Step 2: Get dashboard token
   let dashboard_token = env.get_dashboard_token().await?;

@@ -1114,6 +1114,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bodhi/v1/tunnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cloudflare Tunnel status */
+        get: operations["getTunnelStatus"];
+        /** Enable a Cloudflare named tunnel */
+        put: operations["enableTunnel"];
+        post?: never;
+        /** Stop the Cloudflare Tunnel connector */
+        delete: operations["disableTunnel"];
+        options?: never;
+        head?: never;
+        /** Update Cloudflare Tunnel preferences */
+        patch: operations["updateTunnelPreferences"];
+        trace?: never;
+    };
+    "/bodhi/v1/tunnel/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Validate Cloudflare Tunnel prerequisites */
+        put: operations["setupTunnel"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/tunnel/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry tunnel authorization-server synchronization */
+        post: operations["syncTunnelAuthorization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bodhi/v1/user": {
         parameters: {
             query?: never;
@@ -1515,6 +1569,7 @@ export interface components {
          *       "reference_api_url": "https://api.getbodhi.app",
          *       "status": "ready",
          *       "url": "https://example.com",
+         *       "url_public": false,
          *       "version": "0.1.0"
          *     }
          */
@@ -1543,6 +1598,17 @@ export interface components {
              * @example https://example.com
              */
             url: string;
+            /**
+             * @description Whether `url` is reachable from the public internet. Declared by the deployment through
+             *     `BODHI_PUBLIC_URL_REACHABLE`; `false` unless explicitly set. A third-party backend uses this to
+             *     decide whether it can call this instance directly or must go through `remote_access`.
+             * @example false
+             */
+            url_public: boolean;
+            /** @description Publicly-reachable routes into this instance other than `url` itself, for a third-party backend
+             *     that cannot use `url` directly. Omitted when there are none. At most one entry today, since an
+             *     instance runs a single tunnel; it is a list so additional providers do not break the shape. */
+            remote_access?: components["schemas"]["RemoteAccessInfo"][] | null;
             /**
              * @description Base URL of the external reference API the frontend calls directly (configurable via
              *     `BODHI_REFERENCE_API_URL`, env-overridable for tests)
@@ -1896,6 +1962,11 @@ export interface components {
             high: components["schemas"]["CapabilitySupport"];
             low: components["schemas"]["CapabilitySupport"];
             max: components["schemas"]["CapabilitySupport"];
+        };
+        EnableTunnelRequest: {
+            subdomain: string;
+            auto_reconnect?: boolean;
+            replace_dns?: boolean;
         };
         /** @description Per-strategy resilience config for the fallback strategy. Phase 1 persists defaults
          *     and does not yet act on them (failover/health land in later phases). */
@@ -2623,6 +2694,21 @@ export interface components {
          * @enum {string}
          */
         RegistrationType: "pre_registered" | "dynamic_registration";
+        /** @description The anonymous counterpart of [`TunnelStatus`]. No field here can carry a path, the zone or raw
+         *     stderr, so the admin-only split holds by construction rather than by remembering to strip fields. */
+        RemoteAccessInfo: {
+            provider: components["schemas"]["RemoteAccessProvider"];
+            /** @description The public base URL this route answers on. */
+            url: string;
+            /** @description True while still connecting; this is not "the user switched it on". */
+            enabled: boolean;
+            status?: null | components["schemas"]["RemoteAccessState"];
+            auth_status?: null | components["schemas"]["RemoteAccessState"];
+        };
+        /** @enum {string} */
+        RemoteAccessProvider: "cloudflared";
+        /** @enum {string} */
+        RemoteAccessState: "ready" | "error";
         RequestedMcpServer: {
             url: string;
         };
@@ -2923,6 +3009,53 @@ export interface components {
             function_calling?: boolean | null;
             structured_output?: boolean | null;
         };
+        /** @enum {string} */
+        TunnelAuthSyncState: "not_attempted" | "syncing" | "synced" | "unreachable" | "rejected";
+        TunnelAuthSyncStatus: {
+            state: components["schemas"]["TunnelAuthSyncState"];
+            error?: string | null;
+        };
+        TunnelBinaryStatus: {
+            state: components["schemas"]["TunnelCheckState"];
+            path?: string | null;
+            source?: null | components["schemas"]["TunnelPathSource"];
+            version?: string | null;
+            minimum_version: string;
+            error?: string | null;
+        };
+        /** @enum {string} */
+        TunnelCheckState: "waiting" | "missing" | "invalid" | "unsupported" | "ready";
+        /** @enum {string} */
+        TunnelConnectionState: "disabled" | "connecting" | "connected" | "failed";
+        TunnelLoginStatus: {
+            state: components["schemas"]["TunnelCheckState"];
+            cert_path?: string | null;
+            source?: null | components["schemas"]["TunnelPathSource"];
+            zone?: string | null;
+            error?: string | null;
+        };
+        /** @enum {string} */
+        TunnelPathSource: "configured" | "environment" | "path" | "standard_location";
+        TunnelSetupRequest: {
+            cloudflared_path?: string | null;
+            origin_cert_path?: string | null;
+        };
+        TunnelStatus: {
+            available: boolean;
+            unavailable_reason?: string | null;
+            enabled: boolean;
+            state: components["schemas"]["TunnelConnectionState"];
+            binary: components["schemas"]["TunnelBinaryStatus"];
+            login: components["schemas"]["TunnelLoginStatus"];
+            hostname?: string | null;
+            subdomain?: string | null;
+            auto_reconnect: boolean;
+            public_url?: string | null;
+            oauth_redirect_uri?: string | null;
+            auth_sync: components["schemas"]["TunnelAuthSyncStatus"];
+            error_code?: string | null;
+            error_message?: string | null;
+        };
         /** @example {
          *       "value": "debug"
          *     } */
@@ -2942,6 +3075,9 @@ export interface components {
             name: string;
             /** @description New status for the token (active/inactive) */
             status: components["schemas"]["TokenStatus"];
+        };
+        UpdateTunnelPreferencesRequest: {
+            auto_reconnect: boolean;
         };
         /** @description User access request output type for API responses */
         UserAccessRequest: {
@@ -4160,6 +4296,7 @@ export interface operations {
                      *       "deployment": "standalone",
                      *       "status": "ready",
                      *       "url": "https://example.com",
+                     *       "url_public": false,
                      *       "version": "0.1.0"
                      *     } */
                     "application/json": components["schemas"]["AppInfo"];
@@ -8239,6 +8376,348 @@ export interface operations {
             };
             /** @description Token not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    getTunnelStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TunnelStatus"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    enableTunnel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnableTunnelRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TunnelStatus"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    disableTunnel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TunnelStatus"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTunnelPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTunnelPreferencesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TunnelStatus"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    setupTunnel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TunnelSetupRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TunnelStatus"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    syncTunnelAuthorization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TunnelStatus"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

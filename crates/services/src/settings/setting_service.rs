@@ -6,9 +6,10 @@ use super::{
   BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST, BODHI_KEEP_ALIVE_SECS, BODHI_LLAMACPP_ARGS,
   BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_MULTITENANT_CLIENT_ID, BODHI_MULTITENANT_CLIENT_SECRET,
   BODHI_ON_RUNPOD, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME,
-  BODHI_REFERENCE_API_URL, BODHI_SCHEME, BODHI_SESSION_DB_URL, BODHI_TEST_MODE, BODHI_VERSION,
-  DEFAULT_CANONICAL_REDIRECT, DEFAULT_PORT, DEFAULT_REFERENCE_API_URL_PROD, HF_HOME,
-  LOGIN_CALLBACK_PATH, LOGIN_DASHBOARD_CALLBACK_PATH, PROD_DB, RUNPOD_POD_ID,
+  BODHI_PUBLIC_URL_REACHABLE, BODHI_REFERENCE_API_URL, BODHI_SCHEME, BODHI_SESSION_DB_URL,
+  BODHI_TEST_MODE, BODHI_TUNNEL, BODHI_VERSION, DEFAULT_CANONICAL_REDIRECT, DEFAULT_PORT,
+  DEFAULT_PUBLIC_URL_REACHABLE, DEFAULT_REFERENCE_API_URL_PROD, HF_HOME, LOGIN_CALLBACK_PATH,
+  LOGIN_DASHBOARD_CALLBACK_PATH, PROD_DB, RUNPOD_POD_ID,
 };
 use serde_yaml::Value;
 use std::{path::Path, path::PathBuf, sync::Arc};
@@ -188,6 +189,33 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
 
   async fn is_native(&self) -> bool {
     self.app_type().await.is_native()
+  }
+
+  async fn get_setting_bool(&self, key: &str) -> Option<bool> {
+    match self.get_setting_value(key).await? {
+      Value::Bool(value) => Some(value),
+      Value::String(value) => value.parse::<bool>().ok(),
+      _ => None,
+    }
+  }
+
+  /// The setting defaults to the native application mode, while the connector itself remains
+  /// independent of Tauri/native compilation and can be enabled explicitly through normal
+  /// setting precedence for CLI, container, or other deployments.
+  async fn tunnel_enabled(&self) -> bool {
+    if let Some(configured) = self.get_setting_bool(BODHI_TUNNEL).await {
+      return configured;
+    }
+    self.is_native().await
+  }
+
+  /// Whether `public_server_url()` can be reached from the public internet. Deployment declares it;
+  /// absence means no, so an instance never advertises reachability it was not told it has.
+  async fn url_public(&self) -> bool {
+    self
+      .get_setting_bool(BODHI_PUBLIC_URL_REACHABLE)
+      .await
+      .unwrap_or(DEFAULT_PUBLIC_URL_REACHABLE)
   }
 
   async fn hf_home(&self) -> PathBuf {
@@ -497,11 +525,9 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
 
   async fn canonical_redirect_enabled(&self) -> bool {
     self
-      .get_setting_value(BODHI_CANONICAL_REDIRECT)
+      .get_setting_bool(BODHI_CANONICAL_REDIRECT)
       .await
-      .unwrap_or(Value::Bool(DEFAULT_CANONICAL_REDIRECT))
-      .as_bool()
-      .expect("BODHI_CANONICAL_REDIRECT should be a boolean")
+      .unwrap_or(DEFAULT_CANONICAL_REDIRECT)
   }
 
   async fn get_server_args_common(&self) -> Option<String> {
@@ -515,9 +541,8 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
 
   async fn on_runpod_enabled(&self) -> bool {
     let runpod_flag = self
-      .get_setting(BODHI_ON_RUNPOD)
+      .get_setting_bool(BODHI_ON_RUNPOD)
       .await
-      .and_then(|val| val.parse::<bool>().ok())
       .unwrap_or(false);
 
     let runpod_pod_id_available = self

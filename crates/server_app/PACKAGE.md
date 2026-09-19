@@ -8,7 +8,7 @@ See [CLAUDE.md](CLAUDE.md) for architectural overview and key decisions.
 |------|---------|
 | `src/lib.rs` | Module declarations and public re-exports |
 | `src/server.rs` | `Server`, `ServerHandle`, `build_server_handle()`, `ShutdownCallback` trait, `ServerError` |
-| `src/serve.rs` | `ServeCommand`, `ServerShutdownHandle`, `ServeError`, `ShutdownInferenceCallback`, `KeepAliveSettingListener` |
+| `src/serve.rs` | `ServeCommand`, `ServerShutdownHandle`, `ServeError`, `ShutdownRuntimeCallback`, `KeepAliveSettingListener` |
 | `src/shutdown.rs` | `shutdown_signal()` cross-platform signal handling |
 | `src/listener_variant.rs` | `VariantChangeListener` for `BODHI_EXEC_VARIANT` changes |
 | `src/error.rs` | `TaskJoinError` |
@@ -21,6 +21,8 @@ See [CLAUDE.md](CLAUDE.md) for architectural overview and key decisions.
 | `TaskJoinError` | wraps `tokio::task::JoinError` | `src/error.rs` |
 | `ServerError` | `Io(IoError)` | `src/server.rs` |
 | `ServeError` | `Setting(SettingServiceError)`, `Join(TaskJoinError)`, `Server(ServerError)`, `Unknown` | `src/serve.rs` |
+
+`ShutdownRuntimeCallback` stops the optional local llama runtime and `TunnelService` before the listener exits. After listener readiness, `ServeCommand` also makes one non-blocking `TunnelService::reconnect()` attempt when saved Remote Access configuration requests it.
 
 ## Live Integration Test Infrastructure
 

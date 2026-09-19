@@ -126,13 +126,14 @@ risks as R1–R6 are defined in that plan.
   connector. It was **not written**, and Phase 6 closed on docs and cleanup only. Concretely there is
   no tunnels page object in `crates/lib_bodhiserver/tests-js/pages/`, no tunnel spec, and
   `make test.e2e` exercises nothing of Remote Access.
-- **Why skipped — the blocker**: the fake `cloudflared`
-  (`services/src/test_utils/tunnels.rs`) can replace the binary through
-  `BODHI_TUNNEL_CLOUDFLARED_PATH`, but the Cloudflare API base URL is only injectable via
-  `DefaultTunnelService::with_cloudflare_api`, which is `#[cfg(any(test, feature = "test-utils"))]`.
-  A real server process therefore still calls `api.cloudflare.com` for the zone and DNS lookups, so
-  the states that motivated the plan — creating, dns-conflict, live — are unreachable in E2E without
-  a real Cloudflare account. The owner chose the existing 24 `services` tests and 45 component tests
+- **Why skipped — the blocker**: nothing an out-of-process server runs can be replaced from a test.
+  `services/src/test_utils/tunnels.rs` is now an in-memory `FakeCloudflared` injected through
+  `DefaultTunnelService::with_runtime`, which reaches unit tests only; the binary path
+  (`BODHI_TUNNEL_CLOUDFLARED_PATH`) and the Cloudflare API base (`with_cloudflare_api`, gated to
+  `#[cfg(any(test, feature = "test-utils"))]`) are the sole seams a real server exposes, and the
+  latter is not reachable at all. A real server process therefore still calls `api.cloudflare.com`
+  for the zone and DNS lookups, so the states that motivated the plan — creating, dns-conflict,
+  live — are unreachable in E2E without a real Cloudflare account. The owner chose the existing `services` tests and component tests
   over adding a production-visible setting purely for testing.
 - **What is consequently uncovered end to end**: enable → live → disable → re-enable through the real
   HTTP stack; the DNS-conflict confirm path; the auth-sync states as served by the real backend; and
@@ -149,6 +150,18 @@ risks as R1–R6 are defined in that plan.
   caught.
 - **Why deferred**: blocked on the same API-base injection as the item above.
 - **Fix**: same fix; then walk the states in Chrome at both widths.
+
+## Upstream response bodies are carried verbatim into typed errors
+- **Source**: tunnel review remediation, 2026-09-19.
+- **What**: `auth_service.rs:663` falls back to `body.chars().take(500)` when an upstream error body
+  does not parse, putting unparsed third-party text into `AuthServiceError::AuthServiceApiError`.
+  `mcps/mcp_service.rs` and `ai_apis/clients/*` repeat the `.text().await.unwrap_or_default()`
+  shape. Such a body can echo a bearer token back at us.
+- **Why deferred**: the log path is now defended centrally — `log::log_http_error` scrubs opaque
+  high-entropy runs — so the leak-to-logs case is closed. Auditing every construction site, and
+  deciding per call whether the body is safe to retain at all, is a separate pass.
+- **Fix**: stop retaining unparsed bodies; carry status plus a known-shape message, and keep the
+  scrub as defence in depth rather than the only barrier.
 
 ## Remote Access is undefined under a clustered deployment (D10)
 - **Source**: Remote Access plan — decision D10, 2026-09-18.

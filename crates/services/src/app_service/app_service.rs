@@ -4,7 +4,7 @@ use crate::{
   AccessRequestService, AiApiClientFactory, ApiModelService, AuthService, CacheService,
   ConcurrencyService, DataService, DownloadService, HealthRegistry, HubService, McpService,
   ModelRouterService, NetworkService, QueueProducer, SessionService, SettingService, TenantService,
-  TokenService,
+  TokenService, TunnelService,
 };
 use std::sync::Arc;
 
@@ -52,6 +52,8 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 
   fn download_service(&self) -> Arc<dyn DownloadService>;
 
+  fn tunnel_service(&self) -> Arc<dyn TunnelService>;
+
   fn queue_status(&self) -> String {
     self.queue_producer().queue_status()
   }
@@ -81,6 +83,7 @@ pub struct DefaultAppService {
   model_router_service: Arc<dyn ModelRouterService>,
   health_registry: Arc<dyn HealthRegistry>,
   download_service: Arc<dyn DownloadService>,
+  tunnel_service: Arc<dyn TunnelService>,
 }
 
 impl AppService for DefaultAppService {
@@ -166,5 +169,9 @@ impl AppService for DefaultAppService {
 
   fn download_service(&self) -> Arc<dyn DownloadService> {
     self.download_service.clone()
+  }
+
+  fn tunnel_service(&self) -> Arc<dyn TunnelService> {
+    self.tunnel_service.clone()
   }
 }

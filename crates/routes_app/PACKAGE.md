@@ -16,6 +16,7 @@ Entry point: `src/lib.rs` -- re-exports all public modules with conditional `tes
 | `tokens/` | `TokenRouteError` | API token CRUD |
 | `models/` | `ModelRouteError` | Model alias CRUD, metadata, pull, API models, local files |
 | `settings/` | `SettingsRouteError` | Settings CRUD |
+| `tunnels/` | service `TunnelError` | Admin session tunnel status, setup checks, enable/preferences, authorization-server retry, and disable |
 | `setup/` | `SetupRouteError` | App setup/init |
 | `mcps/` | `McpRouteError` | MCP CRUD, tools, servers, OAuth, MCP proxy |
 | `oai/` | `OAIRouteError` | OpenAI-compatible endpoints |
@@ -83,7 +84,7 @@ Composes all domain routes with auth middleware layers. State is `Arc<dyn AppSer
 
 | File | Purpose |
 |------|---------|
-| `src/test_utils/router.rs` | `build_test_router()`, `create_authenticated_session()`, `build_live_test_router()` |
+| `src/test_utils/router.rs` | `build_test_router()`, `single_route_router()`, `single_route_router_with_session()`, `create_authenticated_session()`, `build_live_test_router()` |
 | `src/test_utils/assertions.rs` | Assertion helpers |
 | `src/test_utils/mcp.rs` | MCP test setup helpers |
 
@@ -147,7 +148,7 @@ Defined in `src/routes.rs`. Two CORS tiers: **restrictive** (blocks all cross-or
 | `guest_endpoints` | `api_auth_middleware` | Guest | `users_request_access`, `users_request_status` |
 | `user_session_apis` | `api_auth_middleware` | User | MCP CRUD, MCP auth configs, MCP OAuth, MCP servers (read), app access reviews, API model management |
 | `power_user_session_apis` | `api_auth_middleware` | PowerUser | Token CRUD, metadata refresh, queue status |
-| `admin_session_apis` | `api_auth_middleware` | Admin | Settings CRUD, MCP server create/update |
+| `admin_session_apis` | `api_auth_middleware` | Admin | Settings CRUD, Cloudflare Tunnel control, MCP server create/update |
 | `manager_session_apis` | `api_auth_middleware` | Manager | User access request approval/rejection, user listing, role changes, user deletion |
 
 All session-protected groups share a base `auth_middleware` layer and restrictive CORS layer.
@@ -181,7 +182,7 @@ see `src/shared/validated_json.rs` for implementation. `ValidatedJson` deseriali
 
 ## Responses API (Pass-Through Proxy)
 
-5 endpoints under `/v1/responses` in the `user_apis` route group:
+Endpoints under `/v1/responses` in the `user_apis` route group:
 - `POST /v1/responses` — create response (body forwarded to remote)
 - `GET /v1/responses/{response_id}` — get response
 - `POST /v1/responses/{response_id}/cancel` — cancel response
@@ -211,5 +212,7 @@ Anthropic endpoints use a pre-built `openapi-anthropic.json` spec (in `resources
 **Access request role validation**: `users_access_request_approve` rejects `Anonymous`/`Guest` as role assignment targets (`!request.role.has_access_to(&ResourceRole::User)`). Approvers can only assign roles at or below their own level.
 
 **Multi-tenant endpoints**: Dashboard auth (`/auth/dashboard/initiate`, `/auth/dashboard/callback`) and tenant management (`/tenants`, `/tenants/{client_id}/activate`) in `tenants/` module. Dashboard tokens stored under `dashboard:*` session keys. `/info` returns `deployment` and `client_id`. `/user/info` returns `dashboard: Option<DashboardUser>` with user details from the dashboard JWT.
+
+**Public reachability on `/info`**: `AppInfo` also carries `url_public` — the deployment declares through `BODHI_PUBLIC_URL_REACHABLE` that `url` is reachable from the public internet; `false` unless explicitly set, and nothing infers it — plus an optional `remote_access` list of tunnel routes, omitted when empty. These exist so a third-party app's **backend** can discover a callable address, since Local Network Access only ever reaches the instance from a browser. Because this endpoint is anonymous and a live tunnel makes it internet-reachable, it exposes only coarse enums and calls the cheap `TunnelService::remote_access_info`, never `status` — see `services/PACKAGE.md`.
 
 **Apps API thin wrappers**: `apps_mcps_index`, etc. in the `apps_apis` group are thin wrappers that delegate to the same auth-scoped services but are mounted under `/bodhi/v1/apps/...` with permissive CORS for external OAuth app access.

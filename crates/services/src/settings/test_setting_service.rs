@@ -2,10 +2,10 @@ use crate::test_utils::temp_dir;
 use crate::{
   test_utils::{bodhi_home_setting, EnvWrapperStub},
   BootstrapParts, DefaultSettingService, MockSettingsChangeListener, SettingService,
-  BODHI_EXEC_VARIANT, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT,
-  BODHI_ON_RUNPOD, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME,
-  BODHI_SCHEME, DEFAULT_HOST, DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT, DEFAULT_SCHEME,
-  HF_HOME, RUNPOD_POD_ID,
+  BODHI_APP_TYPE, BODHI_EXEC_VARIANT, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_LOG_LEVEL,
+  BODHI_LOG_STDOUT, BODHI_ON_RUNPOD, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT,
+  BODHI_PUBLIC_SCHEME, BODHI_PUBLIC_URL_REACHABLE, BODHI_SCHEME, BODHI_TUNNEL, DEFAULT_HOST,
+  DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT, DEFAULT_SCHEME, HF_HOME, RUNPOD_POD_ID,
 };
 use crate::{AppCommand, Setting, SettingInfo, SettingMetadata, SettingSource};
 use anyhow_trace::anyhow_trace;
@@ -1004,6 +1004,81 @@ async fn test_on_runpod_enabled_parsing(
 }
 
 #[rstest]
+#[case::native_default("native", None, None, true)]
+#[case::container_default("container", None, None, false)]
+#[case::container_enabled("container", Some("true"), None, true)]
+#[case::container_enabled_from_settings_file("container", None, Some("true"), true)]
+#[case::native_disabled("native", Some("false"), None, false)]
+#[case::invalid_uses_native_default("native", Some("not-a-bool"), None, true)]
+#[tokio::test]
+async fn test_tunnel_enabled_uses_mode_default_with_environment_override(
+  temp_dir: TempDir,
+  #[case] app_type: &str,
+  #[case] flag: Option<&str>,
+  #[case] settings_file_flag: Option<&str>,
+  #[case] expected: bool,
+) -> anyhow::Result<()> {
+  let path = temp_dir.path().join("settings.yaml");
+  if let Some(value) = settings_file_flag {
+    fs::write(&path, format!("{BODHI_TUNNEL}: {value}\n"))?;
+  }
+  let mut env_vars = maplit::hashmap! {
+    BODHI_HOME.to_string() => temp_dir.path().display().to_string(),
+  };
+  flag.map(|value| env_vars.insert(BODHI_TUNNEL.to_string(), value.to_string()));
+
+  let service = make_service_from_parts(
+    Arc::new(EnvWrapperStub::new(env_vars)),
+    bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
+    vec![app_type_system_setting(app_type)],
+    HashMap::new(),
+    path,
+    noop_settings_repo(),
+  );
+
+  assert_eq!(service.tunnel_enabled().await, expected);
+  Ok(())
+}
+
+/// An instance must never advertise public reachability it was not explicitly told it has, so every
+/// path that is not an affirmative `true` — unset, false, or unparseable — has to land on `false`.
+#[rstest]
+#[case::unset_is_not_public(None, None, false)]
+#[case::env_true(Some("true"), None, true)]
+#[case::env_false(Some("false"), None, false)]
+#[case::settings_file_yaml_bool(None, Some("true"), true)]
+#[case::settings_file_false(None, Some("false"), false)]
+#[case::unparseable_is_not_public(Some("yes-please"), None, false)]
+#[tokio::test]
+async fn test_url_public_defaults_to_false_unless_explicitly_declared(
+  temp_dir: TempDir,
+  #[case] env_flag: Option<&str>,
+  #[case] settings_file_flag: Option<&str>,
+  #[case] expected: bool,
+) -> anyhow::Result<()> {
+  let path = temp_dir.path().join("settings.yaml");
+  if let Some(value) = settings_file_flag {
+    fs::write(&path, format!("{BODHI_PUBLIC_URL_REACHABLE}: {value}\n"))?;
+  }
+  let mut env_vars = maplit::hashmap! {
+    BODHI_HOME.to_string() => temp_dir.path().display().to_string(),
+  };
+  env_flag.map(|value| env_vars.insert(BODHI_PUBLIC_URL_REACHABLE.to_string(), value.to_string()));
+
+  let service = make_service_from_parts(
+    Arc::new(EnvWrapperStub::new(env_vars)),
+    bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
+    vec![],
+    HashMap::new(),
+    path,
+    noop_settings_repo(),
+  );
+
+  assert_eq!(service.url_public().await, expected);
+  Ok(())
+}
+
+#[rstest]
 #[tokio::test]
 async fn test_runpod_feature_individual_methods(temp_dir: TempDir) -> anyhow::Result<()> {
   let path = temp_dir.path().join("settings.yaml");
@@ -1037,6 +1112,15 @@ async fn test_runpod_feature_individual_methods(temp_dir: TempDir) -> anyhow::Re
   );
 
   Ok(())
+}
+
+fn app_type_system_setting(value: &str) -> Setting {
+  Setting {
+    key: BODHI_APP_TYPE.to_string(),
+    value: Value::String(value.to_string()),
+    source: SettingSource::System,
+    metadata: SettingMetadata::String,
+  }
 }
 
 fn env_type_system_setting(value: &str) -> Setting {

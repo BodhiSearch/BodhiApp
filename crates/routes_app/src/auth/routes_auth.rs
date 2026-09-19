@@ -19,10 +19,43 @@ use axum::{
 use base64::{engine::general_purpose, Engine as _};
 use oauth2::url::Url;
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
-use services::{extract_claims, AppStatus, Claims, CHAT_PATH};
+use services::{extract_claims, AppStatus, Claims, SettingService, BODHI_TUNNEL_HOST, CHAT_PATH};
 use sha2::{Digest, Sha256};
 use tower_sessions::Session;
 use tracing::warn;
+
+async fn request_origin_callback_url(
+  settings: &dyn SettingService,
+  request_host: Option<&str>,
+) -> String {
+  match request_host {
+    Some(host) => format!(
+      "{}://{}:{}{}",
+      settings.public_scheme().await,
+      host,
+      settings.public_port().await,
+      services::LOGIN_CALLBACK_PATH
+    ),
+    None => settings.login_callback_url().await,
+  }
+}
+
+async fn trusted_tunnel_host(
+  settings: &dyn SettingService,
+  headers: &HeaderMap,
+  request_host: Option<&str>,
+) -> Option<String> {
+  if !settings.tunnel_enabled().await {
+    return None;
+  }
+  let tunnel_host = settings.get_setting(BODHI_TUNNEL_HOST).await?;
+  let forwarded_proto = headers
+    .get("x-forwarded-proto")
+    .and_then(|value| value.to_str().ok())
+    .map(str::to_ascii_lowercase);
+  (request_host == Some(tunnel_host.as_str()) && forwarded_proto.as_deref() == Some("https"))
+    .then_some(tunnel_host)
+}
 
 /// Start OAuth flow - returns location for OAuth provider or home
 #[utoipa::path(
@@ -85,21 +118,16 @@ pub async fn auth_initiate(
     .insert("auth_client_id", &request.client_id)
     .await
     .map_err(AuthRouteError::from)?;
+  let request_host = extract_request_host(&headers);
   let callback_url = if settings.get_public_host_explicit().await.is_some() {
     // Covers explicit-host deployments like RunPod.
     settings.login_callback_url().await
+  } else if let Some(tunnel_host) =
+    trusted_tunnel_host(settings.as_ref(), &headers, request_host.as_deref()).await
+  {
+    format!("https://{tunnel_host}{}", services::LOGIN_CALLBACK_PATH)
   } else {
-    if let Some(request_host) = extract_request_host(&headers) {
-      format!(
-        "{}://{}:{}{}",
-        settings.public_scheme().await,
-        request_host,
-        settings.public_port().await,
-        services::LOGIN_CALLBACK_PATH
-      )
-    } else {
-      settings.login_callback_url().await
-    }
+    request_origin_callback_url(settings.as_ref(), request_host.as_deref()).await
   };
   let client_id = instance.client_id;
 

@@ -261,6 +261,18 @@ export type AppInfo = {
      */
     url: string;
     /**
+     * Whether `url` is reachable from the public internet. Declared by the deployment through
+     * `BODHI_PUBLIC_URL_REACHABLE`; `false` unless explicitly set. A third-party backend uses this to
+     * decide whether it can call this instance directly or must go through `remote_access`.
+     */
+    url_public: boolean;
+    /**
+     * Publicly-reachable routes into this instance other than `url` itself, for a third-party backend
+     * that cannot use `url` directly. Omitted when there are none. At most one entry today, since an
+     * instance runs a single tunnel; it is a list so additional providers do not break the shape.
+     */
+    remote_access?: Array<RemoteAccessInfo> | null;
+    /**
      * Base URL of the external reference API the frontend calls directly (configurable via
      * `BODHI_REFERENCE_API_URL`, env-overridable for tests)
      */
@@ -652,6 +664,12 @@ export type EffortCapability = {
     high: CapabilitySupport;
     low: CapabilitySupport;
     max: CapabilitySupport;
+};
+
+export type EnableTunnelRequest = {
+    subdomain: string;
+    auto_reconnect?: boolean;
+    replace_dns?: boolean;
 };
 
 /**
@@ -1463,6 +1481,28 @@ export type RefreshSource = 'all' | 'model';
  */
 export type RegistrationType = 'pre_registered' | 'dynamic_registration';
 
+/**
+ * The anonymous counterpart of [`TunnelStatus`]. No field here can carry a path, the zone or raw
+ * stderr, so the admin-only split holds by construction rather than by remembering to strip fields.
+ */
+export type RemoteAccessInfo = {
+    provider: RemoteAccessProvider;
+    /**
+     * The public base URL this route answers on.
+     */
+    url: string;
+    /**
+     * True while still connecting; this is not "the user switched it on".
+     */
+    enabled: boolean;
+    status?: null | RemoteAccessState;
+    auth_status?: null | RemoteAccessState;
+};
+
+export type RemoteAccessProvider = 'cloudflared';
+
+export type RemoteAccessState = 'ready' | 'error';
+
 export type RequestedMcpServer = {
     url: string;
 };
@@ -1774,6 +1814,58 @@ export type ToolCapabilities = {
     structured_output?: boolean | null;
 };
 
+export type TunnelAuthSyncState = 'not_attempted' | 'syncing' | 'synced' | 'unreachable' | 'rejected';
+
+export type TunnelAuthSyncStatus = {
+    state: TunnelAuthSyncState;
+    error?: string | null;
+};
+
+export type TunnelBinaryStatus = {
+    state: TunnelCheckState;
+    path?: string | null;
+    source?: null | TunnelPathSource;
+    version?: string | null;
+    minimum_version: string;
+    error?: string | null;
+};
+
+export type TunnelCheckState = 'waiting' | 'missing' | 'invalid' | 'unsupported' | 'ready';
+
+export type TunnelConnectionState = 'disabled' | 'connecting' | 'connected' | 'failed';
+
+export type TunnelLoginStatus = {
+    state: TunnelCheckState;
+    cert_path?: string | null;
+    source?: null | TunnelPathSource;
+    zone?: string | null;
+    error?: string | null;
+};
+
+export type TunnelPathSource = 'configured' | 'environment' | 'path' | 'standard_location';
+
+export type TunnelSetupRequest = {
+    cloudflared_path?: string | null;
+    origin_cert_path?: string | null;
+};
+
+export type TunnelStatus = {
+    available: boolean;
+    unavailable_reason?: string | null;
+    enabled: boolean;
+    state: TunnelConnectionState;
+    binary: TunnelBinaryStatus;
+    login: TunnelLoginStatus;
+    hostname?: string | null;
+    subdomain?: string | null;
+    auto_reconnect: boolean;
+    public_url?: string | null;
+    oauth_redirect_uri?: string | null;
+    auth_sync: TunnelAuthSyncStatus;
+    error_code?: string | null;
+    error_message?: string | null;
+};
+
 export type UpdateSettingRequest = {
     /**
      * type depends on setting metadata
@@ -1790,6 +1882,10 @@ export type UpdateTokenRequest = {
      * New status for the token (active/inactive)
      */
     status: TokenStatus;
+};
+
+export type UpdateTunnelPreferencesRequest = {
+    auto_reconnect: boolean;
 };
 
 /**
@@ -5208,6 +5304,210 @@ export type UpdateApiTokenResponses = {
 };
 
 export type UpdateApiTokenResponse = UpdateApiTokenResponses[keyof UpdateApiTokenResponses];
+
+export type DisableTunnelData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/tunnel';
+};
+
+export type DisableTunnelErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type DisableTunnelError = DisableTunnelErrors[keyof DisableTunnelErrors];
+
+export type DisableTunnelResponses = {
+    200: TunnelStatus;
+};
+
+export type DisableTunnelResponse = DisableTunnelResponses[keyof DisableTunnelResponses];
+
+export type GetTunnelStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/tunnel';
+};
+
+export type GetTunnelStatusErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type GetTunnelStatusError = GetTunnelStatusErrors[keyof GetTunnelStatusErrors];
+
+export type GetTunnelStatusResponses = {
+    200: TunnelStatus;
+};
+
+export type GetTunnelStatusResponse = GetTunnelStatusResponses[keyof GetTunnelStatusResponses];
+
+export type UpdateTunnelPreferencesData = {
+    body: UpdateTunnelPreferencesRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/tunnel';
+};
+
+export type UpdateTunnelPreferencesErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type UpdateTunnelPreferencesError = UpdateTunnelPreferencesErrors[keyof UpdateTunnelPreferencesErrors];
+
+export type UpdateTunnelPreferencesResponses = {
+    200: TunnelStatus;
+};
+
+export type UpdateTunnelPreferencesResponse = UpdateTunnelPreferencesResponses[keyof UpdateTunnelPreferencesResponses];
+
+export type EnableTunnelData = {
+    body: EnableTunnelRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/tunnel';
+};
+
+export type EnableTunnelErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type EnableTunnelError = EnableTunnelErrors[keyof EnableTunnelErrors];
+
+export type EnableTunnelResponses = {
+    200: TunnelStatus;
+};
+
+export type EnableTunnelResponse = EnableTunnelResponses[keyof EnableTunnelResponses];
+
+export type SetupTunnelData = {
+    body: TunnelSetupRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/tunnel/setup';
+};
+
+export type SetupTunnelErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type SetupTunnelError = SetupTunnelErrors[keyof SetupTunnelErrors];
+
+export type SetupTunnelResponses = {
+    200: TunnelStatus;
+};
+
+export type SetupTunnelResponse = SetupTunnelResponses[keyof SetupTunnelResponses];
+
+export type SyncTunnelAuthorizationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/tunnel/sync';
+};
+
+export type SyncTunnelAuthorizationErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type SyncTunnelAuthorizationError = SyncTunnelAuthorizationErrors[keyof SyncTunnelAuthorizationErrors];
+
+export type SyncTunnelAuthorizationResponses = {
+    200: TunnelStatus;
+};
+
+export type SyncTunnelAuthorizationResponse = SyncTunnelAuthorizationResponses[keyof SyncTunnelAuthorizationResponses];
 
 export type GetCurrentUserData = {
     body?: never;

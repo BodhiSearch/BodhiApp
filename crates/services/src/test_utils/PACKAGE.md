@@ -38,7 +38,11 @@ Feature-gated via `test-utils` feature in `crates/services/Cargo.toml`.
 
 ## AppServiceStub Details
 
-`AppServiceStub` (in `app.rs`) implements `AppService` trait. Builder fields include all 18 services as `Option<Arc<dyn Trait>>`.
+`FakeCloudflared` (in `tunnels.rs`) implements `CloudflaredCli`, `ConnectorProcess` and `TunnelIo`
+in memory, and is injected with `DefaultTunnelService::with_runtime`. Tunnel tests spawn no
+processes, write no files and open no sockets.
+
+`AppServiceStub` (in `app.rs`) implements `AppService` trait. Every service is a builder field of type `Option<Arc<dyn Trait>>`.
 
 Default fixture chain:
 1. `test_db_service` → creates in-memory SQLite with migrations + FrozenTimeService

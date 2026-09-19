@@ -19,6 +19,7 @@ mod sea;
 mod session;
 mod settings;
 mod test_data;
+mod tunnels;
 
 pub use access_requests::*;
 pub use app::*;
@@ -39,6 +40,7 @@ pub use sea::*;
 pub use session::*;
 pub use settings::*;
 pub use test_data::*;
+pub use tunnels::*;
 
 pub use crate::app_access_requests::MockAccessRequestService;
 pub use crate::settings::settings_repository::MockSettingsRepository;

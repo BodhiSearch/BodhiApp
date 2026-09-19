@@ -23,7 +23,8 @@ use services::{AppStatus, AuthContext, DeploymentMode, LOGIN_CALLBACK_PATH, LOOP
              "status": "ready",
              "deployment": "standalone",
              "client_id": "my-client-id",
-             "url": "https://example.com"
+             "url": "https://example.com",
+             "url_public": false
          })),
     )
 )]
@@ -83,6 +84,12 @@ pub async fn setup_show(auth_scope: AuthScope) -> Result<Json<AppInfo>, BodhiErr
     deployment,
     client_id,
     url: settings.public_server_url().await,
+    url_public: settings.url_public().await,
+    remote_access: auth_scope
+      .tunnels()
+      .remote_access_info()
+      .await
+      .map(|info| vec![info]),
     reference_api_url: settings.reference_api_url().await,
   }))
 }

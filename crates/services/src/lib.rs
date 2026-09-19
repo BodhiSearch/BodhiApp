@@ -36,6 +36,7 @@ mod users;
 
 // -- Configuration
 mod settings;
+mod tunnels;
 
 // -- Utility services
 mod utils;
@@ -66,6 +67,7 @@ pub use users::*;
 
 // -- Re-exports: configuration
 pub use settings::*;
+pub use tunnels::*;
 
 // -- Re-exports: utility services
 pub use utils::*;

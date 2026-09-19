@@ -11,7 +11,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.0.60-dev"
+    "version": "0.0.61-dev"
   },
   "servers": [
     {
@@ -1437,6 +1437,7 @@
                   "deployment": "standalone",
                   "status": "ready",
                   "url": "https://example.com",
+                  "url_public": false,
                   "version": "0.1.0"
                 }
               }
@@ -6866,6 +6867,438 @@
         ]
       }
     },
+    "/bodhi/v1/tunnel": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Get Cloudflare Tunnel status",
+        "operationId": "getTunnelStatus",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TunnelStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_admin"
+            ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Enable a Cloudflare named tunnel",
+        "operationId": "enableTunnel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnableTunnelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TunnelStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_admin"
+            ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Stop the Cloudflare Tunnel connector",
+        "operationId": "disableTunnel",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TunnelStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_admin"
+            ]
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Update Cloudflare Tunnel preferences",
+        "operationId": "updateTunnelPreferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTunnelPreferencesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TunnelStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_admin"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/tunnel/setup": {
+      "put": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Validate Cloudflare Tunnel prerequisites",
+        "operationId": "setupTunnel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TunnelSetupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TunnelStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_admin"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/tunnel/sync": {
+      "post": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Retry tunnel authorization-server synchronization",
+        "operationId": "syncTunnelAuthorization",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TunnelStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_admin"
+            ]
+          }
+        ]
+      }
+    },
     "/bodhi/v1/user": {
       "get": {
         "tags": [
@@ -8299,6 +8732,7 @@
           "status",
           "deployment",
           "url",
+          "url_public",
           "reference_api_url"
         ],
         "properties": {
@@ -8333,6 +8767,21 @@
             "description": "Public URL of the server",
             "example": "https://example.com"
           },
+          "url_public": {
+            "type": "boolean",
+            "description": "Whether `url` is reachable from the public internet. Declared by the deployment through\n`BODHI_PUBLIC_URL_REACHABLE`; `false` unless explicitly set. A third-party backend uses this to\ndecide whether it can call this instance directly or must go through `remote_access`.",
+            "example": false
+          },
+          "remote_access": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RemoteAccessInfo"
+            },
+            "description": "Publicly-reachable routes into this instance other than `url` itself, for a third-party backend\nthat cannot use `url` directly. Omitted when there are none. At most one entry today, since an\ninstance runs a single tunnel; it is a list so additional providers do not break the shape."
+          },
           "reference_api_url": {
             "type": "string",
             "description": "Base URL of the external reference API the frontend calls directly (configurable via\n`BODHI_REFERENCE_API_URL`, env-overridable for tests)",
@@ -8346,6 +8795,7 @@
           "reference_api_url": "https://api.getbodhi.app",
           "status": "ready",
           "url": "https://example.com",
+          "url_public": false,
           "version": "0.1.0"
         }
       },
@@ -9304,6 +9754,23 @@
           },
           "max": {
             "$ref": "#/components/schemas/CapabilitySupport"
+          }
+        }
+      },
+      "EnableTunnelRequest": {
+        "type": "object",
+        "required": [
+          "subdomain"
+        ],
+        "properties": {
+          "subdomain": {
+            "type": "string"
+          },
+          "auto_reconnect": {
+            "type": "boolean"
+          },
+          "replace_dns": {
+            "type": "boolean"
           }
         }
       },
@@ -11579,6 +12046,63 @@
           "dynamic_registration"
         ]
       },
+      "RemoteAccessInfo": {
+        "type": "object",
+        "description": "The anonymous counterpart of [`TunnelStatus`]. No field here can carry a path, the zone or raw\nstderr, so the admin-only split holds by construction rather than by remembering to strip fields.",
+        "required": [
+          "provider",
+          "url",
+          "enabled"
+        ],
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/RemoteAccessProvider"
+          },
+          "url": {
+            "type": "string",
+            "description": "The public base URL this route answers on."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "True while still connecting; this is not \"the user switched it on\"."
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RemoteAccessState",
+                "description": "Absent means neither ready nor failed — off, or still coming up."
+              }
+            ]
+          },
+          "auth_status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RemoteAccessState",
+                "description": "Absent means not attempted yet, or in flight."
+              }
+            ]
+          }
+        }
+      },
+      "RemoteAccessProvider": {
+        "type": "string",
+        "enum": [
+          "cloudflared"
+        ]
+      },
+      "RemoteAccessState": {
+        "type": "string",
+        "enum": [
+          "ready",
+          "error"
+        ]
+      },
       "RequestedMcpServer": {
         "type": "object",
         "required": [
@@ -12489,6 +13013,237 @@
           }
         }
       },
+      "TunnelAuthSyncState": {
+        "type": "string",
+        "enum": [
+          "not_attempted",
+          "syncing",
+          "synced",
+          "unreachable",
+          "rejected"
+        ]
+      },
+      "TunnelAuthSyncStatus": {
+        "type": "object",
+        "required": [
+          "state"
+        ],
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/TunnelAuthSyncState"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TunnelBinaryStatus": {
+        "type": "object",
+        "required": [
+          "state",
+          "minimum_version"
+        ],
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/TunnelCheckState"
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TunnelPathSource"
+              }
+            ]
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "minimum_version": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TunnelCheckState": {
+        "type": "string",
+        "enum": [
+          "waiting",
+          "missing",
+          "invalid",
+          "unsupported",
+          "ready"
+        ]
+      },
+      "TunnelConnectionState": {
+        "type": "string",
+        "enum": [
+          "disabled",
+          "connecting",
+          "connected",
+          "failed"
+        ]
+      },
+      "TunnelLoginStatus": {
+        "type": "object",
+        "required": [
+          "state"
+        ],
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/TunnelCheckState"
+          },
+          "cert_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TunnelPathSource"
+              }
+            ]
+          },
+          "zone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TunnelPathSource": {
+        "type": "string",
+        "enum": [
+          "configured",
+          "environment",
+          "path",
+          "standard_location"
+        ]
+      },
+      "TunnelSetupRequest": {
+        "type": "object",
+        "properties": {
+          "cloudflared_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "origin_cert_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TunnelStatus": {
+        "type": "object",
+        "required": [
+          "available",
+          "enabled",
+          "state",
+          "binary",
+          "login",
+          "auto_reconnect",
+          "auth_sync"
+        ],
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "unavailable_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "state": {
+            "$ref": "#/components/schemas/TunnelConnectionState"
+          },
+          "binary": {
+            "$ref": "#/components/schemas/TunnelBinaryStatus"
+          },
+          "login": {
+            "$ref": "#/components/schemas/TunnelLoginStatus"
+          },
+          "hostname": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subdomain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "auto_reconnect": {
+            "type": "boolean"
+          },
+          "public_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "oauth_redirect_uri": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "auth_sync": {
+            "$ref": "#/components/schemas/TunnelAuthSyncStatus"
+          },
+          "error_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdateSettingRequest": {
         "type": "object",
         "required": [
@@ -12525,6 +13280,17 @@
         "example": {
           "name": "Updated Token Name",
           "status": "inactive"
+        }
+      },
+      "UpdateTunnelPreferencesRequest": {
+        "type": "object",
+        "required": [
+          "auto_reconnect"
+        ],
+        "properties": {
+          "auto_reconnect": {
+            "type": "boolean"
+          }
         }
       },
       "UserAccessRequest": {

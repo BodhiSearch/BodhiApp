@@ -46,7 +46,7 @@ All mutating DbService operations on tenant-scoped rows use `begin_tenant_txn(te
 
 ## AppService and AuthScopedAppService
 
-Central service registry (`AppService`) with 20 service accessors and all services as `Arc<dyn Trait>` with `#[mockall::automock]`. `AuthScopedAppService` wraps `Arc<dyn AppService>` + `AuthContext` and provides auth-scoped sub-services. **Architecture rule**: Route handlers use `AuthScopedAppService`. Infrastructure (bootstrap, middleware) uses `AppService` directly. See `PACKAGE.md` for full sub-service list, passthrough accessors, and removed passthroughs.
+Central service registry (`AppService`) whose accessors all return `Arc<dyn Trait>` with `#[mockall::automock]`. `AuthScopedAppService` wraps `Arc<dyn AppService>` + `AuthContext` and provides auth-scoped sub-services. `TunnelService` supervises the local `cloudflared` child and persists only its public hostname, never changing canonical public-host settings. **Architecture rule**: Route handlers use `AuthScopedAppService`. Infrastructure (bootstrap, middleware) uses `AppService` directly. See `PACKAGE.md` for full sub-service list, passthrough accessors, and removed passthroughs.
 
 ## Domain Module Layout
 

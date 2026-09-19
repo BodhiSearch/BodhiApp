@@ -308,6 +308,51 @@ async fn test_make_resource_admin_api_failure(
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
+async fn test_update_tunnel_redirect_uri_uses_service_credentials_and_gateway_patch(
+) -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let token_mock = server
+    .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+    .match_body(Matcher::AllOf(vec![
+      Matcher::UrlEncoded("grant_type".into(), "client_credentials".into()),
+      Matcher::UrlEncoded("client_id".into(), "resource-client".into()),
+      Matcher::UrlEncoded("client_secret".into(), "resource-secret".into()),
+    ]))
+    .with_status(200)
+    .with_body(
+      json!({"access_token": "service-token", "token_type": "Bearer", "expires_in": 300})
+        .to_string(),
+    )
+    .create();
+  let patch_mock = server
+    .mock("PATCH", "/realms/test-realm/bodhi/resources/redirect_uris")
+    .match_header("authorization", "Bearer service-token")
+    .match_body(Matcher::Json(json!({
+      "gateway": "cloudflared",
+      "redirect_uri": "https://remote.example.com/ui/auth/callback",
+    })))
+    .with_status(200)
+    .with_body("{}")
+    .create();
+
+  test_auth_service(&url)
+    .update_tunnel_redirect_uri(
+      "resource-client",
+      "resource-secret",
+      "cloudflared",
+      "https://remote.example.com/ui/auth/callback",
+    )
+    .await?;
+
+  token_mock.assert();
+  patch_mock.assert();
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
 async fn test_exchange_auth_code_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();

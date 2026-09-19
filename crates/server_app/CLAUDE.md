@@ -24,7 +24,7 @@ Standalone HTTP server orchestration: server lifecycle (start/shutdown), listene
 - `aexecute()` -- starts server and blocks until Ctrl+C/SIGTERM
 - `get_server_handle()` -- starts server and returns `ServerShutdownHandle` for programmatic control
 - `ServerShutdownHandle` -- holds `JoinHandle` + shutdown `Sender`, provides `shutdown()` and `shutdown_on_ctrlc()`
-- `ShutdownInferenceCallback` -- stops inference service on shutdown
+- `ShutdownRuntimeCallback` -- stops the local llama runtime, then the Cloudflare Tunnel connector, on graceful shutdown
 - `KeepAliveSettingListener` -- forwards `BODHI_KEEP_ALIVE_SECS` changes to `InferenceService`
 
 ### VariantChangeListener (`src/listener_variant.rs`)
@@ -45,8 +45,9 @@ Standalone HTTP server orchestration: server lifecycle (start/shutdown), listene
 2. Register `VariantChangeListener` and `KeepAliveSettingListener` via `setting_service.add_listener()`
 3. Create optional static router from `include_dir::Dir`
 4. Build routes via `routes_app::build_routes()`
-5. Spawn server task with `ShutdownInferenceCallback`
-6. Await ready signal, report server URL
+5. Graceful shutdown stops both local llama and the Cloudflare Tunnel connector through `ShutdownRuntimeCallback`; Unix tunnel process supervision also handles abrupt parent exit.
+6. Spawn server task with `ShutdownRuntimeCallback`
+7. Await ready signal, report server URL, then make one non-blocking automatic tunnel reconnect attempt when saved configuration requests it
 
 ## IMPORTANT: No `listener_keep_alive.rs`
 

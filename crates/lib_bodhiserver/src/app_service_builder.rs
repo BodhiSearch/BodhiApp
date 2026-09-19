@@ -209,6 +209,12 @@ impl AppServiceBuilder {
     let download_service: Arc<dyn services::DownloadService> = Arc::new(
       services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
     );
+    let tunnel_service: Arc<dyn services::TunnelService> =
+      Arc::new(services::DefaultTunnelService::with_auth(
+        setting_service.clone(),
+        auth_service.clone(),
+        tenant_service.clone(),
+      ));
 
     let app_service = DefaultAppService::new(
       setting_service,
@@ -232,6 +238,7 @@ impl AppServiceBuilder {
       model_router_service,
       health_registry,
       download_service,
+      tunnel_service,
     );
     Ok(app_service)
   }

@@ -26,6 +26,7 @@ Also hosts:
   - **Phase 1**: Extract `is_production`, build encryption key (keyring or validated+hashed `BODHI_ENCRYPTION_KEY`, then a one-time KEK derivation off-thread), build `DbService` (migrate + re-encrypt legacy tenant secrets), build `DefaultSettingService::from_parts()`
   - **Phase 2**: Build remaining services using `setting_service` for config. Multi-tenant mode: `MultiTenantDataService` + `MultitenantInferenceService`; standalone: `LocalDataService` + `StandaloneInferenceService`
 - `build_app_service(bootstrap_parts)` -- convenience wrapper
+  - Wires `DefaultTunnelService` with shared settings, the standalone tenant credentials, and `AuthService`; `BODHI_TUNNEL` follows normal setting precedence with a native-app default.
 
 ### setup_app_dirs (`src/app_dirs_builder.rs`)
 - `setup_app_dirs(options: &AppOptions)` -- returns `(PathBuf, SettingSource, HashMap<String, Value>)` (bodhi_home, source, file_defaults)

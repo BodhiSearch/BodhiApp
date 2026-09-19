@@ -62,11 +62,44 @@ pub fn log_http_response(method: &str, url: &str, service: &str, status: u16, su
   }
 }
 
+pub fn scrub_secrets(text: &str) -> String {
+  fn looks_secret(run: &str) -> bool {
+    if run.len() < 40 {
+      return false;
+    }
+    let upper = run.chars().any(|c| c.is_ascii_uppercase());
+    let lower = run.chars().any(|c| c.is_ascii_lowercase());
+    let digit = run.chars().any(|c| c.is_ascii_digit());
+    (upper && lower && digit) || run.len() >= 80
+  }
+  let mut out = String::with_capacity(text.len());
+  let mut run = String::new();
+  for ch in text.chars() {
+    if ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '+' | '=') {
+      run.push(ch);
+      continue;
+    }
+    if looks_secret(&run) {
+      out.push_str("<redacted>");
+    } else {
+      out.push_str(&run);
+    }
+    run.clear();
+    out.push(ch);
+  }
+  if looks_secret(&run) {
+    out.push_str("<redacted>");
+  } else {
+    out.push_str(&run);
+  }
+  out
+}
+
 pub fn log_http_error(method: &str, url: &str, service: &str, error: &str) {
   error!(
     method = method,
     url = url,
-    error = error,
+    error = %scrub_secrets(error),
     service = service,
     "HTTP request error"
   );

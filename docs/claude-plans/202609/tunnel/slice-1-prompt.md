@@ -80,7 +80,7 @@ Verified at the current `main`. Anchors may drift a line or two — confirm as y
 
 **Navigation** is configured in `crates/bodhi/src/components/shell/shell-nav-config.tsx`. Existing entries show the shape, including how sub-pages hang off a group. Where "Tunnels" belongs in that structure is your call.
 
-**Screen conventions**: the current-generation pages follow patterns documented in `docs/research/tunnel/24-codebase-frontend-settings-v2-and-e2e.md` (page shell, rails, hooks layout, test-id conventions). Read it for the conventions, and ignore its specific type and endpoint names — those were superseded. `23-codebase-persistence-routes-and-backend-tests.md` covers route-module registration, endpoint constants, OpenAPI registration and the persistence layer's conventions, including migration governance.
+**Screen conventions**: the current Remote Access surface and repository paths are summarized in `docs/research/tunnel/bodhiapp-integration-and-risks.md`. Use current production components and tests as the detailed convention source.
 
 ## 7. Explicitly out of scope
 

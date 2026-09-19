@@ -22,6 +22,8 @@ See [CLAUDE.md](CLAUDE.md) for architectural guidance.
 
 `AppServiceBuilder::new(bootstrap_parts: BootstrapParts)` is the sole constructor. Injectable services (`time_service`, `cache_service`) are `Option<Arc<dyn Trait>>` fields with chainable setters returning `Err(ServiceAlreadySet)` on double-set.
 
+The builder also wires `DefaultTunnelService` from the shared settings service; its native-only default gate prevents container installations from starting a connector.
+
 `build()` runs in two phases (see `src/app_service_builder.rs`):
 
 - **Phase 1** -- Destructure `BootstrapParts`. Check `is_production` (by matching `BODHI_ENV_TYPE == "production"` in `system_settings`). Build `encryption_key` (keyring or hash via `build_encryption_key()`). Resolve `app_db_url` from env var, file defaults, or convention (`sqlite:$BODHI_HOME/bodhi.sqlite`). Build `DbService`, then `DefaultSettingService::from_parts(parts, db_service)`.

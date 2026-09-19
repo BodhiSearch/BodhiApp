@@ -132,7 +132,7 @@ constant is `/ui/auth/callback` (`crates/services/src/settings/constants.rs:56`)
 | D5 | Add no new comments; remove restating/narrating comments from every file touched. |
 | D6 | No backwards compatibility except the database. This feature persists through the existing settings table, so no migration is needed. |
 | D7 | **Durable state lives in the database only.** Nothing this feature depends on may be persisted as a file under `BODHI_HOME` — in Docker that volume is ephemeral. The credentials file is eliminated entirely (D8); any scratch file that remains is re-created as part of the flow and never assumed to exist. |
-| D8 | Credentials are handed to `cloudflared` **in the child process environment, not on the command line.** argv is world-readable via `ps` / `/proc/<pid>/cmdline`; "never pass a Cloudflare secret as argv" is already a hard constraint in `tunnel/slice-1-prompt.md` and `docs/research/tunnel/10-*.md`. The environment achieves the same goal — no file — without the exposure. |
+| D8 | Credentials are handed to `cloudflared` **in the child process environment, not on the command line.** argv is world-readable via `ps` / `/proc/<pid>/cmdline`; "never pass a Cloudflare secret as argv" is already a hard constraint in `tunnel/slice-1-prompt.md` and `docs/research/tunnel/named-tunnel-operating-model.md`. The environment achieves the same goal — no file — without the exposure. |
 | D9 | `TunnelAuthSyncState` splits `failed` into `unreachable` and `rejected` (§4b), because the design gives each a different message and a different remedy. The Keycloak registration is **never cleared on disable** — the PATCH is gateway-keyed, so a later subdomain change overwrites the previous entry rather than accumulating. The design mock's FAQ sentence "Turning remote access off removes it again" is wrong and is removed from `design/tunnels/ra-faq.jsx` as part of this work. |
 | D10 | **Remote Access is a single-instance, native-deployment feature.** Its behaviour under a clustered/replicated deployment is undefined: every replica would resolve the same tunnel name and become an additional connector, and Cloudflare would load-balance one hostname across unrelated instances. Out of scope to fix now — recorded as tech debt, with `BODHI_TUNNEL` required to stay unset (default) for non-native deployments. |
 
@@ -158,7 +158,7 @@ Flow on each `enable()` / `reconnect()`:
 3. Spawn the connector with the token in its **environment**, not argv, and no `--credentials-file`.
 4. Nothing is written to disk at run time; nothing is read back on the next start.
 
-Step 2 is confirmed by our own research, `docs/research/tunnel/10-cloudflared-cli-named-tunnel-lifecycle.md`
+Step 2 is confirmed by our own research, `docs/research/tunnel/named-tunnel-operating-model.md`
 §5, which settles the two things that matter:
 
 - `token` **works for locally-managed (credentials-file) tunnels**, not just dashboard ones, and "doesn't
@@ -198,7 +198,7 @@ hostnames still persisted in the two dev databases):
 |---|---|
 | `bodhi-f03ecb0c5ffe` | `amir.my-tunnel.getbodhi.app` |
 | `bodhi-13a0b174303f` | `my-tunnel.getbodhi.app` |
-| `bodhi-65e60206fddd` | `my-tunnel.bodhi.bot` |
+| `bodhi-65e60206fddd` | `my-tunnel.example.com` |
 | `bodhi-9e971e707602` | not recoverable — check the Cloudflare dashboard |
 
 ```bash
@@ -402,7 +402,7 @@ which of the two file-free credential mechanisms Phase 1 keeps.
 
 | # | Gates | Check |
 |---|---|---|
-| ~~**O0**~~ | Phase 1 → 2 | **ANSWERED 2026-09-18 — yes, `TUNNEL_TOKEN` stands.** Verified against the real account with cloudflared 2026.9.1 on two tunnels that had been created locally from `cert.pem`. `cloudflared tunnel token <name>` returned a token for each; running with only that token logged `Starting tunnel tunnelID=<the local tunnel>` and `url:http://127.0.0.1:18080` in its settings, registered 4 edge connections, and never referenced a credentials file. End to end, isolated on a tunnel with no other connector attached, `http://my-tunnel.getbodhi.app.bodhi.bot/` returned `200` with the throwaway origin's body. The `connector_credentials_env` seam stays on `TUNNEL_TOKEN`; `TUNNEL_CRED_CONTENTS` is not needed. |
+| ~~**O0**~~ | Phase 1 → 2 | **ANSWERED 2026-09-18 — yes, `TUNNEL_TOKEN` stands.** Verified against the real account with cloudflared 2026.9.1 on two tunnels that had been created locally from `cert.pem`. `cloudflared tunnel token <name>` returned a token for each; running with only that token logged `Starting tunnel tunnelID=<the local tunnel>` and `url:http://127.0.0.1:18080` in its settings, registered 4 edge connections, and never referenced a credentials file. End to end, isolated on a tunnel with no other connector attached, `http://my-tunnel.sub.example.com/` returned `200` with the throwaway origin's body. The `connector_credentials_env` seam stays on `TUNNEL_TOKEN`; `TUNNEL_CRED_CONTENTS` is not needed. |
 | O1 | Phase 1 | `cloudflared` is discovered and `cert.pem` is accepted. Gates everything below it. |
 | O2 | Phase 1 | Enable once. Exactly one tunnel named `bodhi-app-tunnel-<uuid>` exists, and the UUID matches this instance's OAuth client id. |
 | O3 | Phase 1 | `make app.clear`, then enable again on the same subdomain. The same tunnel must be reused and must connect. **This is the regression that motivated the plan** — if it still fails, Phase 1 is not done. |
@@ -415,14 +415,17 @@ which of the two file-free credential mechanisms Phase 1 keeps.
 
 The one-time orphan cleanup above is independent of these and can happen whenever convenient.
 
+> Hostnames throughout this document use `example.com` placeholders; the real zone is not named in
+> this repository. The operational records below describe real account state under that zone.
+
 **Orphan cleanup — done 2026-09-18.** The four `bodhi-<12 hex>` tunnels (`bodhi-13a0b174303f`, `bodhi-65e60206fddd`,
 `bodhi-9e971e707602`, `bodhi-f03ecb0c5ffe`) and their four `*.cfargotunnel.com` CNAMEs were deleted from the
-`bodhi.bot` zone; `cloudflared tunnel list` is now empty and the zone's A/MX/NS/TXT records were untouched. Locally,
+`example.com` zone; `cloudflared tunnel list` is now empty and the zone's A/MX/NS/TXT records were untouched. Locally,
 `~/.bodhi-dev-makefile/tunnels/` and the saved `BODHI_TUNNEL_HOST` were removed, so the next enable starts clean and
 should produce exactly one tunnel named `bodhi-app-tunnel-0cb93fdd-f8f4-471e-aaa8-54feb41c073d`.
 
-**Constraint discovered while verifying O0.** Cloudflare Universal SSL covers `bodhi.bot` and `*.bodhi.bot` but not
-multi-level names, so a hostname like `my-tunnel.getbodhi.app.bodhi.bot` fails the TLS handshake outright and is
+**Constraint discovered while verifying O0.** Cloudflare Universal SSL covers `example.com` and `*.example.com` but not
+multi-level names, so a hostname like `my-tunnel.sub.example.com` fails the TLS handshake outright and is
 reachable only over plain HTTP — useless for OAuth. Three of the four orphan records were of exactly this shape,
 created by the slice-1 code before `validate_subdomain` rejected dots. The validation now prevents it
 (`service.rs:576`); Phase 5 copy should say plainly that the subdomain is a single label, and why.

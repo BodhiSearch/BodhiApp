@@ -44,7 +44,7 @@ Key methods on `AuthScope` (via `Deref` to `AuthScopedAppService`):
 
 Falls back to `AuthContext::Anonymous { deployment: DeploymentMode::Standalone }` when no auth middleware has populated the extension.
 
-**AuthContext**: 5 variants — `Anonymous`, `Session`, `MultiTenantSession`, `ApiToken`, `ExternalApp`. `Session.role` and `MultiTenantSession.role` are `ResourceRole` (not `Option`). Full variant details in `crates/services/CLAUDE.md`.
+**AuthContext**: `Anonymous`, `Session`, `MultiTenantSession`, `ApiToken`, `ExternalApp`. `Session.role` and `MultiTenantSession.role` are `ResourceRole` (not `Option`). Full variant details in `crates/services/CLAUDE.md`.
 
 ## Error Handling Chain
 
@@ -67,6 +67,8 @@ Every new route must:
 5. Build TS client: `make build.ts-client`
 6. Import from `@bodhiapp/ts-client` in frontend (not hand-rolled types)
 7. Verify: `cargo test -p routes_app -- openapi` and `cd crates/bodhi && npm test`
+
+**Cloudflare Tunnel**: `tunnels/routes_tunnels.rs` is an admin-session-only control plane. Its OAuth callback support is deliberately origin-aware in `auth/routes_auth.rs`: only when `BODHI_TUNNEL=true`, `Host` equals the configured tunnel hostname, and Cloudflare supplies `X-Forwarded-Proto: https`, it uses that HTTPS callback origin. Do not set `BODHI_PUBLIC_HOST` for this feature because local and tunnel origins coexist.
 
 ## Anthropic Proxy: LlmLibertyOauth Path
 

@@ -19,7 +19,7 @@ use services::{
   test_utils::{expired_token, token, AppServiceStubBuilder, SettingServiceStub},
   AppService, DefaultSessionService, SessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
 };
-use services::{BODHI_HOST, BODHI_PORT, BODHI_SCHEME};
+use services::{BODHI_HOST, BODHI_PORT, BODHI_SCHEME, BODHI_TUNNEL, BODHI_TUNNEL_HOST};
 use std::{collections::HashMap, sync::Arc};
 use tempfile::TempDir;
 use time::OffsetDateTime;
@@ -121,12 +121,59 @@ async fn test_auth_initiate_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
 }
 
 #[rstest]
+#[case::loopback(
+  None,
+  false,
+  "localhost:1135",
+  None,
+  "http://localhost:1135/ui/auth/callback"
+)]
+#[case::lan_ip(
+  None,
+  false,
+  "192.168.1.100:1135",
+  None,
+  "http://192.168.1.100:1135/ui/auth/callback"
+)]
+#[case::tunnel(
+  Some("tunnel.example.com"),
+  true,
+  "tunnel.example.com",
+  Some("https"),
+  "https://tunnel.example.com/ui/auth/callback"
+)]
+#[case::tunnel_host_mismatch(
+  Some("tunnel.example.com"),
+  true,
+  "other.example.com",
+  Some("https"),
+  "http://other.example.com:1135/ui/auth/callback"
+)]
+#[case::tunnel_host_without_forwarded_https(
+  Some("tunnel.example.com"),
+  true,
+  "tunnel.example.com",
+  None,
+  "http://tunnel.example.com:1135/ui/auth/callback"
+)]
+#[case::configured_but_disabled_tunnel(
+  Some("tunnel.example.com"),
+  false,
+  "tunnel.example.com",
+  Some("https"),
+  "http://tunnel.example.com:1135/ui/auth/callback"
+)]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_auth_initiate_handler_loopback_host_detection(
+async fn test_auth_initiate_handler_uses_request_origin_with_tunnel_feature_gate(
   temp_bodhi_home: TempDir,
+  #[case] tunnel_host: Option<&str>,
+  #[case] tunnel_enabled: bool,
+  #[case] request_host: &str,
+  #[case] forwarded_proto: Option<&str>,
+  #[case] expected_callback_url: &str,
 ) -> anyhow::Result<()> {
-  let setting_service = SettingServiceStub::with_settings(HashMap::from([
+  let mut settings = HashMap::from([
     (BODHI_SCHEME.to_string(), "http".to_string()),
     (BODHI_HOST.to_string(), "0.0.0.0".to_string()),
     (BODHI_PORT.to_string(), "1135".to_string()),
@@ -135,7 +182,13 @@ async fn test_auth_initiate_handler_loopback_host_detection(
       "http://test-id.getbodhi.app".to_string(),
     ),
     (BODHI_AUTH_REALM.to_string(), "test-realm".to_string()),
-  ]));
+  ]);
+  if let Some(tunnel_host) = tunnel_host {
+    settings.insert(BODHI_TUNNEL_HOST.to_string(), tunnel_host.to_string());
+  }
+  let mut envs = HashMap::new();
+  envs.insert(BODHI_TUNNEL.to_string(), tunnel_enabled.to_string());
+  let setting_service = SettingServiceStub::with_envs_settings(envs, settings);
 
   let dbfile = temp_bodhi_home.path().join("test.db");
   let mut builder = AppServiceStubBuilder::default();
@@ -164,10 +217,13 @@ async fn test_auth_initiate_handler_loopback_host_detection(
     .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
+  let mut request = Request::post("/auth/initiate").header("Host", request_host);
+  if let Some(forwarded_proto) = forwarded_proto {
+    request = request.header("x-forwarded-proto", forwarded_proto);
+  }
   let resp = router
     .oneshot(
-      Request::post("/auth/initiate")
-        .header("Host", "localhost:1135")
+      request
         .json(json! {{"client_id": "test_client_id"}})?
         .with_auth_context(AuthContext::Anonymous {
           deployment: services::DeploymentMode::Standalone,
@@ -183,77 +239,7 @@ async fn test_auth_initiate_handler_loopback_host_detection(
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
   assert_eq!(
-    Some("http://localhost:1135/ui/auth/callback"),
-    query_params.get("redirect_uri").map(|s| s.as_str())
-  );
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_auth_initiate_handler_network_host_usage(
-  temp_bodhi_home: TempDir,
-) -> anyhow::Result<()> {
-  let setting_service = SettingServiceStub::with_settings(HashMap::from([
-    (BODHI_SCHEME.to_string(), "http".to_string()),
-    (BODHI_HOST.to_string(), "0.0.0.0".to_string()),
-    (BODHI_PORT.to_string(), "1135".to_string()),
-    (
-      BODHI_AUTH_URL.to_string(),
-      "http://test-id.getbodhi.app".to_string(),
-    ),
-    (BODHI_AUTH_REALM.to_string(), "test-realm".to_string()),
-  ]));
-
-  let dbfile = temp_bodhi_home.path().join("test.db");
-  let mut builder = AppServiceStubBuilder::default();
-  builder
-    .setting_service(Arc::new(setting_service))
-    .build_session_service(dbfile)
-    .await;
-  builder
-    .with_tenant(services::Tenant {
-      id: String::new(),
-      client_id: "test_client_id".to_string(),
-      client_secret: "test_client_secret".to_string(),
-      name: "Test App".to_string(),
-      description: None,
-      status: services::AppStatus::Ready,
-      created_by: Some("test-user".to_string()),
-      created_at: chrono::Utc::now(),
-      updated_at: chrono::Utc::now(),
-    })
-    .await;
-  let app_service = builder.build().await?;
-  let app_service = Arc::new(app_service);
-  let state = app_service.clone();
-  let router = Router::new()
-    .route("/auth/initiate", post(auth_initiate))
-    .layer(app_service.session_service().session_layer(false))
-    .with_state(state);
-
-  let resp = router
-    .oneshot(
-      Request::post("/auth/initiate")
-        .header("Host", "192.168.1.100:1135")
-        .json(json! {{"client_id": "test_client_id"}})?
-        .with_auth_context(AuthContext::Anonymous {
-          deployment: services::DeploymentMode::Standalone,
-        }),
-    )
-    .await?;
-
-  assert_eq!(StatusCode::CREATED, resp.status());
-  let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
-  let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
-
-  let url = Url::parse(&body.location)?;
-  let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
-
-  assert_eq!(
-    Some("http://192.168.1.100:1135/ui/auth/callback"),
+    Some(expected_callback_url),
     query_params.get("redirect_uri").map(|s| s.as_str())
   );
 

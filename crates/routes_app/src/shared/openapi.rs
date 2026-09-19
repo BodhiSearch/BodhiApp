@@ -44,6 +44,10 @@ use crate::{
   __path_settings_destroy, __path_settings_index, __path_settings_update, __path_setup_create,
   __path_setup_show, SetupRequest, SetupResponse,
 };
+use crate::{
+  __path_tunnel_disable, __path_tunnel_enable, __path_tunnel_preferences, __path_tunnel_setup,
+  __path_tunnel_status, __path_tunnel_sync,
+};
 // Tenant DTOs and handlers
 use crate::{
   __path_dashboard_auth_callback, __path_dashboard_auth_initiate, __path_tenants_activate,
@@ -60,20 +64,22 @@ use services::{
   ApiModelRequest, ApiModelResponse, AppAccessRequestStatus, AppRole, AppStatus, ApprovalStatus,
   ApproveUserAccessRequest, ApprovedResources, ApprovedResourcesV1, ChangeRoleRequest,
   CopyAliasRequest, CreateMcpAuthConfigRequest, CreateTokenRequest, DownloadRequest,
-  DownloadStatus, FallbackConfig, FetchModelsRequest, FetchModelsResponse, LlmLibertyEnvelope,
-  LlmLibertyEnvelopeUpdate, LlmLibertySummary, Mcp, McpApproval, McpAuthConfigParam,
-  McpAuthConfigParamInput, McpAuthConfigResponse, McpAuthConfigType, McpAuthConfigsListResponse,
-  McpAuthParam, McpAuthParamInput, McpAuthParamType, McpAuthType, McpGrant, McpInstance,
-  McpRequest, McpResponse, McpServer, McpServerInfo, McpServerRequest, ModelAliasResponse,
-  ModelGrant, ModelRouterRequest, ModelRouterResponse, NewDownloadRequest, OAIRequestParams,
-  PaginatedAliasResponse, PaginatedDownloadResponse, PaginatedTokenResponse,
+  DownloadStatus, EnableTunnelRequest, FallbackConfig, FetchModelsRequest, FetchModelsResponse,
+  LlmLibertyEnvelope, LlmLibertyEnvelopeUpdate, LlmLibertySummary, Mcp, McpApproval,
+  McpAuthConfigParam, McpAuthConfigParamInput, McpAuthConfigResponse, McpAuthConfigType,
+  McpAuthConfigsListResponse, McpAuthParam, McpAuthParamInput, McpAuthParamType, McpAuthType,
+  McpGrant, McpInstance, McpRequest, McpResponse, McpServer, McpServerInfo, McpServerRequest,
+  ModelAliasResponse, ModelGrant, ModelRouterRequest, ModelRouterResponse, NewDownloadRequest,
+  OAIRequestParams, PaginatedAliasResponse, PaginatedDownloadResponse, PaginatedTokenResponse,
   PaginatedUserAccessResponse, PaginatedUserAliasResponse, RefreshRequest, RefreshResponse,
   RefreshSource, RequestedMcpServer, RequestedResources, RequestedResourcesV1, ResourceRole,
   RouterTarget, RouterTargetRequest, RoutingStrategyConfig, SettingInfo, SettingMetadata,
   SettingService, SettingSource, TestCreds, TestPromptRequest, TestPromptResponse, TokenCreated,
-  TokenDetail, TokenGrants, TokenGrantsV1, TokenScope, TokenStatus, UpdateSettingRequest,
-  UpdateTokenRequest, UserAccessStatusResponse, UserAliasRequest, UserAliasResponse, UserInfo,
-  UserListResponse, UserScope,
+  TokenDetail, TokenGrants, TokenGrantsV1, TokenScope, TokenStatus, TunnelAuthSyncState,
+  TunnelAuthSyncStatus, TunnelBinaryStatus, TunnelCheckState, TunnelConnectionState,
+  TunnelLoginStatus, TunnelPathSource, TunnelSetupRequest, TunnelStatus, UpdateSettingRequest,
+  UpdateTokenRequest, UpdateTunnelPreferencesRequest, UserAccessStatusResponse, UserAliasRequest,
+  UserAliasResponse, UserInfo, UserListResponse, UserScope,
 };
 use std::sync::Arc;
 use utoipa::{
@@ -120,6 +126,9 @@ make_ui_endpoint!(ENDPOINT_QUEUE, "queue");
 make_ui_endpoint!(ENDPOINT_CHAT_TEMPLATES, "chat_templates");
 make_ui_endpoint!(ENDPOINT_TOKENS, "tokens");
 make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
+make_ui_endpoint!(ENDPOINT_TUNNEL, "tunnel");
+make_ui_endpoint!(ENDPOINT_TUNNEL_SETUP, "tunnel/setup");
+make_ui_endpoint!(ENDPOINT_TUNNEL_SYNC, "tunnel/sync");
 make_ui_endpoint!(ENDPOINT_APPS_MCPS, "apps/mcps");
 make_ui_endpoint!(ENDPOINT_TENANTS, "tenants");
 // MCP endpoint constants are defined in mcps/mod.rs
@@ -377,6 +386,17 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             SettingMetadata,
             SettingSource,
             UpdateSettingRequest,
+            EnableTunnelRequest,
+            TunnelSetupRequest,
+            UpdateTunnelPreferencesRequest,
+            TunnelCheckState,
+            TunnelPathSource,
+            TunnelBinaryStatus,
+            TunnelLoginStatus,
+            TunnelAuthSyncState,
+            TunnelAuthSyncStatus,
+            TunnelConnectionState,
+            TunnelStatus,
             // mcps
             McpRequest,
             McpServerRequest,
@@ -475,6 +495,12 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         settings_index,
         settings_update,
         settings_destroy,
+        tunnel_status,
+        tunnel_enable,
+        tunnel_setup,
+        tunnel_preferences,
+        tunnel_sync,
+        tunnel_disable,
 
         // User request endpoints
         users_request_access,

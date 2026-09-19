@@ -7,8 +7,10 @@ use routes_app::build_routes;
 use services::{impl_error_from, AppError, ErrorType};
 use services::{AppService, SettingServiceError, BODHI_KEEP_ALIVE_SECS, DEFAULT_KEEP_ALIVE_SECS};
 use services::{SettingSource, SettingsChangeListener};
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
+
+const TUNNEL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -33,16 +35,24 @@ pub enum ServeCommand {
   ByParams { host: String, port: u16 },
 }
 
-pub struct ShutdownLocalLlamaCallback {
+pub struct ShutdownRuntimeCallback {
   app_service: Arc<dyn AppService>,
 }
 
 #[async_trait::async_trait]
-impl ShutdownCallback for ShutdownLocalLlamaCallback {
+impl ShutdownCallback for ShutdownRuntimeCallback {
   async fn shutdown(&self) {
     if let Some(rt) = self.app_service.local_llama() {
       if let Err(err) = rt.stop().await {
         tracing::warn!(err = ?err, "error stopping local llama runtime");
+      }
+    }
+    let tunnel_service = self.app_service.tunnel_service();
+    match tokio::time::timeout(TUNNEL_SHUTDOWN_TIMEOUT, tunnel_service.disable()).await {
+      Ok(Ok(_)) => (),
+      Ok(Err(err)) => tracing::warn!(err = ?err, "error stopping Cloudflare Tunnel connector"),
+      Err(_) => {
+        tracing::warn!("timed out stopping Cloudflare Tunnel connector, abandoning the wait")
       }
     }
   }
@@ -140,8 +150,9 @@ impl ServeCommand {
     let server_url = format!("{scheme}://{host}:{port}");
     let public_url = setting_service.public_server_url().await;
 
+    let reconnect_service = service.clone();
     let join_handle: JoinHandle<std::result::Result<(), ServeError>> = tokio::spawn(async move {
-      let callback = Box::new(ShutdownLocalLlamaCallback {
+      let callback = Box::new(ShutdownRuntimeCallback {
         app_service: service,
       });
       match server.start_new(app, Some(callback)).await {
@@ -156,6 +167,11 @@ impl ServeCommand {
       Ok(()) => {
         println!("server started on server_url={server_url}, public_url={public_url}");
         tracing::info!(server_url, public_url, "server started");
+        tokio::spawn(async move {
+          if let Err(err) = reconnect_service.tunnel_service().reconnect().await {
+            tracing::warn!(err = ?err, "Cloudflare Tunnel startup reconnect failed");
+          }
+        });
       }
       Err(err) => {
         tracing::warn!(?err, "ready channel closed before could receive signal");

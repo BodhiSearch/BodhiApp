@@ -1,5 +1,5 @@
 use crate::build_routes;
-use axum::{body::Body, http::Request, Router};
+use axum::{body::Body, http::Request, routing::MethodRouter, Router};
 use chrono::Utc;
 use server_core::{DefaultSharedContext, LocalLlamaImpl, SharedContext};
 use services::{
@@ -20,6 +20,28 @@ use tower_sessions::{
   SessionStore,
 };
 use uuid::Uuid;
+
+pub fn single_route_router(
+  path: &str,
+  method_router: MethodRouter<Arc<dyn AppService>>,
+  app_service: Arc<dyn AppService>,
+) -> Router {
+  Router::new()
+    .route(path, method_router)
+    .with_state(app_service)
+}
+
+pub fn single_route_router_with_session(
+  path: &str,
+  method_router: MethodRouter<Arc<dyn AppService>>,
+  app_service: Arc<dyn AppService>,
+) -> Router {
+  let session_layer = app_service.session_service().session_layer(false);
+  Router::new()
+    .route(path, method_router)
+    .layer(session_layer)
+    .with_state(app_service)
+}
 
 /// Fully-composed test router with services wired to real in-memory implementations
 /// (SQLite, file-based data service, etc.). Returned `TempDir` must outlive the test.

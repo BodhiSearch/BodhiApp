@@ -54,6 +54,10 @@ use crate::{
   gemini_action_handler, gemini_models_get, gemini_models_list, ENDPOINT_GEMINI_MODEL,
   ENDPOINT_GEMINI_MODELS,
 };
+use crate::{
+  tunnel_disable, tunnel_enable, tunnel_preferences, tunnel_setup, tunnel_status, tunnel_sync,
+  ENDPOINT_TUNNEL, ENDPOINT_TUNNEL_SETUP, ENDPOINT_TUNNEL_SYNC,
+};
 use axum::{
   http::HeaderName,
   middleware::{from_fn, from_fn_with_state},
@@ -477,6 +481,15 @@ pub async fn build_routes(
 
   let admin_session_apis = Router::new()
     .route(ENDPOINT_SETTINGS, get(settings_index))
+    .route(
+      ENDPOINT_TUNNEL,
+      get(tunnel_status)
+        .put(tunnel_enable)
+        .patch(tunnel_preferences)
+        .delete(tunnel_disable),
+    )
+    .route(ENDPOINT_TUNNEL_SETUP, put(tunnel_setup))
+    .route(ENDPOINT_TUNNEL_SYNC, post(tunnel_sync))
     .route(
       &format!("{ENDPOINT_SETTINGS}/{{key}}"),
       put(settings_update),

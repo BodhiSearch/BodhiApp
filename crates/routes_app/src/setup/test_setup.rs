@@ -1,12 +1,14 @@
 use crate::setup::routes_setup::{setup_create, setup_show};
 use crate::setup::setup_api_schemas::{AppInfo, SetupRequest};
-use crate::test_utils::{RequestAuthContextExt, TEST_ENDPOINT_APP_INFO};
+use crate::test_utils::{
+  single_route_router, single_route_router_with_session, RequestAuthContextExt,
+  TEST_ENDPOINT_APP_INFO,
+};
 use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
   http::{Request, StatusCode},
   routing::{get, post},
-  Router,
 };
 
 use pretty_assertions::assert_eq;
@@ -33,6 +35,8 @@ use tower::ServiceExt;
     deployment: services::DeploymentMode::Standalone,
     client_id: Some("test-client".to_string()),
     url: "http://localhost:1135".to_string(),
+    url_public: false,
+    remote_access: None,
     reference_api_url: "https://dev-api.getbodhi.app".to_string(),
   }
 )]
@@ -46,11 +50,8 @@ async fn test_app_info_handler(
   builder.with_session_service().await;
   let app_service = builder.build().await?;
   let app_service = Arc::new(app_service);
-  let state: Arc<dyn services::AppService> = app_service.clone();
-  let router = Router::new()
-    .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer(false))
-    .with_state(state);
+  let router =
+    single_route_router_with_session(TEST_ENDPOINT_APP_INFO, get(setup_show), app_service.clone());
   let resp = router
     .oneshot(Request::get(TEST_ENDPOINT_APP_INFO).body(Body::empty())?)
     .await?;
@@ -74,11 +75,8 @@ async fn test_app_info_handler_with_client_id() -> anyhow::Result<()> {
   builder.with_session_service().await;
   let app_service = builder.build().await?;
   let app_service = Arc::new(app_service);
-  let state: Arc<dyn services::AppService> = app_service.clone();
-  let router = Router::new()
-    .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer(false))
-    .with_state(state);
+  let router =
+    single_route_router_with_session(TEST_ENDPOINT_APP_INFO, get(setup_show), app_service.clone());
 
   let auth_context = AuthContext::Session {
     client_id: "my-test-client-id".to_string(),
@@ -106,10 +104,164 @@ async fn test_app_info_handler_with_client_id() -> anyhow::Result<()> {
       deployment: services::DeploymentMode::Standalone,
       client_id: Some("my-test-client-id".to_string()),
       url: "http://localhost:1135".to_string(),
+      url_public: false,
+      remote_access: None,
       reference_api_url: "https://dev-api.getbodhi.app".to_string(),
     },
     value
   );
+  Ok(())
+}
+
+/// `/bodhi/v1/info` is anonymous and is how a third-party backend decides whether it may call this
+/// instance directly, so the declared reachability has to survive the trip through the handler.
+#[anyhow_trace]
+#[rstest]
+#[case::declared_public(Some("true"), true)]
+#[case::declared_not_public(Some("false"), false)]
+#[case::undeclared_is_not_public(None, false)]
+#[tokio::test]
+async fn test_app_info_reports_declared_url_reachability(
+  #[case] declared: Option<&str>,
+  #[case] expected: bool,
+) -> anyhow::Result<()> {
+  let mut settings = HashMap::new();
+  if let Some(value) = declared {
+    settings.insert(
+      services::BODHI_PUBLIC_URL_REACHABLE.to_string(),
+      value.to_string(),
+    );
+  }
+  let setting_service = SettingServiceStub::default()
+    .append_settings(settings)
+    .await;
+
+  let mut builder = AppServiceStubBuilder::default();
+  builder
+    .with_tenant(Tenant::test_with_status(AppStatus::Ready))
+    .await;
+  builder.with_session_service().await;
+  builder.setting_service(Arc::new(setting_service));
+  let app_service = Arc::new(builder.build().await?);
+  let router =
+    single_route_router_with_session(TEST_ENDPOINT_APP_INFO, get(setup_show), app_service.clone());
+
+  let resp = router
+    .oneshot(Request::get(TEST_ENDPOINT_APP_INFO).body(Body::empty())?)
+    .await?;
+  assert_eq!(StatusCode::OK, resp.status());
+  assert_eq!(expected, resp.json::<AppInfo>().await?.url_public);
+  Ok(())
+}
+
+async fn app_info_json_with_tunnel(
+  info: Option<services::RemoteAccessInfo>,
+) -> anyhow::Result<Value> {
+  let mut tunnel = services::MockTunnelService::new();
+  tunnel
+    .expect_remote_access_info()
+    .returning(move || info.clone());
+
+  let mut builder = AppServiceStubBuilder::default();
+  builder
+    .with_tenant(Tenant::test_with_status(AppStatus::Ready))
+    .await;
+  builder.with_session_service().await;
+  builder.tunnel_service(Arc::new(tunnel) as Arc<dyn services::TunnelService>);
+  let app_service = Arc::new(builder.build().await?);
+  let router =
+    single_route_router_with_session(TEST_ENDPOINT_APP_INFO, get(setup_show), app_service.clone());
+
+  let resp = router
+    .oneshot(Request::get(TEST_ENDPOINT_APP_INFO).body(Body::empty())?)
+    .await?;
+  assert_eq!(StatusCode::OK, resp.status());
+  Ok(resp.json::<Value>().await?)
+}
+
+fn remote_access_fixture() -> services::RemoteAccessInfo {
+  services::RemoteAccessInfo {
+    provider: services::RemoteAccessProvider::Cloudflared,
+    url: "https://my-tunnel.example.com".to_string(),
+    enabled: true,
+    status: Some(services::RemoteAccessState::Ready),
+    auth_status: Some(services::RemoteAccessState::Ready),
+  }
+}
+
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_app_info_advertises_a_live_tunnel() -> anyhow::Result<()> {
+  let value = app_info_json_with_tunnel(Some(remote_access_fixture())).await?;
+  let entries = value["remote_access"].as_array().expect("an array");
+  assert_eq!(1, entries.len());
+  assert_eq!("cloudflared", entries[0]["provider"]);
+  assert_eq!("https://my-tunnel.example.com", entries[0]["url"]);
+  assert_eq!(true, entries[0]["enabled"]);
+  assert_eq!("ready", entries[0]["status"]);
+  assert_eq!("ready", entries[0]["auth_status"]);
+  Ok(())
+}
+
+/// Absent, not `null` and not `[]` — a consumer should be able to read the key's presence as
+/// "there is somewhere else to reach this instance".
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_app_info_omits_remote_access_entirely_when_there_is_none() -> anyhow::Result<()> {
+  let value = app_info_json_with_tunnel(None).await?;
+  assert!(
+    value.get("remote_access").is_none(),
+    "expected the key to be absent, got: {value}"
+  );
+  Ok(())
+}
+
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_app_info_omits_undecided_tunnel_states() -> anyhow::Result<()> {
+  let value = app_info_json_with_tunnel(Some(services::RemoteAccessInfo {
+    enabled: false,
+    status: None,
+    auth_status: None,
+    ..remote_access_fixture()
+  }))
+  .await?;
+  let entry = &value["remote_access"][0];
+  assert!(entry.get("status").is_none(), "got: {entry}");
+  assert!(entry.get("auth_status").is_none(), "got: {entry}");
+  assert_eq!("cloudflared", entry["provider"]);
+  assert_eq!(false, entry["enabled"]);
+  Ok(())
+}
+
+/// The full `TunnelStatus` carries filesystem paths, the Cloudflare zone and raw `cloudflared`
+/// stderr, and is admin-only for exactly that reason. `/bodhi/v1/info` is anonymous and, once a
+/// tunnel is live, reachable from the open internet — so none of it may cross over.
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_app_info_leaks_no_tunnel_diagnostics() -> anyhow::Result<()> {
+  let value = app_info_json_with_tunnel(Some(remote_access_fixture())).await?;
+  let payload = serde_json::to_string(&value)?;
+  for forbidden in [
+    "error_message",
+    "error_code",
+    "cert_path",
+    "binary",
+    "zone",
+    "subdomain",
+    "oauth_redirect_uri",
+    "unavailable_reason",
+    "auto_reconnect",
+  ] {
+    assert!(
+      !payload.contains(forbidden),
+      "anonymous /info leaked {forbidden}: {payload}"
+    );
+  }
   Ok(())
 }
 
@@ -129,11 +281,7 @@ async fn test_setup_handler_error() -> anyhow::Result<()> {
       .build()
       .await?,
   );
-  let state = app_service.clone();
-
-  let router = Router::new()
-    .route("/setup", post(setup_create))
-    .with_state(state);
+  let router = single_route_router("/setup", post(setup_create), app_service.clone());
 
   let resp = router
     .oneshot(Request::post("/setup").json(payload)?)
@@ -183,10 +331,7 @@ async fn test_setup_handler_success() -> anyhow::Result<()> {
       .build()
       .await?,
   );
-  let state = app_service.clone();
-  let router = Router::new()
-    .route("/setup", post(setup_create))
-    .with_state(state);
+  let router = single_route_router("/setup", post(setup_create), app_service.clone());
 
   let response = router
     .oneshot(Request::post("/setup").json(request)?)
@@ -244,11 +389,7 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
       .build()
       .await?,
   );
-  let state = app_service.clone();
-
-  let router = Router::new()
-    .route("/setup", post(setup_create))
-    .with_state(state);
+  let router = single_route_router("/setup", post(setup_create), app_service.clone());
 
   let request = SetupRequest {
     name: "Test Server Name".to_string(),
@@ -315,11 +456,7 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
       .build()
       .await?,
   );
-  let state = app_service.clone();
-
-  let router = Router::new()
-    .route("/setup", post(setup_create))
-    .with_state(state);
+  let router = single_route_router("/setup", post(setup_create), app_service.clone());
 
   let request = SetupRequest {
     name: "Test Server Name".to_string(),
@@ -390,11 +527,7 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
       .build()
       .await?,
   );
-  let state = app_service.clone();
-
-  let router = Router::new()
-    .route("/setup", post(setup_create))
-    .with_state(state);
+  let router = single_route_router("/setup", post(setup_create), app_service.clone());
 
   let request = SetupRequest {
     name: "Test Server Name".to_string(),
@@ -443,10 +576,7 @@ async fn test_setup_handler_register_resource_error() -> anyhow::Result<()> {
       .build()
       .await?,
   );
-  let state = app_service.clone();
-  let router = Router::new()
-    .route("/setup", post(setup_create))
-    .with_state(state);
+  let router = single_route_router("/setup", post(setup_create), app_service.clone());
 
   let resp = router
     .oneshot(Request::post("/setup").json(SetupRequest {
@@ -467,10 +597,7 @@ async fn test_setup_handler_register_resource_error() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_setup_handler_bad_request(#[case] body: &str) -> anyhow::Result<()> {
   let app_service = Arc::new(AppServiceStubBuilder::default().build().await?);
-  let state = app_service.clone();
-  let router = Router::new()
-    .route("/setup", post(setup_create))
-    .with_state(state);
+  let router = single_route_router("/setup", post(setup_create), app_service.clone());
 
   let resp = router
     .oneshot(Request::post("/setup").json_str(body)?)
@@ -499,10 +626,7 @@ async fn test_setup_handler_validation_error() -> anyhow::Result<()> {
       .build()
       .await?,
   );
-  let state = app_service.clone();
-  let router = Router::new()
-    .route("/setup", post(setup_create))
-    .with_state(state);
+  let router = single_route_router("/setup", post(setup_create), app_service.clone());
 
   let resp = router
     .oneshot(Request::post("/setup").json(SetupRequest {
@@ -537,11 +661,8 @@ async fn build_multi_tenant_app_service() -> anyhow::Result<Arc<AppServiceStub>>
 #[tokio::test]
 async fn test_app_info_multi_tenant_anonymous_returns_ready() -> anyhow::Result<()> {
   let app_service = build_multi_tenant_app_service().await?;
-  let state: Arc<dyn AppService> = app_service.clone();
-  let router = Router::new()
-    .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer(false))
-    .with_state(state);
+  let router =
+    single_route_router_with_session(TEST_ENDPOINT_APP_INFO, get(setup_show), app_service.clone());
 
   let auth_context = AuthContext::test_anonymous(DeploymentMode::MultiTenant);
   let resp = router
@@ -584,11 +705,8 @@ async fn test_app_info_multi_tenant_dashboard_with_memberships_returns_ready() -
     .upsert_tenant_user(TEST_TENANT_ID, TEST_USER_ID)
     .await?;
 
-  let state: Arc<dyn AppService> = app_service.clone();
-  let router = Router::new()
-    .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer(false))
-    .with_state(state);
+  let router =
+    single_route_router_with_session(TEST_ENDPOINT_APP_INFO, get(setup_show), app_service.clone());
 
   let auth_context = AuthContext::test_multi_tenant_session(TEST_USER_ID, "testuser");
   let resp = router
@@ -611,11 +729,8 @@ async fn test_app_info_multi_tenant_dashboard_with_memberships_returns_ready() -
 async fn test_app_info_multi_tenant_dashboard_without_memberships_returns_setup(
 ) -> anyhow::Result<()> {
   let app_service = build_multi_tenant_app_service().await?;
-  let state: Arc<dyn AppService> = app_service.clone();
-  let router = Router::new()
-    .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer(false))
-    .with_state(state);
+  let router =
+    single_route_router_with_session(TEST_ENDPOINT_APP_INFO, get(setup_show), app_service.clone());
 
   let auth_context = AuthContext::test_multi_tenant_session(TEST_USER_ID, "testuser");
   let resp = router
@@ -637,11 +752,8 @@ async fn test_app_info_multi_tenant_dashboard_without_memberships_returns_setup(
 #[tokio::test]
 async fn test_app_info_multi_tenant_session_with_client_id_returns_ready() -> anyhow::Result<()> {
   let app_service = build_multi_tenant_app_service().await?;
-  let state: Arc<dyn AppService> = app_service.clone();
-  let router = Router::new()
-    .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer(false))
-    .with_state(state);
+  let router =
+    single_route_router_with_session(TEST_ENDPOINT_APP_INFO, get(setup_show), app_service.clone());
 
   let auth_context = AuthContext::test_multi_tenant_session_full(
     TEST_USER_ID,
@@ -683,11 +795,8 @@ async fn test_app_info_handler_encryption_error() -> anyhow::Result<()> {
       .build()
       .await?,
   );
-  let state: Arc<dyn AppService> = app_service.clone();
-  let router = Router::new()
-    .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer(false))
-    .with_state(state);
+  let router =
+    single_route_router_with_session(TEST_ENDPOINT_APP_INFO, get(setup_show), app_service.clone());
   let resp = router
     .oneshot(Request::get(TEST_ENDPOINT_APP_INFO).body(Body::empty())?)
     .await?;
@@ -721,10 +830,7 @@ async fn test_setup_create_encryption_error() -> anyhow::Result<()> {
       .build()
       .await?,
   );
-  let state: Arc<dyn AppService> = app_service.clone();
-  let router = Router::new()
-    .route("/setup", post(setup_create))
-    .with_state(state);
+  let router = single_route_router("/setup", post(setup_create), app_service.clone());
   let resp = router
     .oneshot(Request::post("/setup").json(payload)?)
     .await?;

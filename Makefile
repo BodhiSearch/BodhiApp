@@ -186,6 +186,7 @@ app.run.live: ## Run BodhiApp with live Vite dev server (HMR enabled)
 		BODHI_LOG_STDOUT=true \
 		BODHI_HOME=~/.bodhi-dev-makefile \
 		BODHI_DEV_PROXY_UI=true \
+		BODHI_TUNNEL=true \
 		BODHI_ENCRYPTION_KEY=bodhi-local-run-enc-key \
 		cargo run --bin bodhi -- serve --port 11135
 

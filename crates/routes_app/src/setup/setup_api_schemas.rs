@@ -4,7 +4,7 @@ use axum::{
   Json,
 };
 use serde::{Deserialize, Serialize};
-use services::{AppStatus, DeploymentMode};
+use services::{AppStatus, DeploymentMode, RemoteAccessInfo};
 use utoipa::ToSchema;
 
 /// Application information and status
@@ -16,6 +16,7 @@ use utoipa::ToSchema;
     "deployment": "standalone",
     "client_id": "my-client-id",
     "url": "https://example.com",
+    "url_public": false,
     "reference_api_url": "https://api.getbodhi.app"
 }))]
 pub struct AppInfo {
@@ -38,6 +39,17 @@ pub struct AppInfo {
   /// Public URL of the server
   #[schema(example = "https://example.com")]
   pub url: String,
+  /// Whether `url` is reachable from the public internet. Declared by the deployment through
+  /// `BODHI_PUBLIC_URL_REACHABLE`; `false` unless explicitly set. A third-party backend uses this to
+  /// decide whether it can call this instance directly or must go through `remote_access`.
+  #[schema(example = false)]
+  pub url_public: bool,
+  /// Publicly-reachable routes into this instance other than `url` itself, for a third-party backend
+  /// that cannot use `url` directly. Omitted when there are none. At most one entry today, since an
+  /// instance runs a single tunnel; it is a list so additional providers do not break the shape.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  #[schema(nullable)]
+  pub remote_access: Option<Vec<RemoteAccessInfo>>,
   /// Base URL of the external reference API the frontend calls directly (configurable via
   /// `BODHI_REFERENCE_API_URL`, env-overridable for tests)
   #[schema(example = "https://api.getbodhi.app")]

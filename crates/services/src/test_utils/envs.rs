@@ -4,8 +4,10 @@ use crate::{
   BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_CANONICAL_REDIRECT, BODHI_COMMIT_SHA, BODHI_DEPLOYMENT,
   BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_NAME, BODHI_EXEC_TARGET,
   BODHI_EXEC_VARIANT, BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST, BODHI_KEEP_ALIVE_SECS,
-  BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_REFERENCE_API_URL, BODHI_SCHEME,
-  BODHI_SESSION_DB_URL, BODHI_VERSION, DEFAULT_REFERENCE_API_URL_DEV, HF_HOME,
+  BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT,
+  BODHI_PUBLIC_SCHEME, BODHI_PUBLIC_URL_REACHABLE, BODHI_REFERENCE_API_URL, BODHI_SCHEME,
+  BODHI_SESSION_DB_URL, BODHI_TUNNEL, BODHI_TUNNEL_AUTO_RECONNECT, BODHI_VERSION,
+  DEFAULT_REFERENCE_API_URL_DEV, HF_HOME,
 };
 use crate::{Setting, SettingInfo, SettingMetadata, SettingSource};
 use llama_server_proc::{BUILD_TARGET, BUILD_VARIANTS, DEFAULT_VARIANT, EXEC_NAME};
@@ -252,24 +254,21 @@ impl SettingService for SettingServiceStub {
     self.envs.get(key).cloned()
   }
 
-  // Returns Database source for all found settings; stub does not distinguish source layers
   async fn get_setting_value_with_source(
     &self,
     key: &str,
   ) -> (Option<serde_yaml::Value>, SettingSource) {
+    if let Some(value) = self.envs.get(key) {
+      let value = get_metadata(key).parse(serde_yaml::Value::String(value.clone()));
+      return (Some(value), SettingSource::Environment);
+    }
     let lock = self.settings.read().unwrap();
     match lock.get(key).cloned() {
       Some(value) => (Some(value), SettingSource::Database),
-      None if key.starts_with("BODHI_PUBLIC_") => (
-        Some(
-          lock
-            .get(&key.replace("BODHI_PUBLIC_", "BODHI_"))
-            .cloned()
-            .unwrap(),
-        ),
-        SettingSource::Default,
-      ),
-      None => (None, SettingSource::Default),
+      None => match plain_counterpart(key) {
+        Some(plain) => (lock.get(plain).cloned(), SettingSource::Default),
+        None => (None, SettingSource::Default),
+      },
     }
   }
 
@@ -293,11 +292,23 @@ impl SettingService for SettingServiceStub {
   async fn add_listener(&self, _listener: Arc<dyn SettingsChangeListener>) {}
 }
 
+fn plain_counterpart(key: &str) -> Option<&'static str> {
+  match key {
+    BODHI_PUBLIC_SCHEME => Some(BODHI_SCHEME),
+    BODHI_PUBLIC_HOST => Some(BODHI_HOST),
+    BODHI_PUBLIC_PORT => Some(BODHI_PORT),
+    _ => None,
+  }
+}
+
 fn get_metadata(key: &str) -> SettingMetadata {
   match key {
     BODHI_PORT => SettingMetadata::Number { min: 1, max: 65535 },
-    BODHI_LOG_STDOUT => SettingMetadata::Boolean,
-    BODHI_CANONICAL_REDIRECT => SettingMetadata::Boolean,
+    BODHI_LOG_STDOUT
+    | BODHI_CANONICAL_REDIRECT
+    | BODHI_PUBLIC_URL_REACHABLE
+    | BODHI_TUNNEL
+    | BODHI_TUNNEL_AUTO_RECONNECT => SettingMetadata::Boolean,
     BODHI_KEEP_ALIVE_SECS => SettingMetadata::Number {
       min: 300,
       max: 86400,

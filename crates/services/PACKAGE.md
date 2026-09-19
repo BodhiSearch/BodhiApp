@@ -6,7 +6,7 @@
 
 ### Crate Root and Re-exports
 - `src/lib.rs` — module declarations, re-exports all public types, re-exports `errmeta` types for downstream convenience, `pub use db::*`
-- `src/app_service/` — `AppService` trait (18 accessors), `DefaultAppService`, `AuthScopedAppService`, auth-scoped sub-services
+- `src/app_service/` — `AppService` trait, `DefaultAppService`, `AuthScopedAppService`, auth-scoped sub-services
 - `src/macros.rs` — `asref_impl!` macro for service trait AsRef implementations
 - `src/env_wrapper.rs` — `EnvWrapper` trait for environment variable abstraction
 
@@ -76,6 +76,12 @@
 - `src/settings/constants.rs` — Setting key constants
 - `src/settings/error.rs` — `SettingsMetadataError`, `SettingServiceError`
 - `src/settings/settings_repository.rs` — `SettingsRepository` trait
+
+### Cloudflare Tunnel (`tunnels/`)
+
+`TunnelService`, connector supervision, and the anonymous `RemoteAccessInfo` summary. Detail lives
+in [`src/tunnels/CLAUDE.md`](src/tunnels/CLAUDE.md) and
+[`src/tunnels/PACKAGE.md`](src/tunnels/PACKAGE.md).
 
 ### Utility Services (`utils/`)
 - `src/utils/cache_service.rs` — Mini-moka based caching
@@ -154,7 +160,7 @@
 
 ## AppService and AuthScopedAppService
 
-**AppService**: Central service registry with 20 service accessors. Defined in `src/app_service/app_service.rs`. Includes `api_model_service()`, `download_service()`, `inference_service()`, `token_service()`, `tenant_service()`. All services are `Arc<dyn Trait>` with `#[mockall::automock]`.
+**AppService**: Central service registry. Defined in `src/app_service/app_service.rs`, which is the list of accessors — among them `api_model_service()`, `download_service()`, `inference_service()`, `token_service()`, `tenant_service()`. All services are `Arc<dyn Trait>` with `#[mockall::automock]`.
 
 **AuthScopedAppService**: Wraps `Arc<dyn AppService>` + `AuthContext`. Defined in `src/app_service/auth_scoped.rs`.
 

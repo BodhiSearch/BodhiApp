@@ -104,6 +104,14 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     user_id: &str,
   ) -> Result<()>;
 
+  async fn update_tunnel_redirect_uri(
+    &self,
+    client_id: &str,
+    client_secret: &str,
+    gateway: &str,
+    redirect_uri: &str,
+  ) -> Result<()>;
+
   async fn assign_user_role(&self, reviewer_token: &str, user_id: &str, role: &str) -> Result<()>;
 
   async fn remove_user(&self, reviewer_token: &str, user_id: &str) -> Result<()>;
@@ -615,6 +623,49 @@ impl AuthService for KeycloakAuthService {
       log::log_http_error("POST", &endpoint, "auth_service", &error.error);
       Err(error.into())
     }
+  }
+
+  async fn update_tunnel_redirect_uri(
+    &self,
+    client_id: &str,
+    client_secret: &str,
+    gateway: &str,
+    redirect_uri: &str,
+  ) -> Result<()> {
+    let access_token = self
+      .get_client_access_token(client_id, client_secret)
+      .await?;
+    let endpoint = format!("{}/resources/redirect_uris", self.auth_api_url());
+    log::log_http_request("PATCH", &endpoint, "auth_service", None);
+    let response = self
+      .client
+      .patch(&endpoint)
+      .bearer_auth(access_token.secret())
+      .json(&serde_json::json!({
+        "gateway": gateway,
+        "redirect_uri": redirect_uri,
+      }))
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+      .send()
+      .await?;
+    if response.status().is_success() {
+      return Ok(());
+    }
+    let status = response.status().as_u16();
+    let body = response.text().await.unwrap_or_default();
+    let message = serde_json::from_str::<KeycloakError>(&body)
+      .map(|error| {
+        error
+          .error_description
+          .map(|description| format!("{}: {}", error.error, description))
+          .unwrap_or(error.error)
+      })
+      .unwrap_or_else(|_| body.chars().take(500).collect());
+    log::log_http_error("PATCH", &endpoint, "auth_service", &message);
+    Err(AuthServiceError::AuthServiceApiError {
+      status,
+      body: message,
+    })
   }
 
   async fn assign_user_role(&self, reviewer_token: &str, user_id: &str, role: &str) -> Result<()> {

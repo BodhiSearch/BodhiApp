@@ -10,7 +10,7 @@ use crate::{
   DownloadService, HealthRegistry, HfHubService, HubService, LocalConcurrencyService,
   LocalDataService, McpService, MockAuthService, MockHubService, MockQueueProducer,
   ModelRouterService, MokaCacheService, NetworkService, QueueProducer, SessionService,
-  SettingService, Tenant, TenantService, TokenService, BODHI_EXEC_LOOKUP_PATH,
+  SettingService, Tenant, TenantService, TokenService, TunnelService, BODHI_EXEC_LOOKUP_PATH,
 };
 use derive_builder::Builder;
 use rstest::fixture;
@@ -95,11 +95,16 @@ pub struct AppServiceStub {
   pub health_registry: Option<Arc<dyn HealthRegistry>>,
   #[builder(default = "self.default_download_service()")]
   pub download_service: Option<Arc<dyn DownloadService>>,
+  #[builder(default = "self.default_tunnel_service()")]
+  pub tunnel_service: Option<Arc<dyn TunnelService>>,
 }
 
 impl AppServiceStubBuilder {
   /// Async build that auto-initializes db_service, session_service, and tenant_service if not explicitly set.
   pub async fn build(&mut self) -> Result<AppServiceStub, AppServiceStubBuilderError> {
+    if !matches!(&self.setting_service, Some(Some(_))) {
+      self.with_setting_service();
+    }
     if !matches!(&self.db_service, Some(Some(_))) {
       self.with_db_service().await;
     }
@@ -280,6 +285,16 @@ impl AppServiceStubBuilder {
     )))
   }
 
+  fn default_tunnel_service(&self) -> Option<Arc<dyn TunnelService>> {
+    let setting_service = self
+      .setting_service
+      .as_ref()
+      .and_then(|service| service.as_ref())
+      .cloned()
+      .expect("setting_service must be set before building tunnel_service");
+    Some(Arc::new(crate::DefaultTunnelService::new(setting_service)))
+  }
+
   fn default_token_service(&self) -> Option<Arc<dyn TokenService>> {
     let db_service = self
       .db_service
@@ -386,6 +401,14 @@ impl AppServiceStubBuilder {
       .unwrap();
     let data_service = LocalDataService::new(self.get_hub_service(), db_service);
     self.data_service = Some(Some(Arc::new(data_service)));
+    self
+  }
+
+  pub fn with_setting_service(&mut self) -> &mut Self {
+    if let Some(Some(_)) = self.setting_service.as_ref() {
+      return self;
+    }
+    self.setting_service = Some(self.default_setting_service());
     self
   }
 
@@ -588,5 +611,12 @@ impl AppService for AppServiceStub {
       .download_service
       .clone()
       .expect("download_service not configured in test stub")
+  }
+
+  fn tunnel_service(&self) -> Arc<dyn TunnelService> {
+    self
+      .tunnel_service
+      .clone()
+      .expect("tunnel_service not configured in test stub")
   }
 }

@@ -59,7 +59,7 @@ Both fields are additive and optional, so no existing consumer breaks.
   "url": "http://0.0.0.0:11135",
   "url_public": false,
   "remote_access": [ { "provider": "cloudflared",
-                       "url": "https://my-tunnel.bodhi.bot",
+                       "url": "https://my-tunnel.example.com",
                        "enabled": true, "status": "ready", "auth_status": "ready" } ],
   "reference_api_url": "https://dev-api.getbodhi.app" }
 
@@ -68,7 +68,7 @@ Both fields are additive and optional, so no existing consumer breaks.
 
 // tunnel configured but turned off — status/auth_status omitted, not null
 { ..., "url_public": false,
-  "remote_access": [ { "provider": "cloudflared", "url": "https://my-tunnel.bodhi.bot",
+  "remote_access": [ { "provider": "cloudflared", "url": "https://my-tunnel.example.com",
                        "enabled": false } ] }
 ```
 

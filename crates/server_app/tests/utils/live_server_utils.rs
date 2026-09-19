@@ -245,8 +245,10 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   );
   let health_registry: Arc<dyn services::HealthRegistry> =
     Arc::new(services::DefaultHealthRegistry::default());
+  let tunnel_service: Arc<dyn services::TunnelService> =
+    Arc::new(services::DefaultTunnelService::new(setting_service.clone()));
   let app_service = DefaultAppService::new(
-    setting_service,
+    setting_service.clone(),
     hub_service,
     data_service,
     auth_service,
@@ -267,6 +269,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     model_router_service,
     health_registry,
     download_service,
+    tunnel_service,
   );
 
   Ok(Arc::new(app_service))
@@ -622,8 +625,10 @@ pub async fn setup_test_app_service_with_time(
   );
   let health_registry: Arc<dyn services::HealthRegistry> =
     Arc::new(services::DefaultHealthRegistry::default());
+  let tunnel_service: Arc<dyn services::TunnelService> =
+    Arc::new(services::DefaultTunnelService::new(setting_service.clone()));
   let app_service = DefaultAppService::new(
-    setting_service,
+    setting_service.clone(),
     hub_service,
     data_service,
     auth_service,
@@ -644,6 +649,7 @@ pub async fn setup_test_app_service_with_time(
     model_router_service,
     health_registry,
     download_service,
+    tunnel_service,
   );
 
   Ok(Arc::new(app_service))
@@ -1004,8 +1010,10 @@ pub async fn setup_multitenant_app_service(
   );
   let health_registry: Arc<dyn services::HealthRegistry> =
     Arc::new(services::DefaultHealthRegistry::default());
+  let tunnel_service: Arc<dyn services::TunnelService> =
+    Arc::new(services::DefaultTunnelService::new(setting_service.clone()));
   let app_service = DefaultAppService::new(
-    setting_service,
+    setting_service.clone(),
     hub_service,
     data_service,
     auth_service,
@@ -1026,6 +1034,7 @@ pub async fn setup_multitenant_app_service(
     model_router_service,
     health_registry,
     download_service,
+    tunnel_service,
   );
 
   Ok(Arc::new(app_service))
