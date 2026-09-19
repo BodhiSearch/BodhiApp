@@ -108,6 +108,9 @@ export const SHELL_NAV: ShellNavItem[] = [
     label: 'Settings',
     icon: 'settings',
     href: '/settings/',
-    subPages: [{ id: 'app-settings', label: 'App Settings', icon: 'settings', href: '/settings/' }],
+    subPages: [
+      { id: 'app-settings', label: 'App Settings', icon: 'settings', href: '/settings/' },
+      { id: 'tunnels', label: 'Remote Access', icon: 'waypoints', href: '/tunnels/' },
+    ],
   },
 ];

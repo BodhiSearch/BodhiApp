@@ -30,6 +30,7 @@ export function mockAppInfo(
         version,
         deployment,
         url: 'http://localhost:1135',
+        url_public: false,
         reference_api_url,
         ...rest,
       };

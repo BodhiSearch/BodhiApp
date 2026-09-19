@@ -1,0 +1,168 @@
+/* FAQ rail
+   Ported from design/tunnels/remote-access.css (`.ra-faq-*`, `.ra-cmd`), renamed
+   to a page-agnostic prefix — no rule here knows about any particular screen.
+   Load via `import '@/components/faq-rail/faq-rail.css'` from the rail itself. */
+
+.faq-rail {
+  padding: 14px 14px 28px;
+}
+.faq-rail-sub {
+  margin: 0 0 12px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Rail header ── */
+.faq-railhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+.faq-railhead-t {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+/* ── Groups ── */
+.faq-group + .faq-group {
+  margin-top: 18px;
+}
+.faq-glabel {
+  margin-bottom: 7px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Entries ── */
+.faq-item {
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
+}
+.faq-item + .faq-item {
+  margin-top: 6px;
+}
+/* --accent is the same indigo the design carried as --c-indigo-*. */
+.faq-item.is-flash {
+  border-color: hsl(var(--accent) / 0.35);
+  box-shadow: 0 0 0 3px hsl(var(--accent) / 0.09);
+}
+
+.faq-q {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 13px;
+  border: none;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: hsl(var(--foreground));
+  text-align: left;
+  cursor: pointer;
+}
+.faq-q:hover {
+  background: hsl(var(--muted) / 0.45);
+}
+.faq-chev {
+  flex: none;
+  margin-left: auto;
+  display: inline-flex;
+  color: hsl(var(--muted-foreground));
+  transition: transform 160ms ease;
+}
+.faq-item.is-open .faq-chev {
+  transform: rotate(180deg);
+}
+
+.faq-a {
+  padding: 2px 13px 14px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: hsl(var(--muted-foreground));
+  text-wrap: pretty;
+}
+.faq-a p {
+  margin: 0 0 9px;
+}
+.faq-a p:last-child {
+  margin-bottom: 0;
+}
+.faq-a strong {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.faq-a code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.faq-a a {
+  color: hsl(var(--accent));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Command rows inside an answer ── */
+.faq-cmd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--muted) / 0.5);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  overflow-x: auto;
+}
+.faq-cmd-os {
+  flex: none;
+  width: 58px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Dark ── */
+.dark .faq-item {
+  background: hsl(var(--surface-1));
+  border-color: hsl(var(--border-strong));
+}
+.dark .faq-cmd {
+  background: hsl(var(--surface-1));
+  border-color: hsl(var(--border-strong));
+}
+
+@media (max-width: 640px) {
+  .faq-cmd {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .faq-cmd-os {
+    width: auto;
+  }
+  .faq-a {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}

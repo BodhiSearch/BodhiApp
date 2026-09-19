@@ -40,6 +40,11 @@ src/routes/
 │       └── edit/           # /mcps/servers/edit?id=
 ├── tokens/                 # /tokens → API tokens
 ├── settings/               # /settings → app settings
+├── tunnels/                # /tunnels → Remote Access / Cloudflare named tunnel control
+│                           #   -shared/remoteAccessState.ts derives one of 15 states from TunnelStatus;
+│                           #   every pill, fold and panel follows from it.
+│                           #   -shared/faqContent.tsx is the help-rail content; error panels deep-link
+│                           #   into it with <FaqLink> (see components/faq-rail/).
 ├── users/                  # /users → user management
 ├── apps/auth/              # /apps/auth → OAuth consent screen (app authorize requests)
 ├── request-access/         # /request-access → access request form
@@ -84,7 +89,7 @@ src/components/
 ### Hooks (`src/hooks/`)
 
 Domain subdirectories (each with `constants.ts`, `index.ts`, hook files):
-`apps/`, `auth/`, `chat/`, `info/`, `mcps/`, `models/`, `navigation/`, `settings/`, `tenants/`, `tokens/`, `users/`
+`apps/`, `auth/`, `chat/`, `info/`, `mcps/`, `models/`, `navigation/`, `settings/`, `tenants/`, `tokens/`, `tunnels/`, `users/`
 
 Top-level hooks (not in subdirectories):
 

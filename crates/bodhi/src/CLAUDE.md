@@ -105,7 +105,7 @@ provides a working `ShellContext`.
 
 ### Hook Architecture (Domain Subdirectories)
 
-Hooks organized into 12 domain subdirectories under `src/hooks/<domain>/`. Each has `constants.ts` (query key factory + endpoints), `index.ts` (barrel), and CRUD-named hooks (`useList*`, `useGet*`, `useCreate*`, `useUpdate*`, `useDelete*`). Full directory listing in `PACKAGE.md`.
+Hooks organized into domain subdirectories under `src/hooks/<domain>/`. Each has `constants.ts` (query key factory + endpoints), `index.ts` (barrel), and CRUD-named hooks (`useList*`, `useGet*`, `useCreate*`, `useUpdate*`, `useDelete*`). Full directory listing in `PACKAGE.md`.
 
 **Query key factory pattern** — see `src/hooks/models/constants.ts` for reference. Keys build hierarchically: `modelKeys.all` → `modelKeys.lists()` → `modelKeys.list(...)` → `modelKeys.detail(id)`.
 
@@ -151,6 +151,7 @@ Route constants defined in `src/lib/constants.ts`.
 
 - MCP instances: `src/routes/mcps/` routes, `src/hooks/mcps/useMcpInstances.ts`
 - MCP servers (allowlist): `src/routes/mcps/servers/` routes, `src/hooks/mcps/useMcpServers.ts`
+- Remote Access: `src/routes/tunnels/` and `src/hooks/tunnels/`; status polling is fast only while connecting, the screen displays public and exact OAuth callback URLs without changing app-wide public-host settings, and Keycloak synchronization failures leave API-key access live while remote browser login is unavailable.
 - Auth config: `McpAuthType` enum (`public`, `header`, `oauth`). OAuth distinguishes pre-registered vs dynamic via `registration_type` field
 - `src/stores/mcpFormStore.ts` uses sessionStorage; `mcpFormStore.reset()` clears it. OAuth callback validates `state` parameter
 

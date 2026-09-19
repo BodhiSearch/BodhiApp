@@ -68,6 +68,12 @@ export interface AppShellProps {
   railHeader?: ReactNode;
   /** start with the rail showing (desktop) */
   railDefaultOpen?: boolean;
+  /**
+   * Whether publishing rail content should open the rail. True suits an on-demand
+   * rail (a row's details). Set false for a rail that is always published, such as
+   * a help panel, which would otherwise be forced open and could never stay shut.
+   */
+  railAutoOpen?: boolean;
 
   contentClass?: string;
   /** set false to manage your own scroll region */
@@ -104,6 +110,7 @@ export function AppShell({
   rail,
   railHeader,
   railDefaultOpen = true,
+  railAutoOpen = true,
   contentClass = '',
   mainScroll = true,
   railScroll = true,
@@ -134,14 +141,22 @@ export function AppShell({
 
   // Opens the rail whenever content is published (e.g. row select); closes it when content clears.
   // On mobile, re-checks on every render (not just the false→true edge) so a manual close then re-select still opens the drawer.
+  // `railAutoOpen: false` opts out, for a rail that is always published. It takes
+  // `railDefaultOpen` here rather than at mount: the shell mounts before a screen
+  // publishes its chrome, so the initial state has already run with the default.
   useEffect(() => {
     if (hasRail) {
+      if (!railAutoOpen) {
+        setRailCollapsed(!railDefaultOpen);
+        setRailOpen(false);
+        return;
+      }
       if (isMobile) setRailOpen(true);
       else setRailCollapsed(false);
     } else {
       setRailOpen(false);
     }
-  }, [hasRail, isMobile]);
+  }, [hasRail, isMobile, railAutoOpen, railDefaultOpen]);
 
   // Column resize: widths persist to localStorage; collapse state does not.
   useEffect(() => {

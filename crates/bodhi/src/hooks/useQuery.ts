@@ -42,7 +42,7 @@ export function useQuery<T>(
 
 export function useMutationQuery<T, V>(
   endpoint: string | ((variables: V) => string),
-  method: 'post' | 'put' | 'delete' = 'post',
+  method: 'post' | 'put' | 'patch' | 'delete' = 'post',
   options?: UseMutationOptions<AxiosResponse<T>, AxiosError<BodhiErrorResponse>, V>,
   axiosConfig?: {
     headers?: Record<string, string>;

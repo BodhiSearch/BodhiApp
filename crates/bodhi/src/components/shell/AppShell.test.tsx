@@ -151,6 +151,55 @@ describe('AppShell', () => {
     expect(shell).not.toHaveClass('rail-collapsed');
   });
 
+  it('leaves an always-published rail collapsed when railAutoOpen is false', () => {
+    // A help rail is published for the lifetime of the screen, so the auto-open that
+    // suits an on-demand rail would force it open and it could never stay shut.
+    const { rerender } = render(
+      <AppShell section="api-keys" railDefaultOpen={false} railAutoOpen={false}>
+        <div>page content</div>
+      </AppShell>
+    );
+
+    rerender(
+      <AppShell
+        section="api-keys"
+        railDefaultOpen={false}
+        railAutoOpen={false}
+        rail={<div data-testid="the-rail">help</div>}
+      >
+        <div>page content</div>
+      </AppShell>
+    );
+
+    expect(document.querySelector('.shell')).toHaveClass('rail-collapsed');
+  });
+
+  it('collapses an always-published rail even when it mounted before the screen published chrome', () => {
+    // The real ordering: the shell renders from the root route, then the screen's
+    // useShellChrome effect supplies rail + railDefaultOpen together. Seeding
+    // railCollapsed at mount alone therefore reads the default, not the screen's.
+    const { rerender } = render(
+      <AppShell section="api-keys">
+        <div>page content</div>
+      </AppShell>
+    );
+    expect(document.querySelector('.shell')).not.toHaveClass('rail-collapsed');
+
+    rerender(
+      <AppShell
+        section="api-keys"
+        railDefaultOpen={false}
+        railAutoOpen={false}
+        rail={<div data-testid="the-rail">help</div>}
+      >
+        <div>page content</div>
+      </AppShell>
+    );
+
+    expect(screen.getByTestId('the-rail')).toBeInTheDocument();
+    expect(document.querySelector('.shell')).toHaveClass('rail-collapsed');
+  });
+
   it('opens the mobile rail drawer when rail content appears (rail-open class)', () => {
     // On mobile the rail is a fixed drawer gated by `.shell.rail-open`; publishing rail
     // content must add that class so the drawer slides in on the first row select.

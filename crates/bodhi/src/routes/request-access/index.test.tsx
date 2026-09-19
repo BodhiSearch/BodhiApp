@@ -105,10 +105,7 @@ describe('RequestAccessPage Display States', () => {
 
 describe('RequestAccessPage Authentication and Access Control', () => {
   it('handles unauthenticated users by redirecting', async () => {
-    server.use(
-      ...mockAppInfo({ status: 'ready' }),
-      ...mockUserLoggedIn({ username: 'user@example.com' })
-    );
+    server.use(...mockAppInfo({ status: 'ready' }), ...mockUserLoggedIn({ username: 'user@example.com' }));
 
     await act(async () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
