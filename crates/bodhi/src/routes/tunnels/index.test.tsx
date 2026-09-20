@@ -234,6 +234,7 @@ describe('Remote Access page', () => {
 
     const rail = screen.getByTestId('harness-rail');
     expect(within(screen.getByTestId('harness-rail-header')).getByTestId('faq-rail-close')).toBeInTheDocument();
+    expect(screen.getByTestId('harness-rail-toggle-icon')).toHaveTextContent('circle-help');
     // A representative id from each group, so a dropped group is caught.
     for (const id of ['faq-install', 'faq-signin', 'faq-kcsync', 'faq-exposure', 'faq-timeout', 'faq-unavailable']) {
       expect(within(rail).getByTestId(`faq-entry-${id}`)).toHaveAttribute('data-open', 'false');

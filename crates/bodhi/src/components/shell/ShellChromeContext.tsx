@@ -26,6 +26,8 @@ export interface ShellSlots {
   railDefaultOpen?: boolean;
   /** False for an always-published rail (e.g. help) that must not force itself open. */
   railAutoOpen?: boolean;
+  railToggleIcon?: string;
+  railToggleTitle?: string;
   // Layout overrides for screens needing a non-default shell (e.g. Chat's own scroll + wider rail);
   // omitted → AppShell default. Spread onto `<AppShell>` by the root shell (see `__root.tsx`).
   mainScroll?: boolean;
@@ -73,6 +75,8 @@ export function useShellChrome(slots: ShellSlots): void {
     railHeader,
     railDefaultOpen,
     railAutoOpen,
+    railToggleIcon,
+    railToggleTitle,
     mainScroll,
     railScroll,
     contentClass,
@@ -91,6 +95,8 @@ export function useShellChrome(slots: ShellSlots): void {
       railHeader,
       railDefaultOpen,
       railAutoOpen,
+      railToggleIcon,
+      railToggleTitle,
       mainScroll,
       railScroll,
       contentClass,
@@ -106,6 +112,8 @@ export function useShellChrome(slots: ShellSlots): void {
       railHeader,
       railDefaultOpen,
       railAutoOpen,
+      railToggleIcon,
+      railToggleTitle,
       mainScroll,
       railScroll,
       contentClass,

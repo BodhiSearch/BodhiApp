@@ -1197,9 +1197,13 @@ a {
     background 120ms,
     color 120ms;
 }
-.shell-icon-btn:hover {
+.shell-icon-btn:hover,
+.shell-icon-btn.is-on {
   background: hsl(var(--muted));
   color: hsl(var(--foreground));
+}
+.shell-icon-btn.is-on {
+  border-color: hsl(var(--border-strong, var(--border)));
 }
 .shell-icon-btn svg {
   width: 16px;
@@ -1212,7 +1216,7 @@ a {
 .shell.sb-collapsed .shell-sb-toggle svg {
   transform: scaleX(-1);
 }
-.shell.rail-collapsed .shell-rail-toggle svg {
+.shell.rail-collapsed .shell-rail-toggle.is-panel svg {
   transform: scaleX(-1);
 }
 

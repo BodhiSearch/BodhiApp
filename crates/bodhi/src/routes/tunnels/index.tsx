@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { TunnelStatus } from '@bodhiapp/ts-client';
 import { createFileRoute } from '@tanstack/react-router';
@@ -51,6 +51,8 @@ const BREADCRUMB = [
   { label: 'Settings', href: '/settings/' },
   { label: 'Remote Access', current: true },
 ];
+
+const RAIL_HEADER = <FaqRailHeader />;
 
 const CERT_DEFAULT = '~/.cloudflared/cert.pem';
 
@@ -612,20 +614,26 @@ function TunnelsScreen() {
   const [createError, setCreateError] = useState<string | null>(null);
 
   const { faqProps, reveal } = useFaqRail();
-  useShellChrome({
-    breadcrumb: BREADCRUMB,
-    rail: (
+  const rail = useMemo(
+    () => (
       <FaqRail
         groups={TUNNEL_FAQ_GROUPS}
         subtitle="Everything about getting this working, in one place."
         {...faqProps}
       />
     ),
-    railHeader: <FaqRailHeader />,
+    [faqProps]
+  );
+  useShellChrome({
+    breadcrumb: BREADCRUMB,
+    rail,
+    railHeader: RAIL_HEADER,
     railDefaultOpen: false,
     // The help rail is always published, so it must not open itself the way an
     // on-demand rail (a selected row's details) should.
     railAutoOpen: false,
+    railToggleIcon: 'circle-help',
+    railToggleTitle: 'Help & debugging',
     railWidth: 360,
   });
 

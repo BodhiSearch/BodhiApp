@@ -101,6 +101,15 @@ When implementing a feature spanning multiple crates, always work upstream-to-do
 7. **E2E tests**: `make build.dev-server` then update tests in `crates/lib_bodhiserver/tests-js/`. Run `make test.e2e`.
 8. **Documentation**: Update crate-level `CLAUDE.md` / `PACKAGE.md` for each modified crate.
 
+## Comments
+
+Default to **no comment**. Code, types and names carry the intent; a comment is a last resort.
+
+- Never restate what the code says, narrate a change ("now uses X", "moved from Y"), or label sections.
+- Write one only for a non-obvious **why** the next reader would otherwise undo: a constraint, a hard-won finding, a deliberate deviation. One or two lines, never a paragraph.
+- UI/presentational code (components, styling, layout) almost never needs one.
+- If a `CLAUDE.md` / `PACKAGE.md` already explains it, link there instead.
+
 ## Important Notes
 
 - Frontend uses strict TypeScript — avoid `any` types, import types from `@bodhiapp/ts-client`

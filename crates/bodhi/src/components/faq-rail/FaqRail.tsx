@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { ChevronDown, CircleHelp, X } from 'lucide-react';
 
+import { HelpChip } from '@/components/help-chip';
 import { useShell } from '@/components/shell/ShellContext';
 import { cn } from '@/lib/utils';
 
@@ -220,13 +221,8 @@ export function FaqLink({
   const fromContext = useFaqReveal();
   const onReveal = reveal ?? fromContext;
   return (
-    <button
-      type="button"
-      onClick={() => onReveal(id)}
-      data-testid={`faq-link-${id}`}
-      className={cn('text-sm font-medium underline underline-offset-2 hover:no-underline', className)}
-    >
+    <HelpChip onClick={() => onReveal(id)} data-testid={`faq-link-${id}`} className={className}>
       {children}
-    </button>
+    </HelpChip>
   );
 }

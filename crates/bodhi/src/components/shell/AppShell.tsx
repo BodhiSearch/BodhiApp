@@ -20,6 +20,7 @@ import {
 import { ShellContext, type ShellContextValue } from './ShellContext';
 import { ShellIcon } from './ShellIcon';
 import { ShellNav } from './ShellNav';
+import { ShellRailToggle } from './ShellRailToggle';
 
 import './shell.css';
 
@@ -74,6 +75,8 @@ export interface AppShellProps {
    * a help panel, which would otherwise be forced open and could never stay shut.
    */
   railAutoOpen?: boolean;
+  railToggleIcon?: string;
+  railToggleTitle?: string;
 
   contentClass?: string;
   /** set false to manage your own scroll region */
@@ -111,6 +114,8 @@ export function AppShell({
   railHeader,
   railDefaultOpen = true,
   railAutoOpen = true,
+  railToggleIcon,
+  railToggleTitle,
   contentClass = '',
   mainScroll = true,
   railScroll = true,
@@ -294,9 +299,12 @@ export function AppShell({
             <div className="shell-head-actions">
               {headerActions}
               {hasRail && (
-                <button className="shell-icon-btn shell-rail-toggle" onClick={toggleRail} title="Toggle detail panel">
-                  <ShellIcon name="panel-right" size={16} />
-                </button>
+                <ShellRailToggle
+                  icon={railToggleIcon}
+                  title={railToggleTitle}
+                  open={isMobile ? railOpen : !railCollapsed}
+                  onToggle={toggleRail}
+                />
               )}
             </div>
           </div>

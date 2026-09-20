@@ -1,6 +1,7 @@
 export { AppShell, type AppShellProps } from './AppShell';
 export { ShellNav, type ShellNavProps } from './ShellNav';
 export { ShellIcon, type ShellIconProps } from './ShellIcon';
+export { ShellRailToggle, type ShellRailToggleProps } from './ShellRailToggle';
 export { LinkRow, type LinkRowProps } from './LinkRow';
 export { useListKeyNav, type ListKeyNavOptions } from './useListKeyNav';
 export { ShellSearch, type ShellSearchProps } from './ShellSearch';

@@ -73,6 +73,8 @@ src/components/
 ├── faq-rail/                    # Reusable in-page help for the shell's right rail: pass FaqGroup[]
 │                                #   as data, deep-link with <FaqLink id>, lay out commands with
 │                                #   <FaqCommand os>. Styling in faq-rail.css. Nothing page-specific.
+├── help-chip/                   # <HelpChip>: quiet tertiary "explain this" pill (Button variant
+│                                #   `help` + size `chip`). asChild wraps an anchor for external docs.
 ├── setup/                       # BrowserExtensionCard, BrowserSelector
 ├── AppInitializer.tsx           # App status check and routing
 ├── ClientProviders.tsx          # QueryClientProvider wrapper

@@ -88,7 +88,7 @@ switch is `components/shell/resolveShellRoute.ts`'s `isBareRoute`/`isFullscreenR
 
 A screen contributes chrome two ways: **static** (nav highlight) via route
 `staticData: { section, subPage }` read by `useShellSection()` (`useMatches`); **dynamic**
-(breadcrumb / header actions / sidebar / detail rail / layout overrides) by publishing through
+(breadcrumb / header actions / sidebar / detail rail / rail-toggle icon+title / layout overrides) by publishing through
 `useShellChrome(...)` (`components/shell/ShellChromeContext.tsx`) — a split value/setter context the
 persistent shell consumes. In tests, mount a publishing screen inside `ShellHarness`
 (`test-utils/shell-harness.tsx`), which renders the published chrome into `harness-*` testids and

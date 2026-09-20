@@ -6,13 +6,14 @@ import { ShellContext, type ShellContextValue } from '@/components/shell/ShellCo
 // Renders published chrome slots (breadcrumb, sidebar, rail) into stable harness-* testids for assertions.
 // Provides a real ShellContext so rail-consuming screens get working openRail/closeRail/collapseRail.
 export function ChromeProbe() {
-  const { breadcrumb, headerActions, sidebar, rail, railHeader } = useShellSlots();
+  const { breadcrumb, headerActions, sidebar, rail, railHeader, railToggleIcon } = useShellSlots();
   const crumbs = Array.isArray(breadcrumb) ? breadcrumb.map((b) => b.label).join(' / ') : '';
   return (
     <>
       <div data-testid="harness-breadcrumb">{crumbs}</div>
       <div data-testid="harness-header-actions">{headerActions}</div>
       <div data-testid="harness-sidebar">{sidebar}</div>
+      <div data-testid="harness-rail-toggle-icon">{railToggleIcon}</div>
       <div data-testid="harness-rail-header">{railHeader}</div>
       <div data-testid="harness-rail">{rail}</div>
     </>

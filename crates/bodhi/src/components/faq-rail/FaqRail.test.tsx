@@ -98,6 +98,14 @@ describe('FaqRail', () => {
     expect(screen.getByTestId('faq-entry-faq-install')).toHaveAttribute('data-open', 'false');
   });
 
+  it('renders the link as a help chip, not as body text', () => {
+    render(<Page />);
+    const link = within(screen.getByTestId('page-error')).getByTestId('faq-link-faq-dns');
+
+    expect(link.querySelector('svg')).toBeInTheDocument();
+    expect(link.className).not.toContain('underline');
+  });
+
   it('re-opens the rail when the same answer is asked for twice', async () => {
     const user = userEvent.setup();
     render(<Page />);
