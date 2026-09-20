@@ -23,7 +23,7 @@
     "build:release": "napi build --platform --release",
     "build:release:win": "napi build --platform --release --target x86_64-pc-windows-msvc",
     "update-optional-dependencies": "node scripts/update-optional-dependencies.js",
-    "verify-packages": "node scripts/verify-npm-packages.js"
+    "verify-packages": "node ../../scripts/verify-npm-packages.js"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.4",

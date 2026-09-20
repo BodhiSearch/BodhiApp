@@ -137,15 +137,9 @@ jobs:
 
       - name: Verify NPM Package
         working-directory: ./ts-client
-        run: |
-          # Wait for NPM to index the package
-          sleep 10
-          PUBLISHED_VERSION=$(npm view @bodhiapp/ts-client version 2>/dev/null || echo "not found")
-          if [ "$PUBLISHED_VERSION" = "not found" ]; then
-            echo "Package not found on NPM"
-            exit 1
-          fi
-          echo "Successfully published version $PUBLISHED_VERSION"
+        run: node ../scripts/verify-npm-packages.js
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.release_version }}
 
       - name: Bump version and add -dev suffix
         run: |
